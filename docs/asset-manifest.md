@@ -21,7 +21,9 @@
 3. [Validate-Assets CLI](#validate-assets-cli)
 4. [Example Manifests](#example-manifests)
 5. [Integration Guide](#integration-guide)
-6. [CI / Lint Pipeline](#ci--lint-pipeline)
+6. [Audio Engine — Manifest Emit/Consume](#audio-engine--manifest-emitconsume)
+7. [Creation Engine — Manifest Emit/Consume](#creation-engine--manifest-emitconsume)
+8. [CI / Lint Pipeline](#ci--lint-pipeline)
 
 ---
 
@@ -358,3 +360,213 @@ on:
 
 The job fails if any manifest file does not conform to the schema, preventing
 broken assets from landing in the main branch.
+
+---
+
+## Audio Engine — Manifest Emit/Consume
+
+`tools/audio_engine.py` is a standalone audio asset manager that integrates
+with the shared manifest format.  It demonstrates how the Audio Engine
+subsystem can **optionally** write or read manifests alongside its normal
+operation.
+
+### Quick start
+
+```bash
+# Register a clip and emit a manifest in one step:
+python3 tools/audio_engine.py register \
+    --id audio-main-theme --source audio/music/main_theme.ogg \
+    --format ogg --sample-rate 44100 --channels 2 --duration 180.5 \
+    --category music --tags music main-theme \
+    --emit-manifest build/audio-manifest.json
+
+# Emit the built-in demo manifest (no real files required):
+python3 tools/audio_engine.py emit --manifest /tmp/demo-audio-manifest.json
+
+# Consume an existing manifest and list what was loaded:
+python3 tools/audio_engine.py consume \
+    --manifest assets/examples/audio-manifest.json --list
+
+# Consume a manifest and re-emit it (pipeline round-trip):
+python3 tools/audio_engine.py consume \
+    --manifest assets/examples/audio-manifest.json \
+    --emit-manifest build/re-emitted-audio.json
+```
+
+### Sub-commands
+
+| Command | Purpose |
+|---|---|
+| `register` | Register one audio clip from CLI flags; optionally emit a manifest |
+| `emit` | Emit a manifest for the built-in demo assets |
+| `consume` | Load audio assets from an existing manifest; optionally re-emit |
+| `list` | Print all assets in the built-in demo registry |
+
+### `register` flags (audio-specific)
+
+| Flag | Required | Description |
+|---|---|---|
+| `--id` | ✅ | Stable asset ID |
+| `--source` | ✅ | Path to the audio file |
+| `--format` | ✅ | `wav` / `ogg` / `mp3` / `flac` / `opus` |
+| `--sample-rate` | ✅ | Sample rate in Hz |
+| `--channels` | ✅ | Channel count |
+| `--duration` | ✅ | Duration in seconds |
+| `--category` | — | `music` / `sfx` / `ambience` / `voice` / `ui` |
+| `--loop-start` | — | Loop start point in seconds |
+| `--loop-end` | — | Loop end point in seconds |
+| `--tags` | — | Space-separated list of tags |
+| `--emit-manifest` | — | Write a manifest after registering |
+
+### Python API
+
+```python
+from tools.audio_engine import AudioEngine
+
+engine = AudioEngine()
+
+# Register an asset (manifest is NOT written — purely in-memory)
+engine.register(
+    asset_id="audio-main-theme",
+    source="audio/music/main_theme.ogg",
+    fmt="ogg",
+    sample_rate=44100,
+    channels=2,
+    duration_seconds=180.5,
+    category="music",
+    tags=["music", "main-theme"],
+)
+
+# Optional: emit the registry as a manifest
+engine.emit_manifest("build/audio-manifest.json")
+
+# Optional: consume an existing manifest into the registry
+warnings = engine.consume_manifest("assets/examples/audio-manifest.json")
+for w in warnings:
+    print("WARN:", w)
+
+print(f"Registered {len(engine)} audio assets")
+```
+
+---
+
+## Creation Engine — Manifest Emit/Consume
+
+`tools/creation_engine.py` is a general-purpose asset manager that handles
+**all** asset types (audio, texture, tilemap, model, script, material).  It
+demonstrates how an authoring tool / creation pipeline can optionally write or
+read manifests to interoperate with every other part of the system.
+
+### Quick start
+
+```bash
+# Register a texture asset and emit a manifest:
+python3 tools/creation_engine.py register \
+    --id tex-noctis-albedo --type texture --source textures/noctis_alb.png \
+    --texture-format png --width 2048 --height 2048 --usage albedo \
+    --tags character noctis \
+    --emit-manifest build/texture-manifest.json
+
+# Emit a manifest for all built-in demo assets (all types):
+python3 tools/creation_engine.py emit --manifest /tmp/demo-creation-manifest.json
+
+# Consume a manifest and list the imported assets:
+python3 tools/creation_engine.py consume \
+    --manifest assets/examples/audio-manifest.json --list
+
+# Consume only audio and texture types from a combined manifest:
+python3 tools/creation_engine.py consume \
+    --manifest assets/examples/audio-manifest.json \
+    --types audio texture \
+    --emit-manifest build/filtered-manifest.json
+
+# List the built-in demo assets:
+python3 tools/creation_engine.py list
+```
+
+### Sub-commands
+
+| Command | Purpose |
+|---|---|
+| `register` | Register one asset of any type; optionally emit a manifest |
+| `emit` | Emit a manifest for the built-in demo assets (all types) |
+| `consume` | Load assets from an existing manifest; optionally filter by type or re-emit |
+| `list` | Print all assets in the built-in demo registry |
+
+### `register` flags (type-specific groups)
+
+**Common flags** (all types):
+
+| Flag | Required | Description |
+|---|---|---|
+| `--id` | ✅ | Stable asset ID |
+| `--type` | ✅ | `audio` / `texture` / `tilemap` / `model` / `script` / `material` |
+| `--source` | ✅ | Path to the asset file |
+| `--version` | — | Asset version (SemVer, default `1.0.0`) |
+| `--tags` | — | Space-separated list of tags |
+| `--emit-manifest` | — | Write a manifest after registering |
+
+**Audio flags** (when `--type audio`):
+same as [audio_engine.py register flags](#register-flags-audio-specific) above.
+
+**Texture flags** (when `--type texture`):
+
+| Flag | Required | Description |
+|---|---|---|
+| `--texture-format` | ✅ | `png` / `jpeg` / `rgba8` / `bc1` / `bc3` / `bc5` / `bc7` / `astc4x4` |
+| `--width` | ✅ | Width in pixels |
+| `--height` | ✅ | Height in pixels |
+| `--usage` | — | PBR slot: `albedo` / `normal` / `roughness` / … |
+| `--mip-levels` | — | Number of mip-map levels |
+| `--srgb` | — | `true` or `false` |
+
+**Tilemap flags** (when `--type tilemap`):
+
+| Flag | Required | Description |
+|---|---|---|
+| `--map-width` | ✅ | Map width in tiles |
+| `--map-height` | ✅ | Map height in tiles |
+| `--tile-width` | ✅ | Single tile width in pixels |
+| `--tile-height` | ✅ | Single tile height in pixels |
+
+**Model flags** (when `--type model`):
+
+| Flag | Required | Description |
+|---|---|---|
+| `--model-format` | ✅ | `gltf` / `glb` / `fbx` / `obj` / `dae` |
+| `--vertex-count` | ✅ | Total vertex count |
+| `--triangle-count` | ✅ | Total triangle count |
+| `--has-skeleton` | — | `true` or `false` |
+| `--animation-count` | — | Number of embedded animations |
+
+### Python API
+
+```python
+from tools.creation_engine import CreationEngine
+
+engine = CreationEngine()
+
+# Register a texture (manifest NOT written yet — in-memory only)
+engine.register(
+    asset_id="tex-noctis-albedo",
+    asset_type="texture",
+    source="textures/noctis_albedo.png",
+    type_extension={
+        "format": "png", "width": 2048, "height": 2048, "usage": "albedo"
+    },
+    tags=["character", "noctis"],
+)
+
+# Optional: emit the full registry as a manifest
+engine.emit_manifest("build/creation-manifest.json")
+
+# Optional: consume an existing manifest from the Audio Engine
+warnings = engine.consume_manifest(
+    "build/audio-manifest.json",
+    type_filter=["audio"],   # only import audio entries
+)
+for w in warnings:
+    print("WARN:", w)
+
+print(f"Total registered assets: {len(engine)}")
+```

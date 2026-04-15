@@ -93,7 +93,9 @@ Game-Engine-for-Teaching-/
 ├── docs/
 │   └── asset-manifest.md       # Schema reference & integration guide
 ├── tools/
-│   └── validate-assets.py      # Asset manifest validator CLI
+│   ├── validate-assets.py  # Asset manifest validator CLI
+│   ├── audio_engine.py     # Audio Engine: register clips, emit/consume manifests
+│   └── creation_engine.py  # Creation Engine: all asset types, emit/consume manifests
 ├── scripts/                    # Lua 5.4 game scripts (hot-reloadable)
 │   ├── main.lua                # Global hooks: on_explore_update, on_camp_rest …
 │   ├── quests.lua              # Quest event callbacks
@@ -197,8 +199,14 @@ game_show_message("text")      -- Display a UI notification
 ## Asset Manifest & Validator
 
 All game assets (audio, textures, tilemaps, models) are described by **manifest
-files** that share a canonical JSON schema.  A CLI validation tool checks schema
-compliance and is wired into CI.
+files** that share a canonical JSON schema.  Three CLI tools interact with this
+format:
+
+| Tool | Purpose |
+|---|---|
+| `tools/validate-assets.py` | Validate manifest files against the schema |
+| `tools/audio_engine.py` | Audio Engine — register clips, emit/consume manifests |
+| `tools/creation_engine.py` | Creation Engine — all asset types, emit/consume manifests |
 
 ### Quick start
 
@@ -206,7 +214,14 @@ compliance and is wired into CI.
 # Validate all example manifests (no extra dependencies needed)
 python3 tools/validate-assets.py
 
-# Install optional jsonschema for richer error messages
+# Audio Engine: consume an existing manifest and list loaded clips
+python3 tools/audio_engine.py consume \
+    --manifest assets/examples/audio-manifest.json --list
+
+# Creation Engine: emit a demo manifest covering all asset types
+python3 tools/creation_engine.py emit --manifest /tmp/demo.json
+
+# Install optional jsonschema for richer validation error messages
 pip install jsonschema
 python3 tools/validate-assets.py assets/examples/ --verbose
 ```
