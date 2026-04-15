@@ -439,9 +439,9 @@ int CombatSystem::WarpStrike(EntityID target)
     {
         auto& targetTf = m_world->GetComponent<TransformComponent>(target);
         auto& playerTf = m_world->GetComponent<TransformComponent>(m_playerID);
-        // Place player one tile above the target.
-        playerTf.x = targetTf.x;
-        playerTf.y = targetTf.y - TILE_SIZE;
+        // Place player one tile above the target (in tile space).
+        playerTf.position.x = targetTf.position.x;
+        playerTf.position.z = targetTf.position.z - TILE_SIZE;
     }
 
     // ── Deal 1.5× normal damage ──────────────────────────────────────────

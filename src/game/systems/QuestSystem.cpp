@@ -76,8 +76,8 @@ bool QuestSystem::AcceptQuest(EntityID player, uint32_t questID)
 
     if (m_uiBus) {
         UIEvent ui;
-        ui.type    = UIEvent::Type::SHOW_MESSAGE;
-        ui.message = "Quest Accepted: " + data->title;
+        ui.type    = UIEvent::Type::SHOW_NOTIFICATION;
+        ui.text = "Quest Accepted: " + data->title;
         m_uiBus->Publish(ui);
     }
 
@@ -129,8 +129,8 @@ void QuestSystem::UpdateObjective(EntityID player, uint32_t questID,
 
             if (m_uiBus) {
                 UIEvent ui;
-                ui.type    = UIEvent::Type::SHOW_MESSAGE;
-                ui.message = "Objective Complete! Next: " +
+                ui.type    = UIEvent::Type::SHOW_NOTIFICATION;
+                ui.text = "Objective Complete! Next: " +
                              data->objectives[entry->objective].description;
                 m_uiBus->Publish(ui);
             }
@@ -176,8 +176,8 @@ bool QuestSystem::CompleteQuest(EntityID player, uint32_t questID)
 
     if (m_uiBus) {
         UIEvent ui;
-        ui.type    = UIEvent::Type::SHOW_MESSAGE;
-        ui.message = "Quest Complete: " + data->title +
+        ui.type    = UIEvent::Type::SHOW_NOTIFICATION;
+        ui.text = "Quest Complete: " + data->title +
                      "  (+" + std::to_string(data->xpReward) + " XP, " +
                      "+" + std::to_string(data->gilReward) + " Gil)";
         m_uiBus->Publish(ui);
@@ -204,8 +204,8 @@ void QuestSystem::FailQuest(EntityID player, uint32_t questID)
     const QuestData* data = GameDatabase::FindQuest(questID);
     if (m_uiBus && data) {
         UIEvent ui;
-        ui.type    = UIEvent::Type::SHOW_MESSAGE;
-        ui.message = "Quest Failed: " + data->title;
+        ui.type    = UIEvent::Type::SHOW_NOTIFICATION;
+        ui.text = "Quest Failed: " + data->title;
         m_uiBus->Publish(ui);
     }
 }

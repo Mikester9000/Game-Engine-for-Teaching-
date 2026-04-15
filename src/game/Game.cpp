@@ -44,9 +44,12 @@ void Game::Init()
     RegisterAllComponents();
 
     // 3. Construct systems.
-    m_combat    = std::make_unique<CombatSystem>(&m_world,
-                      &EventBus<CombatEvent>::Instance(),
-                      &EventBus<UIEvent>::Instance());
+    // TEACHING NOTE — Dependency Injection via Constructor
+    // Each system receives only the objects it needs, via constructor.
+    // CombatSystem uses EventBus internally via its singleton, so it only
+    // needs the World pointer.  Other systems need a UIEvent bus to show
+    // notifications to the player.
+    m_combat    = std::make_unique<CombatSystem>(&m_world);
     m_inventory = std::make_unique<InventorySystem>(&m_world,
                       &EventBus<UIEvent>::Instance());
     m_quests    = std::make_unique<QuestSystem>(&m_world,
@@ -85,6 +88,12 @@ void Game::Init()
 
 void Game::RegisterAllComponents()
 {
+    // TEACHING NOTE — Component Registration
+    // Before any entity can use a component type, the ECS World must know about
+    // it.  RegisterComponent<T>() allocates the component pool (a packed array)
+    // and assigns T a unique component-type ID.  Calling View<A, B>() later
+    // queries only entities that have BOTH A and B — no overhead for entities
+    // that have neither.  This is the core benefit of an ECS architecture.
     m_world.RegisterComponent<TransformComponent>();
     m_world.RegisterComponent<HealthComponent>();
     m_world.RegisterComponent<StatsComponent>();
@@ -164,9 +173,9 @@ void Game::InitPlayer()
     // Quests.
     m_world.AddComponent<QuestComponent>(m_playerID);
 
-    // Magic.
-    auto& mc       = m_world.AddComponent<MagicComponent>(m_playerID);
-    mc.currentMP   = 100;
+    // Magic — the MagicComponent stores known spells and cast state only.
+    // MP is tracked by HealthComponent (hc.mp / hc.maxMp), not MagicComponent.
+    m_world.AddComponent<MagicComponent>(m_playerID);
 
     // Camp.
     m_world.AddComponent<CampComponent>(m_playerID);
@@ -305,6 +314,15 @@ void Game::LoadScripts()
 
 void Game::Run()
 {
+    // TEACHING NOTE — Fixed-Timestep Game Loop
+    // ──────────────────────────────────────────
+    // The game loop runs as fast as possible but caps to 60 FPS by sleeping
+    // any remaining frame time.  `dt` (delta-time) is the real elapsed time
+    // in seconds since the last frame; it's passed to systems like CombatSystem
+    // and AISystem so they tick at the right real-world rate regardless of
+    // frame rate.  The 0.1 s clamp prevents "spiral-of-death" — if the game
+    // hitches for a second (e.g. the debugger pauses), dt would normally be
+    // 1.0 s and physics/AI would explode; clamping limits the damage.
     using Clock    = std::chrono::steady_clock;
     using Duration = std::chrono::duration<float>;
 
@@ -466,12 +484,12 @@ void Game::UpdateExploring(float dt, int key)
                 m_shop->OpenShop(m_playerID, 1);
             } else if (tile.type == TileType::SAVE_POINT) {
                 SaveGame("savegame.txt");
-                if (&EventBus<UIEvent>::Instance()) {
-                    UIEvent ev;
-                    ev.type = UIEvent::Type::SHOW_NOTIFICATION;
-                    ev.text = "Game saved!";
-                    EventBus<UIEvent>::Instance().Publish(ev);
-                }
+                // EventBus<UIEvent>::Instance() is always available (Meyers Singleton),
+                // so no null check needed — just publish directly.
+                UIEvent ev;
+                ev.type = UIEvent::Type::SHOW_NOTIFICATION;
+                ev.text = "Game saved!";
+                EventBus<UIEvent>::Instance().Publish(ev);
             }
         }
     }
@@ -884,6 +902,11 @@ void Game::RenderHUD()
 
 void Game::SaveGame(const std::string& filename) const
 {
+    // TEACHING NOTE — Simple Text-Based Save System
+    // We write key=value pairs to a plain text file.  This is easy to debug
+    // (you can open the save file in a text editor) and human-readable, but
+    // slow and fragile for large games.  A production engine would use a
+    // binary format or a database (e.g. SQLite) for speed and reliability.
     std::ofstream out(filename);
     if (!out) { LOG_ERROR("SaveGame: cannot open " + filename); return; }
 

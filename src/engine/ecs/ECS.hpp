@@ -790,10 +790,16 @@ struct TransformComponent {
  * DOWNED (at 0 HP) and be revived, or DEAD (timer expired while downed).
  */
 struct HealthComponent {
-    int32_t currentHP   = 100;  ///< Current hit points.
-    int32_t maxHP       = 100;  ///< Maximum hit points.
-    int32_t currentMP   = 50;   ///< Current magic points.
-    int32_t maxMP       = 50;   ///< Maximum magic points.
+    // ── Short-form field names ─────────────────────────────────────────────
+    // TEACHING NOTE — Naming Conventions
+    // We use short names (`hp`, `mp`) instead of `currentHP`/`currentMP` so
+    // game-system code stays readable:
+    //   hc.hp -= damage;   ← concise and clear
+    //   hc.currentHP -= damage;  ← verbose for a very common operation
+    int32_t hp          = 100;  ///< Current hit points.
+    int32_t maxHp       = 100;  ///< Maximum hit points.
+    int32_t mp          = 50;   ///< Current magic points.
+    int32_t maxMp       = 50;   ///< Maximum magic points.
     bool    isDowned    = false; ///< True when HP == 0 but can still be revived.
     bool    isDead      = false; ///< True when revive window expired.
     float   downedTimer = 0.0f; ///< Seconds remaining before downed → dead.
@@ -802,24 +808,24 @@ struct HealthComponent {
 
     /// Return HP as a [0,1] fraction for health bars.
     float HPFraction() const {
-        return (maxHP > 0) ? static_cast<float>(currentHP) / maxHP : 0.0f;
+        return (maxHp > 0) ? static_cast<float>(hp) / maxHp : 0.0f;
     }
 
     /// Return MP as a [0,1] fraction.
     float MPFraction() const {
-        return (maxMP > 0) ? static_cast<float>(currentMP) / maxMP : 0.0f;
+        return (maxMp > 0) ? static_cast<float>(mp) / maxMp : 0.0f;
     }
 
-    /// Heal HP by amount, capped at maxHP.
+    /// Heal HP by amount, capped at maxHp.
     void Heal(int32_t amount) {
-        currentHP = std::min(currentHP + amount, maxHP);
-        if (currentHP > 0) { isDowned = false; }
+        hp = std::min(hp + amount, maxHp);
+        if (hp > 0) { isDowned = false; }
     }
 
     /// Drain MP by cost; returns false if insufficient MP.
     bool SpendMP(int32_t cost) {
-        if (currentMP < cost) return false;
-        currentMP -= cost;
+        if (mp < cost) return false;
+        mp -= cost;
         return true;
     }
 };
@@ -841,7 +847,7 @@ struct StatsComponent {
     int32_t defence     = 5;  ///< Physical damage reduction.
     int32_t magic       = 10; ///< Magic attack power.
     int32_t spirit      = 5;  ///< Magic damage reduction.
-    int32_t agility     = 10; ///< Determines turn order / dodge chance.
+    int32_t speed       = 10; ///< Determines turn order, flee chance, and dodge.
     int32_t luck        = 5;  ///< Affects critical hit rate and item drops.
     int32_t vitality    = 10; ///< Determines bonus HP per level.
 
@@ -871,7 +877,11 @@ struct StatsComponent {
  * (invisible triggers, particle emitters) don't pay for string storage.
  */
 struct NameComponent {
-    std::string displayName; ///< Shown in the HUD and menus (e.g. "Noctis").
+    // TEACHING NOTE — Simple string `name` is used throughout game systems.
+    // The `internalID` is a separate, stable machine-readable identifier for
+    // save files and scripting, so that renaming the display name in the game
+    // doesn't break existing save data.
+    std::string name;        ///< Shown in the HUD and menus (e.g. "Noctis").
     std::string internalID;  ///< Scripting / save system identifier (e.g. "noctis_lvl1").
     std::string title;       ///< Optional title shown in dialogue (e.g. "Crown Prince").
 };
@@ -897,6 +907,15 @@ struct RenderComponent {
     bool        flipX     = false; ///< Mirror horizontally (face left vs right).
     bool        flipY     = false; ///< Mirror vertically.
     float       opacity   = 1.0f; ///< Alpha (0 = invisible, 1 = fully opaque).
+
+    // ── Terminal (ncurses) rendering ───────────────────────────────────────
+    // TEACHING NOTE — Dual-Mode Rendering
+    // The engine supports both a sprite-based renderer and an ncurses terminal
+    // renderer.  The fields below are used by the terminal renderer only.
+    // A 'symbol' is the ASCII character drawn at the entity's tile position,
+    // and 'colorPair' is an ncurses color-pair index (1–8 typically).
+    char    symbol    = '@';  ///< ASCII character for terminal rendering.
+    int     colorPair = 1;    ///< ncurses color-pair index for terminal rendering.
 
     /// Current animation frame (index into a frames array managed elsewhere).
     uint32_t currentFrame = 0;
@@ -947,7 +966,9 @@ struct CombatComponent {
     float   attackCooldown= 0.0f;   ///< Seconds until next basic attack.
     float   attackRate    = 1.0f;   ///< Basic attacks per second.
     int32_t attackRange   = 2;      ///< Melee range in world units.
-    int32_t combatXP      = 0;      ///< XP this entity grants on death.
+    int32_t combatXP      = 0;      ///< XP this entity grants on death (alias: xpReward).
+    int32_t xpReward      = 0;      ///< XP reward for defeating this entity.
+    int32_t gilReward     = 0;      ///< Gil reward for defeating this entity.
 
     // Warp-strike (Noctis signature move): throw weapon to distant enemy,
     // warp to it, deal bonus damage.
@@ -1185,7 +1206,7 @@ struct PartyComponent {
  * this to a list of available spell IDs and a current-cast state.
  */
 struct MagicComponent {
-    std::vector<uint32_t> knownSpellIDs;    ///< IDs of spells this entity can cast.
+    std::vector<uint32_t> knownSpells;      ///< IDs of spells this entity can cast.
     uint32_t    equippedSpell = 0;           ///< Currently selected spell.
     bool        isCasting     = false;       ///< True during a cast animation.
     float       castTimer     = 0.0f;        ///< Seconds remaining in cast.
@@ -1848,7 +1869,7 @@ public:
 
         // Name
         auto& n = AddComponent<NameComponent>(id);
-        n.displayName = name;
+        n.name = name;
 
         // Render
         AddComponent<RenderComponent>(id);

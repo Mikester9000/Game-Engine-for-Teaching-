@@ -157,28 +157,28 @@ void WeatherSystem::TryWeatherTransition()
     switch (m_currentWeather) {
         case WeatherType::CLEAR:
             if      (roll < (isNight ? 0.25f : 0.15f)) next = WeatherType::CLOUDY;
-            else if (roll < (isNight ? 0.30f : 0.18f)) next = WeatherType::FOGGY;
+            else if (roll < (isNight ? 0.30f : 0.18f)) next = WeatherType::FOG;
             break;
 
         case WeatherType::CLOUDY:
-            if      (roll < 0.30f) next = WeatherType::RAINY;
+            if      (roll < 0.30f) next = WeatherType::RAIN;
             else if (roll < 0.40f) next = WeatherType::CLEAR;
-            else if (roll < 0.45f) next = WeatherType::STORMY;
+            else if (roll < 0.45f) next = WeatherType::STORM;
             break;
 
-        case WeatherType::RAINY:
+        case WeatherType::RAIN:
             if      (roll < 0.20f) next = WeatherType::CLEAR;
             else if (roll < 0.35f) next = WeatherType::CLOUDY;
-            else if (roll < 0.40f) next = WeatherType::STORMY;
+            else if (roll < 0.40f) next = WeatherType::STORM;
             break;
 
-        case WeatherType::FOGGY:
+        case WeatherType::FOG:
             if      (roll < 0.30f) next = WeatherType::CLEAR;
             else if (roll < 0.40f) next = WeatherType::CLOUDY;
             break;
 
-        case WeatherType::STORMY:
-            if      (roll < 0.20f) next = WeatherType::RAINY;
+        case WeatherType::STORM:
+            if      (roll < 0.20f) next = WeatherType::RAIN;
             else if (roll < 0.25f) next = WeatherType::CLOUDY;
             break;
 

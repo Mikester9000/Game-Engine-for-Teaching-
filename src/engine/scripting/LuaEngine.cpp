@@ -58,6 +58,7 @@
 #include "engine/scripting/LuaEngine.hpp"
 #include "engine/core/Logger.hpp"
 #include "engine/ecs/ECS.hpp"
+#include "game/GameData.hpp"   // GameDatabase::GetItems(), FindItem(), etc.
 
 #include <sstream>      // std::ostringstream
 #include <cassert>      // assert()
@@ -564,12 +565,12 @@ static int binding_game_get_player_hp(lua_State* L)
     // Find the player entity — by convention the player is the entity
     // with a NameComponent whose name is "Player".
     int hp = 0;
-    world->ForEach<NameComponent, HealthComponent>(
+    world->View<NameComponent, HealthComponent>(
         [&](EntityID /*eid*/, NameComponent& name, HealthComponent& health)
         {
-            if (name.displayName == "Player" || name.displayName == "Noctis")
+            if (name.name == "Noctis" || name.name == "Player")
             {
-                hp = health.current;
+                hp = health.hp;
             }
         });
 
@@ -590,12 +591,12 @@ static int binding_game_heal_player(lua_State* L)
     World* world = GetWorldFromRegistry(L);
     if (!world) { return 0; }
 
-    world->ForEach<NameComponent, HealthComponent>(
+    world->View<NameComponent, HealthComponent>(
         [&](EntityID /*eid*/, NameComponent& name, HealthComponent& health)
         {
-            if (name.displayName == "Player" || name.displayName == "Noctis")
+            if (name.name == "Noctis" || name.name == "Player")
             {
-                health.current = std::min(health.current + amount, health.maximum);
+                health.hp = std::min(health.hp + amount, health.maxHp);
                 LOG_INFO("[Lua] Healed player for " + std::to_string(amount) + " HP.");
             }
         });
@@ -617,12 +618,12 @@ static int binding_game_get_gold(lua_State* L)
     }
 
     int gold = 0;
-    world->ForEach<NameComponent, InventoryComponent>(
+    world->View<NameComponent, InventoryComponent>(
         [&](EntityID /*eid*/, NameComponent& name, InventoryComponent& inv)
         {
-            if (name.displayName == "Player" || name.displayName == "Noctis")
+            if (name.name == "Noctis" || name.name == "Player")
             {
-                gold = inv.gil;
+                gold = static_cast<int>(inv.gil);
             }
         });
 
@@ -644,36 +645,37 @@ static int binding_game_add_item(lua_State* L)
     if (!world) { return 0; }
 
     // TEACHING NOTE — Finding the player and modifying their inventory.
-    // The item ID is looked up by name in a simple linear search.
-    // A production engine would have an ItemDatabase with O(1) name lookup.
-    world->ForEach<NameComponent, InventoryComponent>(
+    // GameDatabase::FindItem(name) does a linear search by name.
+    // We look up the ItemData first so we can use its canonical ID.
+    const ItemData* itemData = nullptr;
+    for (const auto& it : GameDatabase::GetItems()) {
+        if (it.name == itemName) { itemData = &it; break; }
+    }
+    if (!itemData) {
+        LOG_WARN("[Lua] game_add_item: unknown item '" + std::string(itemName) + "'");
+        return 0;
+    }
+    const uint32_t itemID = itemData->id;
+
+    world->View<NameComponent, InventoryComponent>(
         [&](EntityID /*eid*/, NameComponent& name, InventoryComponent& inv)
         {
-            if (name.displayName == "Player" || name.displayName == "Noctis")
+            if (name.name == "Noctis" || name.name == "Player")
             {
-                // Add to existing stack if item already present.
-                bool found = false;
-                for (auto& stack : inv.items)
-                {
-                    if (stack.itemId == 0 && stack.quantity == 0) { continue; }
-                    // Use itemId 0 as a placeholder; real code would look up by name.
-                    // For now, create a new stack with itemId = hash of name.
-                    // (A real engine would use ItemDatabase::FindByName())
-                    (void)stack;
+                // Try to stack into an existing slot.
+                uint32_t slotIdx = inv.FindItem(itemID);
+                if (slotIdx < MAX_INV_SLOTS) {
+                    inv.slots[slotIdx].quantity += static_cast<uint32_t>(quantity);
+                } else {
+                    // Add to a new empty slot.
+                    uint32_t empty = inv.FindEmptySlot();
+                    if (empty < MAX_INV_SLOTS) {
+                        inv.slots[empty].itemID   = itemID;
+                        inv.slots[empty].quantity = static_cast<uint32_t>(quantity);
+                    }
                 }
-
-                if (!found && inv.items.size() < static_cast<size_t>(MAX_INVENTORY_SLOTS))
-                {
-                    ItemStack newStack;
-                    // Simple hash of item name as a temporary ID.
-                    uint32_t id = 0;
-                    for (char c : std::string(itemName)) { id = id * 31 + static_cast<uint32_t>(c); }
-                    newStack.itemId   = id;
-                    newStack.quantity = quantity;
-                    inv.items.push_back(newStack);
-                    LOG_INFO("[Lua] Added " + std::to_string(quantity)
-                             + "x " + std::string(itemName) + " to inventory.");
-                }
+                LOG_INFO("[Lua] Added " + std::to_string(quantity)
+                         + "x " + std::string(itemName) + " to inventory.");
             }
         });
     return 0;
@@ -713,16 +715,17 @@ static int binding_game_complete_quest(lua_State* L)
     World* world = GetWorldFromRegistry(L);
     if (!world) { return 0; }
 
-    world->ForEach<NameComponent, QuestComponent>(
+    world->View<NameComponent, QuestComponent>(
         [&](EntityID /*eid*/, NameComponent& name, QuestComponent& quests)
         {
-            if (name.displayName == "Player" || name.displayName == "Noctis")
+            if (name.name == "Noctis" || name.name == "Player")
             {
-                for (auto& entry : quests.entries)
+                for (uint32_t i = 0; i < quests.activeCount; ++i)
                 {
-                    if (entry.questId == static_cast<uint32_t>(questId))
+                    auto& entry = quests.quests[i];
+                    if (entry.questID == static_cast<uint32_t>(questId))
                     {
-                        entry.isCompleted = true;
+                        entry.isComplete = true;
                         LOG_INFO("[Lua] Quest " + std::to_string(questId)
                                  + " marked complete.");
                     }
@@ -795,16 +798,17 @@ void LuaEngine::RegisterEngineBindings()
     // We push each constant as a Lua global.  In Lua, uppercase globals by
     // convention (matching C++ ALL_CAPS) signal "do not modify these."
     // -----------------------------------------------------------------------
-    lua_pushinteger(m_L, MAX_INVENTORY_SLOTS);
+    lua_pushinteger(m_L, MAX_INV_SLOTS);
     lua_setglobal(m_L, "MAX_INVENTORY_SLOTS");
 
     lua_pushinteger(m_L, MAX_PARTY_SIZE);
     lua_setglobal(m_L, "MAX_PARTY_SIZE");
 
-    lua_pushnumber(m_L, static_cast<lua_Number>(COMBAT_FLEE_CHANCE));
+    // Base flee chance (30%) — the C++ CombatSystem applies speed modifiers on top.
+    lua_pushnumber(m_L, static_cast<lua_Number>(0.30));
     lua_setglobal(m_L, "COMBAT_FLEE_CHANCE");
 
-    lua_pushinteger(m_L, BASE_XP_PER_LEVEL);
+    lua_pushinteger(m_L, XP_PER_LEVEL);
     lua_setglobal(m_L, "BASE_XP_PER_LEVEL");
 
     LOG_INFO("LuaEngine: all engine bindings registered ("

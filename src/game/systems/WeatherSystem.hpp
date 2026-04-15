@@ -50,11 +50,11 @@
  *
  * Weather transitions are probabilistic and time-of-day dependent:
  *
- *   - CLEAR:  Can transition to CLOUDY (20%), RAINY (5%), FOGGY (5%) per hour.
- *   - CLOUDY: Can transition to RAINY (30%), CLEAR (15%), STORM (10%) per hour.
- *   - RAINY:  Can transition to CLEAR (10%), STORM (20%) per hour.
- *   - STORM:  Can transition to RAINY (40%) per hour.
- *   - FOGGY:  Can transition to CLEAR (25%) per hour.
+ *   - CLEAR:  Can transition to CLOUDY (20%), RAIN (5%), FOG (5%) per hour.
+ *   - CLOUDY: Can transition to RAIN (30%), CLEAR (15%), STORM (10%) per hour.
+ *   - RAIN:  Can transition to CLEAR (10%), STORM (20%) per hour.
+ *   - STORM:  Can transition to RAIN (40%) per hour.
+ *   - FOG:  Can transition to CLEAR (25%) per hour.
  *   - SNOWY:  Appears only in high-altitude zones (set via SetWeather directly).
  *
  * Weather changes also fire WorldEvent::WEATHER_CHANGED.
@@ -271,8 +271,8 @@ private:
      *
      *   roll = uniform_real(0, 1)
      *   if roll < 0.20: transition to CLOUDY
-     *   elif roll < 0.25: transition to RAINY
-     *   elif roll < 0.30: transition to FOGGY
+     *   elif roll < 0.25: transition to RAIN
+     *   elif roll < 0.30: transition to FOG
      *   else: stay CLEAR
      *
      * Adjusting the probabilities is the core of weather "feel" tuning.

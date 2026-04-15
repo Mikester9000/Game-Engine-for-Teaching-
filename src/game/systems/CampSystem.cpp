@@ -208,7 +208,7 @@ void CampSystem::Rest(EntityID player)
     // which only converts to real levels at camp.  This creates tension.
     if (m_world->HasComponent<LevelComponent>(player)) {
         auto& lc   = m_world->GetComponent<LevelComponent>(player);
-        bool levUp = lc.HasPendingLevelUp();
+        bool levUp = lc.pendingLevelUp;
         lc.ApplyBankedXP();
 
         if (levUp && m_uiBus) {

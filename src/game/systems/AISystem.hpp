@@ -108,6 +108,7 @@
 #include <vector>
 #include <queue>
 #include <unordered_map>
+#include <random>        // std::mt19937, std::uniform_real_distribution
 #include <cstdint>
 #include <cmath>         // std::abs
 

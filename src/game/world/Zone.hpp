@@ -247,8 +247,8 @@ public:
      * Components are initialised from EnemyData fields, not from hard-coded
      * defaults.  Example:
      *   HealthComponent hp;
-     *   hp.currentHP = enemyData->hp;
-     *   hp.maxHP     = enemyData->hp;
+     *   hp.hp    = enemyData->hp;
+     *   hp.maxHp = enemyData->hp;
      * This ensures the enemy's stats in-game exactly match the database.
      */
     void SpawnEnemies(World& world);

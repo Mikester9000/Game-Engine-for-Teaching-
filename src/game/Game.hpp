@@ -200,11 +200,8 @@ private:
     std::unique_ptr<Zone> m_currentZone;
     WorldMap              m_worldMap;
 
-    // Event buses.
-    EventBus<CombatEvent> m_combatBus;
-    EventBus<QuestEvent>  m_questBus;
-    EventBus<WorldEvent>  m_worldBus;
-    EventBus<UIEvent>     m_uiBus;
+    // NOTE: EventBus instances are singletons accessed via EventBus<T>::Instance().
+    // They are NOT stored as members here — the singleton manages their lifetime.
 
     // Game state.
     GameState m_currentState  = GameState::MAIN_MENU;

@@ -108,20 +108,25 @@ int MagicSystem::CastSpell(EntityID caster, uint32_t spellID,
              " damage to entity " + std::to_string(target));
 
     // Handle AoE: if radius > 0, also hit nearby entities.
+    // TEACHING NOTE — We convert the target's world position to tile
+    // coordinates before passing to ApplyAoe, which works in tile space.
     if (spell->aoeRadius > 0 && m_world->HasComponent<TransformComponent>(target)) {
         const auto& origin = m_world->GetComponent<TransformComponent>(target);
-        TileCoord centre{static_cast<int>(origin.x), static_cast<int>(origin.y)};
+        TileCoord centre{
+            static_cast<int>(origin.position.x / TILE_SIZE),
+            static_cast<int>(origin.position.z / TILE_SIZE)
+        };
         ApplyAoe(caster, centre, spell->aoeRadius, *spell, map);
     }
 
     // Call Lua callback if defined.
     if (m_lua && !spell->luaCastCallback.empty()) {
-        // TEACHING NOTE — We push the caster and target IDs as arguments to
-        // the Lua function, allowing scripts to apply status effects, summons,
-        // or any other custom logic without recompiling C++.
+        // TEACHING NOTE — We pass the caster ID as the first int argument and
+        // the target ID as a string (entity ID → string) to use the available
+        // CallFunction overloads.  Lua scripts receive: casterID (int), targetID (string).
         m_lua->CallFunction(spell->luaCastCallback,
                             static_cast<int>(caster),
-                            static_cast<int>(target));
+                            std::to_string(static_cast<int>(target)));
     }
 
     return damage;
@@ -249,12 +254,17 @@ void MagicSystem::ApplyAoe(EntityID caster, TileCoord origin, int radius,
 {
     // TEACHING NOTE — Iterate all entities with TransformComponent and
     // apply damage to those within `radius` tiles of the origin.
-    // We use Chebyshev distance (max of |dx|, |dy|) for a square blast.
+    // We use Chebyshev distance (max of |dx|, |dy|) for a square blast:
+    //   |dx| <= radius AND |dy| <= radius  →  square area of effect.
+    // (Manhattan distance would give a diamond shape instead.)
     m_world->View<TransformComponent, HealthComponent>(
         [&](EntityID id, TransformComponent& tc, HealthComponent& hc) {
             if (id == caster) return;  // don't hit the caster
-            int dx = std::abs(static_cast<int>(tc.x) - origin.x);
-            int dy = std::abs(static_cast<int>(tc.y) - origin.y);
+            // Convert world position to tile coordinates for distance check.
+            int entityTileX = static_cast<int>(tc.position.x / TILE_SIZE);
+            int entityTileZ = static_cast<int>(tc.position.z / TILE_SIZE);
+            int dx = std::abs(entityTileX - origin.tileX);
+            int dy = std::abs(entityTileZ - origin.tileY);
             if (dx <= radius && dy <= radius) {
                 int aoe = ComputeSpellDamage(caster, id, spell);
                 hc.hp -= aoe;

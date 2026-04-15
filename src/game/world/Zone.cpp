@@ -390,7 +390,7 @@ void Zone::SpawnNPCs(World& world) {
         // NameComponent — display label
         {
             NameComponent n;
-            n.displayName = "NPC_" + std::to_string(npcDataID);
+            n.name = "NPC_" + std::to_string(npcDataID);
             n.internalID  = "npc_" + std::to_string(npcDataID);
             world.AddComponent<NameComponent>(npcEntity, n);
         }
@@ -490,14 +490,14 @@ uint32_t Zone::SpawnOneEnemy(SpawnPoint& sp, World& world) {
     }
 
     // ── HealthComponent ───────────────────────────────────────────────────
-    // Both currentHP and maxHP start at the enemy's base HP value.
-    // The combat system clamps currentHP to [0, maxHP] on damage.
+    // Both hp and maxHp start at the enemy's base HP value.
+    // The combat system clamps hp to [0, maxHp] on damage.
     {
         HealthComponent h;
-        h.currentHP = enemyData->hp;
-        h.maxHP     = enemyData->hp;
-        h.currentMP = enemyData->magic * 5; // Give enemies some MP for magic
-        h.maxMP     = enemyData->magic * 5;
+        h.hp    = enemyData->hp;
+        h.maxHp = enemyData->hp;
+        h.mp    = enemyData->magic * 5; // Give enemies some MP for magic
+        h.maxMp = enemyData->magic * 5;
         h.regenRate = 0.0f; // Enemies don't passively regen HP
         world.AddComponent<HealthComponent>(entity, h);
     }
@@ -511,7 +511,7 @@ uint32_t Zone::SpawnOneEnemy(SpawnPoint& sp, World& world) {
         s.defence   = enemyData->defense;
         s.magic     = enemyData->magic;
         s.spirit    = enemyData->defense;      // Spirit ≈ magic defence
-        s.agility   = enemyData->speed;
+        s.speed     = enemyData->speed;
         s.vitality  = enemyData->defense;      // Vitality drives HP scaling
         s.luck      = static_cast<int32_t>(enemyData->level); // Luck ≈ level
 
@@ -540,7 +540,7 @@ uint32_t Zone::SpawnOneEnemy(SpawnPoint& sp, World& world) {
     // ── NameComponent ─────────────────────────────────────────────────────
     {
         NameComponent n;
-        n.displayName = enemyData->name;
+        n.name = enemyData->name;
         n.internalID  = "enemy_" + std::to_string(enemyData->id);
         world.AddComponent<NameComponent>(entity, n);
     }
@@ -567,7 +567,8 @@ uint32_t Zone::SpawnOneEnemy(SpawnPoint& sp, World& world) {
         CombatComponent c;
         c.attackRate  = 1.0f;
         c.attackRange = 2;
-        c.combatXP    = static_cast<int32_t>(enemyData->xpReward);
+        c.xpReward    = static_cast<int32_t>(enemyData->xpReward);
+        c.gilReward   = static_cast<int32_t>(enemyData->gilReward);
         // Boss enemies can warp-strike (advanced AI attack)
         c.canWarpStrike = enemyData->isBoss;
         c.attackElement = ElementType::NONE; // Default physical attack
