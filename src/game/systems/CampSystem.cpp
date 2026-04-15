@@ -8,6 +8,7 @@
 
 #include "CampSystem.hpp"
 #include "InventorySystem.hpp"
+#include "../../engine/scripting/LuaEngine.hpp"  // on_camp_rest, on_level_up hooks
 
 // Static member definition — exactly one ActiveMealBuff shared across the game.
 ActiveMealBuff CampSystem::currentBuff{};
@@ -209,6 +210,7 @@ void CampSystem::Rest(EntityID player)
     if (m_world->HasComponent<LevelComponent>(player)) {
         auto& lc   = m_world->GetComponent<LevelComponent>(player);
         bool levUp = lc.pendingLevelUp;
+        uint32_t oldLevel = lc.level;
         lc.ApplyBankedXP();
 
         if (levUp && m_uiBus) {
@@ -216,6 +218,22 @@ void CampSystem::Rest(EntityID player)
             ev.type  = UIEvent::Type::SHOW_NOTIFICATION;
             ev.text  = "Level up! Now level " + std::to_string(lc.level) + "!";
             m_uiBus->Publish(ev);
+        }
+
+        // ── Fire on_level_up Lua hook ─────────────────────────────────────
+        // TEACHING NOTE — Conditional Hook Firing
+        // We only fire on_level_up when the level actually changed.
+        // Comparing oldLevel to lc.level (after ApplyBankedXP) is the
+        // canonical pattern: "detect the change, then notify observers."
+        //
+        // The new level is passed as an integer argument so Lua scripts can
+        // branch on specific thresholds:
+        //   function on_level_up(newLevel)
+        //       if newLevel == 10 then unlock_ultimate_technique() end
+        //   end
+        if (lc.level > oldLevel) {
+            LuaEngine::Get().CallFunction("on_level_up",
+                                          static_cast<int>(lc.level));
         }
     }
 
@@ -230,6 +248,19 @@ void CampSystem::Rest(EntityID player)
         ev.text = "The party rested. A new day begins.";
         m_uiBus->Publish(ev);
     }
+
+    // ── Fire on_camp_rest Lua hook ─────────────────────────────────────────
+    // TEACHING NOTE — Ordering Hook Calls
+    // on_camp_rest fires AFTER HP/MP restoration, XP application, and level-ups
+    // are all complete.  This means Lua scripts can safely query the player's
+    // new level, current HP, etc. without worrying about partial state.
+    //
+    // Example use in quests.lua:
+    //   function on_camp_rest()
+    //       GameState.day = GameState.day + 1
+    //       engine_log("Day " .. GameState.day .. " begins.")
+    //   end
+    LuaEngine::Get().CallFunction("on_camp_rest");
 
     LOG_INFO("Party rested. HP/MP restored.");
 }

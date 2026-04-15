@@ -282,8 +282,9 @@ public:
     /**
      * @brief Attach a World instance so Lua bindings can access ECS data.
      *
-     * Call this after Init() if the World is not ready at Init() time.
-     * The LuaEngine does NOT own the World; it only stores a non-owning pointer.
+     * Call this after Init() if the World is not ready at Init() time, or
+     * whenever the active World changes (e.g. between scenes).  The LuaEngine
+     * does NOT own the World; it only stores a non-owning pointer.
      *
      * TEACHING NOTE — Non-Owning Pointers
      * ─────────────────────────────────────
@@ -292,9 +293,24 @@ public:
      * std::unique_ptr (sole owner) or std::shared_ptr (shared ownership).
      * Here the World is owned by the Application, which outlives LuaEngine.
      *
-     * @param world  Pointer to the active ECS World.
+     * TEACHING NOTE — Why we ALSO update the Lua registry here
+     * ──────────────────────────────────────────────────────────
+     * RegisterEngineBindings() stores the initial World pointer in the Lua
+     * registry under the key "engine_world" so that every C binding can
+     * retrieve it without a global C++ variable.  If SetWorld() only updated
+     * m_world but NOT the registry, binding functions called after a scene
+     * change would silently operate on the old (possibly destroyed) World —
+     * a classic dangling-pointer bug that is almost impossible to diagnose
+     * at runtime.
+     *
+     * The fix: mirror every assignment to m_world with a matching registry
+     * update.  lua_pushlightuserdata / lua_setfield atomically replaces the
+     * stored pointer while the Lua state is still valid.
+     *
+     * @param world  Pointer to the new active ECS World (may be nullptr to
+     *               clear the binding before a scene unload).
      */
-    void SetWorld(World* world) { m_world = world; }
+    void SetWorld(World* world);
 
     // -----------------------------------------------------------------------
     // Script loading

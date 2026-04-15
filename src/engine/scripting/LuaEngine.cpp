@@ -150,6 +150,38 @@ void LuaEngine::Shutdown()
 
 
 // ===========================================================================
+// SetWorld — update both the C++ member and the Lua registry
+// ===========================================================================
+
+// TEACHING NOTE — Why SetWorld is not a trivial one-liner
+// ─────────────────────────────────────────────────────────
+// RegisterEngineBindings() stores the World* in the Lua registry under the
+// key "engine_world".  Every C binding function retrieves it at call time
+// via GetWorldFromRegistry(), so if the C++ member m_world were updated
+// without updating the registry the binding would operate on stale memory.
+//
+// By keeping both in sync here we guarantee that:
+//   1. C++ code that calls lua.m_world directly sees the new world.
+//   2. Lua binding functions that call GetWorldFromRegistry() also see it.
+//   3. Passing nullptr safely clears the binding before a scene is unloaded,
+//      preventing any script that fires during teardown from touching dead
+//      memory (binding functions guard: "if (!world) { return 0; }").
+void LuaEngine::SetWorld(World* world)
+{
+    m_world = world;
+
+    // Only update the registry if the Lua state is alive.
+    if (m_L)
+    {
+        lua_pushlightuserdata(m_L, static_cast<void*>(m_world));
+        lua_setfield(m_L, LUA_REGISTRYINDEX, "engine_world");
+        LOG_DEBUG("LuaEngine: registry 'engine_world' updated to "
+                  << static_cast<void*>(m_world));
+    }
+}
+
+
+// ===========================================================================
 // Script Loading
 // ===========================================================================
 
@@ -617,13 +649,16 @@ static int binding_game_get_gold(lua_State* L)
         return 1;
     }
 
+    // TEACHING NOTE — Single Source of Truth for Gil
+    // Gil is stored exclusively in CurrencyComponent, NOT in InventoryComponent.
+    // Always read CurrencyComponent when you need the player's currency balance.
     int gold = 0;
-    world->View<NameComponent, InventoryComponent>(
-        [&](EntityID /*eid*/, NameComponent& name, InventoryComponent& inv)
+    world->View<NameComponent, CurrencyComponent>(
+        [&](EntityID /*eid*/, NameComponent& name, CurrencyComponent& cc)
         {
             if (name.name == "Noctis" || name.name == "Player")
             {
-                gold = static_cast<int>(inv.gil);
+                gold = static_cast<int>(cc.gil);
             }
         });
 
@@ -781,7 +816,17 @@ void LuaEngine::RegisterEngineBindings()
     lua_setfield(m_L, LUA_REGISTRYINDEX, "engine_world");
 
     // Register all game functions so Lua scripts can call them.
-    lua_register(m_L, "game_log",             binding_game_log);
+    //
+    // TEACHING NOTE — Two Names, One Function
+    // ─────────────────────────────────────────
+    // Lua scripts in this project consistently use the name "engine_log" for
+    // the logging function.  The C++ binding is registered under BOTH names:
+    //   "engine_log"  — used throughout all .lua scripts (canonical name).
+    //   "game_log"    — kept for backward compatibility and as an alias.
+    // lua_register is a single-instruction macro (pushcfunction + setglobal),
+    // so registering the same C function twice is cheap and harmless.
+    lua_register(m_L, "engine_log",           binding_game_log);  // canonical
+    lua_register(m_L, "game_log",             binding_game_log);  // alias
     lua_register(m_L, "game_get_player_hp",   binding_game_get_player_hp);
     lua_register(m_L, "game_heal_player",     binding_game_heal_player);
     lua_register(m_L, "game_get_gold",        binding_game_get_gold);
@@ -812,5 +857,5 @@ void LuaEngine::RegisterEngineBindings()
     lua_setglobal(m_L, "BASE_XP_PER_LEVEL");
 
     LOG_INFO("LuaEngine: all engine bindings registered ("
-             + std::to_string(8) + " functions, 4 constants).");
+             "9 functions (engine_log + game_log alias + 7 others), 4 constants).");
 }

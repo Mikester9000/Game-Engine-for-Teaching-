@@ -10,6 +10,7 @@
  */
 
 #include "CombatSystem.hpp"
+#include "../../engine/scripting/LuaEngine.hpp"  // on_combat_start hook
 
 #include <algorithm>   // std::remove, std::max, std::min
 #include <cmath>       // std::abs, std::sqrt
@@ -94,6 +95,33 @@ void CombatSystem::StartCombat(EntityID player,
     EventBus<UIEvent>::Instance().Publish(uiEv);
 
     LOG_INFO("CombatSystem: Battle started. Player vs " << m_aliveEnemies.size() << " enemies.");
+
+    // ── Fire on_combat_start Lua hook ──────────────────────────────────────
+    // TEACHING NOTE — C++ → Lua Hook Pattern
+    // ─────────────────────────────────────────
+    // A "hook" is a named Lua function that the engine calls at a predefined
+    // moment (battle start, level-up, camp rest, etc.).  Designers and modders
+    // can define these functions in .lua files to customise behaviour without
+    // recompiling the C++ engine.
+    //
+    // Convention used in this engine:
+    //   • C++ calls  LuaEngine::Get().CallFunction("on_<event>", ...)
+    //   • Lua defines function on_<event>(...) end   in a .lua script
+    //   • If the function is NOT defined in Lua, CallFunction returns false
+    //     and logs a debug message — it is never a fatal error.
+    //
+    // For on_combat_start we pass the name of the first enemy as a string
+    // argument so quest scripts can react ("if enemyName == 'Goblin' then ...").
+    {
+        std::string firstEnemyName = "Unknown";
+        if (!m_aliveEnemies.empty()) {
+            EntityID firstEnemy = m_aliveEnemies[0];
+            if (m_world->HasComponent<NameComponent>(firstEnemy)) {
+                firstEnemyName = m_world->GetComponent<NameComponent>(firstEnemy).name;
+            }
+        }
+        LuaEngine::Get().CallFunction("on_combat_start", firstEnemyName);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -184,14 +212,14 @@ int CombatSystem::PlayerAttack(EntityID target)
                                  ElementType::NONE,
                                  DamageType::PHYSICAL);
 
-    // ── Apply link strikes from party members ──────────────────────────────
-    int linkDamage = ProcessLinkStrikes(target);
-    damage += linkDamage;
-
     // ── Apply damage to target HP ──────────────────────────────────────────
+    // TEACHING NOTE — Order Matters Here
+    // Base player damage is applied first, then link strikes.
+    // ProcessLinkStrikes() applies its own damage to targetHp internally
+    // and fires its own event, so we only subtract base damage here.
     targetHp.hp = std::max(0, targetHp.hp - damage);
 
-    // ── Publish event ──────────────────────────────────────────────────────
+    // ── Publish event for the player's own attack ──────────────────────────
     CombatEvent ev;
     ev.type     = CombatEvent::Type::DAMAGE_DEALT;
     ev.sourceID = m_playerID;
@@ -203,13 +231,20 @@ int CombatSystem::PlayerAttack(EntityID target)
 
     // Show floating damage number in UI.
     UIEvent uiEv;
-    uiEv.type   = UIEvent::Type::SHOW_DAMAGE_NUMBER;
+    uiEv.type     = UIEvent::Type::SHOW_DAMAGE_NUMBER;
     uiEv.entityID = target;
-    uiEv.value  = damage;
-    uiEv.colour = Color::White();
+    uiEv.value    = damage;
+    uiEv.colour   = Color::White();
     EventBus<UIEvent>::Instance().Publish(uiEv);
 
     LOG_DEBUG("Player attacked enemy " << target << " for " << damage << " damage.");
+
+    // ── Trigger link strikes from party members ────────────────────────────
+    // ProcessLinkStrikes applies the bonus damage to targetHp directly and
+    // publishes its own CombatEvent.  We add the return value to 'damage'
+    // only so the caller can display the full combined total if desired.
+    int linkDamage = ProcessLinkStrikes(target);
+    damage += linkDamage;
 
     CheckDeaths();
     AdvanceTurn();
@@ -827,11 +862,25 @@ bool CombatSystem::RollDodge(EntityID attacker, EntityID defender) const
 int CombatSystem::ProcessLinkStrikes(EntityID target)
 {
     // TEACHING NOTE — Party Link Strikes
-    // Each party member has a 30% chance to automatically assist the player.
-    // Their contribution is 30% of their own physical attack damage.
-    // This makes having a full party stronger, rewarding party management.
+    // ─────────────────────────────────────────────────────────────────────────
+    // In FF15, party members spontaneously assist the player when the player
+    // lands a hit.  Each companion has a 30% chance to "link" in and auto-
+    // attack the same target for 30% of their own physical attack damage.
+    //
+    // This mechanic rewards keeping all four party members alive and healthy:
+    //   • More living members  →  more link-strike chances per player attack.
+    //   • Higher-level members →  more bonus damage per link strike.
+    //
+    // Implementation note: we accumulate ALL link-strike damage and apply it
+    // to the target's HP in a single step here, then publish one composite
+    // event rather than one event per member.  This keeps the UI readable and
+    // avoids multiple redundant death checks.
 
     if (!m_world->HasComponent<PartyComponent>(m_playerID)) return 0;
+    // Verify target exists and is alive before computing anything.
+    if (!m_world->HasComponent<HealthComponent>(target)) return 0;
+    auto& targetHp = m_world->GetComponent<HealthComponent>(target);
+    if (targetHp.isDead) return 0;
 
     auto& party = m_world->GetComponent<PartyComponent>(m_playerID);
     int totalLinkDamage = 0;
@@ -840,11 +889,11 @@ int CombatSystem::ProcessLinkStrikes(EntityID target)
 
     for (uint32_t i = 0; i < party.memberCount; ++i) {
         EntityID member = party.members[i];
-        if (member == m_playerID) continue;
+        if (member == m_playerID) continue;  // skip the player themselves
         if (!m_world->HasComponent<HealthComponent>(member)) continue;
         if (m_world->GetComponent<HealthComponent>(member).isDead) continue;
 
-        // 30% link strike chance.
+        // 30% link-strike chance per living party member.
         if (dist(m_rng) >= 0.30f) continue;
 
         int memberStrength = 10;
@@ -852,11 +901,38 @@ int CombatSystem::ProcessLinkStrikes(EntityID target)
             memberStrength = m_world->GetComponent<StatsComponent>(member).strength;
         }
 
-        // Link strike deals 30% of member's normal attack.
+        // Link strike deals 30% of the member's base attack — a modest but
+        // noticeable bonus that reflects "covering fire / coordinated assault".
         int linkDmg = std::max(1, static_cast<int>(memberStrength * 0.30f));
         totalLinkDamage += linkDmg;
 
-        LOG_DEBUG("Link strike from party member " << member << " for " << linkDmg);
+        LOG_DEBUG("Link strike from party member " << member
+                  << " for " << linkDmg << " damage.");
+    }
+
+    if (totalLinkDamage > 0)
+    {
+        // ── Apply aggregate link-strike damage to the target ─────────────
+        // TEACHING NOTE — Why apply damage here instead of in PlayerAttack?
+        // ProcessLinkStrikes is a helper that owns the full link-strike
+        // resolution: roll chances, compute damage, AND apply it.  The caller
+        // (PlayerAttack) only needs the final integer to display in the UI.
+        // Keeping the side effects here avoids duplicated HP subtraction logic.
+        targetHp.hp = std::max(0, targetHp.hp - totalLinkDamage);
+
+        // Publish a single CombatEvent so the UI shows a combined link-damage
+        // number rather than three separate notifications.
+        CombatEvent ev;
+        ev.type     = CombatEvent::Type::DAMAGE_DEALT;
+        ev.sourceID = m_playerID;   // attributed to the party collectively
+        ev.targetID = target;
+        ev.amount   = -totalLinkDamage;
+        ev.dmgType  = DamageType::PHYSICAL;
+        ev.element  = ElementType::NONE;
+        EventBus<CombatEvent>::Instance().Publish(ev);
+
+        LOG_DEBUG("Total link-strike damage applied to enemy "
+                  << target << ": " << totalLinkDamage);
     }
 
     return totalLinkDamage;

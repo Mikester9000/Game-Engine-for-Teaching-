@@ -97,19 +97,26 @@ bool ShopSystem::BuyItem(EntityID player, uint32_t shopID,
     uint32_t unitPrice = GetBuyPrice(shopID, itemID);
     uint64_t total     = static_cast<uint64_t>(unitPrice) * qty;
 
-    // 3. Deduct Gil — prefer CurrencyComponent (authoritative) over inv.gil.
-    // TEACHING NOTE — Check ALL preconditions before mutating ANY state.
-    bool hasCurrency = false;
-    if (m_world->HasComponent<CurrencyComponent>(player)) {
-        auto& cc = m_world->GetComponent<CurrencyComponent>(player);
-        hasCurrency = (cc.gil >= total);
-    } else if (m_world->HasComponent<InventoryComponent>(player)) {
-        auto& inv = m_world->GetComponent<InventoryComponent>(player);
-        hasCurrency = (inv.gil >= static_cast<uint32_t>(total));
+    // 3. Check the player has enough Gil.
+    //
+    // TEACHING NOTE — CurrencyComponent is the Single Source of Truth for Gil.
+    // InventoryComponent no longer holds a gil field.  All Gil checks and
+    // mutations go through CurrencyComponent exclusively.
+    if (!m_world->HasComponent<CurrencyComponent>(player)) {
+        LOG_WARN("BuyItem: player has no CurrencyComponent.");
+        if (m_uiBus) {
+            UIEvent ev;
+            ev.type = UIEvent::Type::SHOW_NOTIFICATION;
+            ev.text = "Not enough Gil!";
+            m_uiBus->Publish(ev);
+        }
+        return false;
     }
 
-    if (!hasCurrency) {
-        LOG_INFO("BuyItem: insufficient Gil.");
+    auto& cc = m_world->GetComponent<CurrencyComponent>(player);
+    if (cc.gil < total) {
+        LOG_INFO("BuyItem: insufficient Gil (have " + std::to_string(cc.gil)
+                 + ", need " + std::to_string(total) + ").");
         if (m_uiBus) {
             UIEvent ev;
             ev.type = UIEvent::Type::SHOW_NOTIFICATION;
@@ -132,15 +139,9 @@ bool ShopSystem::BuyItem(EntityID player, uint32_t shopID,
         return false;
     }
 
-    // 5. Deduct Gil now that we know everything succeeded.
-    if (m_world->HasComponent<CurrencyComponent>(player)) {
-        m_world->GetComponent<CurrencyComponent>(player).SpendGil(total);
-    }
-    if (m_world->HasComponent<InventoryComponent>(player)) {
-        auto& inv = m_world->GetComponent<InventoryComponent>(player);
-        uint32_t deduct = static_cast<uint32_t>(std::min(total, static_cast<uint64_t>(inv.gil)));
-        inv.gil -= deduct;
-    }
+    // 5. Deduct Gil — CurrencyComponent is the sole authority; we confirmed
+    //    the player has enough Gil in step 3, so SpendGil cannot underflow.
+    cc.SpendGil(total);
 
     const ItemData* item = GameDatabase::FindItem(itemID);
     std::string itemName = item ? item->name : "item";
@@ -187,15 +188,11 @@ bool ShopSystem::SellItem(EntityID player, uint32_t itemID, uint32_t qty)
         return false;
     }
 
-    // Add Gil.
+    // Add Gil — credit goes only to CurrencyComponent (single source of truth).
     uint64_t earned = static_cast<uint64_t>(GetSellPrice(itemID)) * qty;
 
     if (m_world->HasComponent<CurrencyComponent>(player)) {
         m_world->GetComponent<CurrencyComponent>(player).EarnGil(earned);
-    }
-    if (m_world->HasComponent<InventoryComponent>(player)) {
-        m_world->GetComponent<InventoryComponent>(player).gil +=
-            static_cast<uint32_t>(std::min(earned, static_cast<uint64_t>(UINT32_MAX)));
     }
 
     std::string itemName = item ? item->name : "item";

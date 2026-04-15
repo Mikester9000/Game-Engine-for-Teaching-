@@ -966,9 +966,8 @@ struct CombatComponent {
     float   attackCooldown= 0.0f;   ///< Seconds until next basic attack.
     float   attackRate    = 1.0f;   ///< Basic attacks per second.
     int32_t attackRange   = 2;      ///< Melee range in world units.
-    int32_t combatXP      = 0;      ///< XP this entity grants on death (alias: xpReward).
-    int32_t xpReward      = 0;      ///< XP reward for defeating this entity.
-    int32_t gilReward     = 0;      ///< Gil reward for defeating this entity.
+    int32_t xpReward      = 0;      ///< XP awarded to the player for defeating this entity.
+    int32_t gilReward     = 0;      ///< Gil awarded to the player for defeating this entity.
 
     // Warp-strike (Noctis signature move): throw weapon to distant enemy,
     // warp to it, deal bonus damage.
@@ -1012,10 +1011,25 @@ struct ItemStack {
 /**
  * @struct InventoryComponent
  * @brief Stores the items carried by an entity.
+ *
+ * TEACHING NOTE — Separation of Currency and Inventory
+ * ──────────────────────────────────────────────────────
+ * Currency (Gil) is intentionally stored in CurrencyComponent, NOT here.
+ *
+ * Why keep them separate?
+ *   1. Single Source of Truth — having Gil in two components created a
+ *      desync bug: buying an item would deduct from CurrencyComponent but
+ *      InventoryComponent::gil could drift to a different value.
+ *   2. Conceptual clarity — "what items do I carry?" is a different question
+ *      from "how much money do I have?".  Separate components make the
+ *      distinction explicit and teachable.
+ *   3. Not all entities carry items AND currency.  A chest entity might have
+ *      an InventoryComponent (loot) but no CurrencyComponent.
+ *
+ * Authoritative Gil balance: world.GetComponent<CurrencyComponent>(entity).gil
  */
 struct InventoryComponent {
     std::array<ItemStack, MAX_INV_SLOTS> slots{};  ///< All item slots.
-    uint32_t gil = 0;   ///< Currency (Gil in FF tradition).
 
     /// Return the index of the first empty slot, or MAX_INV_SLOTS if full.
     uint32_t FindEmptySlot() const {
@@ -1909,10 +1923,11 @@ public:
         auto& ai      = AddComponent<AIComponent>(id);
         ai.isNocturnal = nocturnal;
 
-        // Add status effects slot (already added by CreateCharacter, but
-        // we set the XP reward in the CombatComponent).
+        // Set the default XP reward in the CombatComponent.
+        // Zone::SpawnOneEnemy() will overwrite this with the species-specific
+        // value from EnemyData::xpReward.
         auto& combat = GetComponent<CombatComponent>(id);
-        combat.combatXP = 50;  // Default XP reward.
+        combat.xpReward = 50;  // Default XP reward (overridden by Zone on spawn).
 
         LOG_INFO("Created enemy '" << name << "' as entity " << id
                  << " (nocturnal=" << nocturnal << ")");
