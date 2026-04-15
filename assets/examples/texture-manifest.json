@@ -1,0 +1,73 @@
+{
+  "manifestVersion": "1.0.0",
+  "assets": [
+    {
+      "id": "texture-noctis-albedo",
+      "version": "1.0.0",
+      "type": "texture",
+      "source": "../textures/characters/noctis_albedo.png",
+      "hash": "d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7",
+      "dependencies": [],
+      "tags": ["character", "noctis", "pbr", "albedo"],
+      "texture": {
+        "format": "png",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12,
+        "sRGB": true,
+        "usage": "albedo"
+      }
+    },
+    {
+      "id": "texture-noctis-normal",
+      "version": "1.0.0",
+      "type": "texture",
+      "source": "../textures/characters/noctis_normal.png",
+      "hash": "e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8",
+      "dependencies": [],
+      "tags": ["character", "noctis", "pbr", "normal"],
+      "texture": {
+        "format": "png",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12,
+        "sRGB": false,
+        "usage": "normal"
+      }
+    },
+    {
+      "id": "texture-regalia-albedo",
+      "version": "1.0.0",
+      "type": "texture",
+      "source": "../textures/vehicles/regalia_albedo.png",
+      "hash": "f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9",
+      "dependencies": [],
+      "tags": ["vehicle", "regalia", "pbr", "albedo"],
+      "texture": {
+        "format": "png",
+        "width": 4096,
+        "height": 4096,
+        "mipLevels": 13,
+        "sRGB": true,
+        "usage": "albedo"
+      }
+    },
+    {
+      "id": "texture-ui-hud-atlas",
+      "version": "1.0.0",
+      "type": "texture",
+      "source": "../textures/ui/hud_atlas.png",
+      "hash": "a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0",
+      "dependencies": [],
+      "tags": ["ui", "hud", "atlas", "sprites"],
+      "texture": {
+        "format": "png",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 1,
+        "sRGB": true,
+        "usage": "ui"
+      }
+    }
+  ]
+}

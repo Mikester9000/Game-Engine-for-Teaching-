@@ -1,0 +1,65 @@
+{
+  "manifestVersion": "1.0.0",
+  "assets": [
+    {
+      "id": "model-noctis",
+      "version": "1.0.0",
+      "type": "model",
+      "source": "../models/characters/noctis.glb",
+      "hash": "e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4",
+      "dependencies": [
+        "texture-noctis-albedo",
+        "texture-noctis-normal",
+        "material-noctis"
+      ],
+      "tags": ["character", "noctis", "protagonist", "rigged"],
+      "model": {
+        "format": "glb",
+        "vertexCount": 18450,
+        "triangleCount": 22800,
+        "hasSkeleton": true,
+        "animationCount": 32,
+        "lodLevels": 3
+      }
+    },
+    {
+      "id": "model-regalia",
+      "version": "1.0.0",
+      "type": "model",
+      "source": "../models/vehicles/regalia.glb",
+      "hash": "f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5",
+      "dependencies": [
+        "texture-regalia-albedo",
+        "material-regalia"
+      ],
+      "tags": ["vehicle", "regalia", "car", "animated"],
+      "model": {
+        "format": "glb",
+        "vertexCount": 41200,
+        "triangleCount": 54300,
+        "hasSkeleton": false,
+        "animationCount": 4,
+        "lodLevels": 2
+      }
+    },
+    {
+      "id": "model-behemoth",
+      "version": "1.0.0",
+      "type": "model",
+      "source": "../models/enemies/behemoth.glb",
+      "hash": "a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6",
+      "dependencies": [
+        "material-behemoth"
+      ],
+      "tags": ["enemy", "boss", "creature", "rigged"],
+      "model": {
+        "format": "glb",
+        "vertexCount": 28700,
+        "triangleCount": 36100,
+        "hasSkeleton": true,
+        "animationCount": 18,
+        "lodLevels": 2
+      }
+    }
+  ]
+}
