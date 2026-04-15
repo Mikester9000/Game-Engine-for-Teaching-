@@ -1,0 +1,249 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "asset-manifest.schema.json",
+  "title": "Asset Manifest",
+  "description": "Canonical schema for all Game-Engine-for-Teaching asset manifests. Used by the validate-assets CLI and the asset pipeline.",
+  "type": "object",
+  "required": ["manifestVersion", "assets"],
+  "additionalProperties": false,
+  "properties": {
+    "manifestVersion": {
+      "type": "string",
+      "description": "SemVer string for this manifest schema (e.g. '1.0.0').",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "assets": {
+      "type": "array",
+      "description": "Ordered list of asset entries described by this manifest.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/assetEntry"
+      }
+    }
+  },
+  "definitions": {
+    "assetEntry": {
+      "type": "object",
+      "description": "A single asset record. The 'type' field determines which extra fields are expected.",
+      "required": ["id", "version", "type", "source", "hash"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable, globally-unique identifier (GUID or human-readable slug) for this asset.",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "description": "Asset revision string (SemVer recommended, e.g. '1.0.0').",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "type": {
+          "type": "string",
+          "description": "Asset category. Determines which type-specific extension block is valid.",
+          "enum": ["audio", "texture", "tilemap", "model", "script", "material"]
+        },
+        "source": {
+          "type": "string",
+          "description": "Relative path (from the manifest file) to the source asset file.",
+          "minLength": 1
+        },
+        "hash": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the source file contents, used for integrity verification.",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "dependencies": {
+          "type": "array",
+          "description": "IDs of other assets this asset depends on (e.g. a model depends on its material).",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "description": "Free-form labels for filtering and grouping assets in the pipeline.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": []
+        },
+        "audio": {
+          "$ref": "#/definitions/audioExtension"
+        },
+        "texture": {
+          "$ref": "#/definitions/textureExtension"
+        },
+        "tilemap": {
+          "$ref": "#/definitions/tilemapExtension"
+        },
+        "model": {
+          "$ref": "#/definitions/modelExtension"
+        }
+      }
+    },
+
+    "audioExtension": {
+      "type": "object",
+      "description": "Audio-specific metadata. Required when type == 'audio'.",
+      "required": ["format", "sampleRate", "channels", "durationSeconds"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "Audio container/codec format.",
+          "enum": ["wav", "ogg", "mp3", "flac", "opus"]
+        },
+        "sampleRate": {
+          "type": "integer",
+          "description": "Sample rate in Hz (e.g. 44100, 48000).",
+          "minimum": 8000,
+          "maximum": 192000
+        },
+        "channels": {
+          "type": "integer",
+          "description": "Number of audio channels (1 = mono, 2 = stereo, 6 = 5.1, etc.).",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Total playback duration in seconds.",
+          "minimum": 0
+        },
+        "loopStart": {
+          "type": "number",
+          "description": "Optional loop start point in seconds (for music looping).",
+          "minimum": 0
+        },
+        "loopEnd": {
+          "type": "number",
+          "description": "Optional loop end point in seconds. Must be > loopStart.",
+          "minimum": 0
+        },
+        "category": {
+          "type": "string",
+          "description": "Mixer category this audio clip belongs to.",
+          "enum": ["music", "sfx", "ambience", "voice", "ui"]
+        }
+      }
+    },
+
+    "textureExtension": {
+      "type": "object",
+      "description": "Texture/material image metadata. Required when type == 'texture'.",
+      "required": ["format", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "Pixel/compression format.",
+          "enum": ["rgba8", "rgb8", "bc1", "bc3", "bc5", "bc7", "astc4x4", "png", "jpeg"]
+        },
+        "width": {
+          "type": "integer",
+          "description": "Texture width in pixels.",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "description": "Texture height in pixels.",
+          "minimum": 1
+        },
+        "mipLevels": {
+          "type": "integer",
+          "description": "Number of mip-map levels (1 = no mips).",
+          "minimum": 1
+        },
+        "sRGB": {
+          "type": "boolean",
+          "description": "True if the texture stores sRGB colour data (e.g. albedo maps). False for linear data (normals, roughness)."
+        },
+        "usage": {
+          "type": "string",
+          "description": "Intended PBR slot.",
+          "enum": ["albedo", "normal", "roughness", "metalness", "ao", "emissive", "ui", "heightmap"]
+        }
+      }
+    },
+
+    "tilemapExtension": {
+      "type": "object",
+      "description": "Tilemap metadata. Required when type == 'tilemap'.",
+      "required": ["width", "height", "tileWidth", "tileHeight"],
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "description": "Map width in tiles.",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "description": "Map height in tiles.",
+          "minimum": 1
+        },
+        "tileWidth": {
+          "type": "integer",
+          "description": "Single tile width in pixels.",
+          "minimum": 1
+        },
+        "tileHeight": {
+          "type": "integer",
+          "description": "Single tile height in pixels.",
+          "minimum": 1
+        },
+        "layers": {
+          "type": "integer",
+          "description": "Number of tile layers (e.g. ground, object, collision).",
+          "minimum": 1
+        },
+        "tilesetId": {
+          "type": "string",
+          "description": "ID of the texture asset used as the tileset spritesheet."
+        }
+      }
+    },
+
+    "modelExtension": {
+      "type": "object",
+      "description": "3-D model metadata. Required when type == 'model'.",
+      "required": ["format", "vertexCount", "triangleCount"],
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "3-D file format.",
+          "enum": ["gltf", "glb", "fbx", "obj", "dae"]
+        },
+        "vertexCount": {
+          "type": "integer",
+          "description": "Total number of vertices across all meshes.",
+          "minimum": 0
+        },
+        "triangleCount": {
+          "type": "integer",
+          "description": "Total number of triangles across all meshes.",
+          "minimum": 0
+        },
+        "hasSkeleton": {
+          "type": "boolean",
+          "description": "True if the model contains a skeletal rig for animation."
+        },
+        "animationCount": {
+          "type": "integer",
+          "description": "Number of embedded animation clips.",
+          "minimum": 0
+        },
+        "lodLevels": {
+          "type": "integer",
+          "description": "Number of Level-of-Detail meshes included.",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

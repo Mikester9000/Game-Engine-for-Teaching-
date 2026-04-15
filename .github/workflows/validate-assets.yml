@@ -1,0 +1,78 @@
+# ============================================================================
+# validate-assets.yml — Asset Manifest CI Lint Step
+# ============================================================================
+#
+# TEACHING NOTE — Continuous Integration for Assets
+# ---------------------------------------------------
+# In AAA studios the asset pipeline is a first-class citizen of CI.  Every
+# texture, audio clip, or tilemap that lands in the repository must pass
+# validation before it can be imported by the engine.  This workflow is the
+# lightweight educational equivalent of that gate.
+#
+# Trigger: any push or pull-request that touches
+#   • assets/**          (manifest files or schema)
+#   • tools/validate-assets.py  (the validator itself)
+#
+# On success: job passes, PR can be merged.
+# On failure: job fails with per-asset error messages so the author knows
+#             exactly which field is broken and why.
+# ============================================================================
+
+name: Validate Asset Manifests
+
+on:
+  push:
+    paths:
+      - 'assets/**'
+      - 'tools/validate-assets.py'
+  pull_request:
+    paths:
+      - 'assets/**'
+      - 'tools/validate-assets.py'
+  # Allow manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+
+# TEACHING NOTE — Principle of Least Privilege
+# Grant only the minimum permissions required.  This workflow only reads
+# repository contents, so no other GITHUB_TOKEN scopes are needed.
+permissions:
+  contents: read
+
+jobs:
+  validate-assets:
+    name: Validate asset manifests
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Check out the repository
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 2. Set up Python (stdlib only is enough, but jsonschema gives richer
+      #    error messages, so we install it for CI)
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install jsonschema (optional enhanced validation)
+        run: pip install jsonschema==4.23.0
+
+      # -----------------------------------------------------------------------
+      # 3. Run the validator against the example manifests
+      #    The script exits with code 1 if any manifest fails, which marks the
+      #    CI step as failed.
+      # -----------------------------------------------------------------------
+      - name: Validate example asset manifests
+        run: python3 tools/validate-assets.py assets/examples/ --verbose
+
+      # -----------------------------------------------------------------------
+      # 4. (Optional) Validate any additional manifest files found anywhere in
+      #    the assets/ tree.  This catches manifests added by contributors.
+      # -----------------------------------------------------------------------
+      - name: Validate all manifests in assets/
+        run: python3 tools/validate-assets.py assets/ --verbose

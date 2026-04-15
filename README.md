@@ -82,6 +82,18 @@ Controls are shown in the in-game main menu.
 Game-Engine-for-Teaching-/
 ├── CMakeLists.txt              # Build configuration
 ├── README.md                   # This file
+├── assets/
+│   ├── schema/
+│   │   └── asset-manifest.schema.json  # Canonical JSON Schema (draft-07)
+│   └── examples/
+│       ├── audio-manifest.json         # Example audio asset manifest
+│       ├── texture-manifest.json       # Example texture asset manifest
+│       ├── tilemap-manifest.json       # Example tilemap asset manifest
+│       └── model-manifest.json         # Example model asset manifest
+├── docs/
+│   └── asset-manifest.md       # Schema reference & integration guide
+├── tools/
+│   └── validate-assets.py      # Asset manifest validator CLI
 ├── scripts/                    # Lua 5.4 game scripts (hot-reloadable)
 │   ├── main.lua                # Global hooks: on_explore_update, on_camp_rest …
 │   ├── quests.lua              # Quest event callbacks
@@ -179,6 +191,43 @@ game_start_combat(enemyID)     -- Trigger a combat encounter
 game_complete_quest(questID)   -- Mark a quest complete
 game_show_message("text")      -- Display a UI notification
 ```
+
+---
+
+## Asset Manifest & Validator
+
+All game assets (audio, textures, tilemaps, models) are described by **manifest
+files** that share a canonical JSON schema.  A CLI validation tool checks schema
+compliance and is wired into CI.
+
+### Quick start
+
+```bash
+# Validate all example manifests (no extra dependencies needed)
+python3 tools/validate-assets.py
+
+# Install optional jsonschema for richer error messages
+pip install jsonschema
+python3 tools/validate-assets.py assets/examples/ --verbose
+```
+
+### What the manifest covers
+
+| Field | Purpose |
+|---|---|
+| `id` | Stable GUID / slug — referenced by the engine and other assets |
+| `version` | Asset revision (SemVer) |
+| `type` | `audio` / `texture` / `tilemap` / `model` / `script` / `material` |
+| `source` | Relative path to the source file |
+| `hash` | SHA-256 of the file — detects accidental overwrites |
+| `dependencies` | IDs of assets this one depends on |
+| `tags` | Free-form labels (`["combat", "boss"]`) for pipeline filtering |
+
+Per-type extension blocks (`"audio": {...}`, `"texture": {...}`, …) carry
+format-specific metadata (sample rate, dimensions, triangle count, etc.).
+
+See **`docs/asset-manifest.md`** for the full schema reference and integration
+guide.
 
 ---
 
