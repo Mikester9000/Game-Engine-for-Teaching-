@@ -27,6 +27,24 @@
       "description": "A single asset record. The 'type' field determines which extra fields are expected.",
       "required": ["id", "version", "type", "source", "hash"],
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "audio"}}, "required": ["type"]},
+          "then": {"required": ["audio"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "texture"}}, "required": ["type"]},
+          "then": {"required": ["texture"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "tilemap"}}, "required": ["type"]},
+          "then": {"required": ["tilemap"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "model"}}, "required": ["type"]},
+          "then": {"required": ["model"]}
+        }
+      ],
       "properties": {
         "id": {
           "type": "string",

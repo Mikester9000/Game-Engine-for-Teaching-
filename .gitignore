@@ -3,3 +3,6 @@ build/
 *.d
 *.a
 *.so
+.pytest_cache/
+__pycache__/
+*.pyc
