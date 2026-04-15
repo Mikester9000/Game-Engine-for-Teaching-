@@ -72,7 +72,7 @@ bool QuestSystem::AcceptQuest(EntityID player, uint32_t questID)
     entry.isFailed   = false;
 
     // 6. Fire events.
-    PublishQuestEvent(QuestEvent::Type::QUEST_ACCEPTED, player, questID);
+    PublishQuestEvent(QuestEvent::Type::QUEST_ACCEPTED, player, questID, 0, 0);
 
     if (m_uiBus) {
         UIEvent ui;
@@ -111,7 +111,7 @@ void QuestSystem::UpdateObjective(EntityID player, uint32_t questID,
     // This prevents displaying "4/3 goblins killed" in the UI.
     if (entry->progress > entry->required) entry->progress = entry->required;
 
-    PublishQuestEvent(QuestEvent::Type::OBJECTIVE_COMPLETE, player, questID,
+    PublishQuestEvent(QuestEvent::Type::OBJECTIVE_UPDATED, player, questID,
                       objectiveIdx, static_cast<int32_t>(progress));
 
     // Check if current objective is now complete.
@@ -172,7 +172,7 @@ bool QuestSystem::CompleteQuest(EntityID player, uint32_t questID)
     GrantItemRewards(player, *data);
 
     // Fire quest-complete event.
-    PublishQuestEvent(QuestEvent::Type::QUEST_COMPLETE, player, questID);
+    PublishQuestEvent(QuestEvent::Type::QUEST_COMPLETED, player, questID, 0, 0);
 
     if (m_uiBus) {
         UIEvent ui;
@@ -199,7 +199,7 @@ void QuestSystem::FailQuest(EntityID player, uint32_t questID)
 
     entry->isFailed = true;
 
-    PublishQuestEvent(QuestEvent::Type::QUEST_FAILED, player, questID);
+    PublishQuestEvent(QuestEvent::Type::QUEST_FAILED, player, questID, 0, 0);
 
     const QuestData* data = GameDatabase::FindQuest(questID);
     if (m_uiBus && data) {
@@ -217,7 +217,7 @@ void QuestSystem::FailQuest(EntityID player, uint32_t questID)
 std::vector<const QuestData*> QuestSystem::GetActiveQuests(EntityID player) const
 {
     std::vector<const QuestData*> result;
-    const auto& qc = m_world->GetComponent<QuestComponent>(player);
+    auto& qc = m_world->GetComponent<QuestComponent>(player);
 
     for (uint32_t i = 0; i < qc.activeCount; ++i) {
         const QuestEntry& e = qc.quests[i];
@@ -231,14 +231,14 @@ std::vector<const QuestData*> QuestSystem::GetActiveQuests(EntityID player) cons
 
 bool QuestSystem::IsQuestComplete(EntityID player, uint32_t questID) const
 {
-    const auto& qc = m_world->GetComponent<QuestComponent>(player);
+    auto& qc = m_world->GetComponent<QuestComponent>(player);
     const QuestEntry* entry = qc.FindQuest(questID);
     return entry && entry->isComplete;
 }
 
 bool QuestSystem::IsQuestActive(EntityID player, uint32_t questID) const
 {
-    const auto& qc = m_world->GetComponent<QuestComponent>(player);
+    auto& qc = m_world->GetComponent<QuestComponent>(player);
     const QuestEntry* entry = qc.FindQuest(questID);
     return entry && !entry->isComplete && !entry->isFailed;
 }
@@ -261,7 +261,7 @@ bool QuestSystem::CanAcceptQuest(EntityID player, uint32_t questID) const
 
 void QuestSystem::OnEnemyKilled(EntityID player, uint32_t enemyDataID)
 {
-    const auto& qc = m_world->GetComponent<QuestComponent>(player);
+    auto& qc = m_world->GetComponent<QuestComponent>(player);
     for (uint32_t i = 0; i < qc.activeCount; ++i) {
         const QuestEntry& e = qc.quests[i];
         if (e.isComplete || e.isFailed) continue;
@@ -281,7 +281,7 @@ void QuestSystem::OnEnemyKilled(EntityID player, uint32_t enemyDataID)
 
 void QuestSystem::OnItemCollected(EntityID player, uint32_t itemID, uint32_t qty)
 {
-    const auto& qc = m_world->GetComponent<QuestComponent>(player);
+    auto& qc = m_world->GetComponent<QuestComponent>(player);
     for (uint32_t i = 0; i < qc.activeCount; ++i) {
         const QuestEntry& e = qc.quests[i];
         if (e.isComplete || e.isFailed) continue;
@@ -300,7 +300,7 @@ void QuestSystem::OnItemCollected(EntityID player, uint32_t itemID, uint32_t qty
 
 void QuestSystem::OnLocationReached(EntityID player, uint32_t zoneID)
 {
-    const auto& qc = m_world->GetComponent<QuestComponent>(player);
+    auto& qc = m_world->GetComponent<QuestComponent>(player);
     for (uint32_t i = 0; i < qc.activeCount; ++i) {
         const QuestEntry& e = qc.quests[i];
         if (e.isComplete || e.isFailed) continue;
@@ -327,11 +327,11 @@ void QuestSystem::PublishQuestEvent(QuestEvent::Type type, EntityID player,
 {
     if (!m_questBus) return;
     QuestEvent ev;
-    ev.type        = type;
-    ev.entityID    = player;
-    ev.questID     = questID;
-    ev.objectiveID = objectiveID;
-    ev.delta       = delta;
+    ev.type          = type;
+    ev.playerID      = player;
+    ev.questID       = questID;
+    ev.objectiveID   = objectiveID;
+    ev.progressDelta = delta;
     m_questBus->Publish(ev);
 }
 
