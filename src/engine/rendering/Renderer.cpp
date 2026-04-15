@@ -50,7 +50,10 @@
 // ---------------------------------------------------------------------------
 // Renderer.hpp only forward-declares TileType.  Here in the .cpp we need the
 // full enum definition so we can write the switch statement in DrawTile.
+// TileType is defined in TileMap.hpp (the tile map system).  GameData.hpp
+// pulls in engine types but TileType lives alongside the map geometry.
 #include "game/GameData.hpp"
+#include "game/world/TileMap.hpp"    // TileType full definition (FLOOR, WALL, …)
 
 // ---------------------------------------------------------------------------
 // Engine utilities
@@ -659,14 +662,14 @@ void MapRenderer::GetTileVisuals(TileType tile, char& outChar, int& outColor) co
             outColor = CP_QUEST;
             break;
 
-        // SHOP: '$' sign for commerce — gold colour.
-        case TileType::SHOP:
+        // SHOP_TILE: '$' sign for commerce — gold colour.
+        case TileType::SHOP_TILE:
             outChar  = 'B';     // 'B' for Bazaar / store
             outColor = CP_NPC;
             break;
 
-        // INN: 'I' for Inn.
-        case TileType::INN:
+        // INN_TILE: 'I' for Inn.
+        case TileType::INN_TILE:
             outChar  = 'I';
             outColor = CP_HEAL;
             break;
