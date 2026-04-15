@@ -1,0 +1,39 @@
+{
+  "manifestVersion": "1.0.0",
+  "assets": [
+    {
+      "id": "texture-hero-albedo",
+      "version": "1.0.0",
+      "type": "texture",
+      "source": "textures/characters/hero_albedo.png",
+      "hash": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+      "dependencies": [],
+      "tags": ["character", "hero", "pbr", "albedo"],
+      "texture": {
+        "format": "png",
+        "width": 2048,
+        "height": 2048,
+        "mipLevels": 12,
+        "sRGB": true,
+        "usage": "albedo"
+      }
+    },
+    {
+      "id": "texture-terrain-normal",
+      "version": "1.0.0",
+      "type": "texture",
+      "source": "textures/terrain/ground_normal.png",
+      "hash": "d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5",
+      "dependencies": [],
+      "tags": ["terrain", "normal", "pbr"],
+      "texture": {
+        "format": "bc5",
+        "width": 1024,
+        "height": 1024,
+        "mipLevels": 11,
+        "sRGB": false,
+        "usage": "normal"
+      }
+    }
+  ]
+}

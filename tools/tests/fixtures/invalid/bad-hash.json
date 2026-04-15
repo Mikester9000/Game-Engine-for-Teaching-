@@ -1,0 +1,20 @@
+{
+  "manifestVersion": "1.0.0",
+  "assets": [
+    {
+      "id": "texture-bad-hash",
+      "version": "1.0.0",
+      "type": "texture",
+      "source": "textures/ui/icon.png",
+      "hash": "not-a-valid-sha256-hash",
+      "dependencies": [],
+      "tags": [],
+      "texture": {
+        "format": "png",
+        "width": 64,
+        "height": 64,
+        "usage": "ui"
+      }
+    }
+  ]
+}

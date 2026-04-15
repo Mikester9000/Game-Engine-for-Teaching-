@@ -25,10 +25,12 @@ on:
     paths:
       - 'assets/**'
       - 'tools/validate-assets.py'
+      - 'tools/tests/**'
   pull_request:
     paths:
       - 'assets/**'
       - 'tools/validate-assets.py'
+      - 'tools/tests/**'
   # Allow manual trigger from the GitHub Actions UI
   workflow_dispatch:
 
@@ -59,8 +61,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install jsonschema (optional enhanced validation)
-        run: pip install jsonschema==4.23.0
+      - name: Install jsonschema and pytest
+        run: pip install jsonschema==4.23.0 pytest==8.3.5
 
       # -----------------------------------------------------------------------
       # 3. Run the validator against the example manifests
@@ -71,7 +73,16 @@ jobs:
         run: python3 tools/validate-assets.py assets/examples/ --verbose
 
       # -----------------------------------------------------------------------
-      # 4. (Optional) Validate any additional manifest files found anywhere in
+      # 4. Run the sample-validation unit tests.
+      #    These tests exercise validate-assets.py against a curated set of
+      #    known-good (fixtures/valid/) and known-bad (fixtures/invalid/)
+      #    sample manifests, ensuring the validator itself is correct.
+      # -----------------------------------------------------------------------
+      - name: Run sample-validation tests
+        run: python3 -m pytest tools/tests/ -v
+
+      # -----------------------------------------------------------------------
+      # 5. (Optional) Validate any additional manifest files found anywhere in
       #    the assets/ tree.  This catches manifests added by contributors.
       # -----------------------------------------------------------------------
       - name: Validate all manifests in assets/
