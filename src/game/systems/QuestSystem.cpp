@@ -161,11 +161,9 @@ bool QuestSystem::CompleteQuest(EntityID player, uint32_t questID)
         LOG_INFO("Quest XP awarded: " + std::to_string(data->xpReward));
     }
 
-    // Award Gil.
-    // TEACHING NOTE — We store currency in InventoryComponent::gil for simplicity.
-    if (m_world->HasComponent<InventoryComponent>(player)) {
-        auto& inv = m_world->GetComponent<InventoryComponent>(player);
-        inv.gil += data->gilReward;
+    // Award Gil — credit CurrencyComponent (single source of truth for Gil).
+    if (m_world->HasComponent<CurrencyComponent>(player)) {
+        m_world->GetComponent<CurrencyComponent>(player).EarnGil(data->gilReward);
     }
 
     // Award items.

@@ -159,13 +159,16 @@ void Game::InitPlayer()
     auto& lc  = m_world.AddComponent<LevelComponent>(m_playerID);
     lc.level  = 1;
 
-    // Currency.
+    // Currency — the authoritative Gil balance lives in CurrencyComponent.
+    // TEACHING NOTE — Single Source of Truth
+    // Gil is stored ONLY in CurrencyComponent.  InventoryComponent no longer
+    // carries a gil field (that was removed to eliminate a desync bug where
+    // buying items could deduct from one field but leave the other unchanged).
     auto& cc  = m_world.AddComponent<CurrencyComponent>(m_playerID);
     cc.gil    = 500;
 
-    // Inventory.
-    auto& inv   = m_world.AddComponent<InventoryComponent>(m_playerID);
-    inv.gil     = 500;
+    // Inventory — items only; currency is tracked separately above.
+    m_world.AddComponent<InventoryComponent>(m_playerID);
 
     // Equipment.
     m_world.AddComponent<EquipmentComponent>(m_playerID);
