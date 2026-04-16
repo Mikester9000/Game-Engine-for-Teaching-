@@ -1,3 +1,0 @@
-/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles/game.dir
-/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles/edit_cache.dir
-/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles/rebuild_cache.dir

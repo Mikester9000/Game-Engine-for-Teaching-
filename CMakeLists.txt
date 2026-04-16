@@ -60,16 +60,53 @@ endif()
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # ---------------------------------------------------------------------------
-# Find required system libraries
+# CMake options — platform feature gates
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — CMake Options
+# option() declares a boolean flag the user can set on the cmake command line:
+#   cmake .. -DENGINE_ENABLE_TERMINAL=OFF
+# The second argument is a help string shown by cmake-gui and ccmake.
+# The third argument is the default value.
+#
+# We gate the terminal (ncurses) renderer to non-Windows platforms because:
+#   1. ncurses is a Linux/macOS library; there is no first-class port on MSVC.
+#   2. On Windows the engine uses the Vulkan renderer instead.
 # ---------------------------------------------------------------------------
 
-# ncurses (for the terminal renderer).
-# TEACHING NOTE — find_package(Curses) sets:
-#   CURSES_LIBRARIES  — ncurses link flags
-#   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
-find_package(Curses REQUIRED)
+# TEACHING NOTE — ENGINE_ENABLE_TERMINAL
+# Defaults to ON everywhere EXCEPT Windows (where ncurses is unavailable).
+if(WIN32)
+    option(ENGINE_ENABLE_TERMINAL "Build the ncurses terminal renderer target" OFF)
+else()
+    option(ENGINE_ENABLE_TERMINAL "Build the ncurses terminal renderer target" ON)
+endif()
 
-# Lua 5.4 (for scripting).
+# TEACHING NOTE — ENGINE_ENABLE_VULKAN
+# Defaults to ON on Windows only.  Nothing prevents enabling it on Linux
+# later (Vulkan is cross-platform), but for now we use it as the Windows path.
+if(WIN32)
+    option(ENGINE_ENABLE_VULKAN "Build the Vulkan engine_sandbox target" ON)
+else()
+    option(ENGINE_ENABLE_VULKAN "Build the Vulkan engine_sandbox target" OFF)
+endif()
+
+# ---------------------------------------------------------------------------
+# Find required system libraries (platform-gated)
+# ---------------------------------------------------------------------------
+
+# ---- ncurses (terminal renderer — non-Windows only) -----------------------
+# TEACHING NOTE — find_package(Curses) sets:
+#   CURSES_LIBRARIES    — ncurses link flags
+#   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
+#
+# We guard this with ENGINE_ENABLE_TERMINAL so that a Windows CMake configure
+# does NOT fail on a missing ncurses package.
+if(ENGINE_ENABLE_TERMINAL)
+    find_package(Curses REQUIRED)
+    message(STATUS "ncurses found: ${CURSES_LIBRARIES}")
+endif()
+
+# ---- Lua 5.4 (scripting — used by the terminal game target) ---------------
 # Try pkg-config first (most Linux distros), fallback to manual search.
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
@@ -98,75 +135,158 @@ else()
     set(LUA_INCLUDE_DIRS "")
 endif()
 
+# ---- Vulkan SDK (Windows renderer) ----------------------------------------
+# TEACHING NOTE — find_package(Vulkan)
+# The Vulkan SDK installer (https://vulkan.lunarg.com/) sets the VULKAN_SDK
+# environment variable.  CMake's built-in FindVulkan module uses that variable
+# to locate vulkan-1.lib (Windows) and the vulkan/vulkan.h headers.
+# The imported target Vulkan::Vulkan provides both include paths and link libs.
+if(ENGINE_ENABLE_VULKAN)
+    find_package(Vulkan REQUIRED)
+    message(STATUS "Vulkan found: ${Vulkan_LIBRARIES}")
+endif()
+
 # ---------------------------------------------------------------------------
-# Engine sources
+# Engine sources (shared kernel — platform-independent)
 # ---------------------------------------------------------------------------
 
-set(ENGINE_SOURCES
+set(ENGINE_CORE_SOURCES
     src/engine/core/Logger.cpp
-    src/engine/rendering/Renderer.cpp
-    src/engine/input/InputSystem.cpp
     src/engine/scripting/LuaEngine.cpp
 )
 
 # ---------------------------------------------------------------------------
-# Game sources
+# Terminal game target (Linux / macOS — existing target, unchanged)
 # ---------------------------------------------------------------------------
+# TEACHING NOTE — Conditional Target Creation
+# add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
+# On Windows this block is entirely skipped so MSVC never tries to compile
+# the ncurses-dependent Renderer.cpp and InputSystem.cpp.
+# ---------------------------------------------------------------------------
+if(ENGINE_ENABLE_TERMINAL)
 
-set(GAME_SOURCES
-    src/game/world/TileMap.cpp
-    src/game/world/Zone.cpp
-    src/game/world/WorldMap.cpp
-    src/game/systems/CombatSystem.cpp
-    src/game/systems/InventorySystem.cpp
-    src/game/systems/QuestSystem.cpp
-    src/game/systems/MagicSystem.cpp
-    src/game/systems/ShopSystem.cpp
-    src/game/systems/CampSystem.cpp
-    src/game/systems/WeatherSystem.cpp
-    src/game/systems/AISystem.cpp
-    src/game/Game.cpp
-)
+    set(TERMINAL_ENGINE_SOURCES
+        src/engine/rendering/Renderer.cpp
+        src/engine/input/InputSystem.cpp
+    )
+
+    set(GAME_SOURCES
+        src/game/world/TileMap.cpp
+        src/game/world/Zone.cpp
+        src/game/world/WorldMap.cpp
+        src/game/systems/CombatSystem.cpp
+        src/game/systems/InventorySystem.cpp
+        src/game/systems/QuestSystem.cpp
+        src/game/systems/MagicSystem.cpp
+        src/game/systems/ShopSystem.cpp
+        src/game/systems/CampSystem.cpp
+        src/game/systems/WeatherSystem.cpp
+        src/game/systems/AISystem.cpp
+        src/game/Game.cpp
+    )
+
+    add_executable(game
+        src/main.cpp
+        ${ENGINE_CORE_SOURCES}
+        ${TERMINAL_ENGINE_SOURCES}
+        ${GAME_SOURCES}
+    )
+
+    target_include_directories(game PRIVATE
+        src/
+        ${CURSES_INCLUDE_DIRS}
+        ${LUA_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(game PRIVATE
+        ${CURSES_LIBRARIES}
+        ${LUA_LIBRARIES}
+    )
+
+    # Copy Lua scripts to build directory after build.
+    add_custom_command(TARGET game POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/scripts
+            $<TARGET_FILE_DIR:game>/scripts
+        COMMENT "Copying Lua scripts to build directory."
+    )
+
+endif() # ENGINE_ENABLE_TERMINAL
 
 # ---------------------------------------------------------------------------
-# Main executable
+# engine_sandbox target (Windows — Vulkan clear-screen demo)
 # ---------------------------------------------------------------------------
-
-add_executable(game
-    src/main.cpp
-    ${ENGINE_SOURCES}
-    ${GAME_SOURCES}
-)
-
-target_include_directories(game PRIVATE
-    src/
-    ${CURSES_INCLUDE_DIRS}
-    ${LUA_INCLUDE_DIRS}
-)
-
-target_link_libraries(game PRIVATE
-    ${CURSES_LIBRARIES}
-    ${LUA_LIBRARIES}
-)
-
+# TEACHING NOTE — engine_sandbox
+# This is the "Phase 1" rendering milestone described in the architecture plan.
+# It demonstrates:
+#   • Win32 window creation and message pump.
+#   • Vulkan instance, surface, device, swapchain bootstrap.
+#   • Per-frame acquire → record clear → submit → present.
+#
+# Build instructions (Windows, Vulkan SDK installed):
+#   mkdir build && cd build
+#   cmake .. -G "Visual Studio 17 2022" -A x64
+#   cmake --build . --config Debug --target engine_sandbox
 # ---------------------------------------------------------------------------
-# Copy Lua scripts to build directory after build
-# ---------------------------------------------------------------------------
+if(ENGINE_ENABLE_VULKAN)
 
-add_custom_command(TARGET game POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/scripts
-        $<TARGET_FILE_DIR:game>/scripts
-    COMMENT "Copying Lua scripts to build directory."
-)
+    set(SANDBOX_SOURCES
+        src/sandbox/main.cpp
+        src/engine/platform/win32/Win32Window.cpp
+        src/engine/rendering/vulkan/VulkanRenderer.cpp
+        src/engine/core/Logger.cpp
+    )
+
+    add_executable(engine_sandbox
+        ${SANDBOX_SOURCES}
+    )
+
+    target_include_directories(engine_sandbox PRIVATE
+        src/
+        ${Vulkan_INCLUDE_DIRS}
+    )
+
+    target_link_libraries(engine_sandbox PRIVATE
+        Vulkan::Vulkan
+    )
+
+    # TEACHING NOTE — VK_USE_PLATFORM_WIN32_KHR compile definition
+    # This macro must be defined before including <vulkan/vulkan.h> so that
+    # the Win32-specific surface types and functions are declared.
+    # Passing it as a compile definition ensures it is set for every
+    # translation unit in this target without relying on the include order.
+    target_compile_definitions(engine_sandbox PRIVATE
+        VK_USE_PLATFORM_WIN32_KHR
+        WIN32_LEAN_AND_MEAN
+        NOMINMAX
+    )
+
+    # TEACHING NOTE — SUBSYSTEM:CONSOLE
+    # By default MSVC creates a GUI app (WinMain entry point, no console).
+    # We explicitly request CONSOLE so that std::cout / std::cerr output
+    # is visible in a terminal window — essential for a teaching project.
+    if(MSVC)
+        set_target_properties(engine_sandbox PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+        )
+    endif()
+
+endif() # ENGINE_ENABLE_VULKAN
 
 # ---------------------------------------------------------------------------
 # Print summary
 # ---------------------------------------------------------------------------
 
 message(STATUS "=== Build Configuration ===")
-message(STATUS "  CXX Standard : C++${CMAKE_CXX_STANDARD}")
-message(STATUS "  ncurses      : ${CURSES_LIBRARIES}")
-message(STATUS "  Lua          : ${LUA_LIBRARIES}")
-message(STATUS "  Build type   : ${CMAKE_BUILD_TYPE}")
+message(STATUS "  CXX Standard     : C++${CMAKE_CXX_STANDARD}")
+message(STATUS "  Build type       : ${CMAKE_BUILD_TYPE}")
+message(STATUS "  Terminal target  : ${ENGINE_ENABLE_TERMINAL}")
+message(STATUS "  Vulkan target    : ${ENGINE_ENABLE_VULKAN}")
+if(ENGINE_ENABLE_TERMINAL)
+    message(STATUS "  ncurses          : ${CURSES_LIBRARIES}")
+    message(STATUS "  Lua              : ${LUA_LIBRARIES}")
+endif()
+if(ENGINE_ENABLE_VULKAN)
+    message(STATUS "  Vulkan libs      : ${Vulkan_LIBRARIES}")
+endif()
 message(STATUS "===========================")

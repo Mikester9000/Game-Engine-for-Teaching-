@@ -33,7 +33,9 @@
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Linux / macOS — Terminal Game (`game`)
+
+#### 1. Install Dependencies
 
 ```bash
 # Ubuntu / Debian
@@ -53,7 +55,7 @@ brew install cmake ncurses lua
 | `libncurses-dev` | Terminal rendering (ASCII game display) |
 | `liblua5.4-dev` | Embeds Lua 5.4 scripting interpreter |
 
-### 2. Build
+#### 2. Build
 
 ```bash
 git clone https://github.com/Mikester9000/Game-Engine-for-Teaching-.git
@@ -65,7 +67,7 @@ make -j$(nproc)
 
 The compiled binary is `build/game`.
 
-### 3. Run
+#### 3. Run
 
 ```bash
 # From the build/ directory (Lua scripts are copied here by CMake):
@@ -76,11 +78,76 @@ Controls are shown in the in-game main menu.
 
 ---
 
+### Windows — Vulkan Sandbox (`engine_sandbox`)
+
+`engine_sandbox` is the first Windows rendering milestone: it opens a Win32
+window and clears the screen to an animated colour each frame using Vulkan.
+This is the foundation on which the full renderer will be built.
+
+#### 1. Install Prerequisites
+
+| Tool | Where to get it | Notes |
+|---|---|---|
+| Visual Studio 2022 | https://visualstudio.microsoft.com/ | Install **Desktop development with C++** workload |
+| CMake ≥ 3.16 | https://cmake.org/download/ | Tick "Add CMake to PATH" during install |
+| Vulkan SDK ≥ 1.3 | https://vulkan.lunarg.com/ | The SDK sets the `VULKAN_SDK` env var that CMake's `FindVulkan` uses |
+
+> **Tip:** After installing the Vulkan SDK, open a **new** terminal so that
+> the `VULKAN_SDK` environment variable is visible.
+
+#### 2. Build
+
+Open a **Developer Command Prompt for VS 2022** (or any terminal with CMake
+on `PATH`) and run:
+
+```bat
+git clone https://github.com/Mikester9000/Game-Engine-for-Teaching-.git
+cd Game-Engine-for-Teaching-
+
+mkdir build
+cd build
+
+:: Configure — CMake detects Windows and enables the Vulkan target automatically
+cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Debug
+
+:: Build only the Vulkan sandbox (fastest way to see results)
+cmake --build . --config Debug --target engine_sandbox
+```
+
+Alternatively open the generated `EducationalGameEngine.sln` in Visual Studio,
+set `engine_sandbox` as the **Startup Project**, and press **F5**.
+
+#### 3. Run
+
+```bat
+:: From the build\Debug\ directory:
+engine_sandbox.exe
+```
+
+A window titled **"Engine Sandbox — Vulkan Clear Screen"** opens and the
+background colour slowly cycles through the rainbow.  Press **ESC** or click
+the × button to exit.
+
+#### CMake options
+
+| Option | Default (Windows) | Description |
+|---|---|---|
+| `ENGINE_ENABLE_TERMINAL` | `OFF` | Build the ncurses `game` target (Linux/macOS only) |
+| `ENGINE_ENABLE_VULKAN`   | `ON`  | Build the `engine_sandbox` Vulkan target |
+
+To force-enable both on Linux (Vulkan must also be installed):
+
+```bash
+cmake .. -DENGINE_ENABLE_VULKAN=ON -DENGINE_ENABLE_TERMINAL=ON
+```
+
+---
+
 ## Repository Structure
 
 ```
 Game-Engine-for-Teaching-/
-├── CMakeLists.txt              # Build configuration
+├── CMakeLists.txt              # Build configuration (platform-gated targets)
 ├── README.md                   # This file
 ├── assets/
 │   ├── schema/
@@ -101,7 +168,9 @@ Game-Engine-for-Teaching-/
 │   ├── quests.lua              # Quest event callbacks
 │   └── enemies.lua             # Enemy/spell effect callbacks
 └── src/
-    ├── main.cpp                # Entry point
+    ├── main.cpp                # Entry point (terminal game)
+    ├── sandbox/
+    │   └── main.cpp            # Entry point (Windows Vulkan sandbox)
     ├── engine/
     │   ├── core/
     │   │   ├── Types.hpp       # Engine-wide type definitions (Vec3, EntityID …)
@@ -110,9 +179,14 @@ Game-Engine-for-Teaching-/
     │   ├── ecs/
     │   │   └── ECS.hpp         # Full ECS: ComponentPool, World, SystemBase (2 000 lines)
     │   ├── input/
-    │   │   └── InputSystem.hpp/.cpp  # ncurses keyboard polling
+    │   │   └── InputSystem.hpp/.cpp  # ncurses keyboard polling (Linux/macOS)
+    │   ├── platform/
+    │   │   └── win32/
+    │   │       └── Win32Window.hpp/.cpp  # Win32 window, message pump, QPC timer
     │   ├── rendering/
-    │   │   └── Renderer.hpp/.cpp     # ncurses ASCII renderer
+    │   │   ├── Renderer.hpp/.cpp         # ncurses ASCII renderer (Linux/macOS)
+    │   │   └── vulkan/
+    │   │       └── VulkanRenderer.hpp/.cpp  # Vulkan bootstrap (Windows)
     │   └── scripting/
     │       └── LuaEngine.hpp/.cpp    # Lua 5.4 embedding + C++ bindings
     └── game/
