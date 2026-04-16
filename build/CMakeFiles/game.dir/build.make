@@ -100,10 +100,24 @@ CMakeFiles/game.dir/src/engine/core/Logger.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/core/Logger.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/Logger.cpp -o CMakeFiles/game.dir/src/engine/core/Logger.cpp.s
 
+CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp
+CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o -MF CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o.d -o CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp
+
+CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp > CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.i
+
+CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp -o CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s
+
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/rendering/Renderer.cpp
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o -MF CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o.d -o CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/rendering/Renderer.cpp
 
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.i: cmake_force
@@ -117,7 +131,7 @@ CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.s: cmake_force
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/input/InputSystem.cpp
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o -MF CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o.d -o CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/input/InputSystem.cpp
 
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.i: cmake_force
@@ -127,20 +141,6 @@ CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.i: cmake_force
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/input/InputSystem.cpp -o CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.s
-
-CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o: CMakeFiles/game.dir/flags.make
-CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp
-CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o -MF CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o.d -o CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp
-
-CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp > CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.i
-
-CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp -o CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s
 
 CMakeFiles/game.dir/src/game/world/TileMap.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/world/TileMap.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/TileMap.cpp
@@ -314,9 +314,9 @@ CMakeFiles/game.dir/src/game/Game.cpp.s: cmake_force
 game_OBJECTS = \
 "CMakeFiles/game.dir/src/main.cpp.o" \
 "CMakeFiles/game.dir/src/engine/core/Logger.cpp.o" \
+"CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o" \
 "CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o" \
 "CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o" \
-"CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o" \
 "CMakeFiles/game.dir/src/game/world/TileMap.cpp.o" \
 "CMakeFiles/game.dir/src/game/world/Zone.cpp.o" \
 "CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o" \
@@ -335,9 +335,9 @@ game_EXTERNAL_OBJECTS =
 
 game: CMakeFiles/game.dir/src/main.cpp.o
 game: CMakeFiles/game.dir/src/engine/core/Logger.cpp.o
+game: CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o
 game: CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o
 game: CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o
-game: CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o
 game: CMakeFiles/game.dir/src/game/world/TileMap.cpp.o
 game: CMakeFiles/game.dir/src/game/world/Zone.cpp.o
 game: CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o

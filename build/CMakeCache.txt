@@ -216,6 +216,12 @@ CURSES_INCLUDE_PATH:PATH=/usr/include
 //Path to a library.
 CURSES_NCURSES_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libncurses.so
 
+//Build the ncurses terminal renderer target
+ENGINE_ENABLE_TERMINAL:BOOL=ON
+
+//Build the Vulkan engine_sandbox target
+ENGINE_ENABLE_VULKAN:BOOL=OFF
+
 //Value Computed by CMake
 EducationalGameEngine_BINARY_DIR:STATIC=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build
 

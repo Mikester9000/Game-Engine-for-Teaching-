@@ -1731,6 +1731,7 @@ CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: /home/runner/work/Game-En
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/Logger.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/Types.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ecs/ECS.hpp \
+  /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/GameData.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/TileMap.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/CampSystem.hpp \
@@ -1918,8 +1919,14 @@ CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: /home/runner/work/Game-En
   /usr/include/features-time64.h \
   /usr/include/features.h \
   /usr/include/libintl.h \
+  /usr/include/limits.h \
   /usr/include/linux/errno.h \
+  /usr/include/linux/limits.h \
   /usr/include/locale.h \
+  /usr/include/lua5.4/lauxlib.h \
+  /usr/include/lua5.4/lua.h \
+  /usr/include/lua5.4/luaconf.h \
+  /usr/include/lua5.4/lualib.h \
   /usr/include/math.h \
   /usr/include/pthread.h \
   /usr/include/sched.h \
@@ -1945,12 +1952,15 @@ CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: /home/runner/work/Game-En
   /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
   /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
   /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+  /usr/include/x86_64-linux-gnu/bits/local_lim.h \
   /usr/include/x86_64-linux-gnu/bits/locale.h \
   /usr/include/x86_64-linux-gnu/bits/long-double.h \
   /usr/include/x86_64-linux-gnu/bits/math-vector.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+  /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
   /usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
@@ -1996,11 +2006,13 @@ CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: /home/runner/work/Game-En
   /usr/include/x86_64-linux-gnu/bits/types/wint_t.h \
   /usr/include/x86_64-linux-gnu/bits/typesizes.h \
   /usr/include/x86_64-linux-gnu/bits/uintn-identity.h \
+  /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
   /usr/include/x86_64-linux-gnu/bits/waitflags.h \
   /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
   /usr/include/x86_64-linux-gnu/bits/wchar.h \
   /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
   /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+  /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
   /usr/include/x86_64-linux-gnu/c++/13/bits/atomic_word.h \
   /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
   /usr/include/x86_64-linux-gnu/c++/13/bits/c++allocator.h \
@@ -2018,19 +2030,23 @@ CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: /home/runner/work/Game-En
   /usr/include/x86_64-linux-gnu/c++/13/bits/time_members.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+  /usr/include/x86_64-linux-gnu/lua5.4-deb-multiarch.h \
   /usr/include/x86_64-linux-gnu/sys/cdefs.h \
   /usr/include/x86_64-linux-gnu/sys/select.h \
   /usr/include/x86_64-linux-gnu/sys/single_threaded.h \
   /usr/include/x86_64-linux-gnu/sys/types.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
-  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h
 
 CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/CombatSystem.cpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/EventBus.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/Logger.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/Types.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ecs/ECS.hpp \
+  /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/GameData.hpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/CombatSystem.hpp \
   /usr/include/alloca.h \
@@ -2222,8 +2238,14 @@ CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: /home/runner/work/Game-
   /usr/include/features-time64.h \
   /usr/include/features.h \
   /usr/include/libintl.h \
+  /usr/include/limits.h \
   /usr/include/linux/errno.h \
+  /usr/include/linux/limits.h \
   /usr/include/locale.h \
+  /usr/include/lua5.4/lauxlib.h \
+  /usr/include/lua5.4/lua.h \
+  /usr/include/lua5.4/luaconf.h \
+  /usr/include/lua5.4/lualib.h \
   /usr/include/math.h \
   /usr/include/pthread.h \
   /usr/include/sched.h \
@@ -2249,12 +2271,15 @@ CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: /home/runner/work/Game-
   /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
   /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
   /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+  /usr/include/x86_64-linux-gnu/bits/local_lim.h \
   /usr/include/x86_64-linux-gnu/bits/locale.h \
   /usr/include/x86_64-linux-gnu/bits/long-double.h \
   /usr/include/x86_64-linux-gnu/bits/math-vector.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
   /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+  /usr/include/x86_64-linux-gnu/bits/posix1_lim.h \
+  /usr/include/x86_64-linux-gnu/bits/posix2_lim.h \
   /usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes-arch.h \
   /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h \
@@ -2300,11 +2325,13 @@ CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: /home/runner/work/Game-
   /usr/include/x86_64-linux-gnu/bits/types/wint_t.h \
   /usr/include/x86_64-linux-gnu/bits/typesizes.h \
   /usr/include/x86_64-linux-gnu/bits/uintn-identity.h \
+  /usr/include/x86_64-linux-gnu/bits/uio_lim.h \
   /usr/include/x86_64-linux-gnu/bits/waitflags.h \
   /usr/include/x86_64-linux-gnu/bits/waitstatus.h \
   /usr/include/x86_64-linux-gnu/bits/wchar.h \
   /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
   /usr/include/x86_64-linux-gnu/bits/wordsize.h \
+  /usr/include/x86_64-linux-gnu/bits/xopen_lim.h \
   /usr/include/x86_64-linux-gnu/c++/13/bits/atomic_word.h \
   /usr/include/x86_64-linux-gnu/c++/13/bits/basic_file.h \
   /usr/include/x86_64-linux-gnu/c++/13/bits/c++allocator.h \
@@ -2323,13 +2350,16 @@ CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: /home/runner/work/Game-
   /usr/include/x86_64-linux-gnu/c++/13/bits/time_members.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
   /usr/include/x86_64-linux-gnu/gnu/stubs.h \
+  /usr/include/x86_64-linux-gnu/lua5.4-deb-multiarch.h \
   /usr/include/x86_64-linux-gnu/sys/cdefs.h \
   /usr/include/x86_64-linux-gnu/sys/select.h \
   /usr/include/x86_64-linux-gnu/sys/single_threaded.h \
   /usr/include/x86_64-linux-gnu/sys/types.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stdarg.h \
   /usr/lib/gcc/x86_64-linux-gnu/13/include/stddef.h \
-  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/stdint.h \
+  /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h
 
 CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/InventorySystem.cpp \
   /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/EventBus.hpp \
