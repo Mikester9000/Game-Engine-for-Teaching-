@@ -7,8 +7,9 @@ build/
 __pycache__/
 *.pyc
 
-# Monorepo: generated cook output
-samples/*/Cooked/
+# Monorepo: generated cook output (exclude .gitkeep placeholders)
+samples/*/Cooked/*
+!samples/*/Cooked/.gitkeep
 samples/*/Saved/Logs/
 
 # CMake presets build directory
