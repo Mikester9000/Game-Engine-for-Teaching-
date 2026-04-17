@@ -322,20 +322,24 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-| # | Subsystem | Runtime | Tool | Tests |
-|---|---|---|---|---|
-| 1 | Open-world streaming | ⬜ | 🔨 | ⬜ |
-| 2 | Party AI | 🔨 | ⬜ | ⬜ |
-| 3 | Action combat | ✅ | ⬜ | ⬜ |
-| 4 | Quests & objectives | ✅ | ⬜ | ⬜ |
-| 5 | Cinematics | ⬜ | ⬜ | ⬜ |
-| 6 | Vehicles | 🔨 | ⬜ | ⬜ |
-| 7 | Weather & time-of-day | ✅ | ⬜ | ⬜ |
-| 8 | Audio pipeline | 🔨 | ✅ | ⬜ |
-| 9 | Animation pipeline | ⬜ | ⬜ | ⬜ |
-| 10 | Physics | ⬜ | ⬜ | ⬜ |
-| 11 | UI | 🔨 | ⬜ | ⬜ |
-| 12 | Save system | ⬜ | ⬜ | ⬜ |
-| 13 | Build / release pipeline | 🔨 | ✅ | ⬜ |
+> **Last updated: 2026-04-17 — after M1 (triangle) completion.**
+> Update each cell as subsystem code is committed and tests pass.
+> The project is complete when every cell shows ✅.
 
-✅ exists · 🔨 in progress · ⬜ not yet started
+| # | Subsystem | Runtime | Tool | Tests | Notes |
+|---|---|---|---|---|---|
+| 1 | Open-world streaming | ⬜ | 🔨 | ⬜ | `Zone`/`TileMap` exist; streaming manager not started |
+| 2 | Party AI | 🔨 | ⬜ | ⬜ | FSM + A* done (terminal); BT + formation ⬜ |
+| 3 | Action combat | 🔨 | ⬜ | ⬜ | ATB/warp-strike done (terminal); physics hit-detection ⬜ |
+| 4 | Quests & objectives | 🔨 | ⬜ | ⬜ | QuestSystem done (terminal); dialogue system ⬜ |
+| 5 | Cinematics | ⬜ | ⬜ | ⬜ | No `src/engine/cinematics/` |
+| 6 | Vehicles | ⬜ | ⬜ | ⬜ | State enum only; no physics/road/camera |
+| 7 | Weather & time-of-day | 🔨 | ⬜ | ⬜ | WeatherSystem done (terminal); sky renderer ⬜ |
+| 8 | Audio pipeline | ⬜ | ✅ | 🔨 | Python tool + 32 tests ✅; XAudio2 C++ runtime ⬜ |
+| 9 | Animation pipeline | ⬜ | ✅ | 🔨 | Python tool + 11 tests ✅; C++ runtime ⬜ |
+| 10 | Physics | ⬜ | ⬜ | ⬜ | No `src/engine/physics/`; Jolt not integrated |
+| 11 | UI | 🔨 | ⬜ | ⬜ | ncurses terminal UI ✅; Vulkan HUD ⬜ |
+| 12 | Save system | ⬜ | ⬜ | ⬜ | `SaveGame()`/`LoadGame()` declared; no `src/engine/save/` |
+| 13 | Build / release pipeline | 🔨 | ✅ | ⬜ | Python tools + validate CI ✅; `cook.exe`, `pak.exe`, contract tests ⬜ |
+
+✅ complete · 🔨 in progress / partial · ⬜ not yet started

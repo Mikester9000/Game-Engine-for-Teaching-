@@ -168,17 +168,31 @@ Every milestone produces an **executable or headless-validation pass** before
 the next milestone starts.  This is non-negotiable.  See
 `docs/PROJECT_MILESTONES.md` for the detailed definition of each milestone.
 
-| Milestone | Name | "Done" means |
-|---|---|---|
-| M0 | **Vulkan sandbox** | `engine_sandbox.exe` opens a window; Vulkan clears screen; CI builds and passes |
-| M1 | **Triangle** | Vertex buffer, pipeline, shaders; `engine_sandbox` renders a white triangle |
-| M2 | **AssetDB + Cooker** | `cook.exe --project sample/` runs; `assetdb.json` produced; headless load validates |
-| M3 | **Hello Texture + Audio** | Textured quad renders; cooked audio clip plays via XAudio2 |
-| M4 | **Animation runtime** | Cooked glTF skeleton animates on screen; blend tree evaluates |
-| M5 | **Physics integration** | Jolt physics; character capsule falls; raycast returns hit |
-| M6 | **Editor shell** | `editor.exe` opens; scene hierarchy + inspector; save/load scene |
-| M7 | **World streaming** | Zone tiles stream in/out; async loader tested headlessly |
-| M8 | **Gameplay integration** | All existing gameplay systems (combat, quests, AI, camp) wired into Vulkan runtime |
+> **Current position:** M0 ✅ and M1 ✅ are complete.  **M2 is the active milestone.**
+
+| Milestone | Name | Status | "Done" means |
+|---|---|---|---|
+| M0 | **Vulkan sandbox** | ✅ Complete | `engine_sandbox.exe` opens a window; Vulkan clears screen; `build-linux.yml` CI passes |
+| M1 | **Triangle** | ✅ Complete | `VulkanPipeline` + `VulkanMesh`; `shaders/triangle.vert/.frag` compiled to SPIR-V; coloured triangle draws; `--headless --scene triangle` exits 0 |
+| M2 | **AssetDB + Cooker** | ⬜ Next | `src/tools/cook/cook_main.cpp` (`cook.exe`); `src/engine/assets/asset_db.hpp/.cpp`; `engine_sandbox --headless --validate-project` exits 0; `contract-tests.yml` CI; `build-windows.yml` CI |
+| M3 | **Hello Texture + Audio** | ⬜ | Vulkan texture (DDS/BC7); descriptor sets; `src/engine/audio/xaudio2_backend.hpp/.cpp`; textured quad renders; cooked WAV plays |
+| M4 | **Animation runtime** | ⬜ | `src/engine/animation/skeleton.hpp/.cpp` + `anim_clip` + `blend_tree` + `gpu_skinning`; animated character on screen |
+| M5 | **Physics integration** | ⬜ | Jolt Physics via vcpkg; `src/engine/physics/`; character capsule falls; raycast returns hit; headless physics tests pass |
+| M6 | **Editor improvements** | ⬜ | Entity inspector panel; scene ECS serialisation; Play-in-Engine button |
+| M7 | **World streaming** | ⬜ | `src/engine/world/world_streaming.hpp/.cpp`; async loader; headless streaming tests pass |
+| M8 | **Gameplay integration** | ⬜ | All gameplay systems (combat, AI, quests, camp, weather) wired into Vulkan runtime; Lua hooks fire; 300-frame headless sim passes |
+
+**Post-M8 work (in order):**
+1. `src/engine/ui/` — Vulkan HUD + menu stack + font renderer
+2. `src/engine/save/` — ECS snapshot save/load (15 slots + auto-save)
+3. Full PBR pipeline — IBL, directional shadow map, bloom, tonemapping
+4. Dynamic sky + weather VFX — `sky_renderer.hpp/.cpp`, `weather_fx.hpp/.cpp`
+5. `src/game/systems/dialogue_system.hpp/.cpp` — dialogue tree + NPC conversations
+6. `src/engine/ai/behaviour_tree.hpp/.cpp` — behaviour tree to replace/augment FSM
+7. `src/engine/ai/formation_system.hpp/.cpp` — party formation
+8. Vehicle physics — `src/game/systems/vehicle_system.hpp/.cpp` + `src/engine/physics/vehicle_physics.hpp/.cpp`
+9. `src/engine/cinematics/` — cinematic sequencer + camera rig
+10. `src/tools/pak/pak_main.cpp` — PAK packager for release
 
 ---
 
