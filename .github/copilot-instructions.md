@@ -357,6 +357,282 @@ All data files shared between the editor, tools, and runtime engine MUST:
 
 ---
 
+## ECS Component Reference
+
+All components live in `src/engine/ecs/ECS.hpp`.  Before adding any new system,
+check this table — the component you need may already exist.
+
+| Component | Key fields | Used by |
+|-----------|-----------|---------|
+| `TransformComponent` | `position`, `rotation`, `scale`, `velocity`, `isDirty`, `Forward()`, `Translate()` | Every visible entity |
+| `HealthComponent` | `hp`, `maxHp`, `mp`, `maxMp`, `isDead`, `isDowned`, `regenRate`, `HPFraction()`, `Heal()`, `SpendMP()` | Combat, Camp, Magic |
+| `StatsComponent` | `strength`, `defence`, `magic`, `spirit`, `speed`, `luck`, `critRate`, `fireResist`, `iceResist`, `lightningResist` | Combat damage formula |
+| `NameComponent` | `name`, `internalID`, `title` | UI, Dialogue, Save |
+| `RenderComponent` | `spriteSheet`, `sourceRect`, `tint`, `zOrder`, `isVisible`, `symbol`, `colorPair` (ncurses) | Terminal renderer |
+| `MovementComponent` | `moveSpeed`, `sprintSpeed`, `jumpForce`, `isGrounded`, `facingDir`, `dashCooldown` | Player input, Vehicle |
+| `CombatComponent` | `isInCombat`, `attackCooldown`, `attackRate`, `xpReward`, `gilReward`, `canWarpStrike`, `warpCooldown`, `currentTarget`, `attackElement` | CombatSystem |
+| `InventoryComponent` | `slots[MAX_INV_SLOTS]` (ItemStack), `FindItem()`, `HasItem()` | InventorySystem, Shop |
+| `QuestComponent` | `quests[MAX_QUESTS]` (QuestEntry), `activeCount` | QuestSystem |
+| `DialogueComponent` | `dialogueTreeID`, `interactRange`, `isInteractable`, `currentNodeID`, `portraitAsset` | (DialogueSystem — not built yet) |
+| `AIComponent` | `currentState` (IDLE/PATROL/ALERT/CHASE/ATTACK/FLEE/STUNNED/DEAD), `sightRange`, `hearRange`, `attackRange`, `aggroTarget`, `waypoints`, `isNocturnal` | AISystem |
+| `PartyComponent` | `members[MAX_PARTY_SIZE]`, `leaderID`, `formationID`, `AddMember()`, `RemoveMember()` | Game main loop |
+| `MagicComponent` | `knownSpells`, `equippedSpell`, `isCasting`, `activeElement`, flask quantities | MagicSystem |
+| `EquipmentComponent` | `weaponID`, `offhandID`, `headID`, `bodyID`, `legsID`, `accessory1/2`, `bonusStrength/Defence/Magic/HP/MP` | InventorySystem |
+| `StatusEffectsComponent` | `active[MAX_STATUS]` (ActiveStatusEntry), `bitmask`, `Apply()`, `Remove()`, `Has()` | CombatSystem |
+| `LevelComponent` | `level`, `currentXP`, `pendingXP`, `pendingLevelUp`, `GainXP()`, `ApplyBankedXP()` | CombatSystem, Camp |
+| `CurrencyComponent` | `gil` (uint64_t), `crownTokens`, `SpendGil()`, `EarnGil()` | ShopSystem |
+| `SkillsComponent` | `skills[MAX_SKILLS]` (SkillEntry), `equippedSkills[4]` | CombatSystem |
+| `CampComponent` | `isCamping`, `currentMealID`, `mealDuration`, meal stat bonuses | CampSystem |
+
+### Missing components — must be added to ECS.hpp for new systems
+
+| Component | Needed for | Key fields to add |
+|-----------|-----------|-------------------|
+| `AudioSourceComponent` | Audio system (M3) | `clipID` (string), `is3D` (bool), `volume` (float), `isLooping` (bool), `isPlaying` (bool), `maxDistance` (float) |
+| `AnimatorComponent` | Animation system (M4) | `skeletonID` (string), `currentClipID` (string), `blendTreeID` (string), `playbackSpeed` (float), `currentTime` (float), joint matrix array ptr |
+| `RigidBodyComponent` | Physics system (M5) | `mass` (float), `isStatic` (bool), `useGravity` (bool), `linearDamping` (float), Jolt body ID (opaque handle) |
+| `ColliderComponent` | Physics system (M5) | `shapeType` (enum: sphere/capsule/box/mesh), `radius/halfExtents`, `isTrigger` (bool), physics layer mask |
+| `VehicleComponent` | Vehicle system (post-M8) | `throttle`, `brake`, `steerAngle`, wheel suspension state (4 wheels), `currentSpeed` |
+
+---
+
+## CMake Integration Pattern
+
+When adding a new `.cpp` file to the engine, follow this exact pattern:
+
+**1. For a new engine subsystem (goes into `engine_sandbox`):**
+
+```cmake
+# In CMakeLists.txt — inside the if(ENGINE_ENABLE_VULKAN) block,
+# add your file to SANDBOX_SOURCES:
+set(SANDBOX_SOURCES
+    ...existing files...
+    src/engine/audio/xaudio2_backend.cpp   # ← add here
+    src/engine/audio/audio_system.cpp      # ← add here
+)
+```
+
+**2. For a new gameplay system (goes into the terminal `game` target):**
+
+```cmake
+# In CMakeLists.txt — inside the if(ENGINE_ENABLE_TERMINAL) block,
+# add your file to GAME_SOURCES:
+set(GAME_SOURCES
+    ...existing files...
+    src/game/systems/dialogue_system.cpp   # ← add here
+)
+```
+
+**3. For a new standalone tool (`cook.exe`, `pak.exe`):**
+
+```cmake
+# After the existing if(ENGINE_ENABLE_VULKAN) block, add a new target:
+add_executable(cook
+    src/tools/cook/cook_main.cpp
+    src/engine/core/Logger.cpp
+)
+target_include_directories(cook PRIVATE src/)
+```
+
+**4. For a new shader (GLSL → SPIR-V):**
+
+```cmake
+# In the GLSL_SHADERS list inside if(ENGINE_ENABLE_VULKAN):
+set(GLSL_SHADERS
+    "${SHADER_SOURCE_DIR}/triangle.vert"
+    "${SHADER_SOURCE_DIR}/triangle.frag"
+    "${SHADER_SOURCE_DIR}/textured_quad.vert"   # ← add here
+    "${SHADER_SOURCE_DIR}/textured_quad.frag"   # ← add here
+)
+```
+
+**5. For a new CMake option (e.g. `ENGINE_ENABLE_PHYSICS`):**
+
+```cmake
+# Add near the other option() calls at the top of CMakeLists.txt:
+option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration" OFF)
+if(ENGINE_ENABLE_PHYSICS)
+    find_package(JoltPhysics REQUIRED)  # via vcpkg
+    target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_PHYSICS)
+    target_link_libraries(engine_sandbox PRIVATE JoltPhysics)
+endif()
+```
+
+---
+
+## M2 Bootstrap Guide (Active Milestone)
+
+M2 is the AssetDB + Cooker milestone.  Build in this exact order:
+
+### Step 1 — `src/tools/cook/cook_main.cpp` (the `cook.exe` binary)
+```
+Reads:  samples/vertical_slice_project/AssetRegistry.json
+Writes: samples/vertical_slice_project/Cooked/assetdb.json
+        Cooked/<type>/<id>.<ext>   (copy for now; real conversion later)
+```
+- Parse `AssetRegistry.json` with `nlohmann/json` (add via vcpkg: `nlohmann-json`).
+- For each asset entry: copy source → cooked path, write entry to `assetdb.json`.
+- Exit code 0 on success, non-zero on any failure.
+- Add `cook` target to `CMakeLists.txt` (see CMake pattern above).
+
+### Step 2 — `src/engine/assets/asset_db.hpp/.cpp`
+```cpp
+// Minimal API — load the assetdb.json; resolve cooked path by GUID
+class AssetDB {
+public:
+    bool Load(const std::string& assetDbPath);   // parse assetdb.json
+    std::string GetCookedPath(const std::string& id) const;
+    bool Has(const std::string& id) const;
+private:
+    std::unordered_map<std::string, std::string> m_idToPath;
+};
+```
+
+### Step 3 — `src/engine/assets/asset_loader.hpp/.cpp`
+```cpp
+// Minimal synchronous loader for now; async in M7
+class AssetLoader {
+public:
+    explicit AssetLoader(AssetDB* db);
+    std::vector<uint8_t> LoadRaw(const std::string& id) const;  // reads cooked file bytes
+};
+```
+
+### Step 4 — Wire into `engine_sandbox`
+Add `--validate-project <path>` flag in `src/sandbox/main.cpp`:
+- Construct `AssetDB`, call `Load(path + "/Cooked/assetdb.json")`.
+- Call `AssetLoader::LoadRaw` for each entry; assert no failures.
+- Print `[PASS]` and exit 0.
+
+### Step 5 — `.github/workflows/build-windows.yml`
+```yaml
+name: Build Windows (engine_sandbox)
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.0
+        with:
+          vulkan-query-version: 1.3.250.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+      - name: Configure CMake
+        run: cmake --preset windows-debug
+      - name: Build
+        run: cmake --build --preset windows-debug --target engine_sandbox cook
+      - name: Headless validate
+        run: .\build\windows-debug\Debug\engine_sandbox.exe --headless
+      - name: Cook assets (M2+)
+        run: .\build\windows-debug\Debug\cook.exe --project samples/vertical_slice_project/
+```
+
+### Step 6 — `tests/golden/` directory + `.github/workflows/contract-tests.yml`
+Create `tests/golden/assetdb_expected.json` with the expected output of cooking
+the sample project.  Contract test: run `cook.exe`; diff output against golden.
+
+---
+
+## Lua Hook Reference
+
+The C++ engine calls into Lua scripts at these points (via `LuaEngine::CallFunction`).
+When a new system is added, wire in Lua hooks following the same pattern.
+
+| C++ call site | Lua function called | Arguments | Where called |
+|--------------|--------------------|-----------|----|
+| `CombatSystem::StartCombat()` | `on_combat_start(enemyID)` | `EntityID` | `CombatSystem.cpp` |
+| `CombatSystem::CheckDeaths()` | `on_entity_died(entityID)` | `EntityID` | `CombatSystem.cpp` |
+| `QuestSystem` objective complete | `on_quest_complete(questID)` | `uint32_t` | `QuestSystem.cpp` |
+| `Game::LoadScripts()` | `on_game_start()` | none | `Game.cpp` |
+| `CampSystem::Rest()` | `on_camp_rest()` | none | `CampSystem.cpp` |
+| `Zone::SpawnEnemies()` | `on_zone_loaded(zoneName)` | `string` | `Zone.cpp` |
+
+**Pattern to add a new Lua hook:**
+```cpp
+// In the relevant system .cpp file:
+auto& lua = LuaEngine::Get();
+lua.CallFunction("on_my_new_event", arg1, arg2);  // safe — does nothing if undefined
+```
+
+Lua scripts should define the function as:
+```lua
+function on_my_new_event(arg1, arg2)
+    engine_log("my_new_event fired: " .. tostring(arg1))
+end
+```
+
+---
+
+## vcpkg Setup (Required for M2 + M5)
+
+When the first third-party C++ dependency is needed, add a `vcpkg.json` manifest
+in the repository root.  This makes the dependency reproducible on any Windows
+machine.
+
+```json
+// vcpkg.json — create in repo root before adding any vcpkg dependency
+{
+  "name": "educational-game-engine",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}
+```
+
+Add dependencies as milestones progress:
+- **M2** (cook.exe): `"nlohmann-json"`
+- **M3** (textures): `"directxtex"` (DDS/BC7 compression)
+- **M5** (physics): `"joltphysics"`
+- **M5+** (glTF mesh loading): `"tinygltf"`
+
+Integrate with CMake (add to `CMakeLists.txt`):
+```cmake
+# TEACHING NOTE — vcpkg toolchain file
+# If VCPKG_ROOT is set, the toolchain file automatically finds all
+# vcpkg packages. Users run:
+#   cmake --preset windows-debug -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake
+# Or add to CMakePresets.json userSettings.
+```
+
+---
+
+## Test Directory Structure
+
+The `tests/` directory does not exist yet.  Create it with this layout when M2 lands:
+
+```
+tests/
+├── golden/                    # Golden-file reference outputs for contract tests
+│   ├── assetdb_expected.json  # Expected cook.exe output for sample project
+│   └── README.md
+├── unit/                      # C++ unit tests (one file per system)
+│   ├── test_asset_db.cpp      # Tests for AssetDB::Load, GetCookedPath
+│   ├── test_combat.cpp        # Tests for CalculateDamage, status effects
+│   └── CMakeLists.txt
+└── CMakeLists.txt             # Adds 'tests' as a CTest subdirectory
+```
+
+Add to root `CMakeLists.txt`:
+```cmake
+enable_testing()
+add_subdirectory(tests)
+```
+
+Add to `tests/CMakeLists.txt`:
+```cmake
+add_executable(unit_tests
+    unit/test_asset_db.cpp
+    unit/test_combat.cpp
+)
+target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_test(NAME UnitTests COMMAND unit_tests)
+```
+
+---
+
 ## Pipeline Rules
 
 ```
@@ -410,13 +686,19 @@ python cook_assets.py
 
 ## Milestone Ladder
 
-| Milestone | Goal |
-|-----------|------|
-| M1 (current) | Monorepo layout + shared schemas + Qt editor scaffold |
-| M2 | Import/cook pipeline: Texture + Mesh + Audio + Anim |
-| M3 | Editor "Play In Engine" — launch engine with current scene |
-| M4 | Streaming world + navmesh + combat controller demo |
-| M5 | Vertical slice: 1 town chunk + 1 dungeon chunk |
+See the **"Next Milestone — What to Work On Now"** table in the "Current Development Status" section above for the authoritative, up-to-date roadmap.  The table below is a condensed reminder only.
+
+| Milestone | Goal | Status |
+|-----------|------|--------|
+| M0 | Vulkan window + clear screen | ✅ |
+| M1 | Colored triangle (SPIR-V pipeline) | ✅ |
+| M2 | AssetDB + `cook.exe` + contract CI | ⬜ **active** |
+| M3 | Vulkan texture + XAudio2 | ⬜ |
+| M4 | Animation runtime (C++) | ⬜ |
+| M5 | Jolt Physics | ⬜ |
+| M6 | Editor inspector + Play-in-Engine | ⬜ |
+| M7 | World streaming | ⬜ |
+| M8 | Wire all gameplay into Vulkan runtime | ⬜ |
 
 ---
 
