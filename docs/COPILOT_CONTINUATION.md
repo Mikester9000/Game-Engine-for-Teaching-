@@ -19,9 +19,44 @@ clone FF15 content; it is to implement the *same categories of technology* so a
 student can understand how every piece of a modern engine works.
 
 **Non-goals:**
-- Shipping a content-complete game (teaching > content).
+- Shipping a *content*-complete game (hours of story/world content is not the goal).
 - Micro-optimising runtime performance before the architecture is teachable.
 - Adding engine features that have no corresponding lesson or acceptance test.
+
+**What "non-content-complete" does NOT mean:**
+Each technology category (visuals, physics, sound, gameplay) must be implemented
+at the same *class* of solution FF15 uses — real PBR shading, real rigid-body
+physics, real positional audio, real action combat — not a stub or toy version.
+A teaching engine that uses placeholder geometry and fake physics teaches nothing.
+
+---
+
+### 1.1 Definition of Done — Project Completion Criteria
+
+The project is considered **complete** when all of the following are true:
+
+1. **All 13 subsystems** in `docs/FF15_REQUIREMENTS_BLUEPRINT.md` show ✅ in
+   the Runtime, Tool, and Tests columns of the Completion Matrix.
+
+2. **FF15-comparable quality bar is met** across every domain:
+
+   | Domain | Minimum "complete" quality |
+   |--------|---------------------------|
+   | **Visuals** | PBR rendering (IBL + directional shadows + bloom + tonemapping); GPU-skinned skeletal meshes; dynamic sky (procedural time-of-day + weather FX); Vulkan ≥ 1.3 on Windows |
+   | **Physics** | Rigid-body simulation (Jolt Physics); character capsule with step-up / slopes; vehicle wheel-ray physics; physics-based hit volumes for combat |
+   | **Sound** | XAudio2 backend; positional 3D audio with distance attenuation; layered music system (battle / exploration / idle blend); event-driven SFX triggers |
+   | **Gameplay** | Real-time action combat (warp-strike, link-strike, combo chains, ATB); open-world zone streaming without loading screens; party AI (behaviour tree + formation); quest + dialogue system; save/load (15 slots + auto-save at camp) |
+   | **Tools** | Asset cooker (`cook.exe`); texture / mesh / audio / animation import pipeline; Qt 6 scene editor with Play-in-Engine; Python authoring tools for audio and animation |
+   | **Teaching** | Every non-trivial pattern has a `// TEACHING NOTE` block; docs in `docs/`; `samples/vertical_slice_project/` demonstrates each subsystem end-to-end |
+
+3. **A student can fully teach themselves** modern game engine development by
+   reading only this repository's source code and running its samples.  If any
+   subsystem requires consulting external documentation to understand *why* a
+   design decision was made, it is not done.
+
+4. **All CI gates are green** — headless validation passes for every subsystem,
+   golden-file contract tests pass, and `samples/vertical_slice_project/` cooks
+   and runs without errors.
 
 ---
 

@@ -174,8 +174,44 @@ python cook_assets.py
 
 ---
 
+## Definition of Done — Project Completion Criteria
+
+The project is considered **complete** when every subsystem listed in
+`docs/FF15_REQUIREMENTS_BLUEPRINT.md` reaches ✅ in the Runtime, Tool, and
+Tests columns of the Completion Matrix **and** satisfies the quality bar below.
+
+A student must be able to:
+1. **Run** a demonstration at FF15-comparable fidelity across visuals, physics,
+   sound, and gameplay — the engine and tools can *produce* a game at that level.
+2. **Read** every subsystem's source code and understand *why* each design
+   decision was made (all code annotated with `// TEACHING NOTE` blocks).
+3. **Extend** any subsystem by following the established patterns without
+   breaking other systems.
+
+### Quality bar per domain
+
+| Domain | Minimum "complete" quality |
+|--------|---------------------------|
+| **Visuals** | PBR rendering (IBL + directional shadows + bloom + tonemapping); GPU-skinned skeletal meshes; dynamic sky (procedural time-of-day + weather FX); Vulkan ≥ 1.3 pipeline on Windows |
+| **Physics** | Rigid-body simulation (Jolt Physics); character capsule controller with step-up and slopes; vehicle wheel-ray physics; physics-based hit volumes for combat |
+| **Sound** | XAudio2 backend; positional 3D audio with distance attenuation; layered music system (battle / exploration / idle blend); event-driven SFX triggers |
+| **Gameplay** | Real-time action combat (warp-strike, link-strike, combo chains, ATB); open-world zone streaming without loading screens; party AI (behaviour tree + formation); quest system with dialogue; save/load (15 slots + auto-save at camp) |
+| **Tools** | Asset cooker (`cook.exe`); texture / mesh / audio / animation import pipeline; Qt 6 scene editor with Play-in-Engine; Python authoring tools for audio and animation |
+| **Teaching** | Every non-trivial pattern has a `// TEACHING NOTE` block; subsystem docs in `docs/`; `samples/vertical_slice_project/` demonstrates each subsystem end-to-end |
+
+> **Note on content vs. quality:** The goal is not a content-complete copy of
+> FF15.  It *is* a toolchain and engine where each technology category (visuals,
+> physics, sound, gameplay) is implemented at the same *class* of solution FF15
+> uses — real PBR, real physics, real positional audio, real action combat — so
+> that a student studying this code is studying the same patterns a professional
+> AAA studio uses.  Stubs or toy implementations do not satisfy this bar.
+
+---
+
 ## North Star
 
 > Build a complete, teachable FFXV-style open-world action RPG toolchain.
 > Every commit must move the vertical slice forward.
 > Prefer simple-but-real over fancy-but-incomplete.
+> The project is finished when all 13 subsystems ship at FF15-comparable quality
+> and every one can be fully taught from source code alone.

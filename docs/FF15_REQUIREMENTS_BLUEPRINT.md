@@ -11,6 +11,35 @@
 
 ---
 
+## Project Completion Definition
+
+The project is considered **finished** when:
+
+- Every subsystem in the **Subsystem Completion Matrix** (bottom of this file)
+  shows ✅ in all three columns (Runtime, Tool, Tests).
+- Each subsystem meets the **FF15-comparable quality bar**:
+  - **Visuals** — PBR (IBL + shadows + bloom + tonemap), GPU-skinned characters,
+    dynamic sky with time-of-day and weather.
+  - **Physics** — Jolt-based rigid bodies, character capsule controller (step-up,
+    slopes), vehicle wheel-ray physics, physics hit volumes for combat.
+  - **Sound** — XAudio2 positional 3D audio, layered music (battle/explore/idle),
+    event-driven SFX triggers.
+  - **Gameplay** — Real-time action combat (warp-strike, link-strike, ATB),
+    open-world streaming, party AI with behaviour tree + formation, quest +
+    dialogue, save/load with 15 slots and auto-save.
+  - **Tools** — Full cook pipeline (texture, mesh, audio, animation), Qt 6
+    editor with Play-in-Engine, Python audio + animation authoring tools.
+  - **Teaching** — Every non-trivial pattern has a `// TEACHING NOTE` block and
+    is demonstrated in `samples/vertical_slice_project/`.
+- A student can study this codebase *alone* to understand every technology
+  category used in modern AAA game development.
+
+> Quality note: "teaching quality" means each subsystem is a *real*
+> implementation of the concept (real PBR, real physics, real positional audio)
+> — not a placeholder or toy version.  Stubs do not satisfy the completion bar.
+
+---
+
 ## How to read this document
 
 Each subsystem section follows this structure:
