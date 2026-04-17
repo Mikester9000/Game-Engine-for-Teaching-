@@ -1,0 +1,144 @@
+name: Build Linux (Terminal Game)
+
+# ============================================================================
+# TEACHING NOTE — CI Workflow Purpose
+# ============================================================================
+# This workflow validates the Linux terminal game target on every push and
+# pull request.  It ensures:
+#
+#   1. The CMake configure step succeeds.
+#   2. The C++ code compiles without errors.
+#   3. The Python authoring tool test suites (audio + animation) pass.
+#
+# The Vulkan engine_sandbox target is Windows-only (VkSurfaceKHR requires a
+# Win32 HWND).  Its build is validated in the build-windows workflow.
+#
+# ============================================================================
+# TEACHING NOTE — GitHub Actions Triggers
+# ============================================================================
+# push / pull_request with paths filters mean this workflow only runs when
+# relevant files change.  CI time is precious — don't run the full build for
+# a docs-only change.
+# ============================================================================
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'tools/**'
+      - 'shared/**'
+      - '.github/workflows/build-linux.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'tools/**'
+      - 'shared/**'
+      - '.github/workflows/build-linux.yml'
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job 1: Build the terminal game target
+  # --------------------------------------------------------------------------
+  build-terminal-game:
+    name: Build terminal game (Ubuntu)
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — actions/checkout
+      # Clones the repository into the runner's workspace so subsequent steps
+      # can access the source files.  fetch-depth: 0 gives the full git history
+      # (needed if any step references git tags or the commit count).
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Installing Dependencies
+      # The terminal game requires:
+      #   cmake    — build system generator
+      #   build-essential — GCC + Make
+      #   libncurses5-dev — ncurses terminal renderer
+      #   liblua5.4-dev   — Lua 5.4 scripting engine
+      # -----------------------------------------------------------------------
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            build-essential \
+            libncurses5-dev \
+            libncursesw5-dev \
+            liblua5.4-dev
+
+      # -----------------------------------------------------------------------
+      # Configure the CMake build.
+      # ENGINE_ENABLE_TERMINAL=ON  — build the ncurses terminal game target.
+      # ENGINE_ENABLE_VULKAN=OFF   — Vulkan requires a Win32 surface, not on Linux.
+      # -----------------------------------------------------------------------
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DENGINE_ENABLE_TERMINAL=ON \
+            -DENGINE_ENABLE_VULKAN=OFF
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Parallel Build (-j)
+      # $(nproc) returns the number of logical CPU cores on the runner.
+      # Passing -j$(nproc) to make enables parallel compilation, which is
+      # significantly faster than single-threaded compilation on multi-core CI
+      # runners.
+      # -----------------------------------------------------------------------
+      - name: Build
+        run: cmake --build build --config Debug -- -j$(nproc)
+
+      # -----------------------------------------------------------------------
+      # Verify the game binary was produced.
+      # -----------------------------------------------------------------------
+      - name: Verify binary exists
+        run: test -f build/game
+
+  # --------------------------------------------------------------------------
+  # Job 2: Python tool tests (audio_authoring + anim_authoring)
+  # --------------------------------------------------------------------------
+  python-tool-tests:
+    name: Python authoring tool tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Python Setup
+      # We pin to Python 3.11 for reproducibility.  The tools require 3.9+.
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install audio_authoring tool + test dependencies
+        run: |
+          cd tools/audio_authoring
+          pip install -e ".[dev]"
+
+      - name: Run audio_authoring tests
+        run: |
+          cd tools/audio_authoring
+          python -m pytest tests/ -q --tb=short
+
+      - name: Install anim_authoring tool + test dependencies
+        run: |
+          cd tools/anim_authoring
+          pip install -e ".[dev]"
+
+      - name: Run anim_authoring tests
+        run: |
+          cd tools/anim_authoring
+          python -m pytest tests/ -q --tb=short

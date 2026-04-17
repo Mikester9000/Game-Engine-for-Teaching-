@@ -28,6 +28,8 @@
  */
 
 #include "engine/rendering/vulkan/VulkanRenderer.hpp"
+#include "engine/rendering/vulkan/vulkan_pipeline.hpp"
+#include "engine/rendering/vulkan/vulkan_mesh.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -785,49 +787,11 @@ void VulkanRenderer::DrawFrame(float clearR, float clearG, float clearB)
     vkResetCommandBuffer(m_commandBuffers[imageIndex], 0);
 
     // -----------------------------------------------------------------------
-    // Step 4 — Record: begin render pass → end render pass.
+    // Step 4 — Record: begin render pass → (optional draw) → end render pass.
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — Command Buffer Recording
-    // vkBeginCommandBuffer puts the buffer into the "recording" state.
-    // Between Begin and End we record GPU commands.  The GPU does NOT execute
-    // them yet — execution happens after vkQueueSubmit.
-    // -----------------------------------------------------------------------
-    VkCommandBufferBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    // VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT would be a hint that we
-    // resubmit this buffer only once.  We omit it because we re-record every frame.
-
-    vkBeginCommandBuffer(m_commandBuffers[imageIndex], &beginInfo);
-
-    // -----------------------------------------------------------------------
-    // TEACHING NOTE — VkClearValue
-    // LOAD_OP_CLEAR uses this value to fill the attachment.  The components
-    // map to (R, G, B, A) in the range [0, 1].
-    // -----------------------------------------------------------------------
-    VkClearValue clearValue = {};
-    clearValue.color.float32[0] = clearR;
-    clearValue.color.float32[1] = clearG;
-    clearValue.color.float32[2] = clearB;
-    clearValue.color.float32[3] = 1.0f;  // Alpha = fully opaque
-
-    VkRenderPassBeginInfo rpBeginInfo = {};
-    rpBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    rpBeginInfo.renderPass        = m_renderPass;
-    rpBeginInfo.framebuffer       = m_framebuffers[imageIndex];
-    rpBeginInfo.renderArea.offset = {0, 0};
-    rpBeginInfo.renderArea.extent = m_swapchainExtent;
-    rpBeginInfo.clearValueCount   = 1;
-    rpBeginInfo.pClearValues      = &clearValue;
-
-    // VK_SUBPASS_CONTENTS_INLINE = commands are recorded in this primary buffer
-    // (as opposed to a secondary command buffer).
-    vkCmdBeginRenderPass(m_commandBuffers[imageIndex], &rpBeginInfo,
-                         VK_SUBPASS_CONTENTS_INLINE);
-
-    // [Future] Draw calls (vkCmdBindPipeline, vkCmdDraw, etc.) go here.
-
-    vkCmdEndRenderPass(m_commandBuffers[imageIndex]);
-    vkEndCommandBuffer(m_commandBuffers[imageIndex]);
+    RecordCommandBuffer(m_commandBuffers[imageIndex],
+                        m_framebuffers[imageIndex],
+                        clearR, clearG, clearB);
 
     // -----------------------------------------------------------------------
     // Step 5 — Submit to the graphics queue.
@@ -889,6 +853,183 @@ void VulkanRenderer::DrawFrame(float clearR, float clearG, float clearB)
 
     // Advance to the next frame slot (wraps around at kMaxFramesInFlight).
     m_currentFrame = (m_currentFrame + 1) % kMaxFramesInFlight;
+}
+
+// ===========================================================================
+// RecordCommandBuffer (private helper)
+// ===========================================================================
+// TEACHING NOTE — Extracted Recording
+// We moved command buffer recording into its own helper so:
+//   1. DrawFrame() is shorter and easier to follow.
+//   2. RecordHeadlessFrame() can validate recording without a full frame.
+//
+// The function records:
+//   • vkBeginCommandBuffer
+//   • vkCmdBeginRenderPass (LOAD_OP_CLEAR provides the animated background)
+//   • vkCmdSetViewport / vkCmdSetScissor   (dynamic state, set each frame)
+//   • vkCmdBindPipeline + vkCmdBindVertexBuffers + vkCmdDraw (if scene loaded)
+//   • vkCmdEndRenderPass
+//   • vkEndCommandBuffer
+// ===========================================================================
+void VulkanRenderer::RecordCommandBuffer(VkCommandBuffer cmdBuf,
+                                         VkFramebuffer   framebuffer,
+                                         float           clearR,
+                                         float           clearG,
+                                         float           clearB) const
+{
+    // Begin recording.
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    vkBeginCommandBuffer(cmdBuf, &beginInfo);
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — VkClearValue
+    // LOAD_OP_CLEAR fills the attachment with this colour before any draw
+    // commands run.  The animated RGB values produce the rainbow background.
+    // -----------------------------------------------------------------------
+    VkClearValue clearValue = {};
+    clearValue.color.float32[0] = clearR;
+    clearValue.color.float32[1] = clearG;
+    clearValue.color.float32[2] = clearB;
+    clearValue.color.float32[3] = 1.0f;  // alpha = fully opaque
+
+    VkRenderPassBeginInfo rpBeginInfo = {};
+    rpBeginInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    rpBeginInfo.renderPass        = m_renderPass;
+    rpBeginInfo.framebuffer       = framebuffer;
+    rpBeginInfo.renderArea.offset = {0, 0};
+    rpBeginInfo.renderArea.extent = m_swapchainExtent;
+    rpBeginInfo.clearValueCount   = 1;
+    rpBeginInfo.pClearValues      = &clearValue;
+
+    vkCmdBeginRenderPass(cmdBuf, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    // -----------------------------------------------------------------------
+    // If a scene is loaded, draw it.
+    // -----------------------------------------------------------------------
+    if (m_pipeline && m_pipeline->IsValid() && m_triangleMesh)
+    {
+        // TEACHING NOTE — Dynamic Viewport and Scissor
+        // Because we declared these as dynamic pipeline states, we set them
+        // here in the command buffer instead of baking them into the PSO.
+        // This means window resizes only need to update these commands, not
+        // recreate the whole pipeline.
+        VkViewport viewport = {};
+        viewport.x        = 0.0f;
+        viewport.y        = 0.0f;
+        viewport.width    = static_cast<float>(m_swapchainExtent.width);
+        viewport.height   = static_cast<float>(m_swapchainExtent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
+
+        VkRect2D scissor = {};
+        scissor.offset = {0, 0};
+        scissor.extent = m_swapchainExtent;
+        vkCmdSetScissor(cmdBuf, 0, 1, &scissor);
+
+        // Bind the graphics pipeline (PSO), then the mesh, then draw.
+        m_pipeline->Bind(cmdBuf);
+        m_triangleMesh->Draw(cmdBuf);
+    }
+
+    vkCmdEndRenderPass(cmdBuf);
+    vkEndCommandBuffer(cmdBuf);
+}
+
+// ===========================================================================
+// LoadScene — public
+// ===========================================================================
+// TEACHING NOTE — Scene Dispatch Pattern
+// This thin dispatcher will grow as milestones add more scene types.
+// Each scene name maps to a private loader that creates the appropriate
+// pipeline, meshes, and resources for that scene.
+// ===========================================================================
+bool VulkanRenderer::LoadScene(const std::string& sceneName,
+                               const std::string& shaderDir)
+{
+    if (sceneName == "triangle")
+        return LoadTriangleScene(shaderDir);
+
+    std::cerr << "[VulkanRenderer] Unknown scene: " << sceneName << "\n";
+    return false;
+}
+
+// ===========================================================================
+// LoadTriangleScene — private
+// ===========================================================================
+bool VulkanRenderer::LoadTriangleScene(const std::string& shaderDir)
+{
+    // -----------------------------------------------------------------------
+    // Create the graphics pipeline.
+    // -----------------------------------------------------------------------
+    m_pipeline = std::make_unique<VulkanPipeline>();
+    if (!m_pipeline->Create(m_device, m_renderPass,
+                             shaderDir + "triangle.vert.spv",
+                             shaderDir + "triangle.frag.spv"))
+    {
+        std::cerr << "[VulkanRenderer] Triangle pipeline creation failed.\n";
+        m_pipeline.reset();
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Upload the triangle vertex data.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — NDC Coordinates for a Visible Triangle
+    // The triangle is positioned in Vulkan NDC space:
+    //   top vertex    (0,  -0.5) = centre, near top   → red
+    //   right vertex  (0.5, 0.5) = lower right        → green
+    //   left vertex  (-0.5, 0.5) = lower left         → blue
+    //
+    // In Vulkan NDC, y = -1 is the TOP of the screen, y = +1 is the BOTTOM
+    // (opposite of OpenGL).  These coordinates produce a triangle that is
+    // centred and fills roughly 1/4 of the screen.
+    // -----------------------------------------------------------------------
+    const std::vector<Vertex> vertices = {
+        {{ 0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},  // top   — red
+        {{ 0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},  // right — green
+        {{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}},  // left  — blue
+    };
+
+    m_triangleMesh = std::make_unique<VulkanMesh>();
+    if (!m_triangleMesh->Create(m_device, m_physicalDevice, vertices))
+    {
+        std::cerr << "[VulkanRenderer] Triangle mesh creation failed.\n";
+        m_triangleMesh.reset();
+        m_pipeline.reset();
+        return false;
+    }
+
+    std::cout << "[VulkanRenderer] Triangle scene loaded.\n";
+    return true;
+}
+
+// ===========================================================================
+// RecordHeadlessFrame — public
+// ===========================================================================
+// TEACHING NOTE — Headless Validation
+// In CI (no display) we cannot present frames, but we CAN validate that:
+//   • The pipeline was created successfully.
+//   • The mesh was uploaded.
+//   • A command buffer can be recorded with the draw call.
+// This method records commandBuffer[0] using framebuffer[0] and a fixed
+// black clear colour, then returns without submitting.
+// ===========================================================================
+bool VulkanRenderer::RecordHeadlessFrame()
+{
+    if (m_commandBuffers.empty() || m_framebuffers.empty())
+    {
+        std::cerr << "[VulkanRenderer] No command buffers / framebuffers for headless record.\n";
+        return false;
+    }
+
+    // Reset command buffer 0 and re-record with the current pipeline/mesh.
+    vkResetCommandBuffer(m_commandBuffers[0], 0);
+    RecordCommandBuffer(m_commandBuffers[0], m_framebuffers[0],
+                        0.0f, 0.0f, 0.0f);  // black clear colour
+
+    return true;
 }
 
 // ===========================================================================
@@ -956,6 +1097,10 @@ void VulkanRenderer::Shutdown()
     vkDeviceWaitIdle(m_device);
 
     // Destroy in reverse creation order.
+
+    // Scene / pipeline objects must be destroyed before the device.
+    m_triangleMesh.reset();
+    m_pipeline.reset();
 
     // Sync
     for (uint32_t i = 0; i < kMaxFramesInFlight; ++i)

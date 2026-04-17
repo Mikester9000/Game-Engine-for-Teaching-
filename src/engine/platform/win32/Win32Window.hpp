@@ -125,9 +125,13 @@ public:
     /**
      * @brief Create the Win32 window and initialise the high-resolution timer.
      *
-     * @param title   Window title bar text (wide string for Unicode support).
-     * @param width   Client area width in pixels.
-     * @param height  Client area height in pixels.
+     * @param title    Window title bar text (wide string for Unicode support).
+     * @param width    Client area width in pixels.
+     * @param height   Client area height in pixels.
+     * @param headless If true, the window is created hidden (SW_HIDE).
+     *                 Use this for CI / command-line validation where no display
+     *                 is needed.  The HWND is still valid for Vulkan surface
+     *                 creation; the window just never appears on screen.
      * @return true on success, false if any Win32 call fails.
      *
      * TEACHING NOTE — Client Area vs Window Area
@@ -136,7 +140,8 @@ public:
      * decorations.  We use AdjustWindowRect to inflate our desired client size
      * so that the final window delivers exactly the pixels we asked for.
      */
-    bool Init(const std::wstring& title, uint32_t width, uint32_t height);
+    bool Init(const std::wstring& title, uint32_t width, uint32_t height,
+              bool headless = false);
 
     /**
      * @brief Destroy the window and un-register the window class.

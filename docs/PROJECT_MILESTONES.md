@@ -22,10 +22,11 @@
 ### Deliverables
 | File | Description |
 |---|---|
-| `src/engine/platform/win32/Win32Window.hpp/.cpp` | Win32 HWND, message pump, QPC timer |
+| `src/engine/platform/win32/Win32Window.hpp/.cpp` | Win32 HWND, message pump, QPC timer; `headless` param hides the window for CI |
 | `src/engine/rendering/vulkan/VulkanRenderer.hpp/.cpp` | Instance, device, swapchain, render pass, clear-colour loop |
-| `src/sandbox/main.cpp` | Entry point for `engine_sandbox` executable |
+| `src/sandbox/main.cpp` | Entry point with `--headless` / `--scene` arg parsing |
 | `CMakeLists.txt` | `ENGINE_ENABLE_VULKAN` option; `engine_sandbox` target |
+| `.github/workflows/build-linux.yml` | CI: builds terminal game, runs Python tool tests |
 
 ### Acceptance tests
 
@@ -40,13 +41,13 @@ cmake --build . --config Debug --target engine_sandbox
 :: Expected output: [PASS] Vulkan device initialised. Swapchain created. Headless mode: skipping present loop.
 ```
 
-**Done means:** CI `build-windows.yml` passes; `engine_sandbox.exe --headless` exits 0.
+**Done means:** CI `build-linux.yml` passes; `engine_sandbox.exe --headless` exits 0.
 
 ---
 
 ## Milestone M1 — Triangle
 
-**Status:** ⬜ Not started
+**Status:** 🔄 In Progress
 
 ### Goals
 - Introduce the graphics pipeline: vertex buffer, index buffer, vertex shader,
@@ -57,19 +58,20 @@ cmake --build . --config Debug --target engine_sandbox
 ### Deliverables
 | File | Description |
 |---|---|
-| `src/engine/rendering/vulkan/vulkan_pipeline.hpp/.cpp` | Pipeline state, shader module loading |
-| `src/engine/rendering/vulkan/vulkan_buffer.hpp/.cpp` | Vertex/index buffer, staging upload |
-| `src/engine/rendering/vulkan/vulkan_mesh.hpp/.cpp` | Mesh: vertex + index buffer pair |
-| `shaders/triangle.vert` | GLSL vertex shader |
-| `shaders/triangle.frag` | GLSL fragment shader |
+| `src/engine/rendering/vulkan/vulkan_pipeline.hpp/.cpp` | Pipeline state, SPIR-V shader loading, dynamic viewport/scissor |
+| `src/engine/rendering/vulkan/vulkan_buffer.hpp/.cpp` | Host-visible GPU buffer; memory type selection |
+| `src/engine/rendering/vulkan/vulkan_mesh.hpp/.cpp` | Vertex struct, binding/attribute descriptions, draw call |
+| `shaders/triangle.vert` | GLSL vertex shader (position + colour input) |
+| `shaders/triangle.frag` | GLSL fragment shader (interpolated colour output) |
+| `CMakeLists.txt` | glslc shader compilation; `.spv` output copied next to exe |
 
 ### Acceptance tests
 
 ```bat
-:: Build
+:: Build (Vulkan SDK + glslc required)
 cmake --build . --config Debug --target engine_sandbox
 
-:: Run — must render a white triangle and exit cleanly on ESC
+:: Run — renders a red/green/blue triangle on an animated background; ESC to exit
 .\Debug\engine_sandbox.exe
 
 :: Headless — validate pipeline creation does not crash
@@ -77,7 +79,7 @@ cmake --build . --config Debug --target engine_sandbox
 :: Expected: [PASS] Pipeline created. Mesh uploaded. Draw recorded.
 ```
 
-**Done means:** CI green; triangle visible at runtime; headless validation exits 0.
+**Done means:** triangle visible at runtime; headless validation exits 0.
 
 ---
 

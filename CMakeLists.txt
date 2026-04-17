@@ -262,6 +262,9 @@ if(ENGINE_ENABLE_VULKAN)
         src/sandbox/main.cpp
         src/engine/platform/win32/Win32Window.cpp
         src/engine/rendering/vulkan/VulkanRenderer.cpp
+        src/engine/rendering/vulkan/vulkan_pipeline.cpp
+        src/engine/rendering/vulkan/vulkan_buffer.cpp
+        src/engine/rendering/vulkan/vulkan_mesh.cpp
         src/engine/core/Logger.cpp
     )
 
@@ -298,6 +301,80 @@ if(ENGINE_ENABLE_VULKAN)
             LINK_FLAGS "/SUBSYSTEM:CONSOLE"
         )
     endif()
+
+    # ---------------------------------------------------------------------------
+    # TEACHING NOTE — Shader Compilation with glslc
+    # ---------------------------------------------------------------------------
+    # GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
+    # to SPIR-V first.  glslc is the reference compiler that ships with the
+    # Vulkan SDK (usually at %VULKAN_SDK%/Bin/glslc.exe on Windows).
+    #
+    # We use CMake's add_custom_command to compile each shader automatically
+    # as part of the build.  The compiled .spv files are then copied next to
+    # the executable so the runtime can find them at the relative path
+    # "shaders/<name>.spv".
+    #
+    # Teaching point: in a shipping game the shader compilation happens
+    # offline (as part of the asset cook pipeline).  During development,
+    # running glslc at build time speeds up the iteration loop.
+    # ---------------------------------------------------------------------------
+    find_program(GLSLC_EXECUTABLE glslc
+        HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin"
+        DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
+
+    if(GLSLC_EXECUTABLE)
+        message(STATUS "glslc found: ${GLSLC_EXECUTABLE}")
+
+        set(SHADER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/shaders")
+        set(SHADER_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+
+        # List every shader here; add more as milestones progress.
+        set(GLSL_SHADERS
+            "${SHADER_SOURCE_DIR}/triangle.vert"
+            "${SHADER_SOURCE_DIR}/triangle.frag"
+        )
+
+        # Compile each GLSL shader to SPIR-V.
+        foreach(GLSL_SHADER ${GLSL_SHADERS})
+            get_filename_component(SHADER_NAME "${GLSL_SHADER}" NAME)
+            set(SPV_OUTPUT "${SHADER_BINARY_DIR}/${SHADER_NAME}.spv")
+
+            add_custom_command(
+                OUTPUT  "${SPV_OUTPUT}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_BINARY_DIR}"
+                COMMAND ${GLSLC_EXECUTABLE} "${GLSL_SHADER}" -o "${SPV_OUTPUT}"
+                DEPENDS "${GLSL_SHADER}"
+                COMMENT "Compiling GLSL shader: ${SHADER_NAME} -> ${SHADER_NAME}.spv"
+            )
+            list(APPEND SPV_OUTPUTS "${SPV_OUTPUT}")
+        endforeach()
+
+        # Custom target that depends on all compiled .spv files.
+        add_custom_target(engine_shaders DEPENDS ${SPV_OUTPUTS})
+
+        # Make engine_sandbox depend on the shaders so they are compiled first.
+        add_dependencies(engine_sandbox engine_shaders)
+
+        # Copy compiled .spv files next to the executable after each build.
+        # TEACHING NOTE — $<TARGET_FILE_DIR:engine_sandbox>
+        # This CMake generator expression evaluates at build time to the
+        # directory containing the built engine_sandbox executable.
+        # On MSVC this is e.g. build/Debug/ or build/Release/.
+        add_custom_command(TARGET engine_sandbox POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_FILE_DIR:engine_sandbox>/shaders"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${SPV_OUTPUTS}
+                "$<TARGET_FILE_DIR:engine_sandbox>/shaders/"
+            COMMENT "Copying compiled shaders to output directory"
+        )
+    else()
+        message(WARNING
+            "glslc not found — triangle shaders will NOT be compiled.\n"
+            "  Install the Vulkan SDK from https://vulkan.lunarg.com/ "
+            "and ensure %VULKAN_SDK%/Bin is on your PATH."
+        )
+    endif() # GLSLC_EXECUTABLE
 
 endif() # ENGINE_ENABLE_VULKAN
 
