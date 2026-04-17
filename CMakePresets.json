@@ -1,0 +1,100 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 16,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "windows-base",
+      "hidden": true,
+      "description": "Base settings shared by all Windows presets",
+      "generator": "Visual Studio 17 2022",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release"
+      }
+    },
+    {
+      "name": "windows-debug",
+      "displayName": "Windows Debug (MSVC x64)",
+      "description": "Builds engine_sandbox (Vulkan) + Qt editor in Debug. Requires Vulkan SDK and Qt 6.",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "windows-release",
+      "displayName": "Windows Release (MSVC x64)",
+      "description": "Builds engine_sandbox (Vulkan) + Qt editor in Release. Requires Vulkan SDK and Qt 6.",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "windows-debug-engine-only",
+      "displayName": "Windows Debug — Engine Only (no Qt required)",
+      "description": "Builds only the engine_sandbox Vulkan target. Qt is NOT required.",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "windows-release-engine-only",
+      "displayName": "Windows Release — Engine Only (no Qt required)",
+      "description": "Builds only the engine_sandbox Vulkan target in Release mode. Qt is NOT required.",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-debug",
+      "displayName": "Build Windows Debug",
+      "configurePreset": "windows-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-release",
+      "displayName": "Build Windows Release",
+      "configurePreset": "windows-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-debug-engine-only",
+      "displayName": "Build Windows Debug (Engine Only)",
+      "configurePreset": "windows-debug-engine-only",
+      "configuration": "Debug",
+      "targets": ["engine_sandbox"]
+    },
+    {
+      "name": "windows-release-engine-only",
+      "displayName": "Build Windows Release (Engine Only)",
+      "configurePreset": "windows-release-engine-only",
+      "configuration": "Release",
+      "targets": ["engine_sandbox"]
+    }
+  ]
+}

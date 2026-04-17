@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "project.schema.json",
+  "title": "Game Project",
+  "description": "Root descriptor for a Creation Suite game project folder. Written by the editor, read by all tools and the engine.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["version", "name", "engineVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference (used by editors for validation hints)."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Project format version (SemVer). Bump major on breaking changes.",
+      "examples": ["1.0.0"]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable project name shown in the editor title bar.",
+      "examples": ["VerticalSliceProject"]
+    },
+    "engineVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Minimum engine version required to open this project.",
+      "examples": ["1.0.0"]
+    },
+    "defaultScene": {
+      "type": "string",
+      "description": "Relative path to the scene file to load on startup.",
+      "examples": ["Content/Maps/MainMap.scene.json"]
+    },
+    "contentRoot": {
+      "type": "string",
+      "default": "Content",
+      "description": "Relative path to the raw source asset directory."
+    },
+    "cookedRoot": {
+      "type": "string",
+      "default": "Cooked",
+      "description": "Relative path to the runtime-ready cooked asset directory."
+    },
+    "assetRegistry": {
+      "type": "string",
+      "default": "AssetRegistry.json",
+      "description": "Relative path to the asset registry file."
+    },
+    "settings": {
+      "type": "object",
+      "description": "Project-level settings (display name, icon, target platform, etc.)",
+      "properties": {
+        "displayName": { "type": "string" },
+        "iconPath":    { "type": "string" },
+        "targetPlatform": {
+          "type": "string",
+          "enum": ["Windows", "Linux", "macOS"],
+          "default": "Windows"
+        }
+      }
+    }
+  }
+}

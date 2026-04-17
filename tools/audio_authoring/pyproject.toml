@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audio-engine"
+version = "2.0.0"
+description = "Audio authoring tool for Game Engine for Teaching (vendored from Mikester9000/Audio-Engine)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["audio", "synthesizer", "music", "game-engine", "ai"]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+ogg = ["soundfile>=0.12"]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+
+[project.scripts]
+audio-engine = "audio_engine.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["audio_engine*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "audio_bank.schema.json",
+  "title": "Audio Bank",
+  "description": "An audio bank groups related audio clips (e.g. all combat sounds) into one cooked package. Authored by tools/audio_authoring, loaded by the engine's audio system.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["version", "bankId", "clips"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "bankId": {
+      "type": "string",
+      "description": "UUID v4 identifier for this bank.",
+      "examples": ["a1b2c3d4-e5f6-4aaa-9bbb-cccdddeeeeff"]
+    },
+    "bankName": {
+      "type": "string",
+      "description": "Human-readable bank name (e.g. 'CombatSounds', 'Ambient_Town').",
+      "examples": ["CombatSounds"]
+    },
+    "sampleRate": {
+      "type": "integer",
+      "enum": [22050, 44100, 48000],
+      "default": 44100,
+      "description": "Target sample rate for all clips in this bank."
+    },
+    "clips": {
+      "type": "array",
+      "description": "Audio clips included in this bank.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "source"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID v4 identifier for this clip."
+          },
+          "name": {
+            "type": "string",
+            "description": "Event name used at runtime (e.g. 'sfx_sword_hit').",
+            "examples": ["sfx_sword_hit", "music_battle_loop"]
+          },
+          "source": {
+            "type": "string",
+            "description": "Relative path to source WAV/OGG file.",
+            "examples": ["Content/Audio/sword_hit.wav"]
+          },
+          "cooked": {
+            "type": "string",
+            "description": "Relative path to cooked audio file inside the bank.",
+            "examples": ["Cooked/Audio/CombatSounds/sfx_sword_hit.ogg"]
+          },
+          "volume": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "default": 1.0
+          },
+          "loopable": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether the clip should loop when played."
+          },
+          "is3D": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable 3D spatialization (attenuation, panning)."
+          },
+          "maxDistance": {
+            "type": "number",
+            "description": "Distance (engine units) at which the clip is inaudible. Requires is3D=true."
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "examples": [["combat", "sfx"]]
+          }
+        }
+      }
+    },
+    "snapshots": {
+      "type": "array",
+      "description": "Named mixer snapshots (e.g. 'underwater', 'combat_high_intensity').",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name":        { "type": "string" },
+          "masterVolume":{ "type": "number", "minimum": 0, "maximum": 1 },
+          "reverbSend":  { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    }
+  }
+}

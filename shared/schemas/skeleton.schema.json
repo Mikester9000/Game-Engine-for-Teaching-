@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "skeleton.schema.json",
+  "title": "Skeleton",
+  "description": "Describes a hierarchical bone rig for a character or creature. Authored by tools/anim_authoring, loaded by the engine's animation system.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["version", "id", "name", "bones"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "id": {
+      "type": "string",
+      "description": "UUID v4 identifier for this skeleton asset."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable skeleton name.",
+      "examples": ["HumanoidRig", "DragonRig"]
+    },
+    "source": {
+      "type": "string",
+      "description": "Relative path to the source file (.fbx, .blend, etc.).",
+      "examples": ["Content/Characters/Player.fbx"]
+    },
+    "bones": {
+      "type": "array",
+      "description": "Ordered list of bones (parent always comes before child).",
+      "items": {
+        "type": "object",
+        "required": ["index", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Zero-based bone index used for skinning."
+          },
+          "name": {
+            "type": "string",
+            "description": "Bone name as exported from the DCC tool.",
+            "examples": ["root", "pelvis", "spine_01", "L_knee", "R_ankle"]
+          },
+          "parentIndex": {
+            "type": "integer",
+            "minimum": -1,
+            "default": -1,
+            "description": "Parent bone index. -1 = root bone (no parent)."
+          },
+          "bindPose": {
+            "type": "object",
+            "description": "Bind-pose (rest-pose) local transform relative to parent.",
+            "properties": {
+              "translation": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3,
+                "description": "[x, y, z] translation in local space."
+              },
+              "rotation": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 4,
+                "maxItems": 4,
+                "description": "[x, y, z, w] unit quaternion."
+              },
+              "scale": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3,
+                "description": "[sx, sy, sz] scale factors (typically [1,1,1])."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

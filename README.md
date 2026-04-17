@@ -143,7 +143,139 @@ cmake .. -DENGINE_ENABLE_VULKAN=ON -DENGINE_ENABLE_TERMINAL=ON
 
 ---
 
-## Repository Structure
+## Monorepo Layout
+
+This repository is a **Windows-first monorepo** that brings together the engine,
+a Qt-based editor, Python authoring tools, shared schemas, and a sample project.
+
+```
+Game-Engine-for-Teaching-/         ← Monorepo root
+├── CMakeLists.txt              # Superbuild: engine + optional Qt editor
+├── CMakePresets.json           # Windows presets (VS 2022, Debug/Release)
+├── README.md                   # This file
+│
+├── engine/                     # Engine documentation & CMake anchor
+│   └── README.md               # Engine architecture guide
+│
+├── editor/                     # Qt 6 Widgets Creation Suite editor
+│   ├── CMakeLists.txt          # Qt editor build (requires Qt 6 + BUILD_EDITOR=ON)
+│   ├── README.md               # Editor build & usage guide
+│   └── src/
+│       ├── main.cpp            # QApplication entry point
+│       ├── MainWindow.hpp/.cpp # Top-level window (menus, toolbar, docks)
+│       ├── ContentBrowser.hpp/.cpp  # QFileSystemModel + QTreeView panel
+│       └── SceneEditor.hpp/.cpp     # 2D canvas with JSON save/load
+│
+├── tools/
+│   ├── audio_authoring/        # Python audio synthesis + bank cooking
+│   │   ├── audio_engine/       # AudioEngine façade + AI generators
+│   │   ├── pyproject.toml
+│   │   ├── requirements.txt
+│   │   └── README.md
+│   └── anim_authoring/         # Python skeletal animation authoring
+│       ├── animation_engine/   # Skeleton, AnimClip, Exporter/Importer
+│       ├── requirements.txt
+│       └── README.md
+│
+├── shared/
+│   ├── schemas/                # JSON Schema (draft-07) for all shared data formats
+│   │   ├── project.schema.json
+│   │   ├── asset_registry.schema.json
+│   │   ├── scene.schema.json
+│   │   ├── audio_bank.schema.json
+│   │   ├── skeleton.schema.json
+│   │   ├── anim_clip.schema.json
+│   │   └── anim_graph.schema.json
+│   └── runtime/                # Shared C++ header utilities
+│       ├── Guid.hpp            # UUID v4 generation + parsing
+│       └── VersionedFile.hpp   # Versioned JSON file read/write
+│
+├── samples/
+│   └── vertical_slice_project/ # End-to-end sample project
+│       ├── Project.json        # Project descriptor
+│       ├── AssetRegistry.json  # Asset catalog (updated by cook step)
+│       ├── cook_assets.py      # One-command asset cook script
+│       ├── Content/            # Raw source assets (version-controlled)
+│       └── Cooked/             # Generated at cook time (gitignored)
+│
+├── docs/
+│   ├── ARCHITECTURE.md         # End-to-end pipeline + subsystem docs
+│   └── ROADMAP.md              # Milestone plan
+│
+├── .github/
+│   ├── copilot-instructions.md # Coding conventions for Copilot continuation
+│   └── workflows/              # CI workflows
+│
+├── assets/                     # Asset manifests and existing JSON schemas
+├── scripts/                    # Lua 5.4 game scripts (hot-reloadable)
+└── src/                        # C++ engine + game source code (existing)
+    ├── engine/                 # Platform-independent engine kernel
+    ├── game/                   # FFXV-style gameplay systems
+    ├── sandbox/                # Windows Vulkan clear-screen demo
+    └── main.cpp                # Terminal game entry point
+```
+
+---
+
+## Building (Windows)
+
+### Prerequisites
+
+| Tool | Version | Notes |
+|------|---------|-------|
+| Visual Studio 2022 | 17.x | Desktop development with C++ workload |
+| CMake | ≥ 3.16 | Add to PATH during install |
+| Vulkan SDK | ≥ 1.3 | Sets `VULKAN_SDK` env var |
+| Qt 6 *(optional)* | 6.5+ | Required only for `BUILD_EDITOR=ON` |
+
+### Engine sandbox only (no Qt required)
+
+```bat
+git clone https://github.com/Mikester9000/Game-Engine-for-Teaching-.git
+cd Game-Engine-for-Teaching-
+
+:: Using CMake Presets (recommended):
+cmake --preset windows-debug-engine-only
+cmake --build --preset windows-debug-engine-only
+
+:: Or manually:
+mkdir build && cd build
+cmake .. -G "Visual Studio 17 2022" -A x64
+cmake --build . --config Debug --target engine_sandbox
+```
+
+### Engine + Qt Editor
+
+```bat
+:: Set your Qt install path:
+set QT_PATH=C:\Qt\6.6.0\msvc2019_64
+
+cmake --preset windows-debug -DCMAKE_PREFIX_PATH="%QT_PATH%"
+cmake --build --preset windows-debug
+```
+
+The editor executable: `build\windows-debug\editor\Debug\creation-suite-editor.exe`
+
+### Cook the vertical slice sample
+
+```bat
+cd samples\vertical_slice_project
+python cook_assets.py
+```
+
+### Python tools (audio + animation authoring)
+
+```bat
+:: Audio authoring
+cd tools\audio_authoring && pip install -r requirements.txt
+
+:: Animation authoring
+cd tools\anim_authoring && pip install -r requirements.txt
+```
+
+---
+
+## Repository Structure (legacy engine source)
 
 ```
 Game-Engine-for-Teaching-/

@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "anim_graph.schema.json",
+  "title": "Animation Graph",
+  "description": "A state-machine-based animation graph that blends clips based on runtime parameters. Authored in the editor, interpreted by the engine's animation runtime.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["version", "id", "name", "skeletonId", "parameters", "states", "transitions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "id":   { "type": "string", "description": "UUID v4 for this anim graph asset." },
+    "name": { "type": "string", "examples": ["PlayerAnimGraph", "EnemySoldierGraph"] },
+    "skeletonId": {
+      "type": "string",
+      "description": "UUID v4 of the skeleton this graph drives."
+    },
+    "defaultStateId": {
+      "type": "string",
+      "description": "ID of the initial state (must exist in 'states')."
+    },
+    "parameters": {
+      "type": "array",
+      "description": "Runtime-tweakable float/bool parameters (RTPC — real-time parameter controls).",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "examples": ["Speed", "IsGrounded", "IsAttacking"] },
+          "type": { "type": "string", "enum": ["float", "bool", "int"] },
+          "default": {}
+        }
+      }
+    },
+    "states": {
+      "type": "array",
+      "description": "Animation states (each plays one or more blended clips).",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id":   { "type": "string" },
+          "name": { "type": "string", "examples": ["Idle", "Walk", "Run", "Attack", "Dead"] },
+          "clipId": {
+            "type": "string",
+            "description": "UUID v4 of the animation clip to play in this state."
+          },
+          "speed": {
+            "type": "number",
+            "default": 1.0,
+            "description": "Playback speed multiplier (1.0 = normal)."
+          },
+          "blendTree": {
+            "type": "object",
+            "description": "Optional 1D or 2D blend tree (for walk→run blending etc.).",
+            "properties": {
+              "blendParameter": { "type": "string" },
+              "clips": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "clipId": { "type": "string" },
+                    "threshold": { "type": "number" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "description": "Directed edges between states with optional blend duration and conditions.",
+      "items": {
+        "type": "object",
+        "required": ["fromStateId", "toStateId"],
+        "additionalProperties": false,
+        "properties": {
+          "fromStateId":    { "type": "string" },
+          "toStateId":      { "type": "string" },
+          "blendDuration":  { "type": "number", "default": 0.2, "description": "Cross-fade time in seconds." },
+          "interruptible":  { "type": "boolean", "default": false },
+          "conditions": {
+            "type": "array",
+            "description": "All conditions must be true for the transition to fire.",
+            "items": {
+              "type": "object",
+              "required": ["parameter", "operator", "value"],
+              "properties": {
+                "parameter": { "type": "string" },
+                "operator":  { "type": "string", "enum": [">", "<", ">=", "<=", "==", "!="] },
+                "value":     {}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

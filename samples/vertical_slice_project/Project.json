@@ -1,0 +1,15 @@
+{
+  "$schema": "../../shared/schemas/project.schema.json",
+  "version": "1.0.0",
+  "name": "VerticalSliceProject",
+  "engineVersion": "1.0.0",
+  "defaultScene": "Content/Maps/MainTown.scene.json",
+  "contentRoot": "Content",
+  "cookedRoot": "Cooked",
+  "assetRegistry": "AssetRegistry.json",
+  "settings": {
+    "displayName": "FFXV Teaching — Vertical Slice",
+    "targetPlatform": "Windows",
+    "iconPath": "Content/Textures/ProjectIcon.png"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "anim_clip.schema.json",
+  "title": "Animation Clip",
+  "description": "A single animation clip: a time-sampled sequence of bone transforms. Authored by tools/anim_authoring, consumed by the engine's animation runtime.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["version", "id", "name", "skeletonId", "durationSeconds", "fps", "channels"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "id": {
+      "type": "string",
+      "description": "UUID v4 identifier for this animation clip."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable clip name.",
+      "examples": ["Idle", "Walk", "Run", "AttackSlash", "Jump", "Death"]
+    },
+    "skeletonId": {
+      "type": "string",
+      "description": "UUID v4 of the skeleton this clip targets."
+    },
+    "durationSeconds": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Total clip duration in seconds."
+    },
+    "fps": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "default": 30,
+      "description": "Keyframe rate (frames per second) used during authoring."
+    },
+    "loopable": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the clip loops seamlessly."
+    },
+    "rootMotion": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, root bone translation drives the entity's world position."
+    },
+    "channels": {
+      "type": "array",
+      "description": "One channel per animated bone.",
+      "items": {
+        "type": "object",
+        "required": ["boneIndex", "boneName", "keyframes"],
+        "additionalProperties": false,
+        "properties": {
+          "boneIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Index into the skeleton's bone list."
+          },
+          "boneName": {
+            "type": "string",
+            "description": "Bone name (for debugging; index is authoritative)."
+          },
+          "keyframes": {
+            "type": "array",
+            "description": "Sorted keyframe samples.",
+            "items": {
+              "type": "object",
+              "required": ["time"],
+              "properties": {
+                "time": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Time offset in seconds from the start of the clip."
+                },
+                "translation": {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 3,
+                  "maxItems": 3
+                },
+                "rotation": {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "description": "[x, y, z, w] unit quaternion."
+                },
+                "scale": {
+                  "type": "array",
+                  "items": { "type": "number" },
+                  "minItems": 3,
+                  "maxItems": 3
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "Named events embedded in the timeline (e.g. 'foot_step', 'hit_frame').",
+      "items": {
+        "type": "object",
+        "required": ["time", "name"],
+        "properties": {
+          "time": { "type": "number", "minimum": 0 },
+          "name": { "type": "string" },
+          "payload": { "type": "object", "additionalProperties": true }
+        }
+      }
+    }
+  }
+}
