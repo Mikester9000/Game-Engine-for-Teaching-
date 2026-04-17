@@ -240,9 +240,10 @@ without updating this section.
 
 ## 7. Toolchain Integration Points
 
-The three tool repositories (`Creation-Engine`, `Audio-Engine`,
-`Animation-Engine`) communicate with the runtime engine via the **shared asset
-manifest contract**.  The schema lives in
+The three tool sub-directories (`editor/` for Creation Suite,
+`tools/audio_authoring/` for Audio Engine,
+`tools/anim_authoring/` for Animation Engine) communicate with the runtime
+engine via the **shared asset manifest contract**.  The schema lives in
 `assets/schema/asset-manifest.schema.json`.
 
 ### 7.1 Manifest schema contract
@@ -290,12 +291,12 @@ cooked/
 
 ### 7.3 Per-tool integration checklist
 
-- [ ] **Creation-Engine:** emits `texture`, `model`, `material`, `tilemap`
+- [ ] **Creation Suite** (`editor/`): emits `texture`, `model`, `material`, `tilemap`
       manifest entries → cooker produces `.dds` + `.level`
-- [ ] **Audio-Engine:** emits `audio` manifest entries → cooker normalises +
-      produces `.wav`; XAudio2 backend loads `.wav` at runtime
-- [ ] **Animation-Engine:** emits `animation` manifest entries (source: glTF)
-      → cooker produces `.anim`; animation runtime loads `.anim`
+- [x] **Audio Engine** (`tools/audio_authoring/`): emits `audio` manifest entries →
+      cooker normalises + produces `.wav`; XAudio2 backend loads `.wav` at runtime
+- [x] **Animation Engine** (`tools/anim_authoring/`): emits `animation` manifest entries →
+      cooker produces `.animc`; animation runtime loads `.animc`
 
 ### 7.4 GUID / asset-ID rules (locked)
 
