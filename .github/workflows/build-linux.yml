@@ -46,6 +46,12 @@ jobs:
   build-terminal-game:
     name: Build terminal game (Ubuntu)
     runs-on: ubuntu-latest
+    # TEACHING NOTE — Least-Privilege Permissions
+    # GitHub Actions tokens default to write access.  Explicitly restricting
+    # to read-only (contents: read) follows the principle of least privilege —
+    # a compromised action cannot push or modify the repository.
+    permissions:
+      contents: read
 
     steps:
       # -----------------------------------------------------------------------
@@ -109,6 +115,8 @@ jobs:
   python-tool-tests:
     name: Python authoring tool tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
