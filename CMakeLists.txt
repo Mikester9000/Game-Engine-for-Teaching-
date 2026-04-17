@@ -1,13 +1,27 @@
 # ===========================================================================
-# CMakeLists.txt — Educational Game Engine
+# CMakeLists.txt — Game Engine for Teaching (Monorepo Superbuild)
 # ===========================================================================
 #
-# TEACHING NOTE — Build System Design
-# ─────────────────────────────────────
+# TEACHING NOTE — Superbuild / Monorepo Pattern
+# ──────────────────────────────────────────────
+# A "superbuild" root CMakeLists.txt orchestrates multiple sub-projects in a
+# single CMake invocation. This lets you build the engine, editor, and any
+# C++ tools all at once, yet keep each subproject's build logic isolated in
+# its own subdirectory.
+#
+# Monorepo layout:
+#   src/      — C++ engine & game source code (existing, always built)
+#   editor/   — Qt 6 Widgets editor (optional; requires Qt installed)
+#   shared/   — Shared headers and JSON schemas used by all projects
+#
+# TEACHING NOTE — CMake Build System Design
+# ─────────────────────────────────────────
 # CMake is the de-facto standard build-system generator for C++ projects.
-# It does NOT compile code directly — it generates Makefiles (Linux),
-# Xcode projects (macOS), or Visual Studio solutions (Windows) from a
-# platform-neutral description.
+# It does NOT compile code directly — it generates:
+#   • Makefiles    (Linux / macOS)
+#   • Xcode projects (macOS)
+#   • Visual Studio solutions (Windows)  ← our primary target
+# …from this platform-neutral description.
 #
 # Key CMake concepts used here:
 #   target_sources      — list of .cpp files to compile.
@@ -15,18 +29,32 @@
 #   target_link_libs    — external libraries to link against.
 #   target_compile_opts — compiler warning/optimisation flags.
 #
-# TEACHING NOTE — Out-of-Source Builds
-# ──────────────────────────────────────
-# Always build in a separate directory (e.g., build/) so that generated
-# files (object files, Makefiles) don't pollute the source tree:
+# TEACHING NOTE — Out-of-Source Builds (Windows recommended)
+# ──────────────────────────────────────────────────────────
+# Use CMake Presets (CMakePresets.json) for the recommended workflow:
 #
+#   cmake --preset windows-debug
+#   cmake --build --preset windows-debug
+#
+# Or the manual workflow:
 #   mkdir build && cd build
-#   cmake ..
-#   make -j4
+#   cmake .. -G "Visual Studio 17 2022" -A x64
+#   cmake --build . --config Debug --target engine_sandbox
 #
 
 cmake_minimum_required(VERSION 3.16)
 project(EducationalGameEngine VERSION 1.0 LANGUAGES CXX)
+
+# ---------------------------------------------------------------------------
+# Monorepo top-level option: Build the Qt editor
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Optional Subprojects
+# The editor requires Qt 6 to be installed.  On a machine without Qt the
+# engine still builds and runs.  Set BUILD_EDITOR=ON to include the editor.
+#
+#   cmake .. -DBUILD_EDITOR=ON -DCMAKE_PREFIX_PATH="C:/Qt/6.x.x/msvc2019_64"
+#
+option(BUILD_EDITOR "Build the Qt-based Creation Suite editor" OFF)
 
 # ---------------------------------------------------------------------------
 # C++ standard
@@ -290,3 +318,26 @@ if(ENGINE_ENABLE_VULKAN)
     message(STATUS "  Vulkan libs      : ${Vulkan_LIBRARIES}")
 endif()
 message(STATUS "===========================")
+
+# ---------------------------------------------------------------------------
+# Optional subprojects
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — add_subdirectory()
+# add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
+# Each subdirectory is a self-contained "project" with its own targets and
+# build rules, but they can share variables set by the parent (e.g., the
+# C++ standard already set above).
+
+if(BUILD_EDITOR)
+    # TEACHING NOTE — Qt Editor Subproject
+    # The editor is a Qt 6 Widgets application that provides:
+    #   • Project browser  — open a project folder, see its Content/ files
+    #   • Content browser  — list assets by type
+    #   • Scene editor     — place entities, save a scene/map JSON file
+    # Qt must be installed and CMAKE_PREFIX_PATH must point to the Qt install.
+    message(STATUS "BUILD_EDITOR=ON: including editor/ subproject")
+    add_subdirectory(editor)
+else()
+    message(STATUS "BUILD_EDITOR=OFF: skipping editor/ (pass -DBUILD_EDITOR=ON to include)")
+endif()
+

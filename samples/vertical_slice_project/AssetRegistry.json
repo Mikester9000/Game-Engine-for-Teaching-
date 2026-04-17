@@ -1,0 +1,20 @@
+{
+  "$schema": "../../shared/schemas/asset_registry.schema.json",
+  "version": "1.0.0",
+  "generatedAt": "2026-04-17T14:46:06Z",
+  "assets": [
+    {
+      "id": "f3f044c7-2a10-4be8-980d-7ee517382415",
+      "type": "scene",
+      "name": "MainTown",
+      "source": "Maps/MainTown.scene.json",
+      "cooked": "Cooked/Maps/MainTown.scene.json",
+      "hash": "3e523e5cf9af78a9962130f09e8aaaf98b74131c4abfa94526a97ee063a008a2",
+      "dependencies": [],
+      "tags": [
+        "scene",
+        "map"
+      ]
+    }
+  ]
+}

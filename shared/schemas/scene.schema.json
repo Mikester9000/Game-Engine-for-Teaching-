@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "scene.schema.json",
+  "title": "Scene / Map",
+  "description": "A scene (or map) file that lists entities and their components. Written by the editor's scene editor, loaded by the engine's Zone/World system.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": ["version", "name", "entities"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable scene name.",
+      "examples": ["MainTown", "DungeonLevel1"]
+    },
+    "meta": {
+      "type": "object",
+      "description": "Optional metadata for tooling.",
+      "properties": {
+        "savedAt":       { "type": "string", "format": "date-time" },
+        "editorVersion": { "type": "string" },
+        "author":        { "type": "string" }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "description": "Scene-wide settings (ambient light, gravity, sky, etc.)",
+      "properties": {
+        "ambientColor":  { "type": "string", "examples": ["#1a1a2e"] },
+        "gravityY":      { "type": "number", "default": -9.8 },
+        "skyboxAssetId": { "type": "string" }
+      }
+    },
+    "entities": {
+      "type": "array",
+      "description": "All entities placed in this scene.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "UUID v4 — stable identity for this entity instance."
+          },
+          "name": {
+            "type": "string",
+            "description": "Editor display name.",
+            "examples": ["Player", "EnemyPatrol_01", "Chest_Campsite"]
+          },
+          "transform": {
+            "type": "object",
+            "description": "World-space position, rotation (degrees), and scale.",
+            "properties": {
+              "x":      { "type": "number" },
+              "y":      { "type": "number" },
+              "z":      { "type": "number" },
+              "rotX":   { "type": "number", "default": 0 },
+              "rotY":   { "type": "number", "default": 0 },
+              "rotZ":   { "type": "number", "default": 0 },
+              "scaleX": { "type": "number", "default": 1 },
+              "scaleY": { "type": "number", "default": 1 },
+              "scaleZ": { "type": "number", "default": 1 }
+            }
+          },
+          "components": {
+            "type": "object",
+            "description": "Key = component type name, value = component data.",
+            "additionalProperties": true,
+            "examples": [
+              {
+                "Sprite":  { "assetId": "<uuid>", "layer": 1 },
+                "Health":  { "hp": 100, "maxHp": 100 },
+                "AI":      { "patrolRadius": 200 }
+              }
+            ]
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Runtime tags for filtering (e.g. ['enemy', 'boss'])."
+          }
+        }
+      }
+    }
+  }
+}

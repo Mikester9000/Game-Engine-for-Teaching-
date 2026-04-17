@@ -1,0 +1,66 @@
+{
+  "$schema": "../../../shared/schemas/scene.schema.json",
+  "version": "1.0.0",
+  "name": "MainTown",
+  "meta": {
+    "savedAt": "2026-01-01T00:00:00Z",
+    "editorVersion": "1.0.0",
+    "author": "Teaching Team"
+  },
+  "settings": {
+    "ambientColor": "#1a1a2e",
+    "gravityY": -9.8
+  },
+  "entities": [
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000001",
+      "name": "Player",
+      "transform": { "x": 200, "y": 300, "z": 0 },
+      "components": {
+        "Health":    { "hp": 100, "maxHp": 100, "mp": 50, "maxMp": 50 },
+        "Currency":  { "gil": 5000 },
+        "Inventory": { "slots": 20 }
+      },
+      "tags": ["player", "party_leader"]
+    },
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000002",
+      "name": "InnKeeper",
+      "transform": { "x": 400, "y": 250, "z": 0 },
+      "components": {
+        "NPC":       { "dialogue": "Welcome, traveller! Rest here for 100 Gil." },
+        "Shop":      { "type": "inn", "restCost": 100 }
+      },
+      "tags": ["npc", "inn"]
+    },
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000003",
+      "name": "WeaponShop",
+      "transform": { "x": 600, "y": 250, "z": 0 },
+      "components": {
+        "NPC":       { "dialogue": "Looking for weapons?" },
+        "Shop":      {
+          "type": "weapon_shop",
+          "inventory": [
+            { "itemId": "iron_sword",   "price": 500  },
+            { "itemId": "steel_spear",  "price": 1200 },
+            { "itemId": "mage_staff",   "price": 900  }
+          ]
+        }
+      },
+      "tags": ["npc", "shop", "weapon"]
+    },
+    {
+      "id": "a1b2c3d4-0000-4000-8000-000000000004",
+      "name": "QuestGiver_Elric",
+      "transform": { "x": 350, "y": 400, "z": 0 },
+      "components": {
+        "NPC": {
+          "dialogue": "Help! Goblins have been stealing from the farms!",
+          "questId":  "quest_goblin_menace"
+        }
+      },
+      "tags": ["npc", "quest_giver"]
+    }
+  ]
+}
