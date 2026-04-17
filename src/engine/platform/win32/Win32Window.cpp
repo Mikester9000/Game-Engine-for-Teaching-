@@ -42,7 +42,8 @@ Win32Window::~Win32Window()
 // ===========================================================================
 // Init
 // ===========================================================================
-bool Win32Window::Init(const std::wstring& title, uint32_t width, uint32_t height)
+bool Win32Window::Init(const std::wstring& title, uint32_t width, uint32_t height,
+                       bool headless)
 {
     // -----------------------------------------------------------------------
     // TEACHING NOTE — GetModuleHandle(nullptr)
@@ -127,10 +128,20 @@ bool Win32Window::Init(const std::wstring& title, uint32_t width, uint32_t heigh
     }
 
     // -----------------------------------------------------------------------
-    // Step 4 — Make the window visible.
+    // Step 4 — Make the window visible (or keep it hidden in headless mode).
     // -----------------------------------------------------------------------
-    ShowWindow(m_hwnd, SW_SHOW);
-    UpdateWindow(m_hwnd);
+    // TEACHING NOTE — Headless Window
+    // In headless mode the Win32 window still exists and has a valid HWND —
+    // this is necessary for Vulkan surface creation (VkSurfaceKHR is tied to
+    // a real HWND on Win32).  We simply never call ShowWindow(SW_SHOW), so
+    // the window is never painted to the screen.  This lets CI machines
+    // validate Vulkan initialisation without requiring a display.
+    // -----------------------------------------------------------------------
+    if (!headless)
+    {
+        ShowWindow(m_hwnd, SW_SHOW);
+        UpdateWindow(m_hwnd);
+    }
 
     // -----------------------------------------------------------------------
     // Step 5 — Initialise the high-resolution timer.

@@ -1,21 +1,17 @@
 /**
  * @file main.cpp
- * @brief Entry point for the EngineSandbox — Windows + Vulkan "clear screen" demo.
+ * @brief Entry point for the EngineSandbox — Windows + Vulkan rendering demo.
  *
  * ============================================================================
  * TEACHING NOTE — What is engine_sandbox?
  * ============================================================================
  * engine_sandbox is the *first real rendering milestone* of this educational
- * engine.  Its only job is to:
+ * engine.  It demonstrates:
  *
- *   1. Open a Win32 window.
- *   2. Initialise a Vulkan renderer.
- *   3. Each frame: poll OS events, render a coloured frame, present it.
- *   4. On close: shut everything down cleanly.
- *
- * This is the "Hello Triangle" precursor — before drawing geometry you must
- * have a working window + GPU connection + swapchain.  Many AAA engines
- * started exactly like this.
+ *   M0 — Window + Vulkan bootstrap: open a Win32 window, initialise Vulkan,
+ *        render an animated clear-colour loop.
+ *   M1 — Triangle: vertex shader, fragment shader, PSO, vertex buffer — the
+ *        classic "hello triangle" that proves the graphics pipeline works.
  *
  * ============================================================================
  * TEACHING NOTE — WinMain vs main()
@@ -25,6 +21,19 @@
  * entry point and link with the CONSOLE subsystem so log output is visible
  * in the terminal.  When you ship a game you would switch to WinMain and
  * pipe log output to a file instead.
+ *
+ * ============================================================================
+ * TEACHING NOTE — --headless Mode
+ * ============================================================================
+ * Running with --headless skips the main render loop and exits with code 0
+ * after printing "[PASS]".  This allows CI machines (which have no display
+ * or only a software Vulkan implementation) to validate the bootstrap path
+ * without needing a monitor.
+ *
+ * Usage:
+ *   engine_sandbox.exe                   # Normal windowed mode
+ *   engine_sandbox.exe --headless        # M0 validation (Vulkan init OK)
+ *   engine_sandbox.exe --headless --scene triangle   # M1 validation
  *
  * ============================================================================
  *
@@ -40,35 +49,72 @@
 
 #include <iostream>
 #include <exception>
+#include <cstring>      // std::strcmp
 #include <cmath>        // std::sin — used for the animated clear colour
+#include <string>
+#include <filesystem>   // std::filesystem::path (C++17) for shader path resolution
 
 // ---------------------------------------------------------------------------
-// TEACHING NOTE — Entry Point
+// TEACHING NOTE — Shader Directory Resolution
 // ---------------------------------------------------------------------------
-// We keep main() minimal:
-//   1. Create the window.
-//   2. Create the renderer.
-//   3. Run the frame loop until the user closes the window.
-//   4. Shut down and return.
-//
-// All complexity is encapsulated in Win32Window and VulkanRenderer.
+// The compiled .spv shader files are placed next to the executable by CMake.
+// We derive the executable's directory from argv[0] to construct an absolute
+// path, so the binary works from any current working directory.
 // ---------------------------------------------------------------------------
-int main()
+static std::string GetShaderDir(const char* argv0)
+{
+    namespace fs = std::filesystem;
+    fs::path p(argv0);
+    fs::path dir = p.has_parent_path() ? p.parent_path() : fs::path(".");
+    return (dir / "shaders" / "").string();   // trailing separator
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Entry Point with argc/argv
+// ---------------------------------------------------------------------------
+// We use int main(int argc, char* argv[]) so the executable can receive
+// command-line flags.  This is standard C++ — on Windows the MSVC linker
+// routes it to the correct Windows entry point when we use /SUBSYSTEM:CONSOLE.
+// ---------------------------------------------------------------------------
+int main(int argc, char* argv[])
 {
     try
     {
+        // -------------------------------------------------------------------
+        // Step 0 — Parse command-line arguments.
+        // -------------------------------------------------------------------
+        // TEACHING NOTE — Command-Line Parsing
+        // We use a simple linear scan rather than a third-party flag library
+        // to keep the dependency count zero and the code readable.
+        // -------------------------------------------------------------------
+        bool        headless  = false;
+        std::string scene;   // empty = no scene; "triangle" = M1 scene
+
+        for (int i = 1; i < argc; ++i)
+        {
+            if (std::strcmp(argv[i], "--headless") == 0)
+            {
+                headless = true;
+            }
+            else if (std::strcmp(argv[i], "--scene") == 0 && i + 1 < argc)
+            {
+                scene = argv[++i];
+            }
+        }
+
         // -------------------------------------------------------------------
         // Step 1 — Create and initialise the Win32 window.
         // -------------------------------------------------------------------
         engine::platform::Win32Window window;
 
-        if (!window.Init(L"Engine Sandbox — Vulkan Clear Screen", 1280, 720))
+        if (!window.Init(L"Engine Sandbox — Vulkan", 1280, 720, headless))
         {
             std::cerr << "[engine_sandbox] Failed to create window.\n";
             return 1;
         }
 
-        std::cout << "[engine_sandbox] Window created: 1280×720\n";
+        if (!headless)
+            std::cout << "[engine_sandbox] Window created: 1280×720\n";
 
         // -------------------------------------------------------------------
         // Step 2 — Create and initialise the Vulkan renderer.
@@ -87,72 +133,104 @@ int main()
             return 1;
         }
 
-        std::cout << "[engine_sandbox] Vulkan renderer ready.\n";
-        std::cout << "[engine_sandbox] Press ESC or close the window to exit.\n";
+        if (!headless)
+        {
+            std::cout << "[engine_sandbox] Vulkan renderer ready.\n";
+            std::cout << "[engine_sandbox] Press ESC or close the window to exit.\n";
+        }
 
         // -------------------------------------------------------------------
-        // Step 3 — Main loop.
+        // Step 3 — Load the requested scene (M1+).
+        // -------------------------------------------------------------------
+        if (!scene.empty())
+        {
+            std::string shaderDir = GetShaderDir(argv[0]);
+
+            if (!renderer.LoadScene(scene, shaderDir))
+            {
+                std::cerr << "[FAIL] Failed to load scene '" << scene << "'.\n";
+                renderer.Shutdown();
+                window.Shutdown();
+                return 1;
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Step 4 — Headless validation path (no render loop).
+        // -------------------------------------------------------------------
+        // TEACHING NOTE — Headless Exit Protocol
+        // Acceptance tests expect exactly one of these lines on stdout,
+        // followed by exit code 0.  Any other output (or non-zero exit) = fail.
+        // -------------------------------------------------------------------
+        if (headless)
+        {
+            if (scene == "triangle")
+            {
+                // Validate: record one frame to confirm the draw call works.
+                if (!renderer.RecordHeadlessFrame())
+                {
+                    std::cout << "[FAIL] Headless frame recording failed.\n";
+                    renderer.Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
+            }
+            else
+            {
+                // M0 baseline: Vulkan init + swapchain creation succeeded.
+                std::cout << "[PASS] Vulkan device initialised. Swapchain created."
+                             " Headless mode: skipping present loop.\n";
+            }
+
+            renderer.Shutdown();
+            window.Shutdown();
+            return 0;
+        }
+
+        // -------------------------------------------------------------------
+        // Step 5 — Main render loop (non-headless).
         // -------------------------------------------------------------------
         // TEACHING NOTE — Fixed Timestep vs Variable Timestep
-        // For this minimal clear-screen demo we use a simple variable-timestep
-        // loop: render as fast as the GPU allows (limited by vsync / mailbox
+        // For this minimal demo we use a simple variable-timestep loop:
+        // render as fast as the GPU allows (limited by vsync / mailbox
         // present mode).  A real game loop uses a fixed timestep for
         // deterministic physics — that will be introduced in a future module.
         // -------------------------------------------------------------------
-
-        // Slowly cycle the clear colour so we can visually confirm the
-        // renderer is running and is not just frozen on a black screen.
-        // TEACHING NOTE — Hue cycling via time
-        // We animate R/G/B components as offset sine waves.  The resulting
-        // colour sweeps through the rainbow, giving an immediate visual
-        // confirmation that frames are being presented and delta time works.
         double totalTime = 0.0;
 
         while (window.IsRunning())
         {
-            // -----------------------------------------------------------------
             // Poll Win32 messages (resize, keyboard, close, etc.)
-            // -----------------------------------------------------------------
             window.PollEvents();
 
-            // -----------------------------------------------------------------
             // Handle window resize — tell the renderer to rebuild the swapchain.
-            // -----------------------------------------------------------------
             if (window.WasResized())
             {
                 renderer.RecreateSwapchain(window.GetWidth(), window.GetHeight());
                 window.ClearResizedFlag();
             }
 
-            // -----------------------------------------------------------------
             // Advance total time using delta time from the window timer.
-            // -----------------------------------------------------------------
             double dt = window.GetDeltaTime();
             totalTime += dt;
 
-            // -----------------------------------------------------------------
             // Compute an animated clear colour.
-            // -----------------------------------------------------------------
             // TEACHING NOTE — std::sin / std::cos for animation
-            // sin() and cos() oscillate between -1 and +1.  Remapping to
-            // [0, 1] gives a smooth colour wave: (sin(t * speed + phase) + 1) / 2.
             // Each channel has a different phase offset so they don't all
-            // peak at the same moment.
-            // -----------------------------------------------------------------
-            const float speed  = 0.5f;
-            const float tF     = static_cast<float>(totalTime);
-            float clearR = (std::sin(tF * speed + 0.0f) + 1.0f) * 0.5f;
+            // peak at the same moment, producing a smooth rainbow sweep.
+            const float speed = 0.5f;
+            const float tF    = static_cast<float>(totalTime);
+            float clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
             float clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2π/3
             float clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4π/3
 
-            // -----------------------------------------------------------------
             // Draw the frame (acquire → record → submit → present).
-            // -----------------------------------------------------------------
             renderer.DrawFrame(clearR, clearG, clearB);
         }
 
         // -------------------------------------------------------------------
-        // Step 4 — Shutdown in reverse-creation order.
+        // Step 6 — Shutdown in reverse-creation order.
         // -------------------------------------------------------------------
         // TEACHING NOTE — Shutdown Order
         // The renderer must be shut down BEFORE the window because the

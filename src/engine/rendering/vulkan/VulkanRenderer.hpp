@@ -74,7 +74,16 @@
 #include <windows.h>
 #include <vulkan/vulkan.h>
 
+// Forward declarations — keeps this header lean.
+// Full types are only needed in VulkanRenderer.cpp.
+namespace engine { namespace rendering {
+    class VulkanPipeline;
+    class VulkanMesh;
+} }
+
 // Standard library
+#include <memory>       // std::unique_ptr
+#include <string>       // std::string
 #include <vector>       // std::vector
 #include <cstdint>      // uint32_t
 
@@ -161,6 +170,34 @@ public:
     void DrawFrame(float clearR, float clearG, float clearB);
 
     /**
+     * @brief Load a named scene, creating its pipeline and geometry.
+     *
+     * Supported scene names for M1:
+     *   "triangle" — coloured triangle using the graphics pipeline.
+     *
+     * @param sceneName   Identifies which scene to load.
+     * @param shaderDir   Directory containing compiled .spv shader files.
+     *                    Must end with a path separator (e.g. "shaders/").
+     * @return true on success.
+     *
+     * TEACHING NOTE — Scene Loading Pattern
+     * For M1 the "scene" is just a hardcoded triangle.  In later milestones
+     * LoadScene will parse a scene JSON file from the asset DB and spawn
+     * entities, load meshes, and wire up scripts.
+     */
+    bool LoadScene(const std::string& sceneName, const std::string& shaderDir);
+
+    /**
+     * @brief Record one command buffer without submitting or presenting.
+     *
+     * Used in headless validation mode to confirm "Draw recorded" without
+     * needing a GPU present loop.  Only valid after a successful LoadScene().
+     *
+     * @return true if recording succeeded.
+     */
+    bool RecordHeadlessFrame();
+
+    /**
      * @brief Recreate the swapchain after a window resize.
      *
      * Called automatically by DrawFrame when it detects VK_ERROR_OUT_OF_DATE_KHR
@@ -190,6 +227,37 @@ private:
     bool CreateSyncObjects();
 
     void DestroySwapchainResources();
+
+    // -----------------------------------------------------------------------
+    // Scene / pipeline helpers (M1+)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @brief Create the triangle pipeline and upload the triangle mesh.
+     *
+     * @param shaderDir  Directory containing triangle.vert.spv + triangle.frag.spv.
+     * @return true on success.
+     */
+    bool LoadTriangleScene(const std::string& shaderDir);
+
+    /**
+     * @brief Record all swapchain command buffers with the current scene.
+     *
+     * Called after LoadScene() and after swapchain recreation so command
+     * buffers always reflect the latest pipeline and clear colour.
+     *
+     * TEACHING NOTE — Pre-recording vs per-frame recording
+     * For a fully static scene (triangle with no animated clear colour) we
+     * could pre-record once.  We keep per-frame recording here for two reasons:
+     *   1. DrawFrame already re-records to animate the clear colour.
+     *   2. Pre-recording with the clear-colour animation would require a
+     *      separate "dynamic clear" mechanism (push constants or a UBO).
+     */
+    void RecordCommandBuffer(VkCommandBuffer cmdBuf,
+                             VkFramebuffer   framebuffer,
+                             float           clearR,
+                             float           clearG,
+                             float           clearB) const;
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Queue Family Indices
@@ -290,6 +358,17 @@ private:
     // Saved HINSTANCE/HWND for swapchain recreation after resize.
     HINSTANCE   m_hinstance      = nullptr;
     HWND        m_hwnd           = nullptr;
+
+    // -----------------------------------------------------------------------
+    // Scene / pipeline objects (created by LoadScene, destroyed in Shutdown)
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — std::unique_ptr for Optional Subsystems
+    // The pipeline and mesh may or may not exist (they are created only when
+    // LoadScene() is called).  Using unique_ptr<T> models "optionally present"
+    // cleanly: nullptr = not loaded, non-null = active.  The destructor auto-
+    // calls Destroy() through the unique_ptr deleter.
+    std::unique_ptr<VulkanPipeline> m_pipeline;    ///< Graphics PSO (null until LoadScene).
+    std::unique_ptr<VulkanMesh>     m_triangleMesh; ///< Triangle geometry (null until LoadScene).
 
     // -----------------------------------------------------------------------
     // Required extensions / layers
