@@ -19,9 +19,44 @@ clone FF15 content; it is to implement the *same categories of technology* so a
 student can understand how every piece of a modern engine works.
 
 **Non-goals:**
-- Shipping a content-complete game (teaching > content).
+- Shipping a *content*-complete game (hours of story/world content is not the goal).
 - Micro-optimising runtime performance before the architecture is teachable.
 - Adding engine features that have no corresponding lesson or acceptance test.
+
+**What "non-content-complete" does NOT mean:**
+Each technology category (visuals, physics, sound, gameplay) must be implemented
+at the same *class* of solution FF15 uses — real PBR shading, real rigid-body
+physics, real positional audio, real action combat — not a stub or toy version.
+A teaching engine that uses placeholder geometry and fake physics teaches nothing.
+
+---
+
+### 1.1 Definition of Done — Project Completion Criteria
+
+The project is considered **complete** when all of the following are true:
+
+1. **All 13 subsystems** in `docs/FF15_REQUIREMENTS_BLUEPRINT.md` show ✅ in
+   the Runtime, Tool, and Tests columns of the Completion Matrix.
+
+2. **FF15-comparable quality bar is met** across every domain:
+
+   | Domain | Minimum "complete" quality |
+   |--------|---------------------------|
+   | **Visuals** | PBR rendering (IBL + directional shadows + bloom + tonemapping); GPU-skinned skeletal meshes; dynamic sky (procedural time-of-day + weather FX); Vulkan ≥ 1.3 on Windows |
+   | **Physics** | Rigid-body simulation (Jolt Physics); character capsule with step-up / slopes; vehicle wheel-ray physics; physics-based hit volumes for combat |
+   | **Sound** | XAudio2 backend; positional 3D audio with distance attenuation; layered music system (battle / exploration / idle blend); event-driven SFX triggers |
+   | **Gameplay** | Real-time action combat (warp-strike, link-strike, combo chains, ATB); open-world zone streaming without loading screens; party AI (behaviour tree + formation); quest + dialogue system; save/load (15 slots + auto-save at camp) |
+   | **Tools** | Asset cooker (`cook.exe`); texture / mesh / audio / animation import pipeline; Qt 6 scene editor with Play-in-Engine; Python authoring tools for audio and animation |
+   | **Teaching** | Every non-trivial pattern has a `// TEACHING NOTE` block; docs in `docs/`; `samples/vertical_slice_project/` demonstrates each subsystem end-to-end |
+
+3. **A student can fully teach themselves** modern game engine development by
+   reading only this repository's source code and running its samples.  If any
+   subsystem requires consulting external documentation to understand *why* a
+   design decision was made, it is not done.
+
+4. **All CI gates are green** — headless validation passes for every subsystem,
+   golden-file contract tests pass, and `samples/vertical_slice_project/` cooks
+   and runs without errors.
 
 ---
 
@@ -133,17 +168,31 @@ Every milestone produces an **executable or headless-validation pass** before
 the next milestone starts.  This is non-negotiable.  See
 `docs/PROJECT_MILESTONES.md` for the detailed definition of each milestone.
 
-| Milestone | Name | "Done" means |
-|---|---|---|
-| M0 | **Vulkan sandbox** | `engine_sandbox.exe` opens a window; Vulkan clears screen; CI builds and passes |
-| M1 | **Triangle** | Vertex buffer, pipeline, shaders; `engine_sandbox` renders a white triangle |
-| M2 | **AssetDB + Cooker** | `cook.exe --project sample/` runs; `assetdb.json` produced; headless load validates |
-| M3 | **Hello Texture + Audio** | Textured quad renders; cooked audio clip plays via XAudio2 |
-| M4 | **Animation runtime** | Cooked glTF skeleton animates on screen; blend tree evaluates |
-| M5 | **Physics integration** | Jolt physics; character capsule falls; raycast returns hit |
-| M6 | **Editor shell** | `editor.exe` opens; scene hierarchy + inspector; save/load scene |
-| M7 | **World streaming** | Zone tiles stream in/out; async loader tested headlessly |
-| M8 | **Gameplay integration** | All existing gameplay systems (combat, quests, AI, camp) wired into Vulkan runtime |
+> **Current position:** M0 ✅ and M1 ✅ are complete.  **M2 is the active milestone.**
+
+| Milestone | Name | Status | "Done" means |
+|---|---|---|---|
+| M0 | **Vulkan sandbox** | ✅ Complete | `engine_sandbox.exe` opens a window; Vulkan clears screen; `build-linux.yml` CI passes |
+| M1 | **Triangle** | ✅ Complete | `VulkanPipeline` + `VulkanMesh`; `shaders/triangle.vert/.frag` compiled to SPIR-V; coloured triangle draws; `--headless --scene triangle` exits 0 |
+| M2 | **AssetDB + Cooker** | ⬜ Next | `src/tools/cook/cook_main.cpp` (`cook.exe`); `src/engine/assets/asset_db.hpp/.cpp`; `engine_sandbox --headless --validate-project` exits 0; `contract-tests.yml` CI; `build-windows.yml` CI |
+| M3 | **Hello Texture + Audio** | ⬜ | Vulkan texture (DDS/BC7); descriptor sets; `src/engine/audio/xaudio2_backend.hpp/.cpp`; textured quad renders; cooked WAV plays |
+| M4 | **Animation runtime** | ⬜ | `src/engine/animation/skeleton.hpp/.cpp` + `anim_clip` + `blend_tree` + `gpu_skinning`; animated character on screen |
+| M5 | **Physics integration** | ⬜ | Jolt Physics via vcpkg; `src/engine/physics/`; character capsule falls; raycast returns hit; headless physics tests pass |
+| M6 | **Editor improvements** | ⬜ | Entity inspector panel; scene ECS serialisation; Play-in-Engine button |
+| M7 | **World streaming** | ⬜ | `src/engine/world/world_streaming.hpp/.cpp`; async loader; headless streaming tests pass |
+| M8 | **Gameplay integration** | ⬜ | All gameplay systems (combat, AI, quests, camp, weather) wired into Vulkan runtime; Lua hooks fire; 300-frame headless sim passes |
+
+**Post-M8 work (in order):**
+1. `src/engine/ui/` — Vulkan HUD + menu stack + font renderer
+2. `src/engine/save/` — ECS snapshot save/load (15 slots + auto-save)
+3. Full PBR pipeline — IBL, directional shadow map, bloom, tonemapping
+4. Dynamic sky + weather VFX — `sky_renderer.hpp/.cpp`, `weather_fx.hpp/.cpp`
+5. `src/game/systems/dialogue_system.hpp/.cpp` — dialogue tree + NPC conversations
+6. `src/engine/ai/behaviour_tree.hpp/.cpp` — behaviour tree to replace/augment FSM
+7. `src/engine/ai/formation_system.hpp/.cpp` — party formation
+8. Vehicle physics — `src/game/systems/vehicle_system.hpp/.cpp` + `src/engine/physics/vehicle_physics.hpp/.cpp`
+9. `src/engine/cinematics/` — cinematic sequencer + camera rig
+10. `src/tools/pak/pak_main.cpp` — PAK packager for release
 
 ---
 
@@ -182,14 +231,68 @@ ctest --test-dir build -L contract
 
 ### 5.3 CI gates (`.github/workflows/`)
 
-| Workflow | Trigger | What it does |
-|---|---|---|
-| `build-linux.yml` | push / PR | cmake + make; runs `ctest` (terminal game) |
-| `build-windows.yml` | push / PR | cmake VS2022; builds `engine_sandbox`; headless validate |
-| `validate-assets.yml` | push / PR touching `assets/` | runs `tools/validate-assets.py` |
-| `contract-tests.yml` | push / PR | cook golden assets; diff against stored golden files |
+| Workflow | Trigger | What it does | Status |
+|---|---|---|---|
+| `build-linux.yml` | push / PR | cmake + make; builds terminal `game`; runs 32+11 Python pytest | ✅ exists |
+| `validate-assets.yml` | push / PR touching `assets/` | runs `tools/validate-assets.py` | ✅ exists |
+| `build-windows.yml` | push / PR | cmake VS2022; builds `engine_sandbox` + `cook`; headless validate | ⬜ **create for M2** |
+| `contract-tests.yml` | push / PR | cook golden assets; diff against stored golden files in `tests/golden/` | ⬜ **create for M2** |
 
 **CI must be green before any PR is merged.**
+
+#### `build-windows.yml` template (create for M2)
+
+```yaml
+name: Build Windows (engine_sandbox)
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.0
+        with:
+          vulkan-query-version: 1.3.250.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+      - name: Configure CMake
+        run: cmake --preset windows-debug
+      - name: Build engine_sandbox and cook
+        run: cmake --build --preset windows-debug --target engine_sandbox cook
+      - name: Headless validate engine
+        run: .\build\windows-debug\Debug\engine_sandbox.exe --headless
+      - name: Cook sample project (M2+)
+        run: .\build\windows-debug\Debug\cook.exe --project samples/vertical_slice_project/
+```
+
+#### `contract-tests.yml` template (create for M2)
+
+```yaml
+name: Contract Tests (golden-file)
+on: [push, pull_request]
+jobs:
+  contract:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build cook.exe
+        run: |
+          cmake --preset windows-debug
+          cmake --build --preset windows-debug --target cook
+      - name: Cook sample project
+        run: .\build\windows-debug\Debug\cook.exe --project samples/vertical_slice_project/
+      - name: Diff against golden assetdb
+        run: |
+          python -c "
+          import json, sys
+          actual   = json.load(open('samples/vertical_slice_project/Cooked/assetdb.json'))
+          expected = json.load(open('tests/golden/assetdb_expected.json'))
+          if actual != expected:
+              print('[FAIL] assetdb.json does not match golden file'); sys.exit(1)
+          print('[PASS] assetdb.json matches golden file')
+          "
+```
 
 ### 5.4 Headless validation commands (current)
 
@@ -235,6 +338,37 @@ without updating this section.
 |---|---|---|---|
 | `ENGINE_ENABLE_VULKAN` | `ON` | `OFF` | Build `engine_sandbox` Vulkan target |
 | `ENGINE_ENABLE_TERMINAL` | `OFF` | `ON` | Build `game` ncurses terminal target |
+| `ENGINE_ENABLE_PHYSICS` | `OFF` | `OFF` | Build Jolt Physics integration (M5) |
+
+### 6.2 vcpkg dependency manifest
+
+When the first third-party C++ dependency is added (M2 = `nlohmann-json`), create
+`vcpkg.json` in the repository root.  **Do not add dependencies to CMakeLists.txt
+without also adding them here.**
+
+```json
+{
+  "name": "educational-game-engine",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}
+```
+
+Per-milestone dependencies to add as work progresses:
+
+| Milestone | vcpkg package | Used by |
+|-----------|-------------|---------|
+| M2 | `nlohmann-json` | `cook.exe` — parse/write JSON manifests |
+| M3 | `directxtex` | Vulkan texture — DDS/BC7 compress/decompress |
+| M4 | `tinygltf` | Animation — load glTF skeleton + clips |
+| M5 | `joltphysics` | Physics — Jolt `PhysicsSystem` wrapper |
+
+Integrate with CMake by adding to `CMakePresets.json` `cacheVariables`:
+```json
+"CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+```
 
 ---
 

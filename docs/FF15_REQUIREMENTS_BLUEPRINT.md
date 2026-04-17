@@ -11,6 +11,35 @@
 
 ---
 
+## Project Completion Definition
+
+The project is considered **finished** when:
+
+- Every subsystem in the **Subsystem Completion Matrix** (bottom of this file)
+  shows ✅ in all three columns (Runtime, Tool, Tests).
+- Each subsystem meets the **FF15-comparable quality bar**:
+  - **Visuals** — PBR (IBL + shadows + bloom + tonemap), GPU-skinned characters,
+    dynamic sky with time-of-day and weather.
+  - **Physics** — Jolt-based rigid bodies, character capsule controller (step-up,
+    slopes), vehicle wheel-ray physics, physics hit volumes for combat.
+  - **Sound** — XAudio2 positional 3D audio, layered music (battle/explore/idle),
+    event-driven SFX triggers.
+  - **Gameplay** — Real-time action combat (warp-strike, link-strike, ATB),
+    open-world streaming, party AI with behaviour tree + formation, quest +
+    dialogue, save/load with 15 slots and auto-save.
+  - **Tools** — Full cook pipeline (texture, mesh, audio, animation), Qt 6
+    editor with Play-in-Engine, Python audio + animation authoring tools.
+  - **Teaching** — Every non-trivial pattern has a `// TEACHING NOTE` block and
+    is demonstrated in `samples/vertical_slice_project/`.
+- A student can study this codebase *alone* to understand every technology
+  category used in modern AAA game development.
+
+> Quality note: "teaching quality" means each subsystem is a *real*
+> implementation of the concept (real PBR, real physics, real positional audio)
+> — not a placeholder or toy version.  Stubs do not satisfy the completion bar.
+
+---
+
 ## How to read this document
 
 Each subsystem section follows this structure:
@@ -293,20 +322,24 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-| # | Subsystem | Runtime | Tool | Tests |
-|---|---|---|---|---|
-| 1 | Open-world streaming | ⬜ | 🔨 | ⬜ |
-| 2 | Party AI | 🔨 | ⬜ | ⬜ |
-| 3 | Action combat | ✅ | ⬜ | ⬜ |
-| 4 | Quests & objectives | ✅ | ⬜ | ⬜ |
-| 5 | Cinematics | ⬜ | ⬜ | ⬜ |
-| 6 | Vehicles | 🔨 | ⬜ | ⬜ |
-| 7 | Weather & time-of-day | ✅ | ⬜ | ⬜ |
-| 8 | Audio pipeline | 🔨 | ✅ | ⬜ |
-| 9 | Animation pipeline | ⬜ | ⬜ | ⬜ |
-| 10 | Physics | ⬜ | ⬜ | ⬜ |
-| 11 | UI | 🔨 | ⬜ | ⬜ |
-| 12 | Save system | ⬜ | ⬜ | ⬜ |
-| 13 | Build / release pipeline | 🔨 | ✅ | ⬜ |
+> **Last updated: 2026-04-17 — after M1 (triangle) completion.**
+> Update each cell as subsystem code is committed and tests pass.
+> The project is complete when every cell shows ✅.
 
-✅ exists · 🔨 in progress · ⬜ not yet started
+| # | Subsystem | Runtime | Tool | Tests | Notes |
+|---|---|---|---|---|---|
+| 1 | Open-world streaming | ⬜ | 🔨 | ⬜ | `Zone`/`TileMap` exist; streaming manager not started |
+| 2 | Party AI | 🔨 | ⬜ | ⬜ | FSM + A* done (terminal); BT + formation ⬜ |
+| 3 | Action combat | 🔨 | ⬜ | ⬜ | ATB/warp-strike done (terminal); physics hit-detection ⬜ |
+| 4 | Quests & objectives | 🔨 | ⬜ | ⬜ | QuestSystem done (terminal); dialogue system ⬜ |
+| 5 | Cinematics | ⬜ | ⬜ | ⬜ | No `src/engine/cinematics/` |
+| 6 | Vehicles | ⬜ | ⬜ | ⬜ | State enum only; no physics/road/camera |
+| 7 | Weather & time-of-day | 🔨 | ⬜ | ⬜ | WeatherSystem done (terminal); sky renderer ⬜ |
+| 8 | Audio pipeline | ⬜ | ✅ | 🔨 | Python tool + 32 tests ✅; XAudio2 C++ runtime ⬜ |
+| 9 | Animation pipeline | ⬜ | ✅ | 🔨 | Python tool + 11 tests ✅; C++ runtime ⬜ |
+| 10 | Physics | ⬜ | ⬜ | ⬜ | No `src/engine/physics/`; Jolt not integrated |
+| 11 | UI | 🔨 | ⬜ | ⬜ | ncurses terminal UI ✅; Vulkan HUD ⬜ |
+| 12 | Save system | ⬜ | ⬜ | ⬜ | `SaveGame()`/`LoadGame()` declared; no `src/engine/save/` |
+| 13 | Build / release pipeline | 🔨 | ✅ | ⬜ | Python tools + validate CI ✅; `cook.exe`, `pak.exe`, contract tests ⬜ |
+
+✅ complete · 🔨 in progress / partial · ⬜ not yet started
