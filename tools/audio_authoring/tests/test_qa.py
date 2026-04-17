@@ -74,8 +74,8 @@ def test_clipping_detector_clipped():
 # LoopAnalyzer
 # ---------------------------------------------------------------------------
 
-def test_loop_analyzer_seamless_silence():
-    """A sine wave aligned at loop point should be seamless."""
+def test_loop_analyzer_seamless_sine():
+    """A sine-wave loop (same value at start and end) is reported as seamless."""
     analyzer = LoopAnalyzer(sample_rate=SR)
     # A complete cycle of a sine wave starts and ends at 0 → seamless loop
     t = np.linspace(0, 1.0, SR, endpoint=False)

@@ -57,10 +57,9 @@ def test_quat_slerp_identity():
 
 
 def test_quat_slerp_halfway():
-    """Slerp at t=0.5 between identity and a 90° rotation is ≈ 45°."""
+    """Slerp at t=0.5 between identity and a 90° rotation yields a unit quaternion."""
     q0 = Quat.identity()
-    # 90° rotation around Z axis: (sin(45°), 0, 0, cos(45°)) → no, it's x/y/z/w
-    # Quat(x, y, z, w): 90° around Y: (0, sin(45°), 0, cos(45°))
+    # 90° rotation around Y axis: Quat(x=0, y=sin(45°), z=0, w=cos(45°))
     half = math.sin(math.radians(45))
     q1 = Quat(0.0, half, 0.0, half)
     mid = q0.slerp(q1, 0.5)
