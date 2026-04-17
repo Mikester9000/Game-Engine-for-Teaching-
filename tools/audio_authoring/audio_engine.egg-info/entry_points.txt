@@ -1,2 +1,0 @@
-[console_scripts]
-audio-engine = audio_engine.cli:main

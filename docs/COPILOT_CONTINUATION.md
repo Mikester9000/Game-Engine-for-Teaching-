@@ -240,8 +240,9 @@ without updating this section.
 
 ## 7. Toolchain Integration Points
 
-The three tool repositories (`Creation-Engine`, `Audio-Engine`,
-`Animation-Engine`) communicate with the runtime engine via the **shared asset
+The three authoring tools (`tools/audio_authoring` (Audio Engine),
+`tools/anim_authoring` (Animation Engine), and the Qt editor `editor/`)
+communicate with the runtime engine via the **shared asset
 manifest contract**.  The schema lives in
 `assets/schema/asset-manifest.schema.json`.
 
@@ -292,9 +293,9 @@ cooked/
 
 - [ ] **Creation-Engine:** emits `texture`, `model`, `material`, `tilemap`
       manifest entries → cooker produces `.dds` + `.level`
-- [ ] **Audio-Engine:** emits `audio` manifest entries → cooker normalises +
+- [ ] **`tools/audio_authoring` (Audio Engine):** emits `audio` manifest entries → cooker normalises +
       produces `.wav`; XAudio2 backend loads `.wav` at runtime
-- [ ] **Animation-Engine:** emits `animation` manifest entries (source: glTF)
+- [ ] **`tools/anim_authoring` (Animation Engine):** emits `animation` manifest entries (source: glTF)
       → cooker produces `.anim`; animation runtime loads `.anim`
 
 ### 7.4 GUID / asset-ID rules (locked)

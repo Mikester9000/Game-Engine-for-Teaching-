@@ -200,7 +200,7 @@ react-to-hit, death.  FF15's Noctis has hundreds of clips blended in real time.
 | | `src/engine/animation/blend_tree.hpp/.cpp` — 1D/2D blend spaces, transitions |
 | | `src/engine/animation/ik_solver.hpp/.cpp` — two-bone IK (foot planting) |
 | | `src/engine/animation/gpu_skinning.hpp/.cpp` — upload joint matrices to Vulkan |
-| **Tool component(s)** | `tools/animation_engine.py` — glTF → cooked `.anim` (via Animation-Engine repo) |
+| **Tool component(s)** | `tools/anim_authoring/animation_engine` — glTF → cooked `.anim` (vendored in `tools/anim_authoring/`) |
 | **Data formats** | Source: `animations/*.gltf`; Cooked: `cooked/animations/<id>.anim` (binary, schema in docs) |
 | **Acceptance tests** | Cook `test_idle.gltf`; load `.anim`; evaluate frame 0 and frame N; assert joint transforms match golden file |
 | | Blend two clips at weight 0.5; assert output is lerp of the two |
