@@ -177,10 +177,10 @@ and idle tracks blend based on game state.
 |---|---|
 | **Runtime component(s)** | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, source voice pool |
 | | `src/engine/audio/audio_system.hpp/.cpp` — event-driven playback, music layers, 3D emitters |
-| **Tool component(s)** | `tools/audio_authoring/audio_engine/` — Python audio synthesis + WAV cooking (see `tools/audio_authoring/`) |
+| **Tool component(s)** | `tools/audio_engine.py` — register clips, emit/consume manifest (exists) |
 | | Cooker step: normalise WAV, build XMA2 for shipping |
 | **Data formats** | Source: `audio/*.wav` + `audio-manifest.json`; Cooked: `cooked/audio/<id>.wav` |
-| **Acceptance tests** | `tools/audio_authoring/` tests pass (18 tests); pipeline generates all game assets |
+| **Acceptance tests** | `audio_engine.py consume --manifest ... --list` exits 0 and prints all clips |
 | | XAudio2 backend initialises headlessly (no sound device required in CI) |
 | | Play event triggers source voice; assert voice state == active for N ms |
 
@@ -200,7 +200,7 @@ react-to-hit, death.  FF15's Noctis has hundreds of clips blended in real time.
 | | `src/engine/animation/blend_tree.hpp/.cpp` — 1D/2D blend spaces, transitions |
 | | `src/engine/animation/ik_solver.hpp/.cpp` — two-bone IK (foot planting) |
 | | `src/engine/animation/gpu_skinning.hpp/.cpp` — upload joint matrices to Vulkan |
-| **Tool component(s)** | `tools/anim_authoring/animation_engine/` — Python skeletal animation authoring + `.animc` cooking (see `tools/anim_authoring/`) |
+| **Tool component(s)** | `tools/anim_authoring/animation_engine` — glTF → cooked `.anim` (vendored in `tools/anim_authoring/`) |
 | **Data formats** | Source: `animations/*.gltf`; Cooked: `cooked/animations/<id>.anim` (binary, schema in docs) |
 | **Acceptance tests** | Cook `test_idle.gltf`; load `.anim`; evaluate frame 0 and frame N; assert joint transforms match golden file |
 | | Blend two clips at weight 0.5; assert output is lerp of the two |

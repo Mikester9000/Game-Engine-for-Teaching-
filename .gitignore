@@ -7,7 +7,7 @@ build/
 __pycache__/
 *.pyc
 
-# Monorepo: generated cook output (exclude .gitkeep placeholders)
+# Monorepo: generated cook output (keep .gitkeep placeholders)
 samples/*/Cooked/*
 !samples/*/Cooked/.gitkeep
 samples/*/Saved/Logs/
@@ -19,3 +19,4 @@ build/
 tools/**/__pycache__/
 tools/**/*.pyc
 tools/**/.pytest_cache/
+tools/**/*.egg-info/

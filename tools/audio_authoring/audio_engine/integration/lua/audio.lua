@@ -1,180 +1,179 @@
--- audio.lua – Lua integration layer for the C++ AudioSystem.
---
--- TEACHING NOTE — Lua/C++ Bridge
--- ==================================
--- The C++ engine registers several global C functions that Lua scripts can call:
---   audio_play_sfx(event_key)       – play a registered sound effect
---   audio_play_music(filename)      – start a music track
---   audio_set_volume(level)         – set master volume (0.0 – 1.0)
---   audio_play_voice(key)           – play a voice line
---
--- This Lua file provides a higher-level wrapper module so game scripts can
--- write readable code like:
---   Audio.on_combat_start()
--- instead of raw C calls.
---
--- To install:
---   cp tools/audio_authoring/audio_engine/integration/lua/audio.lua scripts/
---
--- Then in the engine's main Lua file (scripts/main.lua), add:
---   require("audio")
---
--- The Lua hooks called by C++ (on_combat_start, on_camp_rest, etc.) are
--- registered automatically when this file is loaded.
---
--- TEACHING NOTE — Module Pattern in Lua
--- Lua does not have a built-in module/namespace system.  The idiomatic way
--- to create a namespace is to create a table and assign functions to it:
---   Audio = {}
---   Audio.play_sfx = function(key) ... end
--- This avoids polluting the global namespace with bare function names.
+--[[
+  audio.lua — Lua integration for the Game Engine for Teaching AudioSystem
+  =========================================================================
+
+  TEACHING NOTE — Lua ↔ C++ Audio Bridge
+  ========================================
+  The C++ AudioSystem registers four C functions with the Lua state:
+
+      audio_play_sfx(event_key)          – play a one-shot sound effect
+      audio_play_music(filename)         – start/crossfade a music track
+      audio_set_volume(volume)           – set master music+sfx volume (0–1)
+      audio_play_voice(voice_key)        – play a voiced narrator line
+
+  These bindings are registered in LuaEngine::RegisterEngineBindings():
+
+      AudioSystem* audio = &Game::Instance().GetAudio();
+      lua_pushlightuserdata(L, audio);
+      lua_setglobal(L, "__audio_ptr");
+      lua_register(L, "audio_play_sfx",   AudioSystem::Lua_PlaySFX);
+      lua_register(L, "audio_play_music", AudioSystem::Lua_PlayMusic);
+      lua_register(L, "audio_set_volume", AudioSystem::Lua_SetVolume);
+      lua_register(L, "audio_play_voice", AudioSystem::Lua_PlayVoice);
+
+  This Lua module wraps those raw C bindings with a friendly Lua API and
+  auto-wires into the existing engine hooks
+  (on_combat_start, on_camp_rest, on_level_up, …).
+
+  Usage
+  -----
+  -- In main.lua (or any script):
+  local Audio = require("audio")
+  Audio.play_sfx("combat_hit")
+  Audio.play_music("music_combat.wav")
+  Audio.set_volume(0.8)
+  Audio.play_voice("level_up")
+
+  Installation
+  ------------
+  Copy this file into the game engine's scripts/ directory:
+
+      cp <audio_engine_package>/integration/lua/audio.lua scripts/audio.lua
+
+  Then require it from scripts/main.lua:
+
+      local Audio = require("audio")
+
+--]]
+
+-- TEACHING NOTE — Module pattern
+-- We return a table of functions instead of polluting the global namespace.
+-- This is idiomatic Lua (similar to Python's "import module" pattern).
+local Audio = {}
+
 
 -- ---------------------------------------------------------------------------
--- Module table
+-- Low-level wrappers
+-- (The real work is done by the C++ AudioSystem via lua_register)
 -- ---------------------------------------------------------------------------
 
-Audio = Audio or {}
-
--- ---------------------------------------------------------------------------
--- Guard: silently no-op if C++ audio functions are not registered.
--- This keeps the script working in unit-test environments that don't wire
--- up the C++ bindings.
--- ---------------------------------------------------------------------------
-
-local function _sfx(key)
+--- Play a one-shot sound effect by its event key.
+-- @param event_key string  e.g. "combat_hit", "spell_cast", "level_up"
+function Audio.play_sfx(event_key)
+    -- TEACHING NOTE — Defensive nil check
+    -- If the C++ side never registered the binding (headless server, stub
+    -- build), we silently skip rather than crashing the script.
     if audio_play_sfx then
-        audio_play_sfx(key)
+        audio_play_sfx(event_key)
     end
 end
 
-local function _music(filename)
+--- Start or crossfade to a music track.
+-- @param filename string  WAV filename, e.g. "music_combat.wav"
+function Audio.play_music(filename)
     if audio_play_music then
         audio_play_music(filename)
     end
 end
 
-local function _voice(key)
-    if audio_play_voice then
-        audio_play_voice(key)
-    end
-end
-
-local function _volume(level)
+--- Set the master volume for both music and SFX.
+-- @param volume number  0.0 (silent) to 1.0 (full volume)
+function Audio.set_volume(volume)
     if audio_set_volume then
-        audio_set_volume(level)
+        audio_set_volume(volume)
     end
 end
 
--- ---------------------------------------------------------------------------
--- Public Audio API
--- ---------------------------------------------------------------------------
-
---- Play a registered sound effect.
--- @param key  SFX event key (matches SFX_MANIFEST event field).
-function Audio.play_sfx(key)
-    _sfx(key)
-end
-
---- Start a music track by filename.
--- @param filename  Music file name (relative to assets/audio/music/).
-function Audio.play_music(filename)
-    _music(filename)
-end
-
---- Play a voice line by key.
--- @param key  Voice event key (matches VOICE_MANIFEST key field).
-function Audio.play_voice(key)
-    _voice(key)
-end
-
---- Set the master volume.
--- @param level  Volume level between 0.0 (silent) and 1.0 (full).
-function Audio.set_volume(level)
-    _volume(level)
-end
-
--- ---------------------------------------------------------------------------
--- Game-state hooks
--- These are called by the C++ engine at the relevant game moments.
--- Register them as globals so C++ can find them by name.
--- ---------------------------------------------------------------------------
-
---- Called when the player enters combat.
-function on_combat_start()
-    _music("music_combat.wav")
-end
-
---- Called when combat ends (victory or retreat).
-function on_combat_end()
-    _music("music_exploring.wav")
-    _sfx("sword_hit")
-end
-
---- Called when a boss fight begins.
-function on_boss_start()
-    _music("music_boss.wav")
-end
-
---- Called when the player sets up camp.
-function on_camp_rest()
-    _music("music_camp.wav")
-    _sfx("camp_fire")
-end
-
---- Called when the player levels up.
-function on_level_up()
-    _sfx("level_up")
-    _voice("level_up")
-end
-
---- Called when a quest is completed.
-function on_quest_complete()
-    _sfx("quest_complete")
-    _voice("quest_complete")
-end
-
---- Called when the player picks up an item.
-function on_item_pickup()
-    _sfx("item_pickup")
-end
-
---- Called when the main menu is opened.
-function on_menu_open()
-    _music("music_menu.wav")
-end
-
---- Called when a UI menu item is selected.
-function on_menu_select()
-    _sfx("menu_select")
-end
-
---- Called when a UI menu action is cancelled.
-function on_menu_cancel()
-    _sfx("menu_cancel")
-end
-
---- Called when the player character dies.
-function on_game_over()
-    _music("music_game_over.wav")
-    _voice("game_over")
-end
-
---- Called when the player HP drops below a critical threshold.
--- @param hp     Current HP.
--- @param max_hp Maximum HP.
-function on_low_hp(hp, max_hp)
-    if max_hp and max_hp > 0 and (hp / max_hp) < 0.2 then
-        _voice("party_low_hp")
+--- Play a voiced narrator or character line.
+-- @param voice_key string  e.g. "welcome", "level_up", "boss_intro"
+function Audio.play_voice(voice_key)
+    if audio_play_voice then
+        audio_play_voice(voice_key)
     end
 end
 
---- Called when a cutscene begins.
-function on_cutscene_start()
-    _music("music_cutscene.wav")
+
+-- ---------------------------------------------------------------------------
+-- Named music helpers  (match the music manifest in game_state_map.py)
+-- ---------------------------------------------------------------------------
+
+--- Start the main menu music.
+function Audio.on_main_menu()
+    Audio.play_music("music_main_menu.wav")
 end
 
---- Called when the player enters the open world (after load/cutscene).
-function on_explore_update()
-    -- Continuously called; only transition to explore music if not in combat.
-    -- C++ AudioSystem handles preventing re-trigger of the same track.
+--- Start the exploration music.
+function Audio.on_exploring()
+    Audio.play_music("music_exploring.wav")
 end
+
+--- Start the combat music.
+function Audio.on_combat_start()
+    Audio.play_music("music_combat.wav")
+    Audio.play_voice("welcome")   -- optional narrator intro on first combat
+end
+
+--- Start the boss battle music.
+function Audio.on_boss_combat()
+    Audio.play_music("music_boss_combat.wav")
+    Audio.play_voice("boss_intro")
+end
+
+--- Play the victory music and voice line.
+function Audio.on_combat_victory()
+    Audio.play_music("music_victory.wav")
+end
+
+--- Start the camping music and rest voice line.
+function Audio.on_camp_rest()
+    Audio.play_music("music_camping.wav")
+    Audio.play_voice("camp_rest")
+end
+
+--- Play the level-up SFX and voice line.
+-- @param new_level number  (unused by audio, reserved for future use)
+function Audio.on_level_up(new_level)
+    Audio.play_sfx("level_up")
+    Audio.play_voice("level_up")
+end
+
+--- Play the quest-complete SFX and voice line.
+function Audio.on_quest_complete()
+    Audio.play_sfx("quest_complete")
+    Audio.play_voice("quest_complete")
+end
+
+--- Play the game-over voice line.
+function Audio.on_game_over()
+    Audio.play_voice("game_over")
+end
+
+
+-- ---------------------------------------------------------------------------
+-- Low-level SFX helpers  (direct event key bindings)
+-- ---------------------------------------------------------------------------
+
+function Audio.on_combat_hit()   Audio.play_sfx("combat_hit")   end
+function Audio.on_combat_miss()  Audio.play_sfx("combat_miss")  end
+function Audio.on_spell_cast()   Audio.play_sfx("spell_cast")   end
+function Audio.on_spell_hit()    Audio.play_sfx("spell_hit")    end
+function Audio.on_item_pickup()  Audio.play_sfx("item_pickup")  end
+function Audio.on_item_equip()   Audio.play_sfx("item_equip")   end
+function Audio.on_ui_confirm()   Audio.play_sfx("ui_confirm")   end
+function Audio.on_ui_cancel()    Audio.play_sfx("ui_cancel")    end
+function Audio.on_door_open()    Audio.play_sfx("door_open")    end
+function Audio.on_enemy_death()  Audio.play_sfx("enemy_death")  end
+function Audio.on_player_death()
+    Audio.play_sfx("player_death")
+    Audio.play_voice("game_over")
+end
+
+
+-- ---------------------------------------------------------------------------
+-- Module return
+-- ---------------------------------------------------------------------------
+
+-- TEACHING NOTE — Always return the module table at the end of the file.
+-- Lua's require() system caches this table and returns it to every caller,
+-- so all scripts share the same Audio instance.
+return Audio

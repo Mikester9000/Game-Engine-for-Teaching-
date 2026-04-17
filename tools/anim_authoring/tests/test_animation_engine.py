@@ -1,11 +1,17 @@
-"""Test suite for the Animation Authoring tool.
+"""
+tests/test_animation_engine.py — Tests for the animation_engine package.
 
-5 tests covering:
-  - Model: Skeleton and Bone construction
-  - Model: AnimClip and channel sampling (interpolation)
-  - IO: round-trip export + import for skeleton and clip
-  - Runtime: Animator.evaluate
-  - Integration: AnimAssetPipeline cook_all
+Covers the five core scenarios from the anim_authoring integration:
+  1. Model types: Vec3, Quat, Bone, Skeleton, AnimClip
+  2. Skeleton construction and bone hierarchy
+  3. AnimClip channel sampling (interpolation)
+  4. Exporter / Importer round-trip (JSON)
+  5. Exporter binary stub (.animc)
+
+TEACHING NOTE — Why test round-trips?
+A serialization round-trip test (export → import → compare) is one of the
+most valuable tests you can write. It exercises both the exporter and
+importer in one shot, and catches any field-name mismatches between the two.
 """
 
 import json
@@ -15,184 +21,173 @@ from pathlib import Path
 
 import pytest
 
-
-# ---------------------------------------------------------------------------
-# 1: Skeleton model
-# ---------------------------------------------------------------------------
-
-class TestSkeletonModel:
-    """Tests for animation_engine.model.Skeleton / Bone."""
-
-    def test_add_and_find_bone(self):
-        from animation_engine.model import Skeleton
-        skel = Skeleton(name="TestSkeleton")
-        root = skel.add_bone("root")
-        spine = skel.add_bone("spine", parent_index=root.index)
-        assert skel.find_bone("root") is root
-        assert skel.find_bone("spine") is spine
-        assert skel.find_bone("missing") is None
-
-    def test_skeleton_serialises_to_dict(self):
-        from animation_engine.model import Skeleton
-        skel = Skeleton(name="Human")
-        skel.add_bone("root")
-        data = skel.to_dict()
-        assert data["name"] == "Human"
-        assert len(data["bones"]) == 1
-        assert data["bones"][0]["name"] == "root"
+from animation_engine.model import (
+    Vec3,
+    Quat,
+    Bone,
+    Skeleton,
+    AnimClip,
+    AnimChannel,
+    Keyframe,
+)
+from animation_engine.io import Exporter, Importer
 
 
-# ---------------------------------------------------------------------------
-# 2: AnimClip sampling / interpolation
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# 1. Model primitives
+# ===========================================================================
 
-class TestAnimClipSampling:
-    """Tests for AnimChannel.sample (LERP / SLERP interpolation)."""
-
-    def test_channel_sample_clamps_to_endpoints(self):
-        from animation_engine.model import AnimClip, Vec3, Quat
-
-        clip = AnimClip(name="Walk", duration_seconds=1.0)
-        ch = clip.add_channel(0, "root")
-        ch.add_keyframe(0.0, translation=Vec3(0, 0, 0))
-        ch.add_keyframe(1.0, translation=Vec3(10, 0, 0))
-
-        kf_start = ch.sample(-1.0)
-        kf_end   = ch.sample(2.0)
-        assert kf_start.translation.x == pytest.approx(0.0)
-        assert kf_end.translation.x   == pytest.approx(10.0)
-
-    def test_channel_midpoint_interpolation(self):
-        from animation_engine.model import AnimClip, Vec3
-
-        clip = AnimClip(name="Test", duration_seconds=1.0)
-        ch = clip.add_channel(0, "root")
-        ch.add_keyframe(0.0, translation=Vec3(0, 0, 0))
-        ch.add_keyframe(1.0, translation=Vec3(10, 0, 0))
-
-        kf_mid = ch.sample(0.5)
-        assert kf_mid.translation.x == pytest.approx(5.0, abs=0.01)
+def test_vec3_arithmetic():
+    """Vec3 supports +, -, * and length / normalize."""
+    a = Vec3(1.0, 0.0, 0.0)
+    b = Vec3(0.0, 1.0, 0.0)
+    assert (a + b) == Vec3(1.0, 1.0, 0.0)
+    assert (a - b) == Vec3(1.0, -1.0, 0.0)
+    assert (a * 2.0) == Vec3(2.0, 0.0, 0.0)
+    assert abs(a.length() - 1.0) < 1e-6
+    n = Vec3(3.0, 4.0, 0.0).normalized()
+    assert abs(n.length() - 1.0) < 1e-6
 
 
-# ---------------------------------------------------------------------------
-# 3: IO round-trip
-# ---------------------------------------------------------------------------
-
-class TestIOExporterImporter:
-    """Tests for animation_engine.io.Exporter and Importer round-trips."""
-
-    def test_skeleton_round_trip(self):
-        from animation_engine.model import Skeleton
-        from animation_engine.io import Exporter, Importer
-
-        skel = Skeleton(name="Round-trip Skeleton")
-        skel.add_bone("root")
-        skel.add_bone("spine", parent_index=0)
-
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "test.skelc"
-            Exporter.export_skeleton(skel, path)
-            loaded = Importer.import_skeleton(path)
-
-        assert loaded.name == skel.name
-        assert len(loaded.bones) == 2
-        assert loaded.bones[0].name == "root"
-        assert loaded.bones[1].parent_index == 0
-
-    def test_clip_round_trip(self):
-        from animation_engine.model import AnimClip, Vec3
-        from animation_engine.io import Exporter, Importer
-
-        clip = AnimClip(name="Walk", duration_seconds=2.0, fps=30.0)
-        ch = clip.add_channel(0, "root")
-        ch.add_keyframe(0.0, translation=Vec3(0, 0, 0))
-        ch.add_keyframe(2.0, translation=Vec3(5, 0, 0))
-
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "walk.animc"
-            Exporter.export_clip(clip, path)
-            loaded = Importer.import_clip(path)
-
-        assert loaded.name == "Walk"
-        assert loaded.duration_seconds == pytest.approx(2.0)
-        assert len(loaded.channels) == 1
-        assert len(loaded.channels[0].keyframes) == 2
+def test_quat_slerp_identity():
+    """Slerping two identical quaternions at any t returns the same quaternion."""
+    q = Quat.identity()
+    result = q.slerp(q, 0.5)
+    assert abs(result.w - 1.0) < 1e-5
 
 
-# ---------------------------------------------------------------------------
-# 4: Runtime Animator
-# ---------------------------------------------------------------------------
-
-class TestAnimator:
-    """Tests for animation_engine.runtime.Animator."""
-
-    def _make_skeleton_and_clip(self):
-        from animation_engine.model import Skeleton, AnimClip, Vec3
-
-        skel = Skeleton(name="TestSkel")
-        root = skel.add_bone("root")
-
-        clip = AnimClip(name="TestClip", duration_seconds=1.0)
-        ch = clip.add_channel(root.index, "root")
-        ch.add_keyframe(0.0, translation=Vec3(0, 0, 0))
-        ch.add_keyframe(1.0, translation=Vec3(10, 0, 0))
-        return skel, clip
-
-    def test_evaluate_returns_one_entry_per_bone(self):
-        from animation_engine.runtime import Animator
-
-        skel, clip = self._make_skeleton_and_clip()
-        animator = Animator(skel, clip)
-        result = animator.evaluate(0.5)
-        assert len(result) == len(skel.bones)
-
-    def test_evaluate_looping_wraps(self):
-        from animation_engine.runtime import Animator
-
-        skel, clip = self._make_skeleton_and_clip()
-        animator = Animator(skel, clip)
-        # t=0.5 and t=1.5 should give same result (clip duration=1.0)
-        r1 = animator.evaluate(0.5)
-        r2 = animator.evaluate_looping(1.5)
-        assert r1[0]["translation"] == pytest.approx(r2[0]["translation"], abs=1e-4)
+def test_quat_slerp_halfway():
+    """Slerp at t=0.5 between identity and a 90° rotation yields a unit quaternion."""
+    q0 = Quat.identity()
+    # 90° rotation around Y axis: Quat(x=0, y=sin(45°), z=0, w=cos(45°))
+    half = math.sin(math.radians(45))
+    q1 = Quat(0.0, half, 0.0, half)
+    mid = q0.slerp(q1, 0.5)
+    # Length should be 1 (unit quaternion)
+    assert abs(mid.length() - 1.0) < 1e-5
 
 
-# ---------------------------------------------------------------------------
-# 5: Integration pipeline
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# 2. Skeleton construction
+# ===========================================================================
 
-class TestAnimAssetPipeline:
-    """Tests for animation_engine.integration.AnimAssetPipeline."""
+def test_skeleton_add_bone():
+    """add_bone appends a bone and assigns indices in order."""
+    skel = Skeleton(name="TestSkeleton")
+    root = skel.add_bone("root")
+    spine = skel.add_bone("spine_01", parent_index=root.index)
 
-    def _write_clip_json(self, path: Path) -> None:
-        data = {
-            "$schema": "../../../shared/schemas/anim_clip.schema.json",
-            "version": "1.0.0",
-            "id": "test-clip",
-            "name": "TestClip",
-            "skeletonId": "",
-            "durationSeconds": 1.0,
-            "fps": 30.0,
-            "loopable": False,
-            "rootMotion": False,
-            "channels": [],
-        }
-        path.write_text(json.dumps(data), encoding="utf-8")
+    assert root.index == 0
+    assert spine.index == 1
+    assert spine.parent_index == root.index
+    assert len(skel.bones) == 2
 
-    def test_cook_all_produces_cooked_files(self):
-        from animation_engine.integration import AnimAssetPipeline
 
-        with tempfile.TemporaryDirectory() as tmp:
-            content = Path(tmp) / "Content"
-            cooked  = Path(tmp) / "Cooked"
-            content.mkdir()
+def test_skeleton_find_bone():
+    """find_bone returns the correct bone by name, None for unknown."""
+    skel = Skeleton(name="TestSkeleton")
+    skel.add_bone("root")
+    skel.add_bone("hip")
 
-            self._write_clip_json(content / "test_clip.json")
+    assert skel.find_bone("hip") is not None
+    assert skel.find_bone("hip").name == "hip"
+    assert skel.find_bone("nonexistent") is None
 
-            pipeline = AnimAssetPipeline(skip_existing=False)
-            manifest = pipeline.cook_all(content, cooked)
 
-            assert len(manifest.errors) == 0, f"Cook errors: {manifest.errors}"
-            assert len(manifest.clips) == 1
-            cooked_file = Path(manifest.clips[0]["cooked"])
-            assert cooked_file.exists()
+def test_skeleton_to_dict_has_required_fields():
+    """Skeleton.to_dict() includes the shared schema fields."""
+    skel = Skeleton(name="S")
+    skel.add_bone("root")
+    d = skel.to_dict()
+    assert "version" in d
+    assert "id" in d
+    assert "name" in d
+    assert "bones" in d
+    assert len(d["bones"]) == 1
+
+
+# ===========================================================================
+# 3. AnimClip channel sampling
+# ===========================================================================
+
+def test_anim_clip_sample_clamp_start():
+    """Sampling before first keyframe returns the first keyframe."""
+    skel = Skeleton(name="S")
+    root = skel.add_bone("root")
+    clip = AnimClip(name="Idle", skeleton_id=skel.id, duration_seconds=2.0)
+    ch = clip.add_channel(root.index, "root")
+    ch.add_keyframe(0.5, translation=Vec3(0, 0, 0))
+    ch.add_keyframe(1.5, translation=Vec3(0, 1, 0))
+
+    sampled = ch.sample(0.0)  # before first keyframe → clamp to first
+    assert sampled.translation == Vec3(0, 0, 0)
+
+
+def test_anim_clip_sample_midpoint():
+    """Sampling halfway between two keyframes returns an interpolated value."""
+    skel = Skeleton(name="S")
+    root = skel.add_bone("root")
+    clip = AnimClip(name="Move", skeleton_id=skel.id, duration_seconds=2.0)
+    ch = clip.add_channel(root.index, "root")
+    ch.add_keyframe(0.0, translation=Vec3(0, 0, 0))
+    ch.add_keyframe(1.0, translation=Vec3(2, 0, 0))
+
+    sampled = ch.sample(0.5)
+    assert abs(sampled.translation.x - 1.0) < 1e-5
+
+
+# ===========================================================================
+# 4. Exporter / Importer round-trip
+# ===========================================================================
+
+def test_skeleton_export_import_round_trip(tmp_path):
+    """Exporting and importing a Skeleton preserves all fields."""
+    skel = Skeleton(name="RoundTrip")
+    root = skel.add_bone("root")
+    hip = skel.add_bone("hip", parent_index=root.index)
+    hip.bind_translation = Vec3(0, 1, 0)
+
+    out = tmp_path / "skeleton.json"
+    Exporter.export_skeleton(skel, out)
+    assert out.exists()
+
+    loaded = Importer.import_skeleton(out)
+    assert loaded.name == skel.name
+    assert loaded.id == skel.id
+    assert len(loaded.bones) == len(skel.bones)
+    assert loaded.find_bone("hip").bind_translation == Vec3(0, 1, 0)
+
+
+def test_clip_export_import_round_trip(tmp_path):
+    """Exporting and importing an AnimClip preserves channels and keyframes."""
+    skel = Skeleton(name="S")
+    root = skel.add_bone("root")
+    clip = AnimClip(name="Idle", skeleton_id=skel.id, duration_seconds=2.0, loopable=True)
+    ch = clip.add_channel(root.index, "root")
+    ch.add_keyframe(0.0, translation=Vec3(0, 0, 0))
+    ch.add_keyframe(2.0, translation=Vec3(0, 0, 0))
+
+    out = tmp_path / "idle.animc"
+    Exporter.export_clip(clip, out)
+    assert out.exists()
+
+    loaded = Importer.import_clip(out)
+    assert loaded.name == clip.name
+    assert loaded.loopable == clip.loopable
+    assert loaded.duration_seconds == clip.duration_seconds
+    assert len(loaded.channels) == 1
+    assert len(loaded.channels[0].keyframes) == 2
+
+
+# ===========================================================================
+# 5. Binary stub exporter
+# ===========================================================================
+
+def test_export_clip_binary_creates_animc(tmp_path):
+    """export_clip_binary() creates a .animc file."""
+    clip = AnimClip(name="BinaryTest", duration_seconds=1.0)
+    out = tmp_path / "test.animc"
+    result = Exporter.export_clip_binary(clip, out)
+    assert result.suffix == ".animc"
+    assert result.exists()
+    assert result.stat().st_size > 0

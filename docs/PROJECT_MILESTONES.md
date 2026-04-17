@@ -171,7 +171,7 @@ python tools\validate-assets.py /tmp/cooked/assetdb.json
 ### Goals
 - Skeleton, clip evaluation, simple blend tree.
 - GPU skinning via joint matrix UBO uploaded to Vulkan.
-- `tools/anim_authoring/animation_engine/` (`animation_engine.io.Exporter`) cooks a test clip to `.animc`.
+- `tools/anim_authoring/animation_engine` (`tools/anim_authoring`) cooks a test glTF clip to `.anim`.
 
 ### Deliverables
 | File | Description |

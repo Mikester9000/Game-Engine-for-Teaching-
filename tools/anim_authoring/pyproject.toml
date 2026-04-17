@@ -9,7 +9,7 @@ description = "Animation authoring tool for Game Engine for Teaching (vendored f
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-keywords = ["animation", "skeletal", "game-engine", "keyframe", "ik"]
+keywords = ["animation", "skeletal", "keyframe", "game-engine", "exporter"]
 dependencies = [
     "numpy>=1.24",
 ]
@@ -17,7 +17,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.4",
-    "pytest-cov>=4.1",
 ]
 
 [tool.setuptools.packages.find]
