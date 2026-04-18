@@ -288,10 +288,20 @@ if(ENGINE_ENABLE_VULKAN)
     # the Win32-specific surface types and functions are declared.
     # Passing it as a compile definition ensures it is set for every
     # translation unit in this target without relying on the include order.
+    #
+    # TEACHING NOTE — UNICODE and _UNICODE
+    # Win32Window.cpp uses std::wstring for the window title and
+    # const wchar_t* for the window class name (L"EngineWndClass").
+    # Without UNICODE/_UNICODE, MSVC maps CreateWindowEx → CreateWindowExA
+    # which expects LPCSTR (narrow string) — causing C2440/C2664 errors.
+    # Defining UNICODE and _UNICODE selects the wide-string (W) variants so
+    # CreateWindowEx → CreateWindowExW, RegisterClassEx → RegisterClassExW, etc.
     target_compile_definitions(engine_sandbox PRIVATE
         VK_USE_PLATFORM_WIN32_KHR
         WIN32_LEAN_AND_MEAN
         NOMINMAX
+        UNICODE
+        _UNICODE
     )
 
     # TEACHING NOTE — SUBSYSTEM:CONSOLE
