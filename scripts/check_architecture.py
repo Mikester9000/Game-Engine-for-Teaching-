@@ -142,6 +142,19 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     # comprehensive API it demonstrates for students studying XAudio2 integration.
     "tools/audio_authoring/audio_engine/integration/cpp/AudioSystem.hpp":
         "audio tool C++ integration example — comprehensive XAudio2 API demonstration",
+    # xaudio2_backend.cpp: M3 XAudio2 backend — extensive teaching notes cover COM
+    # init, RIFF/WAVE parsing, source voice pools, and XAudio2 buffer submission.
+    "src/engine/audio/xaudio2_backend.cpp":
+        "XAudio2 backend — M3 audio milestone; TEACHING NOTEs cover COM, RIFF/WAV, voice pool, buffer submission",
+    # d3d11_texture.cpp: M3 D3D11 DDS texture loader — teaching notes cover DDS
+    # format, block compression (BC1/BC3/BC7), mip maps, and D3D11 resource upload.
+    "src/engine/rendering/d3d11/d3d11_texture.cpp":
+        "D3D11 DDS texture loader — M3 texture milestone; TEACHING NOTEs cover DDS format, BC7 compression, mip map upload",
+    # test_world.cpp: M3 integration test scene — exercises every gameplay system.
+    # Size is justified: it boots 8 systems, spawns 10+ entity types, runs a
+    # scripted demo, and maps game state to D3D11 clear colour for visual feedback.
+    "src/sandbox/test_world.cpp":
+        "TestWorld integration scene — M3 system verification; exercises CombatSystem, AISystem, WeatherSystem, QuestSystem, InventorySystem, ShopSystem, CampSystem, and AudioSystem together",
 }
 
 # ---------------------------------------------------------------------------
@@ -409,7 +422,11 @@ def check_teaching_notes(
 
 def collect_cpp_files(repo_root: Path) -> list[Path]:
     """Return all ``.cpp`` and ``.hpp`` files under *repo_root*, sorted."""
-    skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules"}
+    # TEACHING NOTE — skip_dirs excludes build artefacts and third-party sources.
+    # "Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
+    # source that intentionally has no TEACHING NOTE blocks and may be large.
+    # Scanning it would produce false-positive warnings.
+    skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules", "Lua"}
     result: list[Path] = []
     for path in sorted(repo_root.rglob("*")):
         if any(part in skip_dirs for part in path.parts):

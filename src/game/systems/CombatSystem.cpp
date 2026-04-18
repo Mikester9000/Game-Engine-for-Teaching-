@@ -10,7 +10,15 @@
  */
 
 #include "CombatSystem.hpp"
+// TEACHING NOTE — Optional Lua scripting dependency
+// LuaEngine.hpp requires the Lua 5.4 headers (lua5.4/lua.h) which are only
+// available when Lua is installed.  ENGINE_ENABLE_LUA is defined by CMake for
+// targets that link Lua (the terminal `game` target).  engine_sandbox builds
+// on Windows without Lua, so the scripting hook is compiled out — combat
+// still works fully, the Lua callback simply does not fire.
+#ifdef ENGINE_ENABLE_LUA
 #include "../../engine/scripting/LuaEngine.hpp"  // on_combat_start hook
+#endif
 
 #include <algorithm>   // std::remove, std::max, std::min
 #include <cmath>       // std::abs, std::sqrt
@@ -120,7 +128,9 @@ void CombatSystem::StartCombat(EntityID player,
                 firstEnemyName = m_world->GetComponent<NameComponent>(firstEnemy).name;
             }
         }
+#ifdef ENGINE_ENABLE_LUA
         LuaEngine::Get().CallFunction("on_combat_start", firstEnemyName);
+#endif
     }
 }
 

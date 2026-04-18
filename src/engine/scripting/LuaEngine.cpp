@@ -109,7 +109,7 @@ bool LuaEngine::Init(World* world)
     // -----------------------------------------------------------------------
     // Step 2 — Open standard libraries
     // -----------------------------------------------------------------------
-    // TEACHING NOTE: luaL_openlibs() loads all standard Lua 5.4 libraries:
+    // TEACHING NOTE: luaL_openlibs() loads all standard Lua libraries:
     //   • base    : print, type, error, assert, pairs, ipairs, etc.
     //   • math    : math.sin, math.random, math.floor, etc.
     //   • string  : string.format, string.find, string.sub, etc.
@@ -131,8 +131,7 @@ bool LuaEngine::Init(World* world)
     // -----------------------------------------------------------------------
     RegisterEngineBindings();
 
-    LOG_INFO("LuaEngine: Lua 5.4 interpreter initialised successfully.");
-    LOG_INFO("LuaEngine: " + std::string(LUA_VERSION) + " embedded.");
+    LOG_INFO("LuaEngine: " + std::string(LUA_RELEASE) + " interpreter initialised.");
     return true;
 }
 

@@ -113,12 +113,44 @@
 // `extern "C" { ... }` tells the C++ compiler to use C-style (unmangled)
 // linkage for everything inside the block.
 //
-// The lua.hpp header (Lua's own C++ wrapper) already wraps itself in
-// extern "C", so we can include it directly:
+// TEACHING NOTE — Lua include-path cascade
+// ─────────────────────────────────────────
+// Lua headers reach the compiler via different paths depending on how Lua was
+// set up.  We check in order of preference:
+//
+//   1. <lua.h> directly on the include path — used when CMake built Lua from
+//      the bundled source (Lua/lua-5.5.0/src/) and exposed its directory as
+//      a PUBLIC include on the lua55_static target.  This works on all
+//      platforms (Windows MSVC, Linux GCC/Clang, macOS).
+//
+//   2. <lua5.5/lua.h> — system Lua 5.5 installed in a versioned sub-dir
+//      (e.g. /usr/include/lua5.5/).
+//
+//   3. <lua5.4/lua.h> — system Lua 5.4 installed in a versioned sub-dir
+//      (e.g. /usr/include/lua5.4/ on Debian/Ubuntu via liblua5.4-dev).
+//
+// The cascade ensures the file compiles on every supported platform without
+// manual per-developer configuration.
 extern "C" {
-#include <lua5.4/lua.h>       // Core Lua API: lua_State, lua_push*, lua_to*, …
-#include <lua5.4/lualib.h>    // Standard library loaders: luaL_openlibs
-#include <lua5.4/lauxlib.h>   // Auxiliary helpers: luaL_newstate, luaL_loadfile
+#if __has_include(<lua.h>)
+// Bundled Lua (any platform) — Lua/lua-5.5.0/src/ on the include path via
+// the lua55_static CMake target PUBLIC include dirs.
+#  include <lua.h>
+#  include <lualib.h>
+#  include <lauxlib.h>
+#elif __has_include(<lua5.5/lua.h>)
+// System Lua 5.5 installed in a versioned subdirectory.
+#  include <lua5.5/lua.h>
+#  include <lua5.5/lualib.h>
+#  include <lua5.5/lauxlib.h>
+#elif __has_include(<lua5.4/lua.h>)
+// System Lua 5.4 installed in a versioned subdirectory (Debian/Ubuntu).
+#  include <lua5.4/lua.h>
+#  include <lua5.4/lualib.h>
+#  include <lua5.4/lauxlib.h>
+#else
+#  error "Lua headers not found.  Ensure Lua/lua-5.5.0/ is present in the repo."
+#endif
 }
 
 // ---------------------------------------------------------------------------

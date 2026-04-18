@@ -6,31 +6,34 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 795 across 34 subsystems.
+**Total lessons:** 864 across 37 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (26 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (36 lessons)
 - [ci/workflows](#ciworkflows) (27 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
 - [engine/assets](#engineassets) (27 lessons)
-- [engine/core](#enginecore) (49 lessons)
-- [engine/ecs](#engineecs) (31 lessons)
+- [engine/audio](#engineaudio) (32 lessons)
+- [engine/core](#enginecore) (50 lessons)
+- [engine/ecs](#engineecs) (32 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (172 lessons)
-- [engine/scripting](#enginescripting) (28 lessons)
+- [engine/rendering](#enginerendering) (186 lessons)
+- [engine/scripting](#enginescripting) (29 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
-- [game/systems](#gamesystems) (83 lessons)
+- [game/systems](#gamesystems) (85 lessons)
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (17 lessons)
-- [scripts/check_architecture.py](#scriptscheck_architecture.py) (7 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (19 lessons)
+- [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
+- [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
+- [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
 - [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (2 lessons)
 - [scripts/main.lua](#scriptsmain.lua) (2 lessons)
@@ -206,9 +209,65 @@ find_package(Curses REQUIRED)
 message(STATUS "ncurses found: ${CURSES_LIBRARIES}")
 endif()
 
+### Build Lua from source (preferred)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L170) (line 170)
+
+──────────────────────────────────────────────────
+Lua is a small, self-contained library (~30 .c files).  Building it from the
+bundled source in  Lua/lua-5.5.0/src/  has several advantages over linking
+against a pre-built system library:
+
+  • Zero external dependencies — works on any platform, in any CI, with any
+    compiler.  No "sudo apt install liblua5.4-dev" step required.
+  • Consistent version — everyone builds against Lua 5.5.0 regardless of what
+    is installed on their machine.
+  • Transparent — students can read the Lua source alongside the engine source.
+
+Detection order:
+  1. Bundled source in Lua/lua-5.5.0/src/   ← preferred (always present)
+  2. System Lua 5.5 via pkg-config           ← fallback for distros
+  3. System Lua 5.4 via pkg-config           ← further fallback
+  4. Scripting disabled (warning only)       ← never a hard error
+---------------------------------------------------------------------------
+
+### Building a static library from C source in CMake
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L197) (line 197)
+
+-----------------------------------------------------------------------
+add_library(target STATIC files…) compiles the listed .c files and
+archives them into a single .a / .lib file.  Any target that links
+against lua55_static will automatically get the include directories via
+the PUBLIC target_include_directories() call below — no manual
+include_directories() needed at the call-site.
+-----------------------------------------------------------------------
+
+### Platform compile flags for Lua
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L223) (line 223)
+
+On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
+popen().  On Windows MSVC we disable several noisy warnings that come from
+Lua's intentional C idioms (e.g. condition is always true for integer type).
+if(MSVC)
+target_compile_options(lua55_static PRIVATE
+/wd4244   # conversion from 'double' to 'float'
+/wd4267   # size_t → int narrowing
+/wd4310   # cast truncates constant value
+/wd4324   # structure padding
+/wd4702   # unreachable code (Lua uses deliberate unreachable paths)
+)
+else()
+target_compile_definitions(lua55_static PRIVATE _GNU_SOURCE)
+target_compile_options(lua55_static PRIVATE
+-w   # suppress all warnings in third-party Lua source
+)
+endif()
+
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L199) (line 199)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L279) (line 279)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -239,7 +298,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L241) (line 241)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L321) (line 321)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -247,9 +306,21 @@ the ncurses-dependent Renderer.cpp and InputSystem.cpp.
 ---------------------------------------------------------------------------
 if(ENGINE_ENABLE_TERMINAL)
 
+### ENGINE_ENABLE_LUA compile definition
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L366) (line 366)
+
+The terminal game links against Lua 5.5 (built from bundled source or
+found as a system package).  ENGINE_ENABLE_LUA activates the Lua
+scripting hooks in CombatSystem.cpp and CampSystem.cpp.  When Lua is not
+found (unlikely given the bundled source) the hooks compile out cleanly.
+if(LUA_LIBRARIES)
+target_compile_definitions(game PRIVATE ENGINE_ENABLE_LUA)
+endif()
+
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L299) (line 299)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L388) (line 388)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -274,7 +345,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L338) (line 338)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L427) (line 427)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -283,12 +354,70 @@ files belong to which backend.
 if(ENGINE_ENABLE_D3D11)
 list(APPEND SANDBOX_SOURCES
 src/engine/rendering/d3d11/D3D11Renderer.cpp
+
+### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L435) (line 435)
+
+d3d11_texture.cpp is a self-contained DDS parser that uses only
+the Windows SDK headers already required by D3D11Renderer.
+src/engine/rendering/d3d11/d3d11_texture.cpp
 )
 endif()
 
+### XAudio2 is Windows-only
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L457) (line 457)
+
+xaudio2.h and xaudio2.lib ship with every Windows SDK installation
+(alongside d3d11.h / d3d11.lib).  No separate download is needed.
+The sources are added to engine_sandbox (not the Linux terminal game).
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/engine/audio/xaudio2_backend.cpp
+src/engine/audio/audio_system.cpp
+)
+
+### Conditional Scripting in engine_sandbox
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L470) (line 470)
+
+LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
+(i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
+Without bundled Lua the scripting system compiles out via ENGINE_ENABLE_LUA
+guards.  No build error occurs — scripting is simply unavailable.
+-----------------------------------------------------------------------
+if(LUA_BUNDLED)
+list(APPEND SANDBOX_SOURCES src/engine/scripting/LuaEngine.cpp)
+endif()
+
+### Cross-Platform Game Systems
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L483) (line 483)
+
+The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
+pure C++17 with no platform or ncurses dependencies.  They compile on
+both Linux (terminal game) and Windows (engine_sandbox) alike.
+Including them here lets engine_sandbox run a full simulation and visually
+verify all systems are operational via the --scene testworld flag.
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/sandbox/test_world.cpp
+src/game/systems/CombatSystem.cpp
+src/game/systems/AISystem.cpp
+src/game/systems/WeatherSystem.cpp
+src/game/systems/QuestSystem.cpp
+src/game/systems/InventorySystem.cpp
+src/game/systems/ShopSystem.cpp
+src/game/systems/CampSystem.cpp
+src/game/world/TileMap.cpp
+src/game/world/WorldMap.cpp
+src/game/world/Zone.cpp
+)
+
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L380) (line 380)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L523) (line 523)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -298,9 +427,18 @@ if(ENGINE_ENABLE_D3D11)
 target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
 endif()
 
+### xaudio2.lib and ole32.lib
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L532) (line 532)
+
+xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
+ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
+required by XAudio2.  Both are always present on any MSVC installation.
+target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
+
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L396) (line 396)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L545) (line 545)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -309,7 +447,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L402) (line 402)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L551) (line 551)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -318,7 +456,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L407) (line 407)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L556) (line 556)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -327,9 +465,43 @@ so the factory can gate which concrete renderer header(s) it includes.
 -----------------------------------------------------------------------
 set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
+### Lua in engine_sandbox
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L577) (line 577)
+
+──────────────────────────────────────
+When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
+target is already built from source.  We:
+  1. Link engine_sandbox against lua55_static (static lib — no DLL needed).
+  2. Include directories are inherited via target_link_libraries PUBLIC.
+  3. Define ENGINE_ENABLE_LUA to activate all scripting hooks.
+  4. Copy lua55.dll alongside the exe (optional — only needed if users
+     also run standalone .lua scripts via lua55.exe; the embedded engine
+     uses the static lib).
+-----------------------------------------------------------------------
+if(LUA_BUNDLED)
+LUA_LIBRARIES is the CMake target lua55_static; include dirs are
+inherited via the PUBLIC target_include_directories on that target.
+target_link_libraries(engine_sandbox PRIVATE ${LUA_LIBRARIES})
+target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_LUA)
+Copy lua55.dll alongside the exe for convenience (running scripts).
+set(LUA55_DLL "${CMAKE_SOURCE_DIR}/Lua/lua55.dll")
+if(EXISTS "${LUA55_DLL}")
+add_custom_command(TARGET engine_sandbox POST_BUILD
+COMMAND ${CMAKE_COMMAND} -E copy_if_different
+"${LUA55_DLL}"
+"$<TARGET_FILE_DIR:engine_sandbox>/lua55.dll"
+COMMENT "Copying lua55.dll alongside engine_sandbox.exe"
+)
+endif()
+message(STATUS "engine_sandbox: Lua 5.5 scripting ENABLED (static, from source)")
+else()
+message(STATUS "engine_sandbox: Lua scripting DISABLED (no Lua/include/ or Lua/lib/)")
+endif()
+
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L426) (line 426)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L609) (line 609)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -344,7 +516,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L441) (line 441)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L624) (line 624)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -359,7 +531,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L483) (line 483)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L666) (line 666)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -382,7 +554,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L508) (line 508)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L691) (line 691)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -404,7 +576,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L527) (line 527)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L710) (line 710)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -415,7 +587,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L535) (line 535)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -425,7 +597,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L564) (line 564)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L747) (line 747)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -434,7 +606,7 @@ C++ standard already set above).
 
 ### Qt Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L571) (line 571)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L754) (line 754)
 
 The editor is a Qt 6 Widgets application that provides:
   • Project browser  — open a project folder, see its Content/ files
@@ -1963,6 +2135,617 @@ that want to load a specific file without registering it.
 
 ---
 
+## engine/audio
+
+### ECS Audio Loop Design
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L6) (line 6)
+
+============================================================================
+Each frame, AudioSystem does two passes:
+
+  Pass 1 — Entity SFX:
+    Iterate every AudioSourceComponent.  If isPlaying == true and
+    voiceIndex == -1 (not yet submitted), call backend.Play() and store
+    the returned slot index.  If isPlaying == false and voiceIndex != -1,
+    call backend.Stop() and clear the slot.
+
+  Pass 2 — Music FSM:
+    If a crossfade is active, ramp the outgoing voice's volume down and
+    the incoming voice's volume up linearly.  When the fade completes,
+    stop the old voice and clear the fade flag.
+
+============================================================================
+
+### Why Separate Music from SFX?
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L22) (line 22)
+
+============================================================================
+Music stems loop and are long-lived; SFX are triggered once per event
+(footstep, sword swing, ability activation) and are typically short.
+Treating them differently lets us:
+  • Crossfade only the music channel.
+  • Apply 3D spatialisation only to SFX voices.
+  • Keep music volume and SFX volume controllable independently.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### Music Track Registry
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L70) (line 70)
+
+-----------------------------------------------------------------------
+We store one MusicTrack per MusicState in a fixed-size array indexed
+by the enum value.  This gives O(1) lookup with no heap allocation.
+The enum values start at 0 (NONE) and go to 4 (MENU) — 5 total.
+-----------------------------------------------------------------------
+const auto idx = static_cast<size_t>(track.state);
+if (idx >= m_tracks.size())
+{
+LOG_WARN("AudioSystem::RegisterMusicTrack — invalid state index " << idx);
+return;
+}
+m_tracks[idx]    = track;
+m_tracksSet[idx] = true;
+LOG_INFO("AudioSystem: registered music track state="
+<< static_cast<int>(track.state)
+<< " clip=" << track.clipID);
+}
+
+### Music State Transition
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L96) (line 96)
+
+-----------------------------------------------------------------------
+If the new state is the same as the current one, do nothing.
+Otherwise:
+  1. Save the current slot as the "old" (fading out) slot.
+  2. Start the new stem on a fresh voice slot.
+  3. Set the new stem's volume to 0 (it will fade in).
+  4. Kick off the crossfade timer.
+
+XAUDIO2 SetVolume is linear gain (not dB).  We ramp from 0 → target
+and target → 0 linearly over CROSSFADE_SECONDS.  A perceptually nicer
+curve would be equal-power (√(t)), but linear is easier to teach.
+-----------------------------------------------------------------------
+
+### ECS View over AudioSourceComponent
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L183) (line 183)
+
+──────────────────────────────────────────────────
+World::View iterates only the entities that have AudioSourceComponent.
+Entities without it are skipped at zero cost.
+-----------------------------------------------------------------------
+world.View<AudioSourceComponent>(
+[this](EntityID /*id*/, AudioSourceComponent& src)
+{
+if (src.isPlaying && src.voiceIndex == -1)
+{
+Start playback — obtain a voice slot.
+src.voiceIndex = m_backend.Play(
+src.clipID,
+src.volume * m_sfxVolume,
+src.isLooping
+);
+}
+else if (!src.isPlaying && src.voiceIndex >= 0)
+{
+Stop playback.
+m_backend.Stop(src.voiceIndex);
+src.voiceIndex = -1;
+}
+else if (src.voiceIndex >= 0 && !m_backend.IsPlaying(src.voiceIndex))
+{
+Voice finished naturally (non-looping clip completed).
+src.voiceIndex = -1;
+src.isPlaying  = false;
+}
+}
+);
+
+### Linear Volume Crossfade
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L228) (line 228)
+
+-----------------------------------------------------------------------
+t ∈ [0, 1] where 0 = crossfade begins, 1 = crossfade complete.
+
+  New stem volume = t * targetVolume   (fades IN from silence)
+  Old stem volume = (1-t) * oldVolume  (fades OUT to silence)
+
+We call XAudio2Backend::SetSlotVolume() each frame to update the
+IXAudio2SourceVoice volume directly on both stems.
+
+At t=1 the old voice is stopped and the flag is cleared.
+-----------------------------------------------------------------------
+
+### Layered Music FSM
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L6) (line 6)
+
+============================================================================
+FF15 uses a layered music system.  The field music is one stem; entering
+combat crossfades to the battle stem; winning crossfades to a victory sting
+and back to the field stem.  We model this with a simple FSM:
+
+  EXPLORATION ──(enemy spotted)──► BATTLE
+  BATTLE      ──(all enemies dead)──► VICTORY
+  VICTORY     ──(sting ends)──► EXPLORATION
+  ANY         ──(menu opened)──► MENU
+  MENU        ──(menu closed)──► previous state
+
+Each state has one music clip GUID.  On transition we:
+  1. Fade out the old voice over CROSSFADE_SECONDS.
+  2. Fade in the new voice.
+
+============================================================================
+
+### AudioSystem as ECS System
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L23) (line 23)
+
+============================================================================
+AudioSystem is NOT a standard SystemBase (which updates all matching
+entities) — it has two responsibilities:
+
+  a) ECS layer: iterate AudioSourceComponent-bearing entities and
+     start/stop source voices in XAudio2Backend.
+
+  b) Music layer: manage the music FSM independently of entities.
+
+We inherit from SystemBase for consistency with the rest of the ECS but
+also expose SetMusicState() for direct game-loop use.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### Music State Machine
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L64) (line 64)
+
+──────────────────────────────────────
+The music state drives which audio stem is playing.  Transitions trigger
+a crossfade rather than an abrupt cut to maintain musical continuity.
+
+NONE means no music is configured for the current zone (silence).
+
+### Dual Responsibility (by design)
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L101) (line 101)
+
+──────────────────────────────────────────────────
+Real game engines often split entity SFX and music management into separate
+systems.  Here we combine them to keep the audio subsystem contained in
+two files.  When the engine grows, refactor into:
+  - SFXSystem    — entity-level sounds only
+  - MusicSystem  — music FSM only
+
+### Why pass World explicitly?
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L124) (line 124)
+
+─────────────────────────────────────────────
+SystemBase::Update(float dt) does not give us the World pointer.
+We override the extended version AudioSystem::Update(World&, float) and
+leave the base version as a no-op to satisfy the interface.
+
+### XAudio2 Initialisation Sequence
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L6) (line 6)
+
+============================================================================
+Creating a working XAudio2 device takes three steps:
+
+  1. CoInitializeEx()      — initialise the Windows COM runtime.
+  2. XAudio2Create()       — create the XAudio2 engine object.
+  3. CreateMasteringVoice() — create the final mix stage that outputs
+                              to the default audio device.
+
+After that, source voices are created per sound (or pooled for reuse).
+Source voices receive PCM data via XAUDIO2_BUFFER structs and are submitted
+with SubmitSourceBuffer() + Start().
+
+============================================================================
+
+### WAV File Format (RIFF/WAVE)
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L20) (line 20)
+
+============================================================================
+A .wav file is a RIFF (Resource Interchange File Format) container:
+
+  Offset  Size  Content
+  ------  ----  -------
+       0     4  'RIFF'
+       4     4  Total file size - 8 (uint32 LE)
+       8     4  'WAVE'
+      12     4  Chunk ID ('fmt ' or 'data' or others)
+      16     4  Chunk size (uint32 LE)
+      20+      Chunk data
+
+The 'fmt ' chunk contains a WAVEFORMATEX struct:
+  - wFormatTag     (1 = PCM, 3 = float, 0xFFFE = extensible)
+  - nChannels      (1 = mono, 2 = stereo)
+  - nSamplesPerSec (e.g. 44100, 48000)
+  - nAvgBytesPerSec
+  - nBlockAlign
+  - wBitsPerSample (8, 16, 24, 32)
+
+The 'data' chunk contains the raw interleaved PCM samples.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### pragma comment(lib, ...) for xaudio2
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L58) (line 58)
+
+---------------------------------------------------------------------------
+xaudio2.lib ships with the Windows SDK alongside d3d11.lib and dxgi.lib.
+No separate SDK download is required.  We also link ole32.lib for
+CoInitializeEx which is required before XAudio2Create.
+---------------------------------------------------------------------------
+pragma comment(lib, "xaudio2.lib")
+pragma comment(lib, "ole32.lib")
+
+### COM Initialisation
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L92) (line 92)
+
+-----------------------------------------------------------------------
+XAudio2 is a COM object.  Before calling any COM API we must initialise
+the COM runtime for this thread.  COINIT_MULTITHREADED allows COM objects
+to be used safely across threads — important if you later add an audio
+streaming thread.
+
+CoInitializeEx returns S_FALSE if COM is already initialised (not an
+error), and RPC_E_CHANGED_MODE if init was called with a conflicting
+threading model.  We ignore S_FALSE and treat other failures as fatal.
+-----------------------------------------------------------------------
+HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+if (FAILED(hr) && hr != S_FALSE)
+{
+LOG_ERROR("XAudio2Backend::Init — CoInitializeEx failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec);
+return false;
+}
+
+### XAudio2Create
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L112) (line 112)
+
+-----------------------------------------------------------------------
+XAudio2Create creates the central audio engine object.  Parameters:
+  Flags       = 0          (reserved, must be 0)
+  Processor   = XAUDIO2_DEFAULT_PROCESSOR  (let XAudio2 pick a thread)
+
+The engine object (IXAudio2) manages the audio processing graph and
+owns all voices.
+-----------------------------------------------------------------------
+hr = XAudio2Create(&m_xaudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+if (FAILED(hr))
+{
+LOG_ERROR("XAudio2Backend::Init — XAudio2Create failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec);
+return false;
+}
+
+### Mastering Voice
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L130) (line 130)
+
+-----------------------------------------------------------------------
+The mastering voice is the final stage in the audio graph:
+  Source Voices → [Submix Voices →] Mastering Voice → OS Audio
+
+Parameters:
+  InputChannels    = XAUDIO2_DEFAULT_CHANNELS  (match output device)
+  InputSampleRate  = XAUDIO2_DEFAULT_SAMPLERATE (match output device)
+  Flags            = 0
+  DeviceId         = nullptr (default audio device)
+  EffectChain      = nullptr (no DSP effects on the master bus)
+
+Only one mastering voice can be active at a time.
+-----------------------------------------------------------------------
+hr = m_xaudio2->CreateMasteringVoice(
+&m_masterVoice,
+XAUDIO2_DEFAULT_CHANNELS,
+XAUDIO2_DEFAULT_SAMPLERATE,
+0,
+nullptr,
+nullptr
+);
+if (FAILED(hr))
+{
+LOG_ERROR("XAudio2Backend::Init — CreateMasteringVoice failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec);
+m_xaudio2->Release();
+m_xaudio2 = nullptr;
+return false;
+}
+
+### XAudio2 Teardown Order
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L177) (line 177)
+
+-----------------------------------------------------------------------
+Shutdown order matters:
+  1. Stop and destroy all source voices.
+  2. Destroy the mastering voice.
+  3. Release the IXAudio2 engine object.
+  4. CoUninitialize — balance the CoInitializeEx call.
+
+Destroying the engine (step 3) while voices are running would leave
+dangling IXAudio2SourceVoice pointers — always stop voices first.
+-----------------------------------------------------------------------
+
+### Resolving Asset IDs to File Paths
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L239) (line 239)
+
+-----------------------------------------------------------------------
+The AssetDB maps GUID strings (like "3a7f-...") to absolute paths of
+cooked .wav files on disk.  We load the raw bytes with AssetLoader,
+then parse the RIFF/WAVE header ourselves.
+
+For a production engine you would cache decoded WavData objects so
+the same clip can be played concurrently without re-reading the file.
+-----------------------------------------------------------------------
+engine::assets::AssetLoader loader(m_assetDB);
+const std::vector<uint8_t> bytes = loader.LoadRaw(clipID);
+if (bytes.empty())
+{
+LOG_ERROR("XAudio2Backend::Play — failed to load clip: " << clipID);
+return -1;
+}
+
+### XAUDIO2_BUFFER and PCM Lifetime
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L276) (line 276)
+
+-----------------------------------------------------------------------
+The XAUDIO2_BUFFER struct describes one submitted audio buffer.
+
+  Flags         — XAUDIO2_END_OF_STREAM marks the last buffer in a
+                  sequence.  Without it, the voice stalls when the
+                  buffer runs out (waiting for more data).
+
+  AudioBytes    — total byte count of the PCM data.
+  pAudioData    — pointer to the raw PCM bytes.
+
+  LoopCount     — XAUDIO2_LOOP_INFINITE for infinite loop; 0 = no loop.
+  LoopBegin/End — loop region within the buffer (0 = full buffer).
+
+CRITICAL: XAudio2 does NOT copy the buffer data.  pAudioData must
+remain valid for the entire duration of playback.  We move the PCM
+bytes into s.pcmCache (SourceVoiceSlot member), which lives as long
+as the slot is in use.  Stop() clears pcmCache after flushing.
+-----------------------------------------------------------------------
+
+### Stopping a Source Voice
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L342) (line 342)
+
+-----------------------------------------------------------------------
+IXAudio2SourceVoice::Stop() pauses the voice but does not reset it.
+FlushSourceBuffers() discards all queued data.
+Together they bring the voice back to a clean, re-usable state.
+
+After flushing we also clear pcmCache — the PCM bytes are no longer
+referenced by any buffer, so releasing the memory is safe here.
+-----------------------------------------------------------------------
+s.voice->Stop();
+s.voice->FlushSourceBuffers();
+s.inUse  = false;
+s.clipID.clear();
+s.pcmCache.clear();  // safe to free now that XAudio2 has no reference
+}
+
+### Per-Voice Volume for Crossfading
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L389) (line 389)
+
+-----------------------------------------------------------------------
+IXAudio2SourceVoice::SetVolume() applies a scalar gain to the voice's
+output.  0.0 = silent, 1.0 = unity gain.
+
+AudioSystem calls this every frame during a crossfade to linearly ramp
+the incoming stem from 0 → target and the outgoing stem from target → 0.
+The function is cheap: it queues a volume-change operation on the audio
+processing thread with no synchronisation overhead.
+-----------------------------------------------------------------------
+if (slotIndex < 0 || slotIndex >= static_cast<int>(XAUDIO2_VOICE_POOL_SIZE))
+return;
+auto& s = m_pool[slotIndex];
+if (s.inUse && s.voice)
+s.voice->SetVolume(volume);
+}
+
+### Parsing RIFF/WAVE
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L428) (line 428)
+
+-----------------------------------------------------------------------
+We walk the chunk tree manually using a byte offset.  Each chunk has:
+
+  uint32_t  id   (4 ASCII chars, e.g. 'fmt ', 'data')
+  uint32_t  size (byte count of chunk data; does NOT include id/size)
+  uint8_t   data[size]
+
+The RIFF root chunk also has a 4-byte form type ("WAVE").
+
+All integer fields in RIFF are little-endian.
+-----------------------------------------------------------------------
+
+### WAVEFORMATEX layout
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L475) (line 475)
+
+---------------------------------------------------------------
+Minimum size is 16 bytes (WAVEFORMATEX without cbSize).
+We copy exactly sizeof(WAVEFORMATEX) bytes but never more than
+the chunk provides, filling the rest with zeros.
+---------------------------------------------------------------
+if (chunkSize < 16)
+return wav;
+
+### Source Voice Format
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L535) (line 535)
+
+-----------------------------------------------------------------------
+A source voice is created for a specific WAVEFORMATEX.  If the existing
+voice was created for a different format (e.g. mono 22 kHz vs stereo
+44 kHz), we must destroy and recreate it.
+
+For performance, compare the formats first — recreating voices is a
+kernel-level operation and should be minimised.
+-----------------------------------------------------------------------
+auto& s = m_pool[slotIndex];
+
+### CreateSourceVoice
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L571) (line 571)
+
+-----------------------------------------------------------------------
+Parameters:
+  ppSourceVoice  — output pointer.
+  pSourceFormat  — pointer to WAVEFORMATEX (or WAVEFORMATEXTENSIBLE).
+  Flags          — XAUDIO2_VOICE_NOPITCH disables pitch shifting for
+                   a minor performance gain when pitch isn't needed.
+  MaxFrequencyRatio — 1.0 = no pitch shift; 2.0 = up to +1 octave.
+  pCallback      — optional IXAudio2VoiceCallback for buffer events.
+-----------------------------------------------------------------------
+const HRESULT hr = m_xaudio2->CreateSourceVoice(
+&s.voice,
+&fmt,
+0,       // No flags (allow pitch shift for music tempo control)
+2.0f,    // Allow up to 2× frequency ratio (one octave up)
+nullptr  // No callback for now
+);
+
+### Why XAudio2?
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L6) (line 6)
+
+============================================================================
+XAudio2 is Microsoft's low-level audio API, included in every Windows
+installation since Windows 8 (and available as a redistributable for Win 7).
+It is the audio backbone of every modern Microsoft title including:
+  - Final Fantasy XV (SQUARE ENIX used WASAPI / XAudio2 on PC)
+  - Xbox first-party games
+  - Most Unity / Unreal games on Windows
+
+XAudio2 sits just above the hardware:
+
+  App → XAudio2 Source Voices → Submix Voices → Mastering Voice → Speakers
+
+Advantages over legacy DirectSound / FMOD (for a teaching engine):
+  • Ships with the Windows SDK — zero extra dependency.
+  • Runs on GT610-era hardware (XAudio2 is CPU-only; GPU not involved).
+  • Supports 3D positional audio via X3DAudio.
+  • Minimal overhead: source voices submit raw PCM buffers directly.
+
+============================================================================
+
+### Source Voice Pool
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L26) (line 26)
+
+============================================================================
+Creating and destroying source voices is expensive (kernel transition).
+Real engines pre-allocate a fixed pool of voices at init time and re-use
+them.  Each slot tracks which clipID is playing so we can stop by ID.
+
+Pool size of 16 handles:
+  • Up to 4 party-member SFX channels
+  • Up to 6 enemy SFX channels
+  • 2 ambient layers (wind, environment)
+  • 2 music crossfade slots
+  • 2 UI feedback slots
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC) — XAudio2 is Windows-only.
+Requires: xaudio2.lib (Windows SDK — always present)
+
+### RIFF/WAVE Format
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L86) (line 86)
+
+────────────────────────────────
+A .wav file is a RIFF container with a "WAVE" form type.  The two
+mandatory chunks are:
+
+  "fmt " — WAVEFORMATEX: sample rate, channels, bit depth, etc.
+  "data" — Raw PCM samples.
+
+XAudio2 source voices are created with the fmt header and fed the data
+chunk as an XAUDIO2_BUFFER.
+
+### PCM Buffer Lifetime
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L111) (line 111)
+
+──────────────────────────────────────
+XAudio2 source voices operate asynchronously on an audio thread.  When
+you call SubmitSourceBuffer, XAudio2 stores a raw pointer (pAudioData)
+and continues reading from it on the audio thread until the buffer
+finishes.  The calling code MUST keep the PCM bytes alive for at least
+as long as the voice is playing.
+
+We solve this by storing the decoded PCM data directly in the slot.
+When Play() allocates a slot, it moves the parsed WavData::pcm vector
+here.  When Stop() frees the slot, the vector is cleared.
+
+### Backend vs System
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L142) (line 142)
+
+──────────────────────────────────
+The *backend* owns the low-level XAudio2 objects and knows nothing about
+the ECS or game state.  It exposes simple Play/Stop primitives.
+
+The *AudioSystem* (audio_system.hpp) is the ECS-aware layer that reads
+AudioSourceComponent data and forwards commands to this backend.
+
+This separation means we could swap XAudio2 for FMOD/SDL_mixer without
+changing any gameplay code — only the backend changes.
+
+### Voice Reuse
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L262) (line 262)
+
+─────────────────────────────
+A source voice is format-bound at creation time.  When a new clip has
+a different format (e.g. different sample rate) we must destroy and
+recreate the voice.  For clips with matching formats we simply reuse
+the existing voice, which is cheaper.
+
+---
+
 ## engine/core
 
 ### Why a Publish-Subscribe (Observer) Pattern?
@@ -2420,9 +3203,30 @@ Setting a minimum level lets you control verbosity at runtime:
 
 Any message with a level BELOW the minimum is silently discarded.
 
+### Why LERR and not ERROR or ERR?
+
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L110) (line 110)
+
+─────────────────────────────────────────────────
+Two different system headers define conflicting macros:
+
+ 1. Windows SDK (<wingdi.h>, included via <windows.h> / <d3d11.h> / <xaudio2.h>):
+      #define ERROR  0
+    Using ERROR as an enum member would produce the illegal expression
+    `0 = 3` — MSVC error C2143.
+
+ 2. ncurses (<curses.h>, included by the Linux terminal renderer):
+      #define ERR  (-1)
+    Using ERR as an enum member would produce `(-1) = 3` — GCC error.
+
+The idiomatic fix is to choose a name neither header defines.  LERR (short
+for "Logger Error") is safe on both platforms.  Callers continue to use
+the LOG_ERROR() convenience macro — the internal name is invisible at
+call-sites.
+
 ### Meyers Singleton
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L150) (line 150)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L168) (line 168)
 
 ───────────────────────────────────
 The `static` keyword on a local variable gives it *static storage
@@ -2434,7 +3238,7 @@ simpler and safer.
 
 ### std::chrono vs std::time
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L259) (line 259)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L277) (line 277)
 
 ──────────────────────────────────────────
 std::chrono (C++11) provides high-resolution clocks.
@@ -2446,7 +3250,7 @@ calendar strings.
 
 ### ANSI Escape Codes
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L280) (line 280)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L298) (line 298)
 
 ────────────────────────────────────
 Most Unix/Linux terminals support ANSI escape sequences embedded in
@@ -2462,7 +3266,7 @@ a runtime flag.
 
 ### Why Use Macros Here?
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L315) (line 315)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L333) (line 333)
 
 ──────────────────────────────────────
 Normally macros are discouraged in modern C++ because they ignore scoping
@@ -3166,9 +3970,42 @@ In FF15, characters level up only when resting at camp.  XP is accumulated
 during combat and exploration, then "banked" to actual levels at camp.
 We model this with pendingXP (accumulated) vs currentXP (cashed in).
 
+### Data-Driven Audio via ECS
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1504) (line 1504)
+
+============================================================================
+Instead of hard-coding sound triggers in gameplay code, we attach an
+AudioSourceComponent to any entity that should make noise.  The
+AudioSystem (src/engine/audio/audio_system.hpp) iterates all entities that
+have this component every frame and forwards play/stop requests to the
+XAudio2Backend.
+
+Fields mirror the design from docs/FF15_REQUIREMENTS_BLUEPRINT.md §8:
+
+  clipID       — GUID of the cooked .wav asset in the AssetDB.
+  is3D         — Enable position-based volume attenuation.
+                 2D (false) = same volume everywhere (UI SFX, music).
+                 3D (true)  = attenuated by distance to listener.
+  volume       — Master volume scalar [0.0 = silent, 1.0 = full].
+  isLooping    — When true the source voice loops until stopped.
+  isPlaying    — Set true to start playback; AudioSystem clears it when done.
+  maxDistance  — World-units at which 3D audio reaches zero volume.
+
+─── Usage Example ──────────────────────────────────────────────────────────
+
+  // Attach footstep sound to the player entity.
+  auto& audio  = world.AddComponent<AudioSourceComponent>(player);
+  audio.clipID = "a3f2-footstep-stone";   // AssetDB GUID
+  audio.is3D   = false;
+  audio.volume = 0.8f;
+  audio.isPlaying = true;
+
+============================================================================
+
 ### Facade Pattern
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1506) (line 1506)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1587) (line 1587)
 
 ────────────────────────────────
 The World class is a *facade*: it provides a simple unified API over the
@@ -3187,7 +4024,7 @@ all entities, components, and systems cleanly.
 
 ### Variadic Templates
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1720) (line 1720)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1801) (line 1801)
 
 ────────────────────────────────────
 `template<typename... Components>` accepts any number of type arguments.
@@ -3200,7 +4037,7 @@ Fold expressions were introduced in C++17:
 
 ### Update Order
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1767) (line 1767)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1848) (line 1848)
 
 ──────────────────────────────
 Systems are updated in the order they were registered.  Order matters:
@@ -3213,7 +4050,7 @@ Systems are updated in the order they were registered.  Order matters:
 
 ### View Pattern / Query
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1794) (line 1794)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1875) (line 1875)
 
 ──────────────────────────────────────
 A "view" is an on-demand filter over living entities.  It avoids
@@ -3230,7 +4067,7 @@ Example usage:
 
 ### `if constexpr` and Fold Expressions
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1808) (line 1808)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1889) (line 1889)
 
 ──────────────────────────────────────────────────────
 The implementation uses parameter pack expansion to call HasComponent<C>
@@ -3239,7 +4076,7 @@ a single boolean.
 
 ### Factory Methods
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1861) (line 1861)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1942) (line 1942)
 
 ─────────────────────────────────
 Rather than calling AddComponent 10 times at every call site, a factory
@@ -3251,7 +4088,7 @@ individual components afterwards.
 
 ### static_cast vs dynamic_cast
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1945) (line 1945)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2026) (line 2026)
 
 ─────────────────────────────────────────────
 dynamic_cast performs a runtime type check (RTTI) and returns nullptr
@@ -3267,7 +4104,7 @@ fine; using it on user-supplied pointers would be dangerous.
 
 ### Why a free function?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2022) (line 2022)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2103) (line 2103)
 
 ───────────────────────────────────────
 Putting registration in a free function keeps the World constructor clean
@@ -5192,6 +6029,256 @@ across hardware and WARP.
 uint32_t                m_width         = 0;
 uint32_t                m_height        = 0;
 
+### DDS Parsing without a Third-Party Library
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L6) (line 6)
+
+============================================================================
+Many engines pull in DirectXTex or DirectXTK for DDS loading.  This file
+implements a minimal, self-contained parser that handles the formats
+needed by the M3 milestone:
+
+  - RGBA8 uncompressed (for UI textures, debugging).
+  - BC1 / DXT1         (for low-quality opaque geometry).
+  - BC3 / DXT5         (for textures with alpha channels).
+  - BC7                (high-quality; preferred for M3 cooked assets).
+
+Implementing the parser from scratch makes it easy to understand what the
+DirectXTex library does internally — and shows that DDS files are not magic,
+just a well-specified binary format.
+
+============================================================================
+
+### D3D11 Texture Upload
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L22) (line 22)
+
+============================================================================
+Creating a GPU texture from CPU data (DDS bytes) in D3D11:
+
+  1. Fill D3D11_TEXTURE2D_DESC with width, height, mip count, DXGI format.
+  2. Fill D3D11_SUBRESOURCE_DATA for each mip level:
+       pSysMem     = pointer into the DDS data bytes for this mip.
+       SysMemPitch = bytes per row (for block-compressed: (w/4)*blockSize).
+  3. Call ID3D11Device::CreateTexture2D with desc + subresource array.
+  4. Call ID3D11Device::CreateShaderResourceView on the texture.
+
+The GPU copies the data at creation time — we do not need to keep the
+CPU-side bytes alive after CreateTexture2D returns.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### DDS Magic Number
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L60) (line 60)
+
+All DDS files begin with the 4-byte magic value 0x20534444 ('DDS ').
+This lets us quickly reject non-DDS files before parsing the header.
+static constexpr uint32_t DDS_MAGIC = 0x20534444u;  // 'DDS '
+
+### Packed structs
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L83) (line 83)
+
+#pragma pack ensures no compiler-inserted padding.  DDS structures must
+match the byte layout exactly as stored in the file.
+
+### Row Pitch for Block-Compressed Textures
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L139) (line 139)
+
+──────────────────────────────────────────────────────────
+Block-compressed formats work on 4×4 texel blocks.  The minimum width is
+one block (4 texels).  Row pitch = ceil(width/4) * bytesPerBlock.
+
+  BC1 / DXT1 = 8 bytes per 4×4 block (0.5 bytes/texel on average).
+  BC3 / DXT5 = 16 bytes per 4×4 block (1 byte/texel on average).
+  BC7        = 16 bytes per 4×4 block (same as BC3 but higher quality).
+  RGBA8      = 4 bytes per texel.
+
+### Release Order
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L242) (line 242)
+
+The SRV holds an internal reference to the Texture2D.  We release the
+SRV first so the Texture2D can be destroyed immediately after.
+if (m_srv)     { m_srv->Release();     m_srv     = nullptr; }
+if (m_sampler) { m_sampler->Release(); m_sampler = nullptr; }
+m_width  = 0;
+m_height = 0;
+m_format = DXGI_FORMAT_UNKNOWN;
+}
+
+### Binary File Reading
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L261) (line 261)
+
+-----------------------------------------------------------------------
+We open in binary mode (std::ios::binary) to prevent the C++ runtime
+from translating CR/LF pairs on Windows, which would corrupt the data.
+-----------------------------------------------------------------------
+std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+if (!file.is_open())
+{
+LOG_ERROR("D3D11Texture::LoadFromFile — file not found: " << filePath);
+return false;
+}
+
+### DDS Format Detection
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L347) (line 347)
+
+──────────────────────────────────────
+Old DDS files (pre-DX10) use FourCC codes in DDS_PIXELFORMAT.
+New DDS files (DX10 header) carry a DXGI_FORMAT value directly.
+We detect which variant we have by checking for the 'DX10' FourCC.
+-----------------------------------------------------------------------
+
+### Mip Map Upload
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L398) (line 398)
+
+───────────────────────────────
+We pass all mip levels to CreateTexture2D in one call.
+Each mip level has its own D3D11_SUBRESOURCE_DATA:
+  pSysMem     = pointer to the mip's data in the DDS buffer.
+  SysMemPitch = bytes per row for this mip's width.
+
+The subresource index is computed as: arraySlice * mipCount + mipIndex.
+For a single 2D texture (arraySlice = 0), index == mipIndex.
+-----------------------------------------------------------------------
+
+### SRV for Texture2D with Mips
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L461) (line 461)
+
+────────────────────────────────────────────
+D3D11_SRV_DIMENSION_TEXTURE2D tells D3D11 this is a 2D texture SRV.
+MostDetailedMip = 0  → start from the highest-res mip.
+MipLevels = -1       → include all mip levels down to the smallest.
+-----------------------------------------------------------------------
+D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+srvDesc.Format                    = m_format;
+srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+srvDesc.Texture2D.MostDetailedMip = 0;
+srvDesc.Texture2D.MipLevels       = static_cast<UINT>(-1); // all mips
+
+### Sampler States
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L506) (line 506)
+
+-----------------------------------------------------------------------
+A D3D11_SAMPLER_DESC controls how the GPU interpolates texels:
+
+  Filter       — how to blend between texels.
+                 D3D11_FILTER_ANISOTROPIC uses the surrounding texels
+                 weighted by angle of incidence — produces the sharpest
+                 results on surfaces viewed at oblique angles (floors,
+                 walls).  Bilinear is cheaper but blurrier at angles.
+
+  AddressU/V/W — what happens beyond [0,1] UV:
+                 WRAP  = texture tiles (repeat).
+                 CLAMP = edge pixel is stretched.
+                 MIRROR = alternating flip.
+
+  MaxAnisotropy — quality level for anisotropic filtering (1–16).
+                  D3D_FEATURE_LEVEL_10_0 supports up to 16×.
+                  GT610 supports 16× anisotropic; use 4–8 for a
+                  performance/quality balance on older hardware.
+
+  MipLODBias   — shifts the selected mip up or down.  0 = automatic.
+  MinLOD/MaxLOD — clamps the mip level.  0 to FLT_MAX = all mips.
+-----------------------------------------------------------------------
+D3D11_SAMPLER_DESC sampDesc = {};
+sampDesc.Filter         = D3D11_FILTER_ANISOTROPIC;
+sampDesc.AddressU       = D3D11_TEXTURE_ADDRESS_WRAP;
+sampDesc.AddressV       = D3D11_TEXTURE_ADDRESS_WRAP;
+sampDesc.AddressW       = D3D11_TEXTURE_ADDRESS_WRAP;
+sampDesc.MaxAnisotropy  = 4;          // 4× anisotropic — good quality on GT610.
+sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+sampDesc.MinLOD         = 0.0f;
+sampDesc.MaxLOD         = D3D11_FLOAT32_MAX;
+
+### Why DDS for Game Textures?
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.hpp`](src/engine/rendering/d3d11/d3d11_texture.hpp#L6) (line 6)
+
+============================================================================
+PNG and JPEG store full RGBA8 data.  A 2048×2048 RGBA8 texture uses 16 MB
+of GPU VRAM.  DDS (DirectDraw Surface) with block compression:
+
+  BC1 (DXT1)  — 4 bits/pixel (8:1 ratio vs RGBA8).  No alpha.
+  BC3 (DXT5)  — 8 bits/pixel (4:1 ratio).  Full alpha channel.
+  BC7          — 8 bits/pixel (4:1 ratio).  High quality; replaces BC3.
+
+A 2048×2048 BC7 texture uses only 4 MB instead of 16 MB — critical for
+GT610-class GPUs which have 1–2 GB VRAM at most.
+
+BC7 is hardware-decompressed on every D3D11_FEATURE_LEVEL_11_0 GPU
+(including the GT610) with zero GPU cost.  The CPU never sees the raw pixels.
+
+============================================================================
+
+### DDS File Format
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.hpp`](src/engine/rendering/d3d11/d3d11_texture.hpp#L22) (line 22)
+
+============================================================================
+DDS is a Microsoft container format with this layout:
+
+  Offset  Size   Content
+  ------  ----   -------
+       0     4   Magic: 0x20534444 ('DDS ')
+       4   124   DDS_HEADER struct
+     128   var   DDS_HEADER_DXT10 (optional, present when FourCC == 'DX10')
+     128+  var   Texture data (mip 0, then mip 1, ...; face 0, face 1, ...)
+
+The DDS_HEADER_DXT10 extension (introduced in Direct3D 10) carries the
+DXGI_FORMAT enum, enabling formats like BC7 that didn't exist in earlier
+DDS revisions.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+Requires: d3d11.lib, dxgi.lib (Windows SDK — always present)
+
+### Resource View Types
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.hpp`](src/engine/rendering/d3d11/d3d11_texture.hpp#L73) (line 73)
+
+──────────────────────────────────────
+D3D11 separates resource *creation* from resource *binding*:
+
+  ID3D11Texture2D          — the raw texture data on the GPU.
+  ID3D11ShaderResourceView — a "window" into that data that a shader can
+                             read via a `Texture2D` or `sampler2D`.
+  ID3D11SamplerState       — filtering and wrap mode settings.
+
+Shaders never take raw Texture2D pointers — they always bind through a
+ShaderResourceView.  This indirection allows one texture to be bound as
+different "views" (e.g. one mip level at a time).
+
+Usage:
+@code
+  D3D11Texture tex;
+  if (tex.LoadFromFile(device, context, "Cooked/textures/hero.dds")) {
+      ID3D11ShaderResourceView* srv = tex.GetSRV();
+      ID3D11SamplerState*       smp = tex.GetSampler();
+      ctx->PSSetShaderResources(0, 1, &srv);
+      ctx->PSSetSamplers(0, 1, &smp);
+  }
+@endcode
+
 ### Reading This File
 
 **Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L6) (line 6)
@@ -6919,7 +8006,7 @@ C++ Standard: C++17
 
 ### Why SetWorld is not a trivial one-liner
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L156) (line 156)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L155) (line 155)
 
 ─────────────────────────────────────────────────────────
 RegisterEngineBindings() stores the World* in the Lua registry under the
@@ -6939,7 +8026,7 @@ m_world = world;
 
 ### luaL_loadfile internals
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L199) (line 199)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L198) (line 198)
 
 ─────────────────────────────────────────
 luaL_loadfile(L, filename):
@@ -6961,7 +8048,7 @@ return false;
 
 ### Anonymous Namespace for Binding Functions
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L529) (line 529)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L528) (line 528)
 
 ──────────────────────────────────────────────────────────
 We put the binding functions in an anonymous namespace so they have
@@ -6975,7 +8062,7 @@ different (and confusing) meaning for class members.
 
 ### Lua Registry
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L545) (line 545)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L544) (line 544)
 
 ──────────────────────────────
 The Lua registry is a special table accessible only from C (not from Lua
@@ -6997,7 +8084,7 @@ return w;   // may be nullptr if SetWorld() was never called
 
 ### Single Source of Truth for Gil
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L652) (line 652)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L651) (line 651)
 
 Gil is stored exclusively in CurrencyComponent, NOT in InventoryComponent.
 Always read CurrencyComponent when you need the player's currency balance.
@@ -7013,7 +8100,7 @@ gold = static_cast<int>(cc.gil);
 
 ### Finding the player and modifying their inventory.
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L682) (line 682)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L681) (line 681)
 
 GameDatabase::FindItem(name) does a linear search by name.
 We look up the ItemData first so we can use its canonical ID.
@@ -7029,7 +8116,7 @@ const uint32_t itemID = itemData->id;
 
 ### Lua Registry Storage
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L805) (line 805)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L804) (line 804)
 
 ──────────────────────────────────────
 lua_pushlightuserdata(L, ptr) pushes a raw pointer as a "light userdata"
@@ -7045,7 +8132,7 @@ lua_setfield(m_L, LUA_REGISTRYINDEX, "engine_world");
 
 ### Two Names, One Function
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L820) (line 820)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L819) (line 819)
 
 ─────────────────────────────────────────
 Lua scripts in this project consistently use the name "engine_log" for
@@ -7066,7 +8153,7 @@ lua_register(m_L, "game_show_message",    binding_game_show_message);
 
 ### Exposing C++ Constants to Lua
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L841) (line 841)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L840) (line 840)
 
 ──────────────────────────────────────────────
 We push each constant as a Lua global.  In Lua, uppercase globals by
@@ -7183,17 +8270,52 @@ don't exist in the Lua library, causing linker errors.
 `extern "C" { ... }` tells the C++ compiler to use C-style (unmangled)
 linkage for everything inside the block.
 
-The lua.hpp header (Lua's own C++ wrapper) already wraps itself in
-extern "C", so we can include it directly:
+### Lua include-path cascade
+
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L116) (line 116)
+
+─────────────────────────────────────────
+Lua headers reach the compiler via different paths depending on how Lua was
+set up.  We check in order of preference:
+
+  1. <lua.h> directly on the include path — used when CMake built Lua from
+     the bundled source (Lua/lua-5.5.0/src/) and exposed its directory as
+     a PUBLIC include on the lua55_static target.  This works on all
+     platforms (Windows MSVC, Linux GCC/Clang, macOS).
+
+  2. <lua5.5/lua.h> — system Lua 5.5 installed in a versioned sub-dir
+     (e.g. /usr/include/lua5.5/).
+
+  3. <lua5.4/lua.h> — system Lua 5.4 installed in a versioned sub-dir
+     (e.g. /usr/include/lua5.4/ on Debian/Ubuntu via liblua5.4-dev).
+
+The cascade ensures the file compiles on every supported platform without
+manual per-developer configuration.
 extern "C" {
-include <lua5.4/lua.h>       // Core Lua API: lua_State, lua_push*, lua_to*, …
-include <lua5.4/lualib.h>    // Standard library loaders: luaL_openlibs
-include <lua5.4/lauxlib.h>   // Auxiliary helpers: luaL_newstate, luaL_loadfile
+if __has_include(<lua.h>)
+Bundled Lua (any platform) — Lua/lua-5.5.0/src/ on the include path via
+the lua55_static CMake target PUBLIC include dirs.
+ include <lua.h>
+ include <lualib.h>
+ include <lauxlib.h>
+elif __has_include(<lua5.5/lua.h>)
+System Lua 5.5 installed in a versioned subdirectory.
+ include <lua5.5/lua.h>
+ include <lua5.5/lualib.h>
+ include <lua5.5/lauxlib.h>
+elif __has_include(<lua5.4/lua.h>)
+System Lua 5.4 installed in a versioned subdirectory (Debian/Ubuntu).
+ include <lua5.4/lua.h>
+ include <lua5.4/lualib.h>
+ include <lua5.4/lauxlib.h>
+else
+ error "Lua headers not found.  Ensure Lua/lua-5.5.0/ is present in the repo."
+endif
 }
 
 ### Lua Tables
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L139) (line 139)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L171) (line 171)
 
 ────────────────────────────
 In Lua, tables are the ONLY data structure.  They function as:
@@ -7216,7 +8338,7 @@ Usage:
 
 ### Engine ↔ Script Communication
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L210) (line 210)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L242) (line 242)
 
 ───────────────────────────────────────────────
 There are two directions of communication:
@@ -7235,7 +8357,7 @@ C++ functions so Lua scripts can call them freely.
 
 ### lua_State Lifecycle
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L226) (line 226)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L258) (line 258)
 
 ─────────────────────────────────────
 A lua_State (often called "L") represents one Lua interpreter instance.
@@ -7253,7 +8375,7 @@ Multiple states are possible (e.g., sandboxed scripts), but one is simpler.
 
 ### Non-Owning Pointers
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L289) (line 289)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L321) (line 321)
 
 ─────────────────────────────────────
 A raw pointer T* in C++ is non-owning by convention (the pointee is
@@ -7263,7 +8385,7 @@ Here the World is owned by the Application, which outlives LuaEngine.
 
 ### Why we ALSO update the Lua registry here
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L296) (line 296)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L328) (line 328)
 
 ──────────────────────────────────────────────────────────
 RegisterEngineBindings() stores the initial World pointer in the Lua
@@ -7283,7 +8405,7 @@ stored pointer while the Lua state is still valid.
 
 ### luaL_loadfile vs luaL_dofile
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L322) (line 322)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L354) (line 354)
 
 ──────────────────────────────────────────────
 luaL_dofile(L, path)  — loads AND runs the file.  Simple but provides
@@ -7303,7 +8425,7 @@ We use loadfile + pcall so we can:
 
 ### Overloads vs Templates for Lua calls
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L364) (line 364)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L396) (line 396)
 
 ──────────────────────────────────────────────────────
 We provide typed overloads rather than a single variadic template
@@ -7325,7 +8447,7 @@ as convenient wrappers for the common cases).
 
 ### lua_CFunction Type
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L423) (line 423)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L455) (line 455)
 
 ────────────────────────────────────
 Every function exposed to Lua must have this exact signature:
@@ -7345,7 +8467,7 @@ lua_register(L, "name", fn) is a macro for:
 
 ### Template Specialisation
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L449) (line 449)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L481) (line 481)
 
 ─────────────────────────────────────────
 GetGlobal<T> is a function template.  The implementation uses
@@ -7368,7 +8490,7 @@ completely removed from the binary (unlike a runtime `if`).
 
 ### SetGlobal and Type Dispatch
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L475) (line 475)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L507) (line 507)
 
 ─────────────────────────────────────────────
 Like GetGlobal, this template uses if constexpr to select the right
@@ -7386,7 +8508,7 @@ This is useful for:
 
 ### When to Use the Raw Pointer
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L515) (line 515)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L547) (line 547)
 
 ─────────────────────────────────────────────
 Most code should use the LuaEngine API.  Use the raw state only when:
@@ -7396,7 +8518,7 @@ Most code should use the LuaEngine API.  Use the raw state only when:
 
 ### Templates in Headers
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L575) (line 575)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L607) (line 607)
 
 ──────────────────────────────────────
 Function templates must have their FULL implementation visible at the point
@@ -7412,7 +8534,7 @@ Alternatives:
 
 ### if constexpr (C++17)
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L608) (line 608)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L640) (line 640)
 
 ──────────────────────────────────────
 `if constexpr` evaluates its condition at COMPILE TIME.
@@ -8226,15 +9348,23 @@ When we reach the goal, we walk backwards through cameFrom:
   goal → parent → grandparent → … → start
 Then reverse the list to get start → goal order.
 
+### Optional Lua dependency (see CombatSystem.cpp for context)
+
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L11) (line 11)
+
+ifdef ENGINE_ENABLE_LUA
+include "../../engine/scripting/LuaEngine.hpp"  // on_camp_rest, on_level_up hooks
+endif
+
 ### We use const TileMap& to signal read-only access.
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L33) (line 33)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L36) (line 36)
 
 const Tile& tile = map.GetTile(x, y);
 
 ### Check ALL ingredients before consuming ANY.
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L118) (line 118)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L121) (line 121)
 
 if (!HasIngredients(player, *recipe)) {
 if (m_uiBus) {
@@ -8248,7 +9378,7 @@ return false;
 
 ### FF15's pending XP system: combat awards "tentative" XP
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L208) (line 208)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L211) (line 211)
 
 which only converts to real levels at camp.  This creates tension.
 if (m_world->HasComponent<LevelComponent>(player)) {
@@ -8259,7 +9389,7 @@ lc.ApplyBankedXP();
 
 ### Conditional Hook Firing
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L224) (line 224)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L227) (line 227)
 
 We only fire on_level_up when the level actually changed.
 Comparing oldLevel to lc.level (after ApplyBankedXP) is the
@@ -8271,14 +9401,16 @@ branch on specific thresholds:
       if newLevel == 10 then unlock_ultimate_technique() end
   end
 if (lc.level > oldLevel) {
+ifdef ENGINE_ENABLE_LUA
 LuaEngine::Get().CallFunction("on_level_up",
 static_cast<int>(lc.level));
+endif
 }
 }
 
 ### Ordering Hook Calls
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L253) (line 253)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L258) (line 258)
 
 on_camp_rest fires AFTER HP/MP restoration, XP application, and level-ups
 are all complete.  This means Lua scripts can safely query the player's
@@ -8289,7 +9421,9 @@ Example use in quests.lua:
       GameState.day = GameState.day + 1
       engine_log("Day " .. GameState.day .. " begins.")
   end
+ifdef ENGINE_ENABLE_LUA
 LuaEngine::Get().CallFunction("on_camp_rest");
+endif
 
 ### Camp System Inspiration (FF15)
 
@@ -8405,9 +9539,22 @@ Use static members for data that is genuinely SINGULAR: the current
 meal, the game clock, the player's currency.  Avoid statics for data
 that could plausibly need multiple instances in a future design.
 
+### Optional Lua scripting dependency
+
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L13) (line 13)
+
+LuaEngine.hpp requires the Lua 5.4 headers (lua5.4/lua.h) which are only
+available when Lua is installed.  ENGINE_ENABLE_LUA is defined by CMake for
+targets that link Lua (the terminal `game` target).  engine_sandbox builds
+on Windows without Lua, so the scripting hook is compiled out — combat
+still works fully, the Lua callback simply does not fire.
+ifdef ENGINE_ENABLE_LUA
+include "../../engine/scripting/LuaEngine.hpp"  // on_combat_start hook
+endif
+
 ### Using the EventBus Singleton
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L83) (line 83)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L91) (line 91)
 
 EventBus<CombatEvent>::Instance() returns the global bus for CombatEvents.
 Any system that subscribed (UI, audio, camera) will receive this event.
@@ -8418,7 +9565,7 @@ EventBus<CombatEvent>::Instance().Publish(ev);
 
 ### C++ → Lua Hook Pattern
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L100) (line 100)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L108) (line 108)
 
 ─────────────────────────────────────────
 A "hook" is a named Lua function that the engine calls at a predefined
@@ -8442,13 +9589,15 @@ if (m_world->HasComponent<NameComponent>(firstEnemy)) {
 firstEnemyName = m_world->GetComponent<NameComponent>(firstEnemy).name;
 }
 }
+ifdef ENGINE_ENABLE_LUA
 LuaEngine::Get().CallFunction("on_combat_start", firstEnemyName);
+endif
 }
 }
 
 ### Status Effect Ticking
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L137) (line 137)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L147) (line 147)
 
 We accumulate time in m_statusTickTimer.  When it crosses the interval,
 we process all DoT/buff effects and reset the timer.
@@ -8460,7 +9609,7 @@ m_statusTickTimer = STATUS_TICK_INTERVAL;
 
 ### Player vs. Enemy Action Timing
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L168) (line 168)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L178) (line 178)
 
 m_turn == 0 means it is the player's turn.  Player actions are triggered
 by button presses (PlayerAttack, PlayerFlee, etc.), not by the ATB timer.
@@ -8477,7 +9626,7 @@ AdvanceTurn();
 
 ### Reading Equipment Stats
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L199) (line 199)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L209) (line 209)
 
 The weapon's attack bonus is stored as a CACHED value in
 EquipmentComponent::bonusStrength to avoid re-scanning the database
@@ -8491,7 +9640,7 @@ weaponBonus = eq.bonusStrength;
 
 ### Order Matters Here
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L216) (line 216)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L226) (line 226)
 
 Base player damage is applied first, then link strikes.
 ProcessLinkStrikes() applies its own damage to targetHp internally
@@ -8500,7 +9649,7 @@ targetHp.hp = std::max(0, targetHp.hp - damage);
 
 ### Skill Damage Scaling
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L289) (line 289)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L299) (line 299)
 
 Each skill multiplies base physical attack by a skill-specific factor.
 For simplicity, we hardcode 1.5× for all skills here.  In a full
@@ -8512,7 +9661,7 @@ weaponBonus = m_world->GetComponent<EquipmentComponent>(m_playerID).bonusStrengt
 
 ### Magic Damage Formula
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L361) (line 361)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L371) (line 371)
 
 magic_damage = spellData.baseDamage × (caster.magic / 10.0)
 The caster's magic stat scales spell power.  Division by 10 normalises
@@ -8524,7 +9673,7 @@ magicStat = m_world->GetComponent<StatsComponent>(m_playerID).magic;
 
 ### Warp-Strike Teleportation
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L467) (line 467)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L477) (line 477)
 
 We copy the target's TransformComponent position to the player,
 offset by one tile.  No projectile arc is simulated in the
@@ -8542,7 +9691,7 @@ playerTf.position.z = targetTf.position.z - TILE_SIZE;
 
 ### Enemy Ability Selection
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L587) (line 587)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L597) (line 597)
 
 A real AI would pick from a list of abilities based on HP, MP, and
 cooldowns.  For this base implementation, all enemies use a basic
@@ -8555,7 +9704,7 @@ enemyAttack = m_world->GetComponent<StatsComponent>(enemy).strength;
 
 ### Damage Formula Breakdown
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L659) (line 659)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L669) (line 669)
 
 raw = max(1, (strength × 2 + baseDmg) - defence)
 
@@ -8569,7 +9718,7 @@ int raw = std::max(1, (atkStrength * 2 + baseDmg) - defDefence);
 
 ### Damage Variance
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L684) (line 684)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L694) (line 694)
 
 A small random range (85–115% of base) prevents combat from feeling
 mechanical.  The player doesn't know the exact formula, so variance
@@ -8581,7 +9730,7 @@ float variance = varianceDist(m_rng);
 
 ### DoT Scaling
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L713) (line 713)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L723) (line 723)
 
 Poison deals 5% of the target's max HP per tick.
 This scales with target's health, making poison relevant at all
@@ -8593,7 +9742,7 @@ tickDmg = m_world->GetComponent<HealthComponent>(target).maxHp * 0.05f;
 
 ### Looking Up Enemy Data
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L818) (line 818)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L828) (line 828)
 
 We use NameComponent to find the enemy's data ID.  In a production engine
 you'd store the EnemyData::id in a dedicated EnemyTypeComponent.
@@ -8602,7 +9751,7 @@ if (!m_world->HasComponent<CombatComponent>(defender)) return 1.0f;
 
 ### Party Link Strikes
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L864) (line 864)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L874) (line 874)
 
 ─────────────────────────────────────────────────────────────────────────
 In FF15, party members spontaneously assist the player when the player
@@ -8620,7 +9769,7 @@ avoids multiple redundant death checks.
 
 ### Why apply damage here instead of in PlayerAttack?
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L916) (line 916)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L926) (line 926)
 
 ProcessLinkStrikes is a helper that owns the full link-strike
 resolution: roll chances, compute damage, AND apply it.  The caller
@@ -8630,7 +9779,7 @@ targetHp.hp = std::max(0, targetHp.hp - totalLinkDamage);
 
 ### Iterating and Removing from Arrays
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L945) (line 945)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L955) (line 955)
 
 We iterate backward so that erasing an entry doesn't skip the next one.
 for (uint32_t i = 0; i < se.count; ) {
@@ -8639,7 +9788,7 @@ entry.remaining -= dt;
 
 ### Level-Difference XP Bonus
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L991) (line 991)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1001) (line 1001)
 
 If the enemy is higher level than the player, the player earns a
 10% XP bonus per level difference.  This rewards the risk of
@@ -8658,7 +9807,7 @@ int xpGained  = static_cast<int>(combat.xpReward * xpMult);
 
 ### Random Item Drops
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1021) (line 1021)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1031) (line 1031)
 
 We look up the enemy's species data to find the drop table.
 Each item in dropItemIDs has a 30% chance to drop (simple model).
@@ -8672,7 +9821,7 @@ m_result.itemsDropped.push_back(dropID);
 
 ### Turn Cycling
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1061) (line 1061)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1071) (line 1071)
 
 Turn order cycles: 0 (player) → 1 → 2 → ... → aliveEnemies.size() → 0
 We skip turns for dead entities automatically.
@@ -10817,6 +11966,8 @@ Usage:
   engine_sandbox.exe --headless                   # D3D11 WARP headless (CI)
   engine_sandbox.exe --renderer vulkan --headless # Vulkan headless
   engine_sandbox.exe --headless --scene triangle  # M1 validation
+  engine_sandbox.exe --scene testworld            # M3 full system demo (windowed)
+  engine_sandbox.exe --headless --scene testworld # M3 full system demo (CI)
 
 ============================================================================
 
@@ -10828,7 +11979,7 @@ Target: Windows (MSVC)
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L85) (line 85)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L89) (line 89)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -10845,7 +11996,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L100) (line 100)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L104) (line 104)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -10862,7 +12013,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L113) (line 113)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L117) (line 117)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -10874,7 +12025,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L135) (line 135)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L139) (line 139)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -10893,7 +12044,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L150) (line 150)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L154) (line 154)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -10906,7 +12057,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L163) (line 163)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -10917,7 +12068,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L192) (line 192)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -10932,7 +12083,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L217) (line 217)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L221) (line 221)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -10942,7 +12093,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L247) (line 247)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L251) (line 251)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -10958,7 +12109,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L296) (line 296)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L300) (line 300)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -10977,17 +12128,31 @@ return 1;
 }
 std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
 }
-else
+else if (scene == "testworld")
 {
-M0 baseline: device init succeeded.
-std::cout << "[PASS] " << renderer->BackendName()
-<< " device initialised. Headless mode: "
-"skipping present loop.\n";
+-----------------------------------------------------------
+
+### Headless TestWorld
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L321) (line 321)
+
+-----------------------------------------------------------
+Boots all gameplay systems, runs 600 fixed-dt frames, then
+exits 0 if every system reported OK.  Ideal for CI: no GPU
+or audio hardware required.
+-----------------------------------------------------------
+engine::sandbox::TestWorld tw;
+if (!tw.Init())
+{
+std::cout << "[FAIL] TestWorld::Init() returned false.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
 }
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L330) (line 330)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L367) (line 367)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -10995,21 +12160,52 @@ A real game loop uses a fixed timestep for deterministic physics.
 -------------------------------------------------------------------
 double totalTime = 0.0;
 
+### TestWorld integration in the render loop
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L375) (line 375)
+
+-----------------------------------------------------------------------
+When --scene testworld is specified, we create a TestWorld and call
+tw.Update(dt) each frame.  The TestWorld returns an RGB clear-colour
+(GetClearColour) that reflects the current game state:
+
+  Combat active → red tint       Night → deep navy
+  Victory flash → gold pulse     Rain  → grey-blue
+  Camping       → warm orange    Day   → sky blue
+
+This gives a visual confirmation that the game systems are running
+and changing state.  As more rendering milestones land, replace the
+clear-colour with actual geometry + lighting draw calls.
+-----------------------------------------------------------------------
+std::unique_ptr<engine::sandbox::TestWorld> testWorld;
+if (scene == "testworld")
+{
+testWorld = std::make_unique<engine::sandbox::TestWorld>();
+if (!testWorld->Init())
+{
+std::cerr << "[FAIL] TestWorld::Init() returned false.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+}
+
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L354) (line 354)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L429) (line 429)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
 const float speed = 0.5f;
 const float tF    = static_cast<float>(totalTime);
-float clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
-float clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2pi/3
-float clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
+clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
+clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2pi/3
+clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
+}
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L369) (line 369)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L445) (line 445)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -11017,6 +12213,64 @@ first would leave the renderer pointing at a destroyed handle.
 -------------------------------------------------------------------
 renderer->Shutdown();
 window.Shutdown();
+
+---
+
+## sandbox/test_world.cpp
+
+### Keep TestWorld as a low-risk integration smoke test.
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L30) (line 30)
+
+It should depend only on stable APIs so CI can quickly verify that
+engine_sandbox starts, updates ECS state, and renders a deterministic frame.
+RegisterAllComponents(m_world);
+
+### Placeholder clip GUID
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L55) (line 55)
+
+The clip ID here is a non-fatal placeholder for sandbox smoke testing.
+If the backend cannot resolve it through AssetDB, playback simply no-ops.
+auto& audio = m_world.AddComponent<AudioSourceComponent>(m_player);
+audio.clipID = "guid-sfx-footstep";
+audio.volume = 0.5f;
+audio.isPlaying = false;
+
+### Simple deterministic motion is ideal for CI checks.
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L96) (line 96)
+
+A predictable sine-wave path gives a visible animated signal in windowed
+runs while remaining fully deterministic in headless mode.
+tf.position.x += dt * kMoveSpeed;
+tf.position.y = std::sin(m_time * kSineFrequency) * kSineAmplitude;
+
+### Oscillation formula for deterministic visual feedback
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L102) (line 102)
+
+Uses base + amplitude * sin(frequency * t) for a smooth periodic pulse.
+Choosing a pulse frequency different from movement frequency creates a
+subtle beat effect, making state motion easier to observe in test runs.
+const float pulse = kPulseBase + kPulseScale * std::sin(m_time * kPulseFrequency);
+m_clearR = kRedBase + pulse * kRedVariation;
+m_clearG = kGreenBase + pulse * kGreenVariation;
+m_clearB = kBlueBase + pulse * kBlueVariation;
+}
+
+---
+
+## sandbox/test_world.hpp
+
+### Stable integration surface
+
+**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L12) (line 12)
+
+Keep this class API intentionally small and stable because `main.cpp`
+drives TestWorld in both headless CI and interactive sandbox mode.
+TestWorld();
+~TestWorld() = default;
 
 ---
 
@@ -11066,7 +12320,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L151) (line 151)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L164) (line 164)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -11082,15 +12336,31 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L253) (line 253)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L266) (line 266)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L295) (line 295)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L308) (line 308)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L375) (line 375)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L388) (line 388)
+
+### skip_dirs excludes build artefacts and third-party sources.
+
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L425) (line 425)
+
+"Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
+source that intentionally has no TEACHING NOTE blocks and may be large.
+Scanning it would produce false-positive warnings.
+skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules", "Lua"}
+result: list[Path] = []
+for path in sorted(repo_root.rglob("*")):
+if any(part in skip_dirs for part in path.parts):
+continue
+if path.suffix in (".cpp", ".hpp", ".h", ".c"):
+result.append(path)
+return result
 
 ---
 
@@ -11110,7 +12380,7 @@ Value: human-readable rationale for allowing the exception.
 
 ### Deterministic Line Endings
 
-**Source:** [`scripts/extract_teaching_notes.py`](scripts/extract_teaching_notes.py#L434) (line 434)
+**Source:** [`scripts/extract_teaching_notes.py`](scripts/extract_teaching_notes.py#L435) (line 435)
 
 -------------------------------------------
 Explicitly write LF (\n) line endings regardless of the host platform.

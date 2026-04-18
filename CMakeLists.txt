@@ -43,7 +43,7 @@
 #
 
 cmake_minimum_required(VERSION 3.16)
-project(EducationalGameEngine VERSION 1.0 LANGUAGES CXX)
+project(EducationalGameEngine VERSION 1.0 LANGUAGES CXX C)
 
 # ---------------------------------------------------------------------------
 # Monorepo top-level option: Build the Qt editor
@@ -166,33 +166,113 @@ if(ENGINE_ENABLE_TERMINAL)
     message(STATUS "ncurses found: ${CURSES_LIBRARIES}")
 endif()
 
-# ---- Lua 5.4 (scripting — used by the terminal game target) ---------------
-# Try pkg-config first (most Linux distros), fallback to manual search.
-find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(LUA lua5.4)
-endif()
+# ---- Lua 5.5 (scripting) — build from bundled source or fall back to system --
+# TEACHING NOTE — Build Lua from source (preferred)
+# ──────────────────────────────────────────────────
+# Lua is a small, self-contained library (~30 .c files).  Building it from the
+# bundled source in  Lua/lua-5.5.0/src/  has several advantages over linking
+# against a pre-built system library:
+#
+#   • Zero external dependencies — works on any platform, in any CI, with any
+#     compiler.  No "sudo apt install liblua5.4-dev" step required.
+#   • Consistent version — everyone builds against Lua 5.5.0 regardless of what
+#     is installed on their machine.
+#   • Transparent — students can read the Lua source alongside the engine source.
+#
+# Detection order:
+#   1. Bundled source in Lua/lua-5.5.0/src/   ← preferred (always present)
+#   2. System Lua 5.5 via pkg-config           ← fallback for distros
+#   3. System Lua 5.4 via pkg-config           ← further fallback
+#   4. Scripting disabled (warning only)       ← never a hard error
+# ---------------------------------------------------------------------------
 
-if(NOT LUA_FOUND)
-    # Fallback: manual search.
-    find_path(LUA_INCLUDE_DIRS lua.h
-        PATHS /usr/include/lua5.4
-              /usr/local/include/lua5.4
-              /usr/include/lua
-              /usr/local/include/lua)
-    find_library(LUA_LIBRARIES
-        NAMES lua5.4 lua54 lua
-        PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu)
-endif()
+set(LUA_BUNDLED    OFF)
+set(LUA_LIBRARIES  "")
+set(LUA_INCLUDE_DIRS "")
 
-if(LUA_LIBRARIES AND LUA_INCLUDE_DIRS)
-    message(STATUS "Found Lua: ${LUA_LIBRARIES}")
+set(_LUA_SRC_DIR "${CMAKE_SOURCE_DIR}/Lua/lua-5.5.0/src")
+
+if(EXISTS "${_LUA_SRC_DIR}/lua.h")
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Building a static library from C source in CMake
+    # -----------------------------------------------------------------------
+    # add_library(target STATIC files…) compiles the listed .c files and
+    # archives them into a single .a / .lib file.  Any target that links
+    # against lua55_static will automatically get the include directories via
+    # the PUBLIC target_include_directories() call below — no manual
+    # include_directories() needed at the call-site.
+    # -----------------------------------------------------------------------
+
+    # Collect every .c file in the Lua source tree.
+    file(GLOB _LUA_ALL_C "${_LUA_SRC_DIR}/*.c")
+
+    # Remove the two standalone tool entry points — these define their own
+    # main() and are NOT part of the embeddable library:
+    #   lua.c   — the interactive REPL / script runner
+    #   luac.c  — the byte-code compiler
+    list(REMOVE_ITEM _LUA_ALL_C
+        "${_LUA_SRC_DIR}/lua.c"
+        "${_LUA_SRC_DIR}/luac.c"
+    )
+
+    add_library(lua55_static STATIC ${_LUA_ALL_C})
+
+    # PUBLIC so any target that links lua55_static inherits the include dir.
+    target_include_directories(lua55_static PUBLIC "${_LUA_SRC_DIR}")
+
+    # TEACHING NOTE — Platform compile flags for Lua
+    # On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
+    # popen().  On Windows MSVC we disable several noisy warnings that come from
+    # Lua's intentional C idioms (e.g. condition is always true for integer type).
+    if(MSVC)
+        target_compile_options(lua55_static PRIVATE
+            /wd4244   # conversion from 'double' to 'float'
+            /wd4267   # size_t → int narrowing
+            /wd4310   # cast truncates constant value
+            /wd4324   # structure padding
+            /wd4702   # unreachable code (Lua uses deliberate unreachable paths)
+        )
+    else()
+        target_compile_definitions(lua55_static PRIVATE _GNU_SOURCE)
+        target_compile_options(lua55_static PRIVATE
+            -w   # suppress all warnings in third-party Lua source
+        )
+    endif()
+
+    set(LUA_BUNDLED    ON)
+    set(LUA_LIBRARIES  lua55_static)
+    set(LUA_INCLUDE_DIRS "${_LUA_SRC_DIR}")
+    message(STATUS "Lua 5.5: building from bundled source at ${_LUA_SRC_DIR}")
+
 else()
-    message(WARNING
-        "Lua 5.4 not found. Install with: sudo apt install liblua5.4-dev\n"
-        "  Scripting features will be disabled.")
-    set(LUA_LIBRARIES "")
-    set(LUA_INCLUDE_DIRS "")
+    # Bundled source not present — try system-wide installations.
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(LUA QUIET lua5.5)
+        if(NOT LUA_FOUND)
+            pkg_check_modules(LUA QUIET lua5.4)
+        endif()
+    endif()
+
+    if(NOT LUA_FOUND)
+        # Manual fallback search.
+        find_path(LUA_INCLUDE_DIRS lua.h
+            PATHS /usr/include/lua5.5 /usr/include/lua5.4
+                  /usr/local/include/lua5.5 /usr/local/include/lua5.4
+                  /usr/include/lua /usr/local/include/lua)
+        find_library(LUA_LIBRARIES
+            NAMES lua5.5 lua55 lua5.4 lua54 lua
+            PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu)
+    endif()
+
+    if(LUA_LIBRARIES AND LUA_INCLUDE_DIRS)
+        message(STATUS "Lua: system library found: ${LUA_LIBRARIES}")
+    else()
+        message(STATUS "Lua not found — scripting will be disabled.")
+        message(STATUS "  Bundled source missing from Lua/lua-5.5.0/ (expected after git pull)")
+        set(LUA_LIBRARIES  "")
+        set(LUA_INCLUDE_DIRS "")
+    endif()
 endif()
 
 # ---- Vulkan SDK (optional high-end renderer) --------------------------------
@@ -283,6 +363,15 @@ if(ENGINE_ENABLE_TERMINAL)
         ${LUA_LIBRARIES}
     )
 
+    # TEACHING NOTE — ENGINE_ENABLE_LUA compile definition
+    # The terminal game links against Lua 5.5 (built from bundled source or
+    # found as a system package).  ENGINE_ENABLE_LUA activates the Lua
+    # scripting hooks in CombatSystem.cpp and CampSystem.cpp.  When Lua is not
+    # found (unlikely given the bundled source) the hooks compile out cleanly.
+    if(LUA_LIBRARIES)
+        target_compile_definitions(game PRIVATE ENGINE_ENABLE_LUA)
+    endif()
+
     # Copy Lua scripts to build directory after build.
     add_custom_command(TARGET game POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -343,6 +432,10 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     if(ENGINE_ENABLE_D3D11)
         list(APPEND SANDBOX_SOURCES
             src/engine/rendering/d3d11/D3D11Renderer.cpp
+            # TEACHING NOTE — M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
+            # d3d11_texture.cpp is a self-contained DDS parser that uses only
+            # the Windows SDK headers already required by D3D11Renderer.
+            src/engine/rendering/d3d11/d3d11_texture.cpp
         )
     endif()
 
@@ -357,6 +450,56 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             src/engine/rendering/vulkan/vulkan_mesh.cpp
         )
     endif()
+
+    # -----------------------------------------------------------------------
+    # Audio backend sources (Windows-only, M3 XAudio2 backend).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — XAudio2 is Windows-only
+    # xaudio2.h and xaudio2.lib ship with every Windows SDK installation
+    # (alongside d3d11.h / d3d11.lib).  No separate download is needed.
+    # The sources are added to engine_sandbox (not the Linux terminal game).
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/engine/audio/xaudio2_backend.cpp
+        src/engine/audio/audio_system.cpp
+    )
+
+    # -----------------------------------------------------------------------
+    # LuaEngine sources (optional — only when bundled Lua headers are present).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Conditional Scripting in engine_sandbox
+    # LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
+    # (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
+    # Without bundled Lua the scripting system compiles out via ENGINE_ENABLE_LUA
+    # guards.  No build error occurs — scripting is simply unavailable.
+    # -----------------------------------------------------------------------
+    if(LUA_BUNDLED)
+        list(APPEND SANDBOX_SOURCES src/engine/scripting/LuaEngine.cpp)
+    endif()
+
+    # -----------------------------------------------------------------------
+    # TestWorld — game systems compiled into engine_sandbox (M3+).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Cross-Platform Game Systems
+    # The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
+    # pure C++17 with no platform or ncurses dependencies.  They compile on
+    # both Linux (terminal game) and Windows (engine_sandbox) alike.
+    # Including them here lets engine_sandbox run a full simulation and visually
+    # verify all systems are operational via the --scene testworld flag.
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/sandbox/test_world.cpp
+        src/game/systems/CombatSystem.cpp
+        src/game/systems/AISystem.cpp
+        src/game/systems/WeatherSystem.cpp
+        src/game/systems/QuestSystem.cpp
+        src/game/systems/InventorySystem.cpp
+        src/game/systems/ShopSystem.cpp
+        src/game/systems/CampSystem.cpp
+        src/game/world/TileMap.cpp
+        src/game/world/WorldMap.cpp
+        src/game/world/Zone.cpp
+    )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})
 
@@ -385,6 +528,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     if(ENGINE_ENABLE_D3D11)
         target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
     endif()
+
+    # TEACHING NOTE — xaudio2.lib and ole32.lib
+    # xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
+    # ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
+    # required by XAudio2.  Both are always present on any MSVC installation.
+    target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
     if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
         target_link_libraries(engine_sandbox PRIVATE Vulkan::Vulkan)
@@ -421,6 +570,40 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     endif()
 
     target_compile_definitions(engine_sandbox PRIVATE ${SANDBOX_DEFS})
+
+    # -----------------------------------------------------------------------
+    # Lua 5.5 scripting support for engine_sandbox (Windows).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Lua in engine_sandbox
+    # ──────────────────────────────────────
+    # When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
+    # target is already built from source.  We:
+    #   1. Link engine_sandbox against lua55_static (static lib — no DLL needed).
+    #   2. Include directories are inherited via target_link_libraries PUBLIC.
+    #   3. Define ENGINE_ENABLE_LUA to activate all scripting hooks.
+    #   4. Copy lua55.dll alongside the exe (optional — only needed if users
+    #      also run standalone .lua scripts via lua55.exe; the embedded engine
+    #      uses the static lib).
+    # -----------------------------------------------------------------------
+    if(LUA_BUNDLED)
+        # LUA_LIBRARIES is the CMake target lua55_static; include dirs are
+        # inherited via the PUBLIC target_include_directories on that target.
+        target_link_libraries(engine_sandbox PRIVATE ${LUA_LIBRARIES})
+        target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_LUA)
+        # Copy lua55.dll alongside the exe for convenience (running scripts).
+        set(LUA55_DLL "${CMAKE_SOURCE_DIR}/Lua/lua55.dll")
+        if(EXISTS "${LUA55_DLL}")
+            add_custom_command(TARGET engine_sandbox POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${LUA55_DLL}"
+                    "$<TARGET_FILE_DIR:engine_sandbox>/lua55.dll"
+                COMMENT "Copying lua55.dll alongside engine_sandbox.exe"
+            )
+        endif()
+        message(STATUS "engine_sandbox: Lua 5.5 scripting ENABLED (static, from source)")
+    else()
+        message(STATUS "engine_sandbox: Lua scripting DISABLED (no Lua/include/ or Lua/lib/)")
+    endif()
 
     # -----------------------------------------------------------------------
     # TEACHING NOTE — SUBSYSTEM:CONSOLE

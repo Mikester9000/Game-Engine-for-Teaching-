@@ -8,7 +8,10 @@
 
 #include "CampSystem.hpp"
 #include "InventorySystem.hpp"
+// TEACHING NOTE — Optional Lua dependency (see CombatSystem.cpp for context)
+#ifdef ENGINE_ENABLE_LUA
 #include "../../engine/scripting/LuaEngine.hpp"  // on_camp_rest, on_level_up hooks
+#endif
 
 // Static member definition — exactly one ActiveMealBuff shared across the game.
 ActiveMealBuff CampSystem::currentBuff{};
@@ -232,8 +235,10 @@ void CampSystem::Rest(EntityID player)
         //       if newLevel == 10 then unlock_ultimate_technique() end
         //   end
         if (lc.level > oldLevel) {
+#ifdef ENGINE_ENABLE_LUA
             LuaEngine::Get().CallFunction("on_level_up",
                                           static_cast<int>(lc.level));
+#endif
         }
     }
 
@@ -260,7 +265,9 @@ void CampSystem::Rest(EntityID player)
     //       GameState.day = GameState.day + 1
     //       engine_log("Day " .. GameState.day .. " begins.")
     //   end
+#ifdef ENGINE_ENABLE_LUA
     LuaEngine::Get().CallFunction("on_camp_rest");
+#endif
 
     LOG_INFO("Party rested. HP/MP restored.");
 }
