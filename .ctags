@@ -1,0 +1,160 @@
+# =============================================================================
+# .ctags — Universal Ctags Configuration
+# =============================================================================
+#
+# TEACHING NOTE — What Are Ctags?
+# --------------------------------
+# Ctags (specifically "Universal Ctags", the modern successor to Exuberant
+# Ctags) scans source code and builds a ``tags`` file that editors use for
+# symbol navigation.  In any editor that supports ctags (Vim, Neovim, Emacs,
+# VS Code with the ctags extension, CLion, etc.) you can:
+#
+#   • Press Ctrl-] (Vim) / F12 (VS Code) to jump to any symbol's definition.
+#   • Press Ctrl-T to jump back.
+#   • Run :tag MyClass to navigate directly to a class definition.
+#
+# Why does this matter for Copilot and teaching?
+# • Copilot sees the tags file as a fast symbol index — it can resolve
+#   cross-file references without needing a full language server.
+# • Students can navigate to any function, class, or component definition
+#   instantly, dramatically reducing the time spent searching for code.
+#
+# Usage
+# -----
+#   ctags -R .            # full re-index from repo root (respect .ctags options)
+#   ctags -R src/         # index only C++ source
+#
+# The tags file is listed in .gitignore (it is a build artifact).
+#
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Language selections — only index languages used in this project
+# ---------------------------------------------------------------------------
+
+# TEACHING NOTE — Language Selection
+# ------------------------------------
+# Ctags supports hundreds of languages.  Restricting to the languages used
+# in this project keeps the tags file small and navigation results relevant.
+# Lua is included because the game logic lives in Lua scripts under scripts/.
+
+--languages=C,C++,Python,CMake,Lua
+
+# ---------------------------------------------------------------------------
+# File patterns — map custom extensions to the right language parser
+# ---------------------------------------------------------------------------
+
+# .hpp files are C++ headers (ctags defaults to treating them as C++, but
+# being explicit avoids ambiguity on some platforms).
+--map-C++=+.hpp
+--map-C++=+.inl
+--map-C++=+.tpp
+
+# CMakeLists.txt files use the CMake parser.
+--map-CMake=+(CMakeLists.txt)
+--map-CMake=+.cmake
+
+# ---------------------------------------------------------------------------
+# Tag kinds — control which symbol types are indexed
+# ---------------------------------------------------------------------------
+
+# C / C++ kinds:
+#   d = macro definitions       (useful for TEACHING NOTE macros)
+#   e = enumerators             (e.g. TileType::WATER)
+#   f = function definitions
+#   g = enum names
+#   h = included header files   (disabled — too noisy)
+#   l = local variables         (disabled — too noisy, ctags usually skips)
+#   m = class/struct members
+#   n = namespaces
+#   p = function prototypes     (disabled — redundant with definitions)
+#   s = struct names
+#   t = typedefs
+#   u = union names
+#   v = variable definitions
+#   x = extern variable declarations (disabled — noisy)
+
+--kinds-C++=+dDefgmnstu
+--kinds-C++=+f
+--kinds-C++=+v
+--kinds-C++=-hx
+
+# Python kinds:
+#   c = classes
+#   f = functions
+#   m = class members
+#   v = variables / constants
+--kinds-Python=+cfmv
+
+# Lua kinds:
+#   f = functions
+--kinds-Lua=+f
+
+# ---------------------------------------------------------------------------
+# Extra fields — attach additional metadata to each tag
+# ---------------------------------------------------------------------------
+
+# TEACHING NOTE — Extra Fields
+# -----------------------------
+# The ``+{...}`` syntax adds optional fields to each tag entry.
+# These fields let editors show richer context:
+#   a = access specifier (public/protected/private)
+#   f = file-restricted scope (static functions)
+#   i = inheritance information
+#   l = language of the source file
+#   m = implementation detail (abstract/virtual)
+#   n = line number (included by default in most versions)
+#   S = signature (function parameter list)
+#   z = kind letter in the tag entry (helps editor plugins)
+
+--fields=+aimSz
+--fields=+{signature}
+
+# ---------------------------------------------------------------------------
+# Extras — additional optional tagging behaviour
+# ---------------------------------------------------------------------------
+
+# TEACHING NOTE — Extras
+# -----------------------
+# q = qualified tags: for a method ``Foo::Bar()`` also emit a tag ``Bar``
+#     scoped to ``Foo``.  This makes partial symbol searches work.
+# F = file-scoped tags (functions/vars declared static).
+# p = pseudo-tags (metadata about ctags itself — skip for cleanliness).
+
+--extras=+qF
+--extras=-p
+
+# ---------------------------------------------------------------------------
+# Directory exclusions — skip generated/dependency directories
+# ---------------------------------------------------------------------------
+
+# TEACHING NOTE — Excluding Noise
+# --------------------------------
+# The build/ and build-test/ directories contain generated Makefiles and
+# object files, not source.  Indexing them produces thousands of irrelevant
+# tags.  The --exclude option is a glob applied to directory and file names.
+
+--exclude=build
+--exclude=build-test
+--exclude=.git
+--exclude=__pycache__
+--exclude=node_modules
+--exclude=*.spv
+--exclude=*.o
+--exclude=*.obj
+--exclude=*.a
+--exclude=*.lib
+--exclude=*.dll
+--exclude=*.so
+
+# ---------------------------------------------------------------------------
+# Sort — alphabetical tag ordering for fast binary search by editors
+# ---------------------------------------------------------------------------
+
+--sort=yes
+
+# ---------------------------------------------------------------------------
+# Input encoding
+# ---------------------------------------------------------------------------
+
+--input-encoding=utf-8

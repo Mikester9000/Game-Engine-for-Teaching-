@@ -1,0 +1,141 @@
+# ============================================================================
+# architecture-lint.yml — Architecture & Style CI Gate
+# ============================================================================
+#
+# TEACHING NOTE — Why a Dedicated Architecture Lint Workflow?
+# -----------------------------------------------------------
+# Large codebases rot slowly.  Each individual commit that sneaks a
+# cross-layer dependency or creates a 700-line source file seems harmless
+# in isolation, but after dozens of such commits the codebase becomes hard
+# to navigate and hard to teach from.  A dedicated CI gate that rejects
+# these individual commits is the cheapest way to keep the codebase healthy.
+#
+# This workflow runs two scripts on every push and pull-request:
+#
+#   1. scripts/check_architecture.py
+#      • Warns on C++ files exceeding 500 lines (teaching exceptions listed).
+#      • Errors on forbidden cross-layer #include directives.
+#      • Warns on C++ source files that contain no TEACHING NOTE block.
+#
+#   2. scripts/extract_teaching_notes.py
+#      • Regenerates docs/CURRICULUM_INDEX.md from all TEACHING NOTE blocks.
+#      • Fails if the committed index is out of date (on pull requests).
+#
+# Both scripts are pure Python with no third-party dependencies, so the
+# job runs quickly without any pip install step.
+#
+# ============================================================================
+# TEACHING NOTE — GitHub Actions Triggers (paths filter)
+# -------------------------------------------------------
+# The ``paths`` filter means this workflow only runs when files that could
+# affect the architecture checks actually change.  A documentation-only PR
+# that touches only ``docs/*.md`` will not trigger this workflow, saving CI
+# minutes and reducing noise.
+# ============================================================================
+
+name: Architecture Lint
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'scripts/check_architecture.py'
+      - 'scripts/extract_teaching_notes.py'
+      - '.github/workflows/architecture-lint.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'scripts/check_architecture.py'
+      - 'scripts/extract_teaching_notes.py'
+      - '.github/workflows/architecture-lint.yml'
+  # Allow manual trigger from the GitHub Actions UI for diagnostics.
+  workflow_dispatch:
+
+# TEACHING NOTE — Principle of Least Privilege
+# Grant only the permissions this workflow actually needs.
+# contents: read  — needed to check out the repository.
+# No write permissions are needed.
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job 1: Architecture checks (layer boundaries + file sizes + teaching notes)
+  # --------------------------------------------------------------------------
+  architecture-checks:
+    name: Architecture checks
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — actions/checkout
+      # Clones the repository so subsequent steps can read the source files.
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Python Setup
+      # Both scripts require Python 3.9+ and use only the standard library.
+      # We pin to Python 3.11 in CI for reproducibility — the same version
+      # used by all other workflows in this repository.  No third-party
+      # packages are needed, so no pip install step is required.
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # -----------------------------------------------------------------------
+      # Run the architecture lint script.
+      #
+      # --skip-teaching-notes is NOT passed here so that the full check runs.
+      # The script exits 0 only when there are no ERROR-level violations.
+      # WARN-level violations (file size, missing teaching notes) are printed
+      # but do not fail the build — they are informational only.
+      # -----------------------------------------------------------------------
+      - name: Run architecture lint
+        run: python scripts/check_architecture.py --repo-root .
+
+  # --------------------------------------------------------------------------
+  # Job 2: Curriculum index freshness check
+  # --------------------------------------------------------------------------
+  curriculum-index:
+    name: Curriculum index freshness
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Pin to 3.11 for reproducibility — matches the requirement (3.9+) while
+      # using the same Python version as every other workflow in the repo.
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # -----------------------------------------------------------------------
+      # Regenerate the curriculum index from source and check that the
+      # committed version is up to date.
+      #
+      # TEACHING NOTE — Stale-Index Detection Pattern
+      # -----------------------------------------------
+      # We regenerate the file, then run ``git diff --exit-code`` which exits
+      # with code 1 if the file changed.  This pattern is common in CI:
+      # generate → compare → fail if different.  It ensures that contributors
+      # who add TEACHING NOTE blocks also update the index before merging.
+      # -----------------------------------------------------------------------
+      - name: Regenerate curriculum index
+        run: python scripts/extract_teaching_notes.py --repo-root .
+
+      - name: Check curriculum index is up to date
+        run: |
+          git diff --exit-code docs/CURRICULUM_INDEX.md || {
+            echo ""
+            echo "ERROR: docs/CURRICULUM_INDEX.md is out of date."
+            echo "Run  python scripts/extract_teaching_notes.py  and commit the result."
+            exit 1
+          }
