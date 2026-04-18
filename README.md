@@ -78,11 +78,20 @@ Controls are shown in the in-game main menu.
 
 ---
 
-### Windows — Vulkan Sandbox (`engine_sandbox`)
+### Windows — Engine Sandbox (`engine_sandbox`)
 
 `engine_sandbox` is the first Windows rendering milestone: it opens a Win32
-window and clears the screen to an animated colour each frame using Vulkan.
-This is the foundation on which the full renderer will be built.
+window and clears the screen to an animated colour each frame using the active
+rendering backend.
+
+**Default backend: Direct3D 11 (GT610-compatible)**  
+The D3D11 backend runs on any GPU from ~2006 onwards (including the GeForce GT 610)
+and uses D3D11 WARP (a CPU software rasteriser bundled with Windows) in headless mode.
+**No Vulkan SDK or GPU driver is required to build or run the D3D11 path.**
+
+**Optional backend: Vulkan (high-end / modern path)**  
+Vulkan is built alongside D3D11 when a Vulkan SDK is installed, but is not the
+default runtime.  Select it with `--renderer vulkan`.
 
 #### 1. Install Prerequisites
 
@@ -90,10 +99,10 @@ This is the foundation on which the full renderer will be built.
 |---|---|---|
 | Visual Studio 2022 | https://visualstudio.microsoft.com/ | Install **Desktop development with C++** workload |
 | CMake ≥ 3.16 | https://cmake.org/download/ | Tick "Add CMake to PATH" during install |
-| Vulkan SDK ≥ 1.3 | https://vulkan.lunarg.com/ | The SDK sets the `VULKAN_SDK` env var that CMake's `FindVulkan` uses |
+| Vulkan SDK ≥ 1.3 *(optional)* | https://vulkan.lunarg.com/ | Only needed for the Vulkan high-end backend |
 
-> **Tip:** After installing the Vulkan SDK, open a **new** terminal so that
-> the `VULKAN_SDK` environment variable is visible.
+> **Tip:** No Vulkan SDK is needed for the D3D11 default path.  `d3d11.lib`
+> ships with the Windows SDK included in every Visual Studio installation.
 
 #### 2. Build
 
@@ -104,14 +113,11 @@ on `PATH`) and run:
 git clone https://github.com/Mikester9000/Game-Engine-for-Teaching-.git
 cd Game-Engine-for-Teaching-
 
-mkdir build
-cd build
+:: Configure — D3D11 default, no Vulkan SDK required
+cmake --preset windows-debug-engine-only
 
-:: Configure — CMake detects Windows and enables the Vulkan target automatically
-cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Debug
-
-:: Build only the Vulkan sandbox (fastest way to see results)
-cmake --build . --config Debug --target engine_sandbox
+:: Build the sandbox and asset cooker
+cmake --build --preset windows-debug-engine-only
 ```
 
 Alternatively open the generated `EducationalGameEngine.sln` in Visual Studio,
@@ -120,26 +126,43 @@ set `engine_sandbox` as the **Startup Project**, and press **F5**.
 #### 3. Run
 
 ```bat
-:: From the build\Debug\ directory:
+:: From the build\windows-debug-engine-only\Debug\ directory:
+
+:: Default D3D11 windowed mode (GT610-compatible):
 engine_sandbox.exe
+
+:: Headless CI validation (D3D11 WARP — no GPU needed):
+engine_sandbox.exe --headless
+
+:: Optional Vulkan high-end mode (requires Vulkan SDK + ICD):
+engine_sandbox.exe --renderer vulkan
 ```
 
-A window titled **"Engine Sandbox — Vulkan Clear Screen"** opens and the
-background colour slowly cycles through the rainbow.  Press **ESC** or click
-the × button to exit.
+A window titled **"Engine Sandbox — D3D11"** opens and the background colour
+slowly cycles through the rainbow.  Press **ESC** or click the × button to exit.
 
 #### CMake options
 
 | Option | Default (Windows) | Description |
 |---|---|---|
 | `ENGINE_ENABLE_TERMINAL` | `OFF` | Build the ncurses `game` target (Linux/macOS only) |
-| `ENGINE_ENABLE_VULKAN`   | `ON`  | Build the `engine_sandbox` Vulkan target |
+| `ENGINE_ENABLE_D3D11`    | `ON`  | Build the D3D11 backend (GT610-compatible, WARP CI) |
+| `ENGINE_ENABLE_VULKAN`   | `ON`  | Build the Vulkan backend (optional; auto-disabled if SDK missing) |
 
-To force-enable both on Linux (Vulkan must also be installed):
+#### Hardware Baseline
 
-```bash
-cmake .. -DENGINE_ENABLE_VULKAN=ON -DENGINE_ENABLE_TERMINAL=ON
-```
+The engine targets **D3D11 Feature Level 10_0** as the minimum hardware
+requirement.  This covers:
+
+| GPU family | Example cards | Feature Level |
+|---|---|---|
+| GeForce GT 610 (2012) | GT 610, GT 620 | 11_0 |
+| GeForce GTX 400/500 (2010–11) | GTX 460, GTX 560 | 11_0 |
+| GeForce 8/9/200 series (2006–09) | 8800 GT, 9600 GT | 10_0 / 10_1 |
+| Radeon HD 5000–8000 | HD 5870, HD 7870 | 11_0 |
+
+Vulkan requires driver support for Vulkan 1.0+; some GT-610 era cards may not
+have a usable Vulkan ICD.  Use D3D11 on those machines.
 
 ---
 

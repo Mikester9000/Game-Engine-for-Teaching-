@@ -22,11 +22,12 @@
     },
     {
       "name": "windows-debug",
-      "displayName": "Windows Debug (MSVC x64)",
-      "description": "Builds engine_sandbox (Vulkan) + Qt editor in Debug. Requires Vulkan SDK and Qt 6.",
+      "displayName": "Windows Debug (MSVC x64) — D3D11 default + Vulkan optional",
+      "description": "Builds engine_sandbox (D3D11 default, Vulkan optional) + Qt editor in Debug. Requires Qt 6. Vulkan SDK optional.",
       "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
         "ENGINE_ENABLE_VULKAN": "ON",
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "ON"
@@ -34,11 +35,12 @@
     },
     {
       "name": "windows-release",
-      "displayName": "Windows Release (MSVC x64)",
-      "description": "Builds engine_sandbox (Vulkan) + Qt editor in Release. Requires Vulkan SDK and Qt 6.",
+      "displayName": "Windows Release (MSVC x64) — D3D11 default + Vulkan optional",
+      "description": "Builds engine_sandbox (D3D11 default, Vulkan optional) + Qt editor in Release. Requires Qt 6. Vulkan SDK optional.",
       "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "ENGINE_ENABLE_D3D11": "ON",
         "ENGINE_ENABLE_VULKAN": "ON",
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "ON"
@@ -46,23 +48,38 @@
     },
     {
       "name": "windows-debug-engine-only",
-      "displayName": "Windows Debug — Engine Only (no Qt required)",
-      "description": "Builds only the engine_sandbox Vulkan target. Qt is NOT required.",
+      "displayName": "Windows Debug — Engine Only (D3D11, no Qt, no Vulkan SDK required)",
+      "description": "Builds engine_sandbox with D3D11 backend. No Qt or Vulkan SDK needed. GT610-compatible. CI default.",
       "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "OFF"
       }
     },
     {
       "name": "windows-release-engine-only",
-      "displayName": "Windows Release — Engine Only (no Qt required)",
-      "description": "Builds only the engine_sandbox Vulkan target in Release mode. Qt is NOT required.",
+      "displayName": "Windows Release — Engine Only (D3D11, no Qt, no Vulkan SDK required)",
+      "description": "Builds engine_sandbox with D3D11 backend in Release. No Qt or Vulkan SDK needed.",
       "inherits": "windows-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "windows-debug-vulkan",
+      "displayName": "Windows Debug — Vulkan backend (requires Vulkan SDK)",
+      "description": "Builds engine_sandbox with both D3D11 and Vulkan backends. Requires Vulkan SDK installed.",
+      "inherits": "windows-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
         "ENGINE_ENABLE_VULKAN": "ON",
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "OFF"
@@ -84,16 +101,23 @@
     },
     {
       "name": "windows-debug-engine-only",
-      "displayName": "Build Windows Debug (Engine Only)",
+      "displayName": "Build Windows Debug (Engine Only — D3D11)",
       "configurePreset": "windows-debug-engine-only",
       "configuration": "Debug",
       "targets": ["engine_sandbox", "cook"]
     },
     {
       "name": "windows-release-engine-only",
-      "displayName": "Build Windows Release (Engine Only)",
+      "displayName": "Build Windows Release (Engine Only — D3D11)",
       "configurePreset": "windows-release-engine-only",
       "configuration": "Release",
+      "targets": ["engine_sandbox", "cook"]
+    },
+    {
+      "name": "windows-debug-vulkan",
+      "displayName": "Build Windows Debug (Vulkan backend)",
+      "configurePreset": "windows-debug-vulkan",
+      "configuration": "Debug",
       "targets": ["engine_sandbox", "cook"]
     }
   ]

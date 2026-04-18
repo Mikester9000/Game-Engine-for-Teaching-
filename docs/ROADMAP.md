@@ -27,6 +27,31 @@
 
 ---
 
+## Milestone 1.5 — D3D11 Baseline Renderer ✅ *(complete)*
+
+**Goal:** Switch the default Windows renderer to D3D11 so the engine runs on GT610-era
+hardware and CI runners without a Vulkan SDK.  Vulkan remains as an optional high-end
+backend.
+
+| Item | Status |
+|------|--------|
+| `IRenderer` abstract interface (`src/engine/rendering/IRenderer.hpp`) | ✅ Done |
+| `D3D11Renderer` backend (`src/engine/rendering/d3d11/D3D11Renderer.hpp/.cpp`) | ✅ Done |
+| `RendererFactory` factory (`src/engine/rendering/RendererFactory.hpp`) | ✅ Done |
+| `--renderer d3d11\|vulkan` runtime flag in `engine_sandbox`; default D3D11 | ✅ Done |
+| D3D11 WARP headless mode (no GPU/driver needed in CI) | ✅ Done |
+| `ENGINE_ENABLE_D3D11` CMake option (ON by default on Windows) | ✅ Done |
+| Vulkan `find_package` changed to QUIET / optional (no SDK = auto-disable) | ✅ Done |
+| `windows-debug-engine-only` preset: D3D11 only, no Vulkan SDK required | ✅ Done |
+| `windows-debug-vulkan` preset: D3D11 + Vulkan (SDK required) | ✅ Done |
+| CI: `build-windows.yml` primary job uses D3D11 (no Vulkan SDK step) | ✅ Done |
+| CI: `build-windows-vulkan` optional job validates Vulkan backend | ✅ Done |
+| Hardware baseline: D3D_FEATURE_LEVEL_10_0 minimum (GT610 = FL 11_0) | ✅ Done |
+| `README.md` updated — D3D11 default, Vulkan optional high-end | ✅ Done |
+| `ROADMAP.md` updated with Milestone 1.5 | ✅ Done |
+
+---
+
 ## Milestone 2 — Import & Cook Pipeline ✅ *(complete)*
 
 **Goal:** A complete round-trip: import source asset → cook → engine loads it.
@@ -166,7 +191,10 @@
 
 | Decision | Rationale |
 |----------|-----------|
-| Windows-first | Vulkan + Visual Studio is the primary teaching target |
+| **D3D11 as default Windows renderer** | GT610-era hardware compatibility; ships with Windows (no SDK install); WARP software rasteriser enables CI on any runner without a GPU driver |
+| **Vulkan as optional high-end backend** | Modern explicit API for students learning low-level GPU programming; kept in codebase alongside D3D11 |
+| **D3D_FEATURE_LEVEL_10_0 as hard minimum** | Covers GPUs from 2006+; GeForce GT 610 supports FL 11_0 |
+| Windows-first | D3D11 + D3D11 WARP + Visual Studio is the primary teaching target |
 | Qt 6 for editor | Mature, cross-platform, rich tooling APIs |
 | Python for authoring tools | Fast iteration, rich ecosystem (NumPy, SciPy) |
 | JSON for all shared formats | Human-readable, no extra library on Windows |

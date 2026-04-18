@@ -732,8 +732,16 @@ bool VulkanRenderer::CreateSyncObjects()
 // ===========================================================================
 // Init — public entry point, calls all §1-§12 helpers in order.
 // ===========================================================================
-bool VulkanRenderer::Init(HINSTANCE hinstance, HWND hwnd, uint32_t width, uint32_t height)
+bool VulkanRenderer::Init(HINSTANCE hinstance, HWND hwnd, uint32_t width, uint32_t height,
+                          bool /*headless*/)
 {
+    // TEACHING NOTE — headless parameter
+    // The Vulkan renderer does not currently support a swap-chain-less headless
+    // mode (that requires VK_KHR_offscreen_surface or a render-to-texture path).
+    // We accept the parameter for interface conformance but ignore it: the full
+    // Vulkan init chain (including swap chain) always runs.  When Vulkan is used
+    // in CI headless mode, the CI job is marked continue-on-error: true because
+    // GitHub-hosted runners may lack a Vulkan ICD.
     m_hinstance = hinstance;
     m_hwnd      = hwnd;
 
