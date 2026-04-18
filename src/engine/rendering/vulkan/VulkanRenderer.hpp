@@ -390,6 +390,17 @@ private:
     uint32_t    m_currentFrame   = 0;   ///< Cycles 0 … kMaxFramesInFlight-1.
     bool        m_initialised    = false;
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Runtime Validation Layer Flag
+    // kEnableValidationLayers is a compile-time constant that enables the
+    // validation path in Debug builds.  m_validationLayersActive is a runtime
+    // override that is set to false when the validation layer is not installed
+    // in the current environment (e.g., a CI runner with Vulkan libraries but
+    // no full SDK).  This lets headless CI tests pass without the SDK while
+    // developers on a full Vulkan SDK installation still get validation.
+    // -----------------------------------------------------------------------
+    bool        m_validationLayersActive = kEnableValidationLayers;
+
     // Saved HINSTANCE/HWND for swapchain recreation after resize.
     HINSTANCE   m_hinstance      = nullptr;
     HWND        m_hwnd           = nullptr;

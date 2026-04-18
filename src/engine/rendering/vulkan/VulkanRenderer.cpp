@@ -109,22 +109,18 @@ bool VulkanRenderer::CreateInstance()
     appInfo.apiVersion         = VK_API_VERSION_1_2;
 
     // -----------------------------------------------------------------------
-    // Collect required instance extensions.
-    // -----------------------------------------------------------------------
-    std::vector<const char*> extensions = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-    };
-    if (kEnableValidationLayers)
-    {
-        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-
-    // -----------------------------------------------------------------------
     // TEACHING NOTE — Validation Layer Check
     // Before requesting validation layers, confirm the Vulkan runtime actually
     // has them installed.  If the Vulkan SDK is not installed, or the SDK
     // version is too old, the layer list may be empty.
+    //
+    // We perform this check BEFORE building the extension list so we know
+    // whether to request VK_EXT_debug_utils (only needed when layers are on).
+    //
+    // When layers are unavailable we degrade gracefully: log a warning and
+    // continue without validation.  This lets headless CI runners (which have
+    // the Vulkan loader but not the full SDK) pass the bootstrap test while
+    // developers on a full Vulkan SDK installation still get validation.
     // -----------------------------------------------------------------------
     if (kEnableValidationLayers)
     {
@@ -142,13 +138,28 @@ bool VulkanRenderer::CreateInstance()
             }
             if (!found)
             {
-                std::cerr << "[VulkanRenderer] FATAL: Validation layer not available: "
-                          << name << "\n"
-                          << "  Install the Vulkan SDK from https://vulkan.lunarg.com/\n"
-                          << "  VulkanRenderer::Init() will return false.\n";
-                return false;
+                std::cerr << "[VulkanRenderer] Warning: validation layer not available: "
+                          << name << " — running without validation.\n"
+                          << "  Install the Vulkan SDK from https://vulkan.lunarg.com/"
+                             " for full debug support.\n";
+                m_validationLayersActive = false;
+                break;
             }
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Collect required instance extensions.
+    // VK_EXT_debug_utils is only requested when validation layers are active,
+    // because the debug messenger depends on the validation layer being present.
+    // -----------------------------------------------------------------------
+    std::vector<const char*> extensions = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+    };
+    if (m_validationLayersActive)
+    {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     }
 
     VkInstanceCreateInfo createInfo    = {};
@@ -157,7 +168,7 @@ bool VulkanRenderer::CreateInstance()
     createInfo.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
-    if (kEnableValidationLayers)
+    if (m_validationLayersActive)
     {
         createInfo.enabledLayerCount   = static_cast<uint32_t>(kValidationLayers.size());
         createInfo.ppEnabledLayerNames = kValidationLayers.data();
@@ -184,8 +195,8 @@ bool VulkanRenderer::CreateInstance()
 // ===========================================================================
 bool VulkanRenderer::SetupDebugMessenger()
 {
-    if (!kEnableValidationLayers)
-        return true;   // Nothing to do in Release builds.
+    if (!m_validationLayersActive)
+        return true;   // Nothing to do when validation layers are off.
 
     // -----------------------------------------------------------------------
     // Load the extension functions dynamically.
