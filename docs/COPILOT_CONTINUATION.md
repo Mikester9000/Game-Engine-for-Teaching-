@@ -483,3 +483,84 @@ Types: feat | fix | docs | test | refactor | ci | build
 Scope: engine | game | tools | docs | ci
 Example: feat(engine): add Vulkan swapchain resize handling
 ```
+
+---
+
+## 9. CI Gates — Teaching Standards Enforcement
+
+> **Added in April 2026 (issues #19 / #21).**
+> All CI gates below run automatically on every push and pull request that
+> touches source code.  A PR cannot be merged if any gate is red.
+
+### 9.1 Overview of CI workflows
+
+| Workflow file | What it checks | Trigger |
+|---|---|---|
+| `build-linux.yml` | Terminal game compiles; Python tool tests pass | `src/**`, `tools/**` push/PR |
+| `validate-assets.yml` | Asset manifests pass JSON Schema validation | `assets/**` push/PR |
+| `teaching-standards.yml` | File size ≤ 500 lines; TEACHING NOTE present | `src/**`, `tools/**`, `editor/**`, `shared/**` push/PR |
+
+### 9.2 Teaching-standards gate (new)
+
+The `teaching-standards.yml` workflow runs `tools/ci/check_teaching_standards.py`
+against every file added or modified in a PR.  It enforces two rules:
+
+#### Rule 1 — File size limit (500 lines)
+
+Every new or changed `.cpp`, `.hpp`, `.h`, `.py`, `.cmake`, `.yml`, or `.yaml`
+file must stay under **500 lines**.
+
+*Rationale:* A Copilot session that reads one focused 200-line file produces
+much higher-quality output than one that has to ingest a 2 000-line monolith.
+Small files are also easier for students to read and understand.
+
+#### Rule 2 — TEACHING NOTE requirement
+
+Every new or changed C++ / Python file with **≥ 30 lines** must contain at
+least one `// TEACHING NOTE` (C++) or `# TEACHING NOTE` (Python) block.
+
+*Rationale:* Teaching notes capture the *why* behind design decisions at the
+exact point where a student reads the code.  A note in a separate doc is easy
+to miss; a note next to the code is impossible to miss.
+
+### 9.3 How to add a file-size exception
+
+If a file intentionally exceeds 500 lines (e.g. a new system that is taught
+as a single cohesive unit), add it to `ALLOWLIST_SIZE` in
+`tools/ci/check_teaching_standards.py` with a short comment explaining why
+the exception is justified.  Include the allowlist change in the same PR as
+the large file.
+
+```python
+# In tools/ci/check_teaching_standards.py — ALLOWLIST_SIZE set:
+ALLOWLIST_SIZE: frozenset = frozenset({
+    ...
+    # MySystem.hpp teaches the full XYZ pattern as one cohesive unit.
+    "src/engine/mysystem/MySystem.hpp",
+})
+```
+
+### 9.4 How to run the checks locally
+
+```bash
+# Check files changed vs. main branch:
+python3 tools/ci/check_teaching_standards.py --git-diff origin/main
+
+# Check specific files you are about to commit:
+python3 tools/ci/check_teaching_standards.py src/engine/audio/xaudio2_backend.cpp
+
+# Full audit of every tracked file (useful for periodic housekeeping):
+python3 tools/ci/check_teaching_standards.py --all
+```
+
+### 9.5 Issue tracking
+
+The three canonical tracking issues for the teaching-standards work are:
+
+| Issue | Title | Role |
+|---|---|---|
+| [#19](https://github.com/Mikester9000/Game-Engine-for-Teaching-/issues/19) | Audit: Current State vs FFXV-Class Teaching Engine Goals | Foundation audit — gap analysis |
+| [#20](https://github.com/Mikester9000/Game-Engine-for-Teaching-/issues/20) | Milestone Plan: Copilot-First FFXV Teaching Engine | Ordered execution plan |
+| [#21](https://github.com/Mikester9000/Game-Engine-for-Teaching-/issues/21) | Refactor: Copilot-Optimized Architecture for Teaching Engine | Architecture improvements |
+
+See `docs/ISSUES_LINKS.md` for full cross-link details and actionable checklists.

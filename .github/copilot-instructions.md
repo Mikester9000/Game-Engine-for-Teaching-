@@ -736,6 +736,39 @@ A student must be able to:
 
 ---
 
+## CI Gates — Teaching Standards (Added April 2026)
+
+Three GitHub Actions workflows guard every PR:
+
+| Workflow | Checks |
+|---|---|
+| `build-linux.yml` | Terminal game compiles; Python tool tests (32 + 11) pass |
+| `validate-assets.yml` | Asset manifests pass JSON Schema validation |
+| `teaching-standards.yml` | File ≤ 500 lines; TEACHING NOTE block present in non-trivial files |
+
+### Quick reference — teaching-standards gate
+
+The new `teaching-standards.yml` workflow runs `tools/ci/check_teaching_standards.py`
+on every changed file.
+
+**Run locally before pushing:**
+```bash
+# Check files changed vs. main:
+python3 tools/ci/check_teaching_standards.py --git-diff origin/main
+
+# Full audit of all tracked files:
+python3 tools/ci/check_teaching_standards.py --all
+```
+
+**To override the 500-line limit for a justified exception:**
+Add the repo-relative path to `ALLOWLIST_SIZE` in
+`tools/ci/check_teaching_standards.py` with a comment explaining why.
+
+**Issue tracking:** See `docs/ISSUES_LINKS.md` for the full cross-link tree and
+actionable checklists for issues #19, #20, and #21.
+
+---
+
 ## North Star
 
 > Build a complete, teachable FFXV-style open-world action RPG toolchain.

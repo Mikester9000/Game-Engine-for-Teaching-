@@ -1,0 +1,138 @@
+# ============================================================================
+# teaching-standards.yml — Teaching Standards CI Gate
+# ============================================================================
+#
+# TEACHING NOTE — Purpose of This Workflow
+# -----------------------------------------
+# This workflow enforces two non-negotiable teaching standards on every push
+# and pull request that touches source code:
+#
+#   1. FILE SIZE LIMIT (500 lines by default)
+#      Every new or changed C++, Python, CMake, or YAML file must stay under
+#      500 lines. Small, focused files are easier to read, easier to explain,
+#      and easier for Copilot to process in a single context window. Files that
+#      intentionally exceed the limit (e.g. ECS.hpp, which is taught as a
+#      complete unit) are listed in the allowlist inside
+#      tools/ci/check_teaching_standards.py.
+#
+#   2. TEACHING NOTE REQUIREMENT
+#      Every non-trivial C++ or Python file (>= 30 lines) must contain at least
+#      one "// TEACHING NOTE" (C++) or "# TEACHING NOTE" (Python) block. This
+#      ensures that the *reasoning* behind design decisions is captured at the
+#      point where students will actually read it, not buried in a separate doc.
+#
+# HOW TO ADD AN EXCEPTION
+# -----------------------
+# Open tools/ci/check_teaching_standards.py and add the repo-relative path
+# of the file to ALLOWLIST_SIZE (for size) or ALLOWLIST_TEACHING_NOTE (for
+# note requirement), with a short comment explaining why the exception exists.
+# Submit the allowlist change in the same PR as the file that needs it.
+#
+# HOW TO RUN LOCALLY
+# ------------------
+#   # Check files changed vs. main:
+#   python3 tools/ci/check_teaching_standards.py --git-diff origin/main
+#
+#   # Check specific files:
+#   python3 tools/ci/check_teaching_standards.py src/engine/audio/xaudio2_backend.cpp
+#
+#   # Full audit of every tracked file:
+#   python3 tools/ci/check_teaching_standards.py --all
+# ============================================================================
+
+name: Teaching Standards
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'tools/**'
+      - 'editor/**'
+      - 'shared/**'
+      - '.github/workflows/teaching-standards.yml'
+      - 'tools/ci/check_teaching_standards.py'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tools/**'
+      - 'editor/**'
+      - 'shared/**'
+      - '.github/workflows/teaching-standards.yml'
+      - 'tools/ci/check_teaching_standards.py'
+  # Allow manual triggering from the GitHub Actions UI (useful for audits).
+  workflow_dispatch:
+
+# TEACHING NOTE — Principle of Least Privilege
+# This workflow only reads repository content. Restricting the token scope
+# to 'contents: read' prevents a compromised action from pushing code or
+# modifying issues.
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------------------------------
+  # TEACHING NOTE — Single Job Design
+  # We use one job rather than splitting into matrix jobs because the checks
+  # are fast (pure Python, no compilation). A single job also gives a single
+  # green/red signal in the PR checks panel, which is easier to read.
+  # --------------------------------------------------------------------------
+  check-teaching-standards:
+    name: Check teaching standards (size + TEACHING NOTE)
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Full History Checkout
+      # fetch-depth: 0 fetches the complete git history. This is required so
+      # that `git diff origin/<base>...HEAD` works correctly for pull requests.
+      # Without full history, the base commit may not be available locally and
+      # the diff command would fail.
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Python Setup
+      # The check script uses only the Python standard library (subprocess,
+      # pathlib, argparse) so no pip install step is needed. We still pin the
+      # Python version for reproducibility.
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Determining the Diff Base
+      # For pull_request events, GitHub provides the target branch in
+      # github.base_ref (e.g. "main"). We fetch that branch so the diff
+      # command can compare against it.
+      # For push events we compare against HEAD~1 (the previous commit).
+      # For workflow_dispatch (manual run) we do a full --all audit.
+      # -----------------------------------------------------------------------
+      - name: Fetch base branch (pull_request only)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.base_ref }}
+
+      # -----------------------------------------------------------------------
+      # Run the teaching-standards check.
+      # -----------------------------------------------------------------------
+      - name: Check teaching standards (pull_request)
+        if: github.event_name == 'pull_request'
+        run: |
+          python3 tools/ci/check_teaching_standards.py \
+            --git-diff origin/${{ github.base_ref }}
+
+      - name: Check teaching standards (push)
+        if: github.event_name == 'push'
+        run: |
+          python3 tools/ci/check_teaching_standards.py \
+            --git-diff HEAD~1
+
+      - name: Check teaching standards (manual audit — all files)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          python3 tools/ci/check_teaching_standards.py --all
