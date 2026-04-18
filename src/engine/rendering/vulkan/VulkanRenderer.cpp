@@ -142,9 +142,10 @@ bool VulkanRenderer::CreateInstance()
             }
             if (!found)
             {
-                std::cerr << "[VulkanRenderer] Validation layer not available: "
+                std::cerr << "[VulkanRenderer] FATAL: Validation layer not available: "
                           << name << "\n"
-                          << "  Install the Vulkan SDK from https://vulkan.lunarg.com/\n";
+                          << "  Install the Vulkan SDK from https://vulkan.lunarg.com/\n"
+                          << "  VulkanRenderer::Init() will return false.\n";
                 return false;
             }
         }

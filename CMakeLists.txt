@@ -404,6 +404,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     # Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
     # causing C2440/C2664 errors.
     # -----------------------------------------------------------------------
+    # TEACHING NOTE — Incremental compile definitions
+    # We start with definitions that are always required (Win32 header trimming
+    # + Unicode), then conditionally append backend feature flags.
+    # ENGINE_ENABLE_D3D11 / ENGINE_ENABLE_VULKAN flow into RendererFactory.hpp
+    # so the factory can gate which concrete renderer header(s) it includes.
+    # -----------------------------------------------------------------------
     set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
     if(ENGINE_ENABLE_D3D11)
