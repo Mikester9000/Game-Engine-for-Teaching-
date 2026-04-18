@@ -374,7 +374,8 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     //
     //   1. OMSetRenderTargets — tell the Output Merger (OM) stage which
     //      texture(s) to write into.  The second parameter is the depth-
-    //      stencil view (nullptr = no depth test, acceptable for clear-only).
+    //      stencil view (nullptr here because we have no depth buffer yet;
+    //      depth testing is added in M3 D3D11 textures).
     //
     //   2. RSSetViewports — tell the Rasteriser (RS) stage the region of the
     //      render target to use.  TopLeftX/Y = 0 means "use the full texture".
@@ -405,7 +406,8 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     // The minimal draw loop for a "clear screen" demo:
     //   1. ClearRenderTargetView — fill the back buffer with a solid colour.
     //   2. Present               — display the back buffer (flip/blt to screen).
-    // In a full renderer you would also:
+    // In a full renderer you would also (note: RTV and viewport are already
+    // bound above):
     //   • Bind shaders, vertex buffers, constant buffers.
     //   • Issue draw calls.
     //   • Then present.
@@ -553,7 +555,12 @@ bool D3D11Renderer::RecordHeadlessFrame()
     // Step 2 — Create the RTV.
     ID3D11RenderTargetView* offscreenRTV = nullptr;
     hr = m_device->CreateRenderTargetView(offscreenTex, nullptr, &offscreenRTV);
-    offscreenTex->Release();   // Texture is referenced by the RTV; safe to release handle.
+    // TEACHING NOTE — COM Reference Counting
+    // COM objects are reference-counted.  CreateRenderTargetView internally
+    // calls AddRef on the texture, so the texture stays alive even after we
+    // Release() our own handle (offscreenTex).  We release early to keep
+    // resource lifetimes tight and avoid leaks if the next check returns early.
+    offscreenTex->Release();
     if (FAILED(hr))
     {
         std::cerr << "[D3D11Renderer] RecordHeadlessFrame: CreateRenderTargetView failed.\n";

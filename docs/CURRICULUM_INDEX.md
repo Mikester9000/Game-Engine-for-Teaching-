@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 794 across 34 subsystems.
+**Total lessons:** 795 across 34 subsystems.
 
 ---
 
@@ -21,7 +21,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/ecs](#engineecs) (31 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (171 lessons)
+- [engine/rendering](#enginerendering) (172 lessons)
 - [engine/scripting](#enginescripting) (28 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
@@ -4968,7 +4968,8 @@ Before issuing any draw or clear commands we must:
 
   1. OMSetRenderTargets — tell the Output Merger (OM) stage which
      texture(s) to write into.  The second parameter is the depth-
-     stencil view (nullptr = no depth test, acceptable for clear-only).
+     stencil view (nullptr here because we have no depth buffer yet;
+     depth testing is added in M3 D3D11 textures).
 
   2. RSSetViewports — tell the Rasteriser (RS) stage the region of the
      render target to use.  TopLeftX/Y = 0 means "use the full texture".
@@ -4982,13 +4983,14 @@ geometry passes on top of this frame setup.
 
 ### D3D11 Clear + Present
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L403) (line 403)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L404) (line 404)
 
 -----------------------------------------------------------------------
 The minimal draw loop for a "clear screen" demo:
   1. ClearRenderTargetView — fill the back buffer with a solid colour.
   2. Present               — display the back buffer (flip/blt to screen).
-In a full renderer you would also:
+In a full renderer you would also (note: RTV and viewport are already
+bound above):
   • Bind shaders, vertex buffers, constant buffers.
   • Issue draw calls.
   • Then present.
@@ -4998,7 +5000,7 @@ m_context->ClearRenderTargetView(m_renderTarget, clearColor);
 
 ### Present interval
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L417) (line 417)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L419) (line 419)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -5010,7 +5012,7 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L435) (line 435)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L437) (line 437)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -5019,7 +5021,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### LoadScene Stub (M0 baseline)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L485) (line 485)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L487) (line 487)
 
 -----------------------------------------------------------------------
 The D3D11 renderer currently supports the M0 baseline (device creation +
@@ -5037,7 +5039,7 @@ return true;   // Non-fatal stub
 
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L507) (line 507)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L509) (line 509)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -5059,6 +5061,21 @@ and assert the exact clear colour to catch subtle driver bugs.
 -----------------------------------------------------------------------
 if (!m_initialised)
 return false;
+
+### COM Reference Counting
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L558) (line 558)
+
+COM objects are reference-counted.  CreateRenderTargetView internally
+calls AddRef on the texture, so the texture stays alive even after we
+Release() our own handle (offscreenTex).  We release early to keep
+resource lifetimes tight and avoid leaks if the next check returns early.
+offscreenTex->Release();
+if (FAILED(hr))
+{
+std::cerr << "[D3D11Renderer] RecordHeadlessFrame: CreateRenderTargetView failed.\n";
+return false;
+}
 
 ### Why Direct3D 11?
 
@@ -11049,7 +11066,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L147) (line 147)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L151) (line 151)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -11065,15 +11082,15 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L249) (line 249)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L253) (line 253)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L291) (line 291)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L295) (line 295)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L371) (line 371)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L375) (line 375)
 
 ---
 
