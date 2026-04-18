@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 878 across 37 subsystems.
+**Total lessons:** 862 across 37 subsystems.
 
 ---
 
@@ -31,8 +31,8 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
 - [sandbox/main.cpp](#sandboxmain.cpp) (19 lessons)
-- [sandbox/test_world.cpp](#sandboxtest_world.cpp) (16 lessons)
-- [sandbox/test_world.hpp](#sandboxtest_world.hpp) (3 lessons)
+- [sandbox/test_world.cpp](#sandboxtest_world.cpp) (2 lessons)
+- [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
 - [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (2 lessons)
@@ -12218,364 +12218,35 @@ window.Shutdown();
 
 ## sandbox/test_world.cpp
 
-### System Dependency Order
+### Keep TestWorld as a low-risk integration smoke test.
 
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L6) (line 6)
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L13) (line 13)
 
-============================================================================
-Game systems are updated each frame in a specific order to ensure that
-outputs of one system are available as inputs to the next:
-
-  1. WeatherSystem   — Advances day/night cycle; fires WorldEvent on
-                       time/weather changes.  No game-state reads.
-  2. AISystem        — Reads player position (TransformComponent) and
-                       WeatherSystem time (nocturnal enemy behaviour).
-                       Moves enemies toward player.
-  3. CombatSystem    — Resolves attacks between combatants set up by AI.
-                       Fires CombatEvent on damage / death.
-  4. QuestSystem     — Listens for CombatEvent (kill objectives) and
-                       WorldEvent (reach-location objectives).
-  5. InventorySystem — Distributes loot after CombatSystem resolves.
-  6. ShopSystem      — Processes player buy/sell requests (scripted here).
-  7. CampSystem      — Applies rest bonuses once combat is inactive.
-  8. AudioSystem     — Submits audio source components to XAudio2 backend;
-                       transitions music FSM based on CombatSystem state.
-
-============================================================================
-
-### ECS Entity Composition
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L27) (line 27)
-
-============================================================================
-Each entity in this world is a pure EntityID with components attached:
-
-  Player  — TransformComponent + HealthComponent + StatsComponent +
-            NameComponent + CombatComponent + InventoryComponent +
-            LevelComponent + CurrencyComponent + QuestComponent +
-            MagicComponent + EquipmentComponent + MovementComponent +
-            PartyComponent + AudioSourceComponent
-
-  Enemy   — TransformComponent + HealthComponent + StatsComponent +
-            NameComponent + CombatComponent + AIComponent +
-            StatusEffectsComponent
-
-  NPC     — TransformComponent + NameComponent + RenderComponent +
-            DialogueComponent (stub)
-
-  Building — TransformComponent + NameComponent + RenderComponent
-
-  Door    — TransformComponent + NameComponent + DialogueComponent
-             (isInteractable = true)
-
-============================================================================
-
-@author  Educational Game Engine Project
-@version 1.0
-@date    2024
-C++ Standard: C++17
-Target: Windows (MSVC) + Linux (cook / CI)
-
-### member initialiser list
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L76) (line 76)
-
-m_tileMap is constructed with width/height here because TileMap does
-not have a default (width=0) constructor that can be resized later.
-All other members use in-class initialisers (= default values).
-}
-
-### Initialisation Sequence
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L89) (line 89)
-
------------------------------------------------------------------------
-We follow a strict order:
-  1. Tile map (no system deps)
-  2. ECS entities (requires tile map for spawn positions)
-  3. Systems (require entity IDs and event buses)
-  4. Quests / inventory / shop bootstrapping
-  5. Audio last (may fail gracefully if no audio hardware)
------------------------------------------------------------------------
-
-### Component Registration
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L116) (line 116)
-
-RegisterAllComponents() assigns each component type a unique integer
-index used internally by the ComponentStorage sparse-set.  It must be
-called exactly once before any entity is created.
------------------------------------------------------------------------
+It should depend only on stable APIs so CI can quickly verify that
+engine_sandbox starts, updates ECS state, and renders a deterministic frame.
 RegisterAllComponents(m_world);
-std::cout << "  [OK] ECS components registered\n";
 
-### Lambda Subscriptions
+### Simple deterministic motion is ideal for CI checks.
 
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L212) (line 212)
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L75) (line 75)
 
-Each Subscribe call registers a lambda that fires whenever the bus
-publishes an event.  The capture [this] lets the lambda access member
-variables.  We store the token so we could Unsubscribe on teardown
-(skipped here for brevity — the EventBus is destroyed with TestWorld).
------------------------------------------------------------------------
-
-### Graceful Degradation
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L249) (line 249)
-
-Audio requires a Windows audio device.  On headless CI runners there
-is no audio hardware, so XAudio2Create may fail.  We treat audio
-as a non-fatal subsystem: the test world still validates all other
-systems if audio is unavailable.
------------------------------------------------------------------------
-m_audioReady = m_audio.InitAudio(nullptr);  // nullptr = no AssetDB yet
-if (m_audioReady)
-{
-Register music tracks (clip IDs will be resolved when AssetDB
-exists; until then, Play() returns gracefully without crashing).
-m_audio.RegisterMusicTrack({
-audio::MusicState::EXPLORATION,
-"guid-music-exploration",
-0.80f
-});
-m_audio.RegisterMusicTrack({
-audio::MusicState::BATTLE,
-"guid-music-battle",
-0.90f
-});
-m_audio.RegisterMusicTrack({
-audio::MusicState::VICTORY,
-"guid-music-victory",
-0.70f
-});
-m_audio.SetMusicState(audio::MusicState::EXPLORATION);
-std::cout << "  [OK] AudioSystem ready (XAudio2 device acquired)\n";
-}
-else
-{
-std::cout << "  [--] AudioSystem: no audio device (CI / headless OK)\n";
-}
-
-### State-Driven Clear Colour
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L403) (line 403)
-
------------------------------------------------------------------------
-Priority (highest wins):
-  1. Active combat       → red tint
-  2. Victory flash       → gold pulse (decaying)
-  3. Camping             → warm campfire orange
-  4. Time of day         → sky-blue (day) / navy (night) / amber (dawn)
-  5. Weather override    → rain desaturates, storm darkens
------------------------------------------------------------------------
-
-### ECS Component Reads
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L519) (line 519)
-
------------------------------------------------------------------------
-All game state is stored in ECS components.  To display the player's
-HP we read it with m_world.GetComponent<HealthComponent>(m_player).
-The returned reference is valid as long as the entity exists.
------------------------------------------------------------------------
-
-### Map Layout
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L654) (line 654)
-
------------------------------------------------------------------------
-The 40×30 tile map is divided into distinct biomes, showing the
-"open world" structure of a typical RPG:
-
- Rows  0– 1 : mountain border (impassable)
- Rows  2– 4 : northern plains (GRASS)
- Row   5    : road (horizontal)
- Rows  6–10 : town area (buildings + courtyards)
- Row  11    : road (horizontal)
- Rows 12–16 : central plains (GRASS)
- Rows 17–19 : forest (FOREST — semi-impassable)
- Row  20    : river (WATER — impassable)
- Rows 21–24 : ruins / dungeon area (FLOOR + WALL)
- Rows 25–26 : southern plains
- Rows 27–29 : mountain border
------------------------------------------------------------------------
-
-### Building as Tiles
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L745) (line 745)
-
-A building is represented as a rectangle of WALL tiles with a FLOOR
-interior.  The door tile replaces one WALL tile on the south face.
-This is exactly how classic tile-based RPGs like Final Fantasy VI/VII
-represent indoor/outdoor transitions.
-
-### Tile-Based Movement
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1022) (line 1022)
-
------------------------------------------------------------------------
-The player's position is stored as floats in TransformComponent so that
-movement can be interpolated smoothly.  At each frame we compute the
-vector toward the current waypoint and move a fixed speed along it.
-When we overshoot we snap to the waypoint and advance to the next one.
-This is the classic "waypoint following" algorithm used in almost every
-tile-RPG's event system.
------------------------------------------------------------------------
-
-### Starting Combat
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1089) (line 1089)
-
-----------------------------------------------------------------
-StartCombat receives the player entity and a list of enemy
-entities.  Internally it builds turn-order priority queues from
-each combatant's SpeedComponent (part of StatsComponent here),
-resets all ATB gauges, and fires BATTLE_START on the CombatBus.
-----------------------------------------------------------------
-const auto& nm = m_world.GetComponent<NameComponent>(enemy);
-std::cout << "  ⚔  COMBAT START: Noctis vs " << nm.name << "\n";
-m_combat->StartCombat(m_player, { enemy });
-m_combatTriggered = true;
-
-### Handling Combat Outcome
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1121) (line 1121)
-
------------------------------------------------------------------------
-After CombatSystem::IsActive() returns false, GetCombatResult() gives
-us a CombatResult struct with:
-  playerWon     — true if all enemies are dead.
-  xpGained      — total XP to distribute.
-  gilGained     — total Gil to distribute.
-  droppedItems  — vector<uint32_t> of item IDs to add to inventory.
-
-We apply these here rather than inside CombatSystem so that different
-callers (multiplayer, story mode, arena) can apply results differently.
------------------------------------------------------------------------
-const CombatResult result = m_combat->GetCombatResult();
-if (!result.playerWon)
-{
-std::cout << "  ✗  COMBAT: Noctis was defeated!\n";
-Restore minimal HP so the test world can continue.
-auto& hp = m_world.GetComponent<HealthComponent>(m_player);
-hp.hp = hp.maxHp / 2;
-return;
-}
-
-### Camping (CampSystem)
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1176) (line 1176)
-
-----------------------------------------------------------------
-SetupCamp() starts a resting session for the entity.
-Rest() applies HP/MP regen and, if a meal was cooked, applies its
-temporary stat bonuses.  In a full game this is gated behind
-CanCamp() which checks the tile type (CAMP or SAFE_ZONE).
-We skip that check here because the test world always allows rest.
-----------------------------------------------------------------
-m_camp->SetupCamp(m_player);
-m_camp->Rest(m_player);
-
-### Shop System
-
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1213) (line 1213)
-
-----------------------------------------------------------------
-OpenShop() binds the shop to a player for the current session.
-BuyItem() checks the player's gil against the item price, deducts
-the gil, and adds the item to InventoryComponent.
-The entire transaction is atomic: if AddItem fails (full inventory),
-the gil is refunded and BuyItem returns false.
-----------------------------------------------------------------
-m_shop->OpenShop(m_player, SHOP_HAMMERHEAD);
+A predictable sine-wave path gives a visible animated signal in windowed
+runs while remaining fully deterministic in headless mode.
+tf.position.x += dt * 1.5f;
+tf.position.y = std::sin(m_time * 0.8f) * 2.0f;
 
 ---
 
 ## sandbox/test_world.hpp
 
-### Why a Test World?
+### Stable integration surface
 
-**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L6) (line 6)
+**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L12) (line 12)
 
-============================================================================
-A *test world* is an in-engine scene that boots all implemented systems at
-once so a developer can verify the whole stack is functional in a running
-debug or release build.  It is not a level designed for players — it is a
-living integration test.
-
-The test world demonstrates:
-  • Open world  — 40×30 tile map with plains, roads, forest, and ruins.
-  • Character   — Noctis (player entity) with full component suite.
-  • Movement    — Entity position updates each frame; printed to console.
-  • Doors       — Interactable door entities in the building perimeter.
-  • Buildings   — Crown City Inn + Hammerhead Outpost (camp + shop).
-  • Enemies     — Goblin / Wyvern / Tonberry with AI state machines.
-  • Combat      — ATB-based CombatSystem engaged when enemies close range.
-  • AI          — FSM + A* pathfinding (AISystem) chases player.
-  • Weather     — Day/night cycle + probabilistic weather FSM.
-  • Quests      — "Hunt the Goblins" kill-objective tracked live.
-  • Inventory   — Player starts with potions; drops loot on enemy death.
-  • Camp        — Player rests at the Inn; HP/MP restored; meal buff.
-  • Shop        — Hammerhead shop BuyItem demo; gil transaction.
-  • Audio       — XAudio2 backend initialised; music FSM wired.
-
-============================================================================
-
-### Rendered Visual Feedback
-
-**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L30) (line 30)
-
-============================================================================
-The D3D11 renderer cannot yet draw geometry, but it can clear the back-
-buffer to any colour.  TestWorld maps game state to a clear-colour:
-
-  Day + Clear weather   → sky-blue (0.40, 0.60, 0.90)
-  Night                 → deep navy (0.03, 0.05, 0.18)
-  Dawn / Dusk           → warm amber (0.90, 0.50, 0.20)
-  Rain                  → slate (0.25, 0.32, 0.42)
-  Active combat         → red tint (0.70, 0.12, 0.12)
-  Victory               → gold pulse (1.00, 0.85, 0.10)
-  Camp / resting        → campfire orange (0.50, 0.28, 0.06)
-
-As more rendering milestones (M3 texture, M4 animation, M5 physics) land,
-replace the clear-colour logic here with actual draw calls.
-
-============================================================================
-
-@author  Educational Game Engine Project
-@version 1.0
-@date    2024
-C++ Standard: C++17
-Target: Windows (MSVC) + Linux (for cook / CI builds)
-
-### Integration Tests vs Unit Tests
-
-**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L94) (line 94)
-
-──────────────────────────────────────────────────
-Unit tests check a single class in isolation.  Integration tests check
-that multiple systems collaborate correctly.  TestWorld is an integration
-test expressed as a *running game scene*, which has several advantages:
-
-  1. Real timing — systems run at variable dt, just as in shipping code.
-  2. Cross-system events — QuestSystem reacts to CombatSystem kills via
-     EventBus, just as in the final game.
-  3. Visual confirmation — a developer watching the window can see state
-     changes (red flash on combat entry, gold on victory) without reading
-     raw log output.
-
-Usage:
-@code
-  TestWorld tw;
-  if (!tw.Init()) return 1;
-
-  while (window.IsRunning()) {
-      tw.Update(dt);
-      float r, g, b;
-      tw.GetClearColour(r, g, b);
-      renderer->DrawFrame(r, g, b);
-  }
-@endcode
+Keep this class API intentionally small and stable because `main.cpp`
+drives TestWorld in both headless CI and interactive sandbox mode.
+TestWorld();
+~TestWorld() = default;
 
 ---
 
