@@ -109,13 +109,45 @@ else()
     option(ENGINE_ENABLE_TERMINAL "Build the ncurses terminal renderer target" ON)
 endif()
 
-# TEACHING NOTE — ENGINE_ENABLE_VULKAN
-# Defaults to ON on Windows only.  Nothing prevents enabling it on Linux
-# later (Vulkan is cross-platform), but for now we use it as the Windows path.
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — ENGINE_ENABLE_D3D11 (default ON on Windows)
+# ---------------------------------------------------------------------------
+# Direct3D 11 is the *default* Windows renderer.  It ships with Windows 7+
+# as part of the OS — no SDK download or separate install required.
+# It supports hardware as old as a GeForce GT 610 (Feature Level 11_0) via the
+# hardware driver, and any machine/CI runner via D3D11 WARP (software).
+#
+# This is the recommended baseline for development and CI because:
+#   • cmake --preset windows-debug-engine-only works WITHOUT a Vulkan SDK.
+#   • engine_sandbox.exe --headless exits 0 on GitHub-hosted runners (WARP).
+#   • GT610-era hardware can run the engine at full feature level.
+# ---------------------------------------------------------------------------
 if(WIN32)
-    option(ENGINE_ENABLE_VULKAN "Build the Vulkan engine_sandbox target" ON)
+    option(ENGINE_ENABLE_D3D11 "Build the D3D11 renderer backend (GT610-compatible)" ON)
 else()
-    option(ENGINE_ENABLE_VULKAN "Build the Vulkan engine_sandbox target" OFF)
+    option(ENGINE_ENABLE_D3D11 "Build the D3D11 renderer backend (GT610-compatible)" OFF)
+endif()
+
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — ENGINE_ENABLE_VULKAN (optional, high-end path)
+# ---------------------------------------------------------------------------
+# Vulkan is the *high-end / modern* renderer backend.  It is built when ON
+# but is NOT the default runtime renderer — users must pass --renderer vulkan
+# explicitly to use it.
+#
+# IMPORTANT: Vulkan SDK is OPTIONAL.  If ENGINE_ENABLE_VULKAN=ON but the
+# Vulkan SDK is not installed, CMake will log a warning and automatically
+# disable Vulkan rather than failing the entire configure.  This ensures
+# that the D3D11 default path always builds even without a Vulkan SDK.
+#
+# To build with Vulkan:
+#   1. Install the Vulkan SDK from https://vulkan.lunarg.com/
+#   2. cmake --preset windows-debug -DENGINE_ENABLE_VULKAN=ON
+# ---------------------------------------------------------------------------
+if(WIN32)
+    option(ENGINE_ENABLE_VULKAN "Build the Vulkan renderer backend (high-end optional)" ON)
+else()
+    option(ENGINE_ENABLE_VULKAN "Build the Vulkan renderer backend (high-end optional)" OFF)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -163,15 +195,33 @@ else()
     set(LUA_INCLUDE_DIRS "")
 endif()
 
-# ---- Vulkan SDK (Windows renderer) ----------------------------------------
-# TEACHING NOTE — find_package(Vulkan)
-# The Vulkan SDK installer (https://vulkan.lunarg.com/) sets the VULKAN_SDK
-# environment variable.  CMake's built-in FindVulkan module uses that variable
-# to locate vulkan-1.lib (Windows) and the vulkan/vulkan.h headers.
-# The imported target Vulkan::Vulkan provides both include paths and link libs.
+# ---- Vulkan SDK (optional high-end renderer) --------------------------------
+# TEACHING NOTE — find_package(Vulkan QUIET) — soft failure
+# We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
+# manually.  If the SDK is absent we disable Vulkan and log a warning so
+# the configure still succeeds and D3D11 can build.
+#
+# This is the idiomatic "optional dependency" pattern in CMake:
+#   find_package(X QUIET)
+#   if(NOT X_FOUND)
+#       message(WARNING "X not found; feature Y disabled.")
+#       set(ENGINE_ENABLE_X OFF CACHE BOOL "" FORCE)
+#   endif()
+#
+# The Vulkan SDK sets the VULKAN_SDK environment variable.  CMake's built-in
+# FindVulkan module uses that variable to locate vulkan-1.lib and vulkan/vulkan.h.
 if(ENGINE_ENABLE_VULKAN)
-    find_package(Vulkan REQUIRED)
-    message(STATUS "Vulkan found: ${Vulkan_LIBRARIES}")
+    find_package(Vulkan QUIET)
+    if(Vulkan_FOUND)
+        message(STATUS "Vulkan SDK found: ${Vulkan_LIBRARIES}")
+    else()
+        message(WARNING
+            "[ENGINE] Vulkan SDK not found — ENGINE_ENABLE_VULKAN disabled.\n"
+            "  Install from https://vulkan.lunarg.com/ to enable the Vulkan backend.\n"
+            "  The D3D11 backend (ENGINE_ENABLE_D3D11) will still be built."
+        )
+        set(ENGINE_ENABLE_VULKAN OFF CACHE BOOL "" FORCE)
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -244,153 +294,207 @@ if(ENGINE_ENABLE_TERMINAL)
 endif() # ENGINE_ENABLE_TERMINAL
 
 # ---------------------------------------------------------------------------
-# engine_sandbox target (Windows — Vulkan clear-screen demo)
+# engine_sandbox target (Windows — D3D11 baseline + optional Vulkan)
 # ---------------------------------------------------------------------------
-# TEACHING NOTE — engine_sandbox
-# This is the "Phase 1" rendering milestone described in the architecture plan.
-# It demonstrates:
-#   • Win32 window creation and message pump.
-#   • Vulkan instance, surface, device, swapchain bootstrap.
-#   • Per-frame acquire → record clear → submit → present.
+# TEACHING NOTE — engine_sandbox Rendering Strategy
+# ─────────────────────────────────────────────────
+# engine_sandbox supports two rendering backends selectable at runtime:
 #
-# Build instructions (Windows, Vulkan SDK installed):
-#   mkdir build && cd build
-#   cmake .. -G "Visual Studio 17 2022" -A x64
-#   cmake --build . --config Debug --target engine_sandbox
+#   D3D11  (default) — Direct3D 11; GT610-compatible; ships with Windows.
+#                      Uses WARP software rasteriser for headless CI runs.
+#                      Built when ENGINE_ENABLE_D3D11=ON (default on Windows).
+#
+#   Vulkan (optional) — Vulkan 1.0+; modern / high-end.
+#                       Requires a Vulkan ICD at runtime.
+#                       Built when ENGINE_ENABLE_VULKAN=ON AND SDK is present.
+#
+# The D3D11 path is the primary target because:
+#   • It builds without any external SDK (d3d11.lib ships with the Windows SDK).
+#   • It runs on CI runners via D3D11 WARP (no GPU required).
+#   • It supports GT610-era hardware (D3D_FEATURE_LEVEL_10_0 minimum).
+#
+# Build commands (D3D11, no Vulkan SDK needed):
+#   cmake --preset windows-debug-engine-only
+#   cmake --build --preset windows-debug-engine-only --target engine_sandbox
 # ---------------------------------------------------------------------------
-if(ENGINE_ENABLE_VULKAN)
 
+# Only build engine_sandbox on Windows (it needs Win32 + a graphics API).
+if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
+
+    # -----------------------------------------------------------------------
+    # Collect sources — always include the platform layer and core.
+    # -----------------------------------------------------------------------
     set(SANDBOX_SOURCES
         src/sandbox/main.cpp
         src/engine/platform/win32/Win32Window.cpp
-        src/engine/rendering/vulkan/VulkanRenderer.cpp
-        src/engine/rendering/vulkan/vulkan_pipeline.cpp
-        src/engine/rendering/vulkan/vulkan_buffer.cpp
-        src/engine/rendering/vulkan/vulkan_mesh.cpp
         src/engine/core/Logger.cpp
         src/engine/assets/asset_db.cpp
         src/engine/assets/asset_loader.cpp
     )
 
-    add_executable(engine_sandbox
-        ${SANDBOX_SOURCES}
-    )
+    # -----------------------------------------------------------------------
+    # D3D11 backend sources (included when ENGINE_ENABLE_D3D11=ON).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Conditional Source Files
+    # We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
+    # This keeps the source list explicit and makes it easy to see which
+    # files belong to which backend.
+    # -----------------------------------------------------------------------
+    if(ENGINE_ENABLE_D3D11)
+        list(APPEND SANDBOX_SOURCES
+            src/engine/rendering/d3d11/D3D11Renderer.cpp
+        )
+    endif()
 
+    # -----------------------------------------------------------------------
+    # Vulkan backend sources (included when ENGINE_ENABLE_VULKAN=ON).
+    # -----------------------------------------------------------------------
+    if(ENGINE_ENABLE_VULKAN)
+        list(APPEND SANDBOX_SOURCES
+            src/engine/rendering/vulkan/VulkanRenderer.cpp
+            src/engine/rendering/vulkan/vulkan_pipeline.cpp
+            src/engine/rendering/vulkan/vulkan_buffer.cpp
+            src/engine/rendering/vulkan/vulkan_mesh.cpp
+        )
+    endif()
+
+    add_executable(engine_sandbox ${SANDBOX_SOURCES})
+
+    # -----------------------------------------------------------------------
+    # Include directories.
+    # -----------------------------------------------------------------------
     target_include_directories(engine_sandbox PRIVATE
         src/
-        ${Vulkan_INCLUDE_DIRS}
     )
 
-    target_link_libraries(engine_sandbox PRIVATE
-        Vulkan::Vulkan
-    )
+    # Add Vulkan include path only when Vulkan is available.
+    if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
+        target_include_directories(engine_sandbox PRIVATE
+            ${Vulkan_INCLUDE_DIRS}
+        )
+    endif()
 
-    # TEACHING NOTE — VK_USE_PLATFORM_WIN32_KHR compile definition
-    # This macro must be defined before including <vulkan/vulkan.h> so that
-    # the Win32-specific surface types and functions are declared.
-    # Passing it as a compile definition ensures it is set for every
-    # translation unit in this target without relying on the include order.
+    # -----------------------------------------------------------------------
+    # Link libraries.
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — d3d11.lib and dxgi.lib
+    # These libraries ship with the Windows SDK (included in every Visual
+    # Studio installation).  They do NOT require a separate Vulkan-style SDK
+    # download.  Any Windows developer machine already has them.
+    # -----------------------------------------------------------------------
+    if(ENGINE_ENABLE_D3D11)
+        target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
+    endif()
+
+    if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
+        target_link_libraries(engine_sandbox PRIVATE Vulkan::Vulkan)
+    endif()
+
+    # -----------------------------------------------------------------------
+    # Compile definitions.
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Compile-Time Feature Flags
+    # ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
+    # macros so the RendererFactory.hpp can conditionally include the right
+    # backend headers and the IRenderer implementations can guard
+    # platform-specific code.
     #
     # TEACHING NOTE — UNICODE and _UNICODE
-    # Win32Window.cpp uses std::wstring for the window title and
-    # const wchar_t* for the window class name (L"EngineWndClass").
-    # Without UNICODE/_UNICODE, MSVC maps CreateWindowEx → CreateWindowExA
-    # which expects LPCSTR (narrow string) — causing C2440/C2664 errors.
-    # Defining UNICODE and _UNICODE selects the wide-string (W) variants so
-    # CreateWindowEx → CreateWindowExW, RegisterClassEx → RegisterClassExW, etc.
-    target_compile_definitions(engine_sandbox PRIVATE
-        VK_USE_PLATFORM_WIN32_KHR
-        WIN32_LEAN_AND_MEAN
-        NOMINMAX
-        UNICODE
-        _UNICODE
-    )
+    # Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
+    # Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
+    # causing C2440/C2664 errors.
+    # -----------------------------------------------------------------------
+    set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
+    if(ENGINE_ENABLE_D3D11)
+        list(APPEND SANDBOX_DEFS ENGINE_ENABLE_D3D11)
+    endif()
+
+    if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
+        list(APPEND SANDBOX_DEFS ENGINE_ENABLE_VULKAN VK_USE_PLATFORM_WIN32_KHR)
+    endif()
+
+    target_compile_definitions(engine_sandbox PRIVATE ${SANDBOX_DEFS})
+
+    # -----------------------------------------------------------------------
     # TEACHING NOTE — SUBSYSTEM:CONSOLE
-    # By default MSVC creates a GUI app (WinMain entry point, no console).
-    # We explicitly request CONSOLE so that std::cout / std::cerr output
-    # is visible in a terminal window — essential for a teaching project.
+    # -----------------------------------------------------------------------
+    # By default MSVC creates a GUI app (WinMain entry, no console).
+    # We request CONSOLE so std::cout / std::cerr output is visible in
+    # a terminal — essential for a teaching project and CI validation.
+    # -----------------------------------------------------------------------
     if(MSVC)
         set_target_properties(engine_sandbox PROPERTIES
             LINK_FLAGS "/SUBSYSTEM:CONSOLE"
         )
     endif()
 
-    # ---------------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # Vulkan shader compilation (glslc) — only when Vulkan is enabled.
+    # -----------------------------------------------------------------------
     # TEACHING NOTE — Shader Compilation with glslc
-    # ---------------------------------------------------------------------------
     # GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
-    # to SPIR-V first.  glslc is the reference compiler that ships with the
-    # Vulkan SDK (usually at %VULKAN_SDK%/Bin/glslc.exe on Windows).
+    # to SPIR-V first.  glslc ships with the Vulkan SDK.
     #
-    # We use CMake's add_custom_command to compile each shader automatically
-    # as part of the build.  The compiled .spv files are then copied next to
-    # the executable so the runtime can find them at the relative path
-    # "shaders/<name>.spv".
-    #
-    # Teaching point: in a shipping game the shader compilation happens
-    # offline (as part of the asset cook pipeline).  During development,
-    # running glslc at build time speeds up the iteration loop.
-    # ---------------------------------------------------------------------------
-    find_program(GLSLC_EXECUTABLE glslc
-        HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin"
-        DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
+    # D3D11 uses HLSL compiled to CSO files (or runtime compilation).  HLSL
+    # shader compilation via FXC/DXC will be added in M3 D3D11 textures.
+    # -----------------------------------------------------------------------
+    if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
+        find_program(GLSLC_EXECUTABLE glslc
+            HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin"
+            DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
-    if(GLSLC_EXECUTABLE)
-        message(STATUS "glslc found: ${GLSLC_EXECUTABLE}")
+        if(GLSLC_EXECUTABLE)
+            message(STATUS "glslc found: ${GLSLC_EXECUTABLE}")
 
-        set(SHADER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/shaders")
-        set(SHADER_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+            set(SHADER_SOURCE_DIR "${CMAKE_SOURCE_DIR}/shaders")
+            set(SHADER_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 
-        # List every shader here; add more as milestones progress.
-        set(GLSL_SHADERS
-            "${SHADER_SOURCE_DIR}/triangle.vert"
-            "${SHADER_SOURCE_DIR}/triangle.frag"
-        )
-
-        # Compile each GLSL shader to SPIR-V.
-        foreach(GLSL_SHADER ${GLSL_SHADERS})
-            get_filename_component(SHADER_NAME "${GLSL_SHADER}" NAME)
-            set(SPV_OUTPUT "${SHADER_BINARY_DIR}/${SHADER_NAME}.spv")
-
-            add_custom_command(
-                OUTPUT  "${SPV_OUTPUT}"
-                COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_BINARY_DIR}"
-                COMMAND ${GLSLC_EXECUTABLE} "${GLSL_SHADER}" -o "${SPV_OUTPUT}"
-                DEPENDS "${GLSL_SHADER}"
-                COMMENT "Compiling GLSL shader: ${SHADER_NAME} -> ${SHADER_NAME}.spv"
+            # List every shader here; add more as milestones progress.
+            set(GLSL_SHADERS
+                "${SHADER_SOURCE_DIR}/triangle.vert"
+                "${SHADER_SOURCE_DIR}/triangle.frag"
             )
-            list(APPEND SPV_OUTPUTS "${SPV_OUTPUT}")
-        endforeach()
 
-        # Custom target that depends on all compiled .spv files.
-        add_custom_target(engine_shaders DEPENDS ${SPV_OUTPUTS})
+            foreach(GLSL_SHADER ${GLSL_SHADERS})
+                get_filename_component(SHADER_NAME "${GLSL_SHADER}" NAME)
+                set(SPV_OUTPUT "${SHADER_BINARY_DIR}/${SHADER_NAME}.spv")
 
-        # Make engine_sandbox depend on the shaders so they are compiled first.
-        add_dependencies(engine_sandbox engine_shaders)
+                add_custom_command(
+                    OUTPUT  "${SPV_OUTPUT}"
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${SHADER_BINARY_DIR}"
+                    COMMAND ${GLSLC_EXECUTABLE} "${GLSL_SHADER}" -o "${SPV_OUTPUT}"
+                    DEPENDS "${GLSL_SHADER}"
+                    COMMENT "Compiling GLSL shader: ${SHADER_NAME} -> ${SHADER_NAME}.spv"
+                )
+                list(APPEND SPV_OUTPUTS "${SPV_OUTPUT}")
+            endforeach()
 
-        # Copy compiled .spv files next to the executable after each build.
-        # TEACHING NOTE — $<TARGET_FILE_DIR:engine_sandbox>
-        # This CMake generator expression evaluates at build time to the
-        # directory containing the built engine_sandbox executable.
-        # On MSVC this is e.g. build/Debug/ or build/Release/.
-        add_custom_command(TARGET engine_sandbox POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E make_directory
-                "$<TARGET_FILE_DIR:engine_sandbox>/shaders"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${SPV_OUTPUTS}
-                "$<TARGET_FILE_DIR:engine_sandbox>/shaders/"
-            COMMENT "Copying compiled shaders to output directory"
-        )
-    else()
-        message(WARNING
-            "glslc not found — triangle shaders will NOT be compiled.\n"
-            "  Install the Vulkan SDK from https://vulkan.lunarg.com/ "
-            "and ensure %VULKAN_SDK%/Bin is on your PATH."
-        )
-    endif() # GLSLC_EXECUTABLE
+            add_custom_target(engine_shaders DEPENDS ${SPV_OUTPUTS})
+            add_dependencies(engine_sandbox engine_shaders)
 
-endif() # ENGINE_ENABLE_VULKAN
+            # Copy compiled .spv files next to the executable after each build.
+            # TEACHING NOTE — $<TARGET_FILE_DIR:engine_sandbox>
+            # This generator expression expands to the directory containing
+            # the built executable (e.g. build/Debug/ on MSVC).
+            add_custom_command(TARGET engine_sandbox POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory
+                    "$<TARGET_FILE_DIR:engine_sandbox>/shaders"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${SPV_OUTPUTS}
+                    "$<TARGET_FILE_DIR:engine_sandbox>/shaders/"
+                COMMENT "Copying compiled shaders to output directory"
+            )
+        else()
+            message(WARNING
+                "glslc not found — Vulkan SPIR-V shaders will NOT be compiled.\n"
+                "  Install the Vulkan SDK from https://vulkan.lunarg.com/ "
+                "and ensure %VULKAN_SDK%/Bin is on your PATH."
+            )
+        endif() # GLSLC_EXECUTABLE
+    endif() # ENGINE_ENABLE_VULKAN
+
+endif() # WIN32 AND (D3D11 OR Vulkan)
 
 # ---------------------------------------------------------------------------
 # cook target — standalone C++ asset cooker (Milestone M2)
@@ -437,12 +541,13 @@ message(STATUS "=== Build Configuration ===")
 message(STATUS "  CXX Standard     : C++${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build type       : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Terminal target  : ${ENGINE_ENABLE_TERMINAL}")
-message(STATUS "  Vulkan target    : ${ENGINE_ENABLE_VULKAN}")
+message(STATUS "  D3D11 backend    : ${ENGINE_ENABLE_D3D11}  (default runtime)")
+message(STATUS "  Vulkan backend   : ${ENGINE_ENABLE_VULKAN} (optional high-end)")
 if(ENGINE_ENABLE_TERMINAL)
     message(STATUS "  ncurses          : ${CURSES_LIBRARIES}")
     message(STATUS "  Lua              : ${LUA_LIBRARIES}")
 endif()
-if(ENGINE_ENABLE_VULKAN)
+if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
     message(STATUS "  Vulkan libs      : ${Vulkan_LIBRARIES}")
 endif()
 message(STATUS "===========================")

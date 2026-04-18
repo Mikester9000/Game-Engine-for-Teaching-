@@ -22,13 +22,13 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Area | Status | Notes |
 |------|--------|-------|
 | Monorepo folder layout | ✅ | All dirs: `src/`, `editor/`, `tools/`, `shared/`, `samples/`, `scripts/`, `shaders/`, `docs/` |
-| Root `CMakeLists.txt` | ✅ | `ENGINE_ENABLE_VULKAN`, `ENGINE_ENABLE_TERMINAL`, `BUILD_EDITOR` options; `engine_sandbox` + `game` targets |
-| `CMakePresets.json` | ✅ | `windows-debug`, `windows-debug-engine-only` presets defined |
+| Root `CMakeLists.txt` | ✅ | `ENGINE_ENABLE_D3D11` (default ON), `ENGINE_ENABLE_VULKAN` (optional), `ENGINE_ENABLE_TERMINAL`, `BUILD_EDITOR` options; `engine_sandbox` + `game` targets |
+| `CMakePresets.json` | ✅ | `windows-debug`, `windows-debug-engine-only` (D3D11, no SDK required), `windows-debug-vulkan` presets defined |
 | Shared JSON schemas (7 formats) | ✅ | `shared/schemas/`: project, asset_registry, scene, audio_bank, skeleton, anim_clip, anim_graph |
 | Shared runtime headers | ✅ | `shared/runtime/`: `Guid.hpp`, `VersionedFile.hpp`, `Log.hpp` |
 | CI — Linux build + Python tests | ✅ | `.github/workflows/build-linux.yml`: builds terminal game, runs 32+11 pytest |
 | CI — asset manifest validation | ✅ | `.github/workflows/validate-assets.yml` |
-| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + Vulkan SDK; builds `engine_sandbox` + `cook`; runs `--headless` + `--validate-project` |
+| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; optional Vulkan job |
 | CI — contract / golden-file tests | ✅ | `.github/workflows/contract-tests.yml`: runs `cook`, diffs against `tests/golden/assetdb_expected.json`; pytest cook pipeline (13 tests); TEACHING NOTE audit |
 | CI — Architecture Lint | ✅ | `.github/workflows/architecture-lint.yml`: runs `check_architecture.py` (file-size + layer rules) and `extract_teaching_notes.py`; fails if `CURRICULUM_INDEX.md` is stale |
 | `vcpkg.json` | ✅ | Repo root; `nlohmann-json` dependency added for M2 cook pipeline |
@@ -36,14 +36,19 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 
 ---
 
-### Rendering (Vulkan, Windows)
+### Rendering (D3D11 default + Vulkan optional, Windows)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Vulkan bootstrap (M0) | ✅ | Instance, device, swapchain, render pass, framebuffers, command buffers, sync primitives |
+| `IRenderer` abstract interface | ✅ | `src/engine/rendering/IRenderer.hpp` — backend-agnostic Init/DrawFrame/Shutdown |
+| `RendererFactory` | ✅ | `src/engine/rendering/RendererFactory.hpp` — creates D3D11Renderer or VulkanRenderer by `--renderer` flag |
+| D3D11 renderer (default) | ✅ | `src/engine/rendering/d3d11/D3D11Renderer.hpp/.cpp`; D3D_FEATURE_LEVEL_10_0 minimum; WARP headless mode; GT610-compatible |
 | Win32 window + headless mode | ✅ | `src/engine/platform/win32/Win32Window.hpp/.cpp`; `--headless` arg in `src/sandbox/main.cpp` |
-| SPIR-V pipeline + colored triangle (M1) | ✅ | `VulkanPipeline`, `VulkanMesh`, `VulkanBuffer`; `shaders/triangle.vert/.frag` |
+| Vulkan bootstrap (optional, M0) | ✅ | Instance, device, swapchain, render pass, framebuffers, command buffers, sync primitives |
+| SPIR-V pipeline + colored triangle (M1, Vulkan) | ✅ | `VulkanPipeline`, `VulkanMesh`, `VulkanBuffer`; `shaders/triangle.vert/.frag` |
+| D3D11 depth buffer | ⬜ | Needed for any 3D geometry |
 | Vulkan depth buffer | ⬜ | Needed for any 3D geometry |
+| D3D11 textures (DDS/BC7) | ⬜ | `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` |
 | Vulkan textures (DDS/BC7) | ⬜ | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` |
 | Vulkan descriptor sets | ⬜ | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` |
 | Textured quad scene | ⬜ | Shaders: `shaders/textured_quad.vert/.frag` |
@@ -677,15 +682,16 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 
 | Milestone | Goal | Status |
 |-----------|------|--------|
-| M0 | Vulkan window + clear screen | ✅ |
-| M1 | Colored triangle (SPIR-V pipeline) | ✅ |
+| M0 | D3D11 window + clear screen (default); Vulkan optional | ✅ |
+| M1 | Colored triangle (Vulkan SPIR-V pipeline) | ✅ |
+| M1.5 | D3D11 baseline renderer + IRenderer abstraction + CI fix | ✅ |
 | M2 | AssetDB + `cook.exe` + contract CI | ✅ |
-| M3 | Vulkan texture + XAudio2 | ⬜ **active** |
+| M3 | D3D11/Vulkan texture + XAudio2 | ⬜ **active** |
 | M4 | Animation runtime (C++) | ⬜ |
 | M5 | Jolt Physics | ⬜ |
 | M6 | Editor inspector + Play-in-Engine | ⬜ |
 | M7 | World streaming | ⬜ |
-| M8 | Wire all gameplay into Vulkan runtime | ⬜ |
+| M8 | Wire all gameplay into D3D11/Vulkan runtime | ⬜ |
 
 ---
 

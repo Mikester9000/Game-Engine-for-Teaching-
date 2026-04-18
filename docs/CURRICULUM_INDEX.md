@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 746 across 34 subsystems.
+**Total lessons:** 786 across 34 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (22 lessons)
-- [ci/workflows](#ciworkflows) (26 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (25 lessons)
+- [ci/workflows](#ciworkflows) (27 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
 - [engine/assets](#engineassets) (27 lessons)
@@ -21,7 +21,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/ecs](#engineecs) (31 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (134 lessons)
+- [engine/rendering](#enginerendering) (167 lessons)
 - [engine/scripting](#enginescripting) (28 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
@@ -29,7 +29,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/systems](#gamesystems) (80 lessons)
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (14 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (17 lessons)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (7 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
 - [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (2 lessons)
@@ -147,21 +147,54 @@ else()
 option(ENGINE_ENABLE_TERMINAL "Build the ncurses terminal renderer target" ON)
 endif()
 
-### ENGINE_ENABLE_VULKAN
+### ENGINE_ENABLE_D3D11 (default ON on Windows)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L112) (line 112)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L113) (line 113)
 
-Defaults to ON on Windows only.  Nothing prevents enabling it on Linux
-later (Vulkan is cross-platform), but for now we use it as the Windows path.
+---------------------------------------------------------------------------
+Direct3D 11 is the *default* Windows renderer.  It ships with Windows 7+
+as part of the OS — no SDK download or separate install required.
+It supports hardware as old as a GeForce GT 610 (Feature Level 11_0) via the
+hardware driver, and any machine/CI runner via D3D11 WARP (software).
+
+This is the recommended baseline for development and CI because:
+  • cmake --preset windows-debug-engine-only works WITHOUT a Vulkan SDK.
+  • engine_sandbox.exe --headless exits 0 on GitHub-hosted runners (WARP).
+  • GT610-era hardware can run the engine at full feature level.
+---------------------------------------------------------------------------
 if(WIN32)
-option(ENGINE_ENABLE_VULKAN "Build the Vulkan engine_sandbox target" ON)
+option(ENGINE_ENABLE_D3D11 "Build the D3D11 renderer backend (GT610-compatible)" ON)
 else()
-option(ENGINE_ENABLE_VULKAN "Build the Vulkan engine_sandbox target" OFF)
+option(ENGINE_ENABLE_D3D11 "Build the D3D11 renderer backend (GT610-compatible)" OFF)
+endif()
+
+### ENGINE_ENABLE_VULKAN (optional, high-end path)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L132) (line 132)
+
+---------------------------------------------------------------------------
+Vulkan is the *high-end / modern* renderer backend.  It is built when ON
+but is NOT the default runtime renderer — users must pass --renderer vulkan
+explicitly to use it.
+
+IMPORTANT: Vulkan SDK is OPTIONAL.  If ENGINE_ENABLE_VULKAN=ON but the
+Vulkan SDK is not installed, CMake will log a warning and automatically
+disable Vulkan rather than failing the entire configure.  This ensures
+that the D3D11 default path always builds even without a Vulkan SDK.
+
+To build with Vulkan:
+  1. Install the Vulkan SDK from https://vulkan.lunarg.com/
+  2. cmake --preset windows-debug -DENGINE_ENABLE_VULKAN=ON
+---------------------------------------------------------------------------
+if(WIN32)
+option(ENGINE_ENABLE_VULKAN "Build the Vulkan renderer backend (high-end optional)" ON)
+else()
+option(ENGINE_ENABLE_VULKAN "Build the Vulkan renderer backend (high-end optional)" OFF)
 endif()
 
 ### find_package(Curses) sets:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L126) (line 126)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L158) (line 158)
 
 CURSES_LIBRARIES    — ncurses link flags
   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
@@ -173,22 +206,40 @@ find_package(Curses REQUIRED)
 message(STATUS "ncurses found: ${CURSES_LIBRARIES}")
 endif()
 
-### find_package(Vulkan)
+### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L167) (line 167)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L199) (line 199)
 
-The Vulkan SDK installer (https://vulkan.lunarg.com/) sets the VULKAN_SDK
-environment variable.  CMake's built-in FindVulkan module uses that variable
-to locate vulkan-1.lib (Windows) and the vulkan/vulkan.h headers.
-The imported target Vulkan::Vulkan provides both include paths and link libs.
+We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
+manually.  If the SDK is absent we disable Vulkan and log a warning so
+the configure still succeeds and D3D11 can build.
+
+This is the idiomatic "optional dependency" pattern in CMake:
+  find_package(X QUIET)
+  if(NOT X_FOUND)
+      message(WARNING "X not found; feature Y disabled.")
+      set(ENGINE_ENABLE_X OFF CACHE BOOL "" FORCE)
+  endif()
+
+The Vulkan SDK sets the VULKAN_SDK environment variable.  CMake's built-in
+FindVulkan module uses that variable to locate vulkan-1.lib and vulkan/vulkan.h.
 if(ENGINE_ENABLE_VULKAN)
-find_package(Vulkan REQUIRED)
-message(STATUS "Vulkan found: ${Vulkan_LIBRARIES}")
+find_package(Vulkan QUIET)
+if(Vulkan_FOUND)
+message(STATUS "Vulkan SDK found: ${Vulkan_LIBRARIES}")
+else()
+message(WARNING
+"[ENGINE] Vulkan SDK not found — ENGINE_ENABLE_VULKAN disabled.\n"
+"  Install from https://vulkan.lunarg.com/ to enable the Vulkan backend.\n"
+"  The D3D11 backend (ENGINE_ENABLE_D3D11) will still be built."
+)
+set(ENGINE_ENABLE_VULKAN OFF CACHE BOOL "" FORCE)
+endif()
 endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L191) (line 191)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L241) (line 241)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -196,57 +247,85 @@ the ncurses-dependent Renderer.cpp and InputSystem.cpp.
 ---------------------------------------------------------------------------
 if(ENGINE_ENABLE_TERMINAL)
 
-### engine_sandbox
+### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L249) (line 249)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L299) (line 299)
 
-This is the "Phase 1" rendering milestone described in the architecture plan.
-It demonstrates:
-  • Win32 window creation and message pump.
-  • Vulkan instance, surface, device, swapchain bootstrap.
-  • Per-frame acquire → record clear → submit → present.
+─────────────────────────────────────────────────
+engine_sandbox supports two rendering backends selectable at runtime:
 
-Build instructions (Windows, Vulkan SDK installed):
-  mkdir build && cd build
-  cmake .. -G "Visual Studio 17 2022" -A x64
-  cmake --build . --config Debug --target engine_sandbox
+  D3D11  (default) — Direct3D 11; GT610-compatible; ships with Windows.
+                     Uses WARP software rasteriser for headless CI runs.
+                     Built when ENGINE_ENABLE_D3D11=ON (default on Windows).
+
+  Vulkan (optional) — Vulkan 1.0+; modern / high-end.
+                      Requires a Vulkan ICD at runtime.
+                      Built when ENGINE_ENABLE_VULKAN=ON AND SDK is present.
+
+The D3D11 path is the primary target because:
+  • It builds without any external SDK (d3d11.lib ships with the Windows SDK).
+  • It runs on CI runners via D3D11 WARP (no GPU required).
+  • It supports GT610-era hardware (D3D_FEATURE_LEVEL_10_0 minimum).
+
+Build commands (D3D11, no Vulkan SDK needed):
+  cmake --preset windows-debug-engine-only
+  cmake --build --preset windows-debug-engine-only --target engine_sandbox
 ---------------------------------------------------------------------------
-if(ENGINE_ENABLE_VULKAN)
 
-### VK_USE_PLATFORM_WIN32_KHR compile definition
+### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L288) (line 288)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L338) (line 338)
 
-This macro must be defined before including <vulkan/vulkan.h> so that
-the Win32-specific surface types and functions are declared.
-Passing it as a compile definition ensures it is set for every
-translation unit in this target without relying on the include order.
+We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
+This keeps the source list explicit and makes it easy to see which
+files belong to which backend.
+-----------------------------------------------------------------------
+if(ENGINE_ENABLE_D3D11)
+list(APPEND SANDBOX_SOURCES
+src/engine/rendering/d3d11/D3D11Renderer.cpp
+)
+endif()
+
+### d3d11.lib and dxgi.lib
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L380) (line 380)
+
+These libraries ship with the Windows SDK (included in every Visual
+Studio installation).  They do NOT require a separate Vulkan-style SDK
+download.  Any Windows developer machine already has them.
+-----------------------------------------------------------------------
+if(ENGINE_ENABLE_D3D11)
+target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
+endif()
+
+### Compile-Time Feature Flags
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L396) (line 396)
+
+ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
+macros so the RendererFactory.hpp can conditionally include the right
+backend headers and the IRenderer implementations can guard
+platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L294) (line 294)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L402) (line 402)
 
-Win32Window.cpp uses std::wstring for the window title and
-const wchar_t* for the window class name (L"EngineWndClass").
-Without UNICODE/_UNICODE, MSVC maps CreateWindowEx → CreateWindowExA
-which expects LPCSTR (narrow string) — causing C2440/C2664 errors.
-Defining UNICODE and _UNICODE selects the wide-string (W) variants so
-CreateWindowEx → CreateWindowExW, RegisterClassEx → RegisterClassExW, etc.
-target_compile_definitions(engine_sandbox PRIVATE
-VK_USE_PLATFORM_WIN32_KHR
-WIN32_LEAN_AND_MEAN
-NOMINMAX
-UNICODE
-_UNICODE
-)
+Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
+Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
+causing C2440/C2664 errors.
+-----------------------------------------------------------------------
+set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L309) (line 309)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L420) (line 420)
 
-By default MSVC creates a GUI app (WinMain entry point, no console).
-We explicitly request CONSOLE so that std::cout / std::cerr output
-is visible in a terminal window — essential for a teaching project.
+-----------------------------------------------------------------------
+By default MSVC creates a GUI app (WinMain entry, no console).
+We request CONSOLE so std::cout / std::cerr output is visible in
+a terminal — essential for a teaching project and CI validation.
+-----------------------------------------------------------------------
 if(MSVC)
 set_target_properties(engine_sandbox PROPERTIES
 LINK_FLAGS "/SUBSYSTEM:CONSOLE"
@@ -255,33 +334,25 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L320) (line 320)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L435) (line 435)
 
----------------------------------------------------------------------------
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
-to SPIR-V first.  glslc is the reference compiler that ships with the
-Vulkan SDK (usually at %VULKAN_SDK%/Bin/glslc.exe on Windows).
+to SPIR-V first.  glslc ships with the Vulkan SDK.
 
-We use CMake's add_custom_command to compile each shader automatically
-as part of the build.  The compiled .spv files are then copied next to
-the executable so the runtime can find them at the relative path
-"shaders/<name>.spv".
-
-Teaching point: in a shipping game the shader compilation happens
-offline (as part of the asset cook pipeline).  During development,
-running glslc at build time speeds up the iteration loop.
----------------------------------------------------------------------------
+D3D11 uses HLSL compiled to CSO files (or runtime compilation).  HLSL
+shader compilation via FXC/DXC will be added in M3 D3D11 textures.
+-----------------------------------------------------------------------
+if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
 find_program(GLSLC_EXECUTABLE glslc
 HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin"
 DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L373) (line 373)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L477) (line 477)
 
-This CMake generator expression evaluates at build time to the
-directory containing the built engine_sandbox executable.
-On MSVC this is e.g. build/Debug/ or build/Release/.
+This generator expression expands to the directory containing
+the built executable (e.g. build/Debug/ on MSVC).
 add_custom_command(TARGET engine_sandbox POST_BUILD
 COMMAND ${CMAKE_COMMAND} -E make_directory
 "$<TARGET_FILE_DIR:engine_sandbox>/shaders"
@@ -292,15 +363,16 @@ COMMENT "Copying compiled shaders to output directory"
 )
 else()
 message(WARNING
-"glslc not found — triangle shaders will NOT be compiled.\n"
+"glslc not found — Vulkan SPIR-V shaders will NOT be compiled.\n"
 "  Install the Vulkan SDK from https://vulkan.lunarg.com/ "
 "and ensure %VULKAN_SDK%/Bin is on your PATH."
 )
 endif() # GLSLC_EXECUTABLE
+endif() # ENGINE_ENABLE_VULKAN
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L398) (line 398)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L502) (line 502)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -322,7 +394,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L417) (line 417)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L521) (line 521)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -333,7 +405,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L425) (line 425)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L529) (line 529)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -343,7 +415,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L453) (line 453)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L558) (line 558)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -352,7 +424,7 @@ C++ standard already set above).
 
 ### Qt Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L460) (line 460)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L565) (line 565)
 
 The editor is a Qt 6 Widgets application that provides:
   • Project browser  — open a project folder, see its Content/ files
@@ -403,13 +475,19 @@ job runs quickly without any pip install step.
 -------------------------------------------------------
 The ``paths`` filter means this workflow only runs when files that could
 affect the architecture checks actually change.  A documentation-only PR
-that touches only ``docs/*.md`` will not trigger this workflow, saving CI
-minutes and reducing noise.
+that touches only ``docs/*.md`` will generally NOT trigger this workflow,
+saving CI minutes and reducing noise.
+
+Exception: ``docs/CURRICULUM_INDEX.md`` IS included in the filter because
+it is auto-generated by scripts/extract_teaching_notes.py and the CI gate
+verifies that the committed index matches what the script would regenerate.
+A PR that modifies only CURRICULUM_INDEX.md (e.g., a manual edit) will
+therefore trigger this workflow so that stale-index violations are caught.
 ============================================================================
 
 ### Principle of Least Privilege
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L60) (line 60)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L66) (line 66)
 
 Grant only the permissions this workflow actually needs.
 contents: read  — needed to check out the repository.
@@ -419,7 +497,7 @@ contents: read
 
 ### actions/checkout
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L77) (line 77)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L83) (line 83)
 
 Clones the repository so subsequent steps can read the source files.
 -----------------------------------------------------------------------
@@ -428,7 +506,7 @@ uses: actions/checkout@v4
 
 ### Python Setup
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L84) (line 84)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L90) (line 90)
 
 Both scripts require Python 3.9+ and use only the standard library.
 We pin to Python 3.11 in CI for reproducibility — the same version
@@ -442,7 +520,7 @@ python-version: '3.11'
 
 ### Stale-Index Detection Pattern
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L130) (line 130)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L136) (line 136)
 
 -----------------------------------------------
 We regenerate the file, then run ``git diff --exit-code`` which exits
@@ -560,41 +638,39 @@ python-version: '3.11'
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L4) (line 4)
 
 ============================================================================
-This workflow validates the Windows Vulkan engine_sandbox and the
+This workflow validates the Windows engine_sandbox (D3D11 default) and the
 cross-platform cook.exe tool on every push and pull request.
 
 What it validates:
-  1. CMake configure succeeds with Vulkan SDK present.
+  1. CMake configure succeeds WITHOUT a Vulkan SDK (D3D11 path).
   2. engine_sandbox.exe compiles without errors (MSVC /W4).
   3. cook.exe compiles without errors.
-  4. engine_sandbox.exe runs in headless mode (Vulkan init + exit 0).
+  4. engine_sandbox.exe --headless exits 0 (D3D11 WARP, no GPU needed).
   5. cook.exe successfully cooks the vertical slice sample project.
   6. engine_sandbox.exe --validate-project loads the cooked AssetDB.
 
 ============================================================================
 
-### humbletim/setup-vulkan-sdk
+### D3D11 vs Vulkan in CI
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L18) (line 18)
 
 ============================================================================
-The Vulkan SDK provides the Vulkan headers, the loader library (vulkan-1.lib)
-and the glslc shader compiler.  Without it, find_package(Vulkan) in CMake
-would fail.
+The primary build job uses D3D11 (default backend) because:
+  • d3d11.lib ships with the Windows SDK — no external download needed.
+  • D3D11 WARP (software rasteriser) is bundled with Windows, so
+    engine_sandbox.exe --headless works on any Windows runner regardless
+    of whether a physical GPU or Vulkan driver is present.
+  • GT610-era hardware (target baseline) supports D3D11 Feature Level 11_0.
 
-humbletim/setup-vulkan-sdk is a community action that:
-  1. Downloads the requested Vulkan SDK version.
-  2. Installs it to a temp directory.
-  3. Sets VULKAN_SDK in the environment so CMake can find it.
-
-We pin vulkan-query-version to 1.3.250.0 for reproducibility.  Always pin
-action versions and SDK versions in CI to avoid unexpected breakage from
-upstream changes.
+A separate optional job (build-windows-vulkan) validates the Vulkan backend
+when a Vulkan SDK is available.  It is allowed to fail initially to avoid
+blocking D3D11 CI on Vulkan SDK availability.
 ============================================================================
 
 ### Least-Privilege Permissions
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L61) (line 61)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L59) (line 59)
 
 GitHub Actions tokens default to write access on the repository.
 Restricting to contents: read follows the principle of least privilege:
@@ -603,14 +679,61 @@ a compromised action cannot push malicious commits to the repository.
 permissions:
 contents: read
 
+### CMake Presets in CI
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L77) (line 77)
+
+cmake --preset windows-debug-engine-only uses CMakePresets.json:
+  • Generator: Visual Studio 17 2022 (MSVC x64)
+  • ENGINE_ENABLE_D3D11=ON   (default, GT610-compatible)
+  • ENGINE_ENABLE_VULKAN=OFF (Vulkan SDK not installed on runner)
+  • BUILD_EDITOR=OFF         (Qt not installed on CI runner)
+
+No Vulkan SDK step is needed: d3d11.lib ships with the Windows SDK
+that is part of every Visual Studio installation on the runner.
+-----------------------------------------------------------------------
+- name: Configure CMake (D3D11 engine-only, no Vulkan SDK required)
+run: cmake --preset windows-debug-engine-only
+
+### D3D11 WARP in Headless CI
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L113) (line 113)
+
+D3D11 WARP is Microsoft's CPU software rasteriser bundled with every
+Windows installation.  When --headless is passed, D3D11Renderer uses
+D3D_DRIVER_TYPE_WARP (no GPU or GPU driver needed) and skips swap chain
+creation.  This makes the headless check reliable on any Windows runner.
+Expected output: "[PASS] D3D11 device initialised..." followed by exit 0.
+-----------------------------------------------------------------------
+- name: Run headless validation (M0 — D3D11 WARP)
+run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
+shell: cmd
+
+### Optional Vulkan CI Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L141) (line 141)
+
+This job validates the Vulkan backend when a Vulkan SDK is available.
+It is separated from the primary job so:
+  1. Vulkan SDK availability does not block the D3D11 main CI path.
+  2. Future hardware runners (self-hosted GPU) can run the full Vulkan test.
+
+continue-on-error: true — Vulkan job failures do not fail the overall CI.
+As the project matures (self-hosted GPU runner added), this can be changed
+to continue-on-error: false to make Vulkan a hard requirement.
+--------------------------------------------------------------------------
+build-windows-vulkan:
+name: Build Windows Vulkan (optional, MSVC x64)
+runs-on: windows-latest
+continue-on-error: true
+
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L79) (line 79)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L166) (line 166)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
-re-download it, wasting bandwidth and time.  vulkan-use-cache: true
-stores the download in GitHub's action cache, keyed by the version
-string.  Subsequent runs restore the cache in seconds.
+re-download it.  vulkan-use-cache: true stores the download in
+GitHub's action cache, keyed by the version string.
 -----------------------------------------------------------------------
 - name: Install Vulkan SDK
 uses: humbletim/setup-vulkan-sdk@v1.2.1
@@ -619,45 +742,20 @@ vulkan-query-version: 1.3.250.0
 vulkan-components: Vulkan-Headers, Vulkan-Loader
 vulkan-use-cache: true
 
-### CMake Presets in CI
+### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L95) (line 95)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L188) (line 188)
 
-cmake --preset windows-debug-engine-only uses the configuration from
-CMakePresets.json:
-  • Generator: Visual Studio 17 2022 (MSVC x64)
-  • ENGINE_ENABLE_VULKAN=ON
-  • BUILD_EDITOR=OFF  (Qt not installed on the CI runner)
-This is the correct preset for headless CI validation of the engine.
+GitHub-hosted runners install the Vulkan loader but NOT a software ICD
+(SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
+may fail with VK_ERROR_INCOMPATIBLE_DRIVER on runners without a real GPU.
+This is expected and why this job has continue-on-error: true.
+On a self-hosted GPU runner this step will succeed.
 -----------------------------------------------------------------------
-- name: Configure CMake (engine-only, no Qt)
-run: cmake --preset windows-debug-engine-only
-
-### Building specific targets
-
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L109) (line 109)
-
-cmake --build --preset ... --target <name> builds only the specified
-target and its dependencies.  Building both engine_sandbox and cook
-validates both the Vulkan renderer path and the cross-platform cook
-tool in a single CI run.
------------------------------------------------------------------------
-- name: Build engine_sandbox
-run: cmake --build --preset windows-debug-engine-only --target engine_sandbox
-
-### Headless CI Validation
-
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L135) (line 135)
-
-The CI runner has no monitor and no GPU, but it does have a software
-Vulkan implementation (SwiftShader or Mesa lavapipe via the Vulkan
-SDK's validation layers).  Running with --headless skips the render
-loop and just validates the Vulkan bootstrap.
-Expected output: "[PASS] ..." followed by exit code 0.
------------------------------------------------------------------------
-- name: Run headless validation (M0)
-run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
+- name: Run Vulkan headless validation (optional)
+run: .\build\windows-debug-vulkan\Debug\engine_sandbox.exe --renderer vulkan --headless
 shell: cmd
+continue-on-error: true
 
 ### Contract Tests in CI
 
@@ -3979,6 +4077,63 @@ double        m_deltaTime   = 0.0;  ///< Seconds elapsed last frame.
 
 ## engine/rendering
 
+### Renderer Abstraction (Strategy Pattern)
+
+**Source:** [`src/engine/rendering/IRenderer.hpp`](src/engine/rendering/IRenderer.hpp#L6) (line 6)
+
+============================================================================
+This interface decouples the sandbox / game loop from the underlying
+graphics API.  The concrete implementations are:
+
+  D3D11Renderer  — Direct3D 11 backend; GT610-class hardware baseline.
+                   Default on Windows.  Uses WARP software rasteriser in
+                   headless / CI mode for zero-driver-requirement validation.
+
+  VulkanRenderer — Vulkan 1.0+ backend; modern / high-end path.
+                   Requires a Vulkan ICD on the machine.
+
+The factory in RendererFactory.hpp decides which concrete renderer to
+construct based on a runtime flag (--renderer d3d11 | vulkan).
+
+============================================================================
+
+### Why D3D11 as the Baseline?
+
+**Source:** [`src/engine/rendering/IRenderer.hpp`](src/engine/rendering/IRenderer.hpp#L22) (line 22)
+
+============================================================================
+D3D11 with Feature Level 10_0 runs on GPUs released as far back as 2006
+(GeForce 8 series, Radeon HD 2000).  A GeForce GT 610 — a common 2012 entry-
+level card that is still in service — supports D3D11 Feature Level 11_0.
+D3D11 ships with every Windows 7+ installation as part of the OS, so there
+is zero setup for end users and CI runners alike.
+
+Vulkan is reserved for the high-end / modern path (M3+) and is built when
+ENGINE_ENABLE_VULKAN=ON but is not the runtime default.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### Pure Virtual Interface
+
+**Source:** [`src/engine/rendering/IRenderer.hpp`](src/engine/rendering/IRenderer.hpp#L61) (line 61)
+
+Every method is pure virtual (= 0).  This means IRenderer cannot be
+instantiated directly.  Only concrete subclasses that override every method
+can be instantiated.  The virtual destructor ensures that deleting a
+D3D11Renderer or VulkanRenderer through an IRenderer pointer calls the
+right destructor chain.
+===========================================================================
+class IRenderer
+{
+public:
+virtual ~IRenderer() = default;
+
 ### Translation Units
 
 **Source:** [`src/engine/rendering/Renderer.cpp`](src/engine/rendering/Renderer.cpp#L6) (line 6)
@@ -4494,6 +4649,469 @@ This implementation uses a simple circle check as a teaching example.
 @param viewerWorldY  World-space row    of the FOV origin.
 @param radius        How many tiles away the player can see.
 
+### Factory Pattern for Renderer Selection
+
+**Source:** [`src/engine/rendering/RendererFactory.hpp`](src/engine/rendering/RendererFactory.hpp#L6) (line 6)
+
+============================================================================
+The factory pattern decouples object creation from usage.  The caller says
+"give me a renderer" and the factory decides which concrete type to
+instantiate based on a runtime RendererBackend enum value.
+
+This keeps main.cpp clean — it only knows about IRenderer, not about
+D3D11Renderer or VulkanRenderer directly.  Swapping the backend is a
+one-line change to the --renderer flag.
+
+============================================================================
+
+### Runtime Backend Selection vs Compile-Time
+
+**Source:** [`src/engine/rendering/RendererFactory.hpp`](src/engine/rendering/RendererFactory.hpp#L17) (line 17)
+
+============================================================================
+We could also select the backend at compile time via preprocessor macros,
+but runtime selection is more flexible for testing:
+
+  engine_sandbox.exe                  → D3D11 (default)
+  engine_sandbox.exe --renderer d3d11 → D3D11 explicit
+  engine_sandbox.exe --renderer vulkan → Vulkan (requires ENGINE_ENABLE_VULKAN)
+
+If a backend was not compiled in, the factory logs an error and returns
+nullptr so the caller can gracefully exit.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### RendererBackend Enum
+
+**Source:** [`src/engine/rendering/RendererFactory.hpp`](src/engine/rendering/RendererFactory.hpp#L60) (line 60)
+
+---------------------------------------------------------------------------
+A strongly-typed enum class prevents accidental integer-to-enum conversions
+and avoids polluting the enclosing namespace with the enumerator names.
+---------------------------------------------------------------------------
+enum class RendererBackend
+{
+D3D11,   // Direct3D 11 — GT610-compatible baseline (default on Windows)
+Vulkan,  // Vulkan 1.0+ — modern / high-end path
+};
+
+### Parsing Command-Line Enum Values
+
+**Source:** [`src/engine/rendering/RendererFactory.hpp`](src/engine/rendering/RendererFactory.hpp#L74) (line 74)
+
+We use a simple string comparison.  The default is D3D11 so any unrecognised
+value falls through to D3D11 with a warning.
+---------------------------------------------------------------------------
+inline RendererBackend ParseRendererBackend(const std::string& s)
+{
+if (s == "vulkan") return RendererBackend::Vulkan;
+if (s == "d3d11")  return RendererBackend::D3D11;
+
+### D3D11 Initialisation Sequence
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L6) (line 6)
+
+============================================================================
+D3D11 device creation is much simpler than Vulkan:
+
+  1. Call D3D11CreateDevice (or D3D11CreateDeviceAndSwapChain).
+  2. The OS driver selects the GPU automatically.
+  3. The swap chain is created via DXGI.
+  4. Create a render-target view (RTV) from the back buffer.
+
+Compare to Vulkan where you enumerate physical devices, create logical
+devices, pick queue families, create surfaces, and manage semaphores.
+D3D11 hides most of that behind the driver — which makes it *easier* to
+use but *harder* to reason about performance.  Both styles are worth
+understanding.
+
+============================================================================
+
+### WARP Software Renderer
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L22) (line 22)
+
+============================================================================
+For headless / CI mode we pass D3D_DRIVER_TYPE_WARP to
+D3D11CreateDevice().  WARP (Windows Advanced Rasterization Platform) is a
+highly optimised CPU-based Direct3D implementation built into Windows.  It
+supports Feature Level 11_0 in software and requires NO GPU driver, making
+it perfect for GitHub-hosted CI runners.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### pragma comment(lib, ...) vs CMake target_link_libraries
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L42) (line 42)
+
+---------------------------------------------------------------------------
+On MSVC we can tell the linker which .lib to pull in directly from source
+using #pragma comment(lib, ...).  For D3D11 this is convenient because
+d3d11.lib and dxgi.lib ship with the Windows SDK (always present on MSVC)
+and we don't need a separate find_package() in CMake.
+
+We still list them in target_link_libraries in CMakeLists.txt for clarity
+and cross-toolchain compatibility.
+---------------------------------------------------------------------------
+pragma comment(lib, "d3d11.lib")
+pragma comment(lib, "dxgi.lib")
+
+### Driver Type Selection
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L83) (line 83)
+
+-----------------------------------------------------------------------
+D3D_DRIVER_TYPE_HARDWARE — uses the physical GPU (fastest).
+D3D_DRIVER_TYPE_WARP     — uses the CPU software rasteriser (universal).
+
+In headless mode (CI, validation) we force WARP so the binary runs on
+any Windows machine regardless of GPU driver state.  WARP supports
+Feature Level 11_0 in software, which is more than enough for CI.
+-----------------------------------------------------------------------
+const D3D_DRIVER_TYPE driverType =
+headless ? D3D_DRIVER_TYPE_WARP
+: D3D_DRIVER_TYPE_HARDWARE;
+
+### Feature Levels
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L97) (line 97)
+
+-----------------------------------------------------------------------
+We request feature levels in descending order.  D3D11CreateDevice picks
+the highest level the hardware (or WARP) supports and stores the result
+in m_featureLevel.
+
+  11_0 — GeForce GT 610 (Kepler/Fermi rebrand), Radeon HD 7000 series
+  10_1 — GeForce 9 / 200 / 400 series with updated drivers
+  10_0 — GeForce 8 series, Radeon HD 2000–3000 (absolute minimum)
+
+Feature Level 10_0 is the project's hard minimum for hardware support.
+-----------------------------------------------------------------------
+const D3D_FEATURE_LEVEL featureLevels[] = {
+D3D_FEATURE_LEVEL_11_0,
+D3D_FEATURE_LEVEL_10_1,
+D3D_FEATURE_LEVEL_10_0,
+};
+const UINT numFeatureLevels = static_cast<UINT>(
+sizeof(featureLevels) / sizeof(featureLevels[0]));
+
+### Device Creation Flags
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L118) (line 118)
+
+-----------------------------------------------------------------------
+D3D11_CREATE_DEVICE_DEBUG enables the D3D11 debug layer (analogous to
+Vulkan's validation layer).  We only enable it in Debug builds to avoid
+the performance overhead in Release.
+-----------------------------------------------------------------------
+UINT createDeviceFlags = 0;
+if defined(_DEBUG) || defined(DEBUG)
+createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
+endif
+
+### D3D11CreateDevice vs D3D11CreateDeviceAndSwapChain
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L132) (line 132)
+
+We separate device creation from swap chain creation so that headless
+mode can skip the swap chain entirely (no HWND needed).
+-----------------------------------------------------------------------
+HRESULT hr = D3D11CreateDevice(
+nullptr,            // Use default adapter (first enumerated GPU)
+driverType,
+nullptr,            // Software module — nullptr unless REFERENCE type
+createDeviceFlags,
+featureLevels,
+numFeatureLevels,
+D3D11_SDK_VERSION,
+&m_device,
+&m_featureLevel,
+&m_context
+);
+
+### Fallback from Debug Layer to No-Debug
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L152) (line 152)
+
+-----------------------------------------------------------------------
+On some Windows installations the optional D3D11 debug layer DLL
+(D3D11_1SDKLayers.dll) is not installed.  When the debug flag is set
+and the DLL is absent, D3D11CreateDevice returns E_FAIL.  We retry
+without the debug flag so CI runners still succeed.
+-----------------------------------------------------------------------
+if (createDeviceFlags & D3D11_CREATE_DEVICE_DEBUG)
+{
+createDeviceFlags &= ~D3D11_CREATE_DEVICE_DEBUG;
+hr = D3D11CreateDevice(
+nullptr, driverType, nullptr,
+createDeviceFlags,
+featureLevels, numFeatureLevels,
+D3D11_SDK_VERSION,
+&m_device, &m_featureLevel, &m_context
+);
+}
+
+### DXGI Swap Chain Description
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L217) (line 217)
+
+-----------------------------------------------------------------------
+IDXGISwapChain is the bridge between D3D11 and the OS window manager.
+It manages a ring of back buffers; we render to one while the other is
+being displayed.  Key fields:
+
+  BufferCount       — number of back buffers (2 = double-buffering).
+  BufferDesc.Format — pixel format; BGRA_8888 is the most compatible.
+  SwapEffect        — DISCARD = fastest, FLIP_SEQUENTIAL = modern.
+  Windowed          — TRUE for a windowed swap chain.
+-----------------------------------------------------------------------
+DXGI_SWAP_CHAIN_DESC scDesc = {};
+scDesc.BufferCount                        = 2;
+scDesc.BufferDesc.Width                   = width;
+scDesc.BufferDesc.Height                  = height;
+scDesc.BufferDesc.Format                  = DXGI_FORMAT_B8G8R8A8_UNORM;
+scDesc.BufferDesc.RefreshRate.Numerator   = 60;
+scDesc.BufferDesc.RefreshRate.Denominator = 1;
+scDesc.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+scDesc.OutputWindow                       = hwnd;
+scDesc.SampleDesc.Count                   = 1;   // No MSAA for baseline
+scDesc.SampleDesc.Quality                 = 0;
+scDesc.Windowed                           = TRUE;
+
+### DXGI_SWAP_EFFECT_DISCARD
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L240) (line 240)
+
+The oldest swap effect; supported on all D3D11 hardware.  The contents
+of the back buffer are undefined after Present — we always clear so it
+doesn't matter.  Modern code would use FLIP_DISCARD on Win10+.
+scDesc.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
+
+### Obtaining the IDXGIFactory via the Device's Adapter
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L247) (line 247)
+
+-----------------------------------------------------------------------
+We must create the swap chain through the same DXGI factory that owns
+the adapter the D3D11 device was created on.  The safest way to get
+that factory is to query the device's parent adapter via COM's QueryInterface.
+-----------------------------------------------------------------------
+IDXGIDevice*  dxgiDevice  = nullptr;
+IDXGIAdapter* dxgiAdapter = nullptr;
+IDXGIFactory* dxgiFactory = nullptr;
+
+### Render-Target View (RTV)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L290) (line 290)
+
+A RTV is a "view" that tells D3D11 which texture sub-resource to render
+into.  Here we point it at the swap chain's back buffer.
+-----------------------------------------------------------------------
+ID3D11Texture2D* backBuffer = nullptr;
+hr = m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D),
+reinterpret_cast<void**>(&backBuffer));
+if (FAILED(hr)) {
+std::cerr << "[D3D11Renderer] GetBuffer failed.\n";
+return false;
+}
+
+### Flush and Flush-to-Idle before release
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L336) (line 336)
+
+Before releasing any D3D11 objects we flush the immediate context so
+any in-flight GPU commands are drained.  Without this, destroying
+resources the GPU is still referencing can cause device-removed errors.
+if (m_context)
+m_context->Flush();
+
+### D3D11 Clear + Present
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L361) (line 361)
+
+-----------------------------------------------------------------------
+The minimal draw loop for a "clear screen" demo:
+  1. ClearRenderTargetView — fill the back buffer with a solid colour.
+  2. Present               — display the back buffer (flip/blt to screen).
+In a full renderer you would also:
+  • Set the render target and viewport.
+  • Bind shaders, vertex buffers, constant buffers.
+  • Issue draw calls.
+  • Then present.
+-----------------------------------------------------------------------
+const float clearColor[4] = { clearR, clearG, clearB, 1.0f };
+m_context->ClearRenderTargetView(m_renderTarget, clearColor);
+
+### Present interval
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L376) (line 376)
+
+-----------------------------------------------------------------------
+Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
+Present(0, 0) — present as fast as possible (no v-sync).
+We use v-sync for the demo to avoid tearing.
+-----------------------------------------------------------------------
+m_swapChain->Present(1, 0);
+}
+
+### Swap Chain Resize Sequence (D3D11)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L394) (line 394)
+
+1. Release the render-target view (it references the old back buffer).
+2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
+3. Re-acquire the back buffer and create a new RTV.
+Missing step 1 causes E_INVALIDARG because the buffer is still bound.
+
+### LoadScene Stub (M0 baseline)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L440) (line 440)
+
+-----------------------------------------------------------------------
+The D3D11 renderer currently supports the M0 baseline (device creation +
+clear colour loop).  Scene loading (triangle, textured quad, etc.) will
+be implemented in future milestones (M3 D3D11 textures, M4 skinned mesh).
+
+Returning true here allows --headless --scene <name> to exit 0 in CI
+without crashing.  A more complete implementation would load HLSL shaders
+(.cso compiled shader object files) and create D3D11 pipeline state.
+-----------------------------------------------------------------------
+std::cout << "[D3D11Renderer] LoadScene('" << sceneName
+<< "') — stub; scene support arrives in M3.\n";
+return true;   // Non-fatal stub
+}
+
+### Headless Validation
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L462) (line 462)
+
+-----------------------------------------------------------------------
+In headless mode the swap chain does not exist (no HWND surface).
+We validate device creation by issuing a no-op Flush() to the GPU
+(WARP) and returning true.  This confirms:
+  1. The D3D11 device was successfully created.
+  2. The immediate context is functional.
+  3. No crash on resource-less execution.
+
+A future iteration could create an off-screen render target and
+validate a full clear→readback round-trip.
+-----------------------------------------------------------------------
+if (!m_initialised)
+return false;
+
+### Why Direct3D 11?
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L6) (line 6)
+
+============================================================================
+D3D11 is the sweet spot for a "runs everywhere on Windows" renderer:
+
+  • Ships with Windows 7, 8, 10, 11 — zero end-user setup.
+  • Supported by every discrete GPU from ~2006 onwards (Feature Level 10_0).
+  • A GeForce GT 610 (2012 Kepler-rebrand / Fermi) supports FL 11_0.
+  • D3D11 WARP (Windows Advanced Rasterization Platform) is a CPU software
+    rasteriser bundled with Windows — it means CI runners and machines
+    without a physical GPU can still run the renderer for validation.
+
+Feature Level Baseline:
+  We request [11_0, 10_1, 10_0] in order.  The device is created at the
+  highest level the hardware supports; at minimum 10_0 is required.
+
+============================================================================
+
+### D3D11 Device Hierarchy
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L22) (line 22)
+
+============================================================================
+D3D11 has three core objects:
+
+  ID3D11Device         — the logical GPU.  Used for resource creation
+                         (buffers, textures, shaders, states).  Thread-safe
+                         when the flag D3D11_CREATE_DEVICE_SINGLETHREADED
+                         is NOT set.
+
+  ID3D11DeviceContext  — the immediate drawing context.  Records draw /
+                         dispatch commands and executes them.  NOT thread-
+                         safe (you need deferred contexts for MT recording).
+
+  IDXGISwapChain       — the flip chain that presents rendered frames to
+                         the OS compositor.  Belongs to DXGI (DirectX
+                         Graphics Infrastructure), not D3D11 directly.
+
+============================================================================
+
+### WARP (Software Renderer) for Headless CI
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L40) (line 40)
+
+============================================================================
+When --headless is passed (or ENGINE_D3D11_FORCE_WARP is defined) we create
+the device with D3D_DRIVER_TYPE_WARP instead of D3D_DRIVER_TYPE_HARDWARE.
+WARP:
+  • Requires no GPU driver.
+  • Runs on every GitHub-hosted Windows runner out of the box.
+  • Supports FL 11_0 in software.
+  • Is slower than hardware but correct for validation.
+In headless mode we also skip IDXGISwapChain creation — WARP has no window
+to present to, and we only need device-creation validation for CI.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+Requires: d3d11.lib, dxgi.lib, d3dcompiler.lib (Windows SDK — always present)
+
+### D3D11 / DXGI Headers
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L67) (line 67)
+
+---------------------------------------------------------------------------
+These headers ship with the Windows SDK — no separate download needed.
+d3d11.h     — D3D11 device, context, resource types.
+dxgi.h      — DXGI swap chain, adapter, factory types.
+d3dcompiler.h — runtime HLSL compilation (used in headless validation).
+---------------------------------------------------------------------------
+include <d3d11.h>
+include <dxgi.h>
+
+### Object Lifecycle
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L88) (line 88)
+
+All COM objects (ID3D11Device, etc.) are managed via raw COM pointers.
+We call Release() manually in Shutdown() in reverse-creation order.
+An alternative is Microsoft::WRL::ComPtr<T> which auto-releases; we use
+raw pointers here so the release sequence is explicit and teachable.
+===========================================================================
+class D3D11Renderer : public IRenderer
+{
+public:
+D3D11Renderer();
+~D3D11Renderer() override;
+
+### COM pointer naming convention
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L153) (line 153)
+
+We prefix all COM interface pointers with m_ (member) and use the
+interface name as the type hint.  e.g. m_device is an ID3D11Device*.
+
 ### Reading This File
 
 **Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L6) (line 6)
@@ -4923,9 +5541,22 @@ VkFenceCreateInfo fenceInfo = {};
 fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+### headless parameter
+
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L726) (line 726)
+
+The Vulkan renderer does not currently support a swap-chain-less headless
+mode (that requires VK_KHR_offscreen_surface or a render-to-texture path).
+We accept the parameter for interface conformance but ignore it: the full
+Vulkan init chain (including swap chain) always runs.  When Vulkan is used
+in CI headless mode, the CI job is marked continue-on-error: true because
+GitHub-hosted runners may lack a Vulkan ICD.
+m_hinstance = hinstance;
+m_hwnd      = hwnd;
+
 ### Per-Frame Rendering
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L749) (line 749)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L757) (line 757)
 
 Every frame follows the same six steps (see DrawFrame() in VulkanRenderer.hpp).
 ===========================================================================
@@ -4935,7 +5566,7 @@ if (!m_initialised) return;
 
 ### vkWaitForFences
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L759) (line 759)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L767) (line 767)
 
 We wait with a 1-second timeout.  In practice the GPU should finish
 well within a single display refresh period.
@@ -4945,7 +5576,7 @@ VK_TRUE, UINT64_MAX);
 
 ### vkAcquireNextImageKHR
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L769) (line 769)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L777) (line 777)
 
 This asks the swapchain "which image can I write to next?"
 m_imageAvailableSemaphores is signalled when the image is truly ready
@@ -4961,7 +5592,7 @@ VK_NULL_HANDLE,
 
 ### vkQueueSubmit
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L818) (line 818)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L826) (line 826)
 
 We tell the GPU:
   "Wait on imageAvailableSemaphore (stage COLOR_ATTACHMENT_OUTPUT)
@@ -4976,7 +5607,7 @@ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 
 ### vkQueuePresentKHR
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L852) (line 852)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L860) (line 860)
 
 Wait for renderFinishedSemaphore (i.e. the GPU finished drawing), then
 flip the swapchain image to the screen (or hand it back to the
@@ -4992,7 +5623,7 @@ presentInfo.pImageIndices      = &imageIndex;
 
 ### Extracted Recording
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L880) (line 880)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L888) (line 888)
 
 We moved command buffer recording into its own helper so:
   1. DrawFrame() is shorter and easier to follow.
@@ -5019,7 +5650,7 @@ vkBeginCommandBuffer(cmdBuf, &beginInfo);
 
 ### VkClearValue
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L905) (line 905)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L913) (line 913)
 
 LOAD_OP_CLEAR fills the attachment with this colour before any draw
 commands run.  The animated RGB values produce the rainbow background.
@@ -5032,7 +5663,7 @@ clearValue.color.float32[3] = 1.0f;  // alpha = fully opaque
 
 ### Dynamic Viewport and Scissor
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L931) (line 931)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L939) (line 939)
 
 Because we declared these as dynamic pipeline states, we set them
 here in the command buffer instead of baking them into the PSO.
@@ -5049,7 +5680,7 @@ vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
 
 ### Scene Dispatch Pattern
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L962) (line 962)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L970) (line 970)
 
 This thin dispatcher will grow as milestones add more scene types.
 Each scene name maps to a private loader that creates the appropriate
@@ -5063,7 +5694,7 @@ return LoadTriangleScene(shaderDir);
 
 ### NDC Coordinates for a Visible Triangle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L998) (line 998)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1006) (line 1006)
 
 The triangle is positioned in Vulkan NDC space:
   top vertex    (0,  -0.5) = centre, near top   → red
@@ -5082,7 +5713,7 @@ const std::vector<Vertex> vertices = {
 
 ### Headless Validation
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1030) (line 1030)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1038) (line 1038)
 
 In CI (no display) we cannot present frames, but we CAN validate that:
   • The pipeline was created successfully.
@@ -5101,7 +5732,7 @@ return false;
 
 ### Swapchain Recreation
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1057) (line 1057)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1065) (line 1065)
 
 On window resize or DPI change, the old swapchain is invalidated.  We must:
   1. Wait for the GPU to finish all in-flight work (vkDeviceWaitIdle).
@@ -5116,7 +5747,7 @@ if (newWidth == 0 || newHeight == 0) return;
 
 ### vkDeviceWaitIdle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1112) (line 1112)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1120) (line 1120)
 
 Before destroying ANY Vulkan object, ensure the GPU has finished all
 submitted work.  Destroying a semaphore or fence that the GPU is still
@@ -5125,7 +5756,7 @@ vkDeviceWaitIdle(m_device);
 
 ### Only print ERROR and WARNING (we filtered INFO/VERBOSE
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1199) (line 1199)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1207) (line 1207)
 
 in SetupDebugMessenger, but this is a secondary guard).
 if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
@@ -5135,7 +5766,7 @@ std::cerr << "[VulkanValidation] " << pCallbackData->pMessage << "\n";
 
 ### Surface Format
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1272) (line 1272)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1280) (line 1280)
 
 Prefer BGRA8_SRGB with SRGB colour space because:
   • BGRA8 maps directly to the monitor's 8-bit-per-channel BGRA layout.
@@ -5159,7 +5790,7 @@ return available[0];
 
 ### Present Modes
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1296) (line 1296)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1304) (line 1304)
 
 FIFO           — VSync; images queued; guaranteed to exist on all drivers.
   Mailbox        — Triple buffering; most recently rendered image is always
@@ -5180,7 +5811,7 @@ return VK_PRESENT_MODE_FIFO_KHR;
 
 ### Swap Extent
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1317) (line 1317)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1325) (line 1325)
 
 On high-DPI (HiDPI / Retina) displays, the framebuffer resolution can
 differ from the window's "logical" size.  We use the capabilities' current
@@ -5285,7 +5916,7 @@ include <vulkan/vulkan.h>
 
 ### Frames in Flight
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L103) (line 103)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L107) (line 107)
 
 "Frames in flight" means we allow the CPU to record frame N+1 while the
 GPU is still rendering frame N.  2 is a common choice: more than 2 adds
@@ -5294,21 +5925,29 @@ static constexpr uint32_t kMaxFramesInFlight = 2;
 
 ### Object Ownership
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L116) (line 116)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L120) (line 120)
 
 Each VkXxx handle is just an opaque integer (64 bits on 64-bit platforms).
 Vulkan NEVER automatically destroys anything — you must call the matching
 vkDestroyXxx function.  Missing even one destroy call is a resource leak.
 We use explicit Shutdown() rather than destructors here so the order of
 destruction is visible and teachable.
+
+### IRenderer interface
+
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L127) (line 127)
+
+VulkanRenderer implements IRenderer (engine/rendering/IRenderer.hpp) so it
+can be selected by RendererFactory at runtime via --renderer vulkan.
+The D3D11Renderer implements the same interface as the default backend.
 ===========================================================================
-class VulkanRenderer
+class VulkanRenderer : public IRenderer
 {
 public:
 
 ### Constructor and Destructor Out-of-Line for Incomplete Types
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L126) (line 126)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L135) (line 135)
 
 Both the constructor AND the destructor must be *defined* in
 VulkanRenderer.cpp (not here in the header) because m_pipeline and
@@ -5327,11 +5966,11 @@ Why does this matter?
 The fix: declare both here; define both in the .cpp where the full
 vulkan_mesh.hpp and vulkan_pipeline.hpp are already included.
 VulkanRenderer();
-~VulkanRenderer();
+~VulkanRenderer() override;
 
 ### Frame Lifecycle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L179) (line 179)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L187) (line 187)
 
 1. vkWaitForFences        — stall the CPU until the GPU finished
                               the *previous* use of this frame slot.
@@ -5348,7 +5987,7 @@ VulkanRenderer();
 
 ### Scene Loading Pattern
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L206) (line 206)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L214) (line 214)
 
 For M1 the "scene" is just a hardcoded triangle.  In later milestones
 LoadScene will parse a scene JSON file from the asset DB and spawn
@@ -5356,7 +5995,7 @@ entities, load meshes, and wire up scripts.
 
 ### Pre-recording vs per-frame recording
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L272) (line 272)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L284) (line 284)
 
 For a fully static scene (triangle with no animated clear colour) we
 could pre-record once.  We keep per-frame recording here for two reasons:
@@ -5366,7 +6005,7 @@ could pre-record once.  We keep per-frame recording here for two reasons:
 
 ### Queue Family Indices
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L286) (line 286)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L298) (line 298)
 
 -----------------------------------------------------------------------
 A "queue" in Vulkan is a submission channel to the GPU.  Different queues
@@ -5382,7 +6021,7 @@ uint32_t presentFamily  = UINT32_MAX;
 
 ### Swapchain Support Details
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L309) (line 309)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L321) (line 321)
 
 -----------------------------------------------------------------------
 Before creating a swapchain we must query three things:
@@ -5399,7 +6038,7 @@ std::vector<VkPresentModeKHR>   presentModes;
 
 ### std::unique_ptr for Optional Subsystems
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L388) (line 388)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L400) (line 400)
 
 The pipeline and mesh may or may not exist (they are created only when
 LoadScene() is called).  Using unique_ptr<T> models "optionally present"
@@ -5410,7 +6049,7 @@ std::unique_ptr<VulkanMesh>     m_triangleMesh; ///< Triangle geometry (null unt
 
 ### Debug vs Release Validation
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L406) (line 406)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L418) (line 418)
 
 kEnableValidationLayers is a compile-time constant so the compiler can
 dead-code-eliminate all validation setup in Release builds.
@@ -5419,7 +6058,7 @@ endif
 
 ### Debug Callback Signature
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L423) (line 423)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L435) (line 435)
 
 The signature must exactly match PFN_vkDebugUtilsMessengerCallbackEXT.
 We print ERROR and WARNING messages; verbose INFO messages are ignored
@@ -9965,16 +10604,41 @@ print(f"\n  Registry written: {REGISTRY_FILE.name}  ({len(registry)} assets)")
 engine_sandbox is the *first real rendering milestone* of this educational
 engine.  It demonstrates:
 
-  M0 — Window + Vulkan bootstrap: open a Win32 window, initialise Vulkan,
-       render an animated clear-colour loop.
+  M0 — Window + renderer bootstrap: open a Win32 window, initialise the
+       chosen rendering backend, render an animated clear-colour loop.
   M1 — Triangle: vertex shader, fragment shader, PSO, vertex buffer — the
        classic "hello triangle" that proves the graphics pipeline works.
 
 ============================================================================
 
-### WinMain vs main()
+### Renderer Backends
 
 **Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L17) (line 17)
+
+============================================================================
+engine_sandbox supports two rendering backends selectable at runtime:
+
+  --renderer d3d11   (default) — Direct3D 11; works on any GPU from ~2006+
+                                 including the GeForce GT 610.  Uses D3D11
+                                 WARP (CPU software renderer) in headless/CI
+                                 mode so no GPU driver is needed in CI.
+
+  --renderer vulkan  (optional) — Vulkan 1.0+; the modern / high-end path.
+                                  Requires a Vulkan ICD on the machine.
+                                  Only available when compiled with
+                                  ENGINE_ENABLE_VULKAN=ON.
+
+D3D11 is the default because:
+  1. It ships with Windows (no install needed).
+  2. It runs on older hardware (GT610 class) and CI runners alike.
+  3. D3D11 WARP lets --headless succeed on GitHub-hosted Windows runners
+     without any GPU driver installed.
+
+============================================================================
+
+### WinMain vs main()
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L38) (line 38)
 
 ============================================================================
 A standard Windows console app uses main().  A Windows GUI app (no console
@@ -9987,18 +10651,21 @@ pipe log output to a file instead.
 
 ### --headless Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L26) (line 26)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L47) (line 47)
 
 ============================================================================
 Running with --headless skips the main render loop and exits with code 0
 after printing "[PASS]".  This allows CI machines (which have no display
-or only a software Vulkan implementation) to validate the bootstrap path
-without needing a monitor.
+and may have no GPU driver) to validate the bootstrap path.
+
+In D3D11 mode, headless uses WARP — a CPU software rasteriser bundled with
+every Windows installation — so the binary works on any Windows runner.
 
 Usage:
-  engine_sandbox.exe                   # Normal windowed mode
-  engine_sandbox.exe --headless        # M0 validation (Vulkan init OK)
-  engine_sandbox.exe --headless --scene triangle   # M1 validation
+  engine_sandbox.exe                              # D3D11 windowed (default)
+  engine_sandbox.exe --headless                   # D3D11 WARP headless (CI)
+  engine_sandbox.exe --renderer vulkan --headless # Vulkan headless
+  engine_sandbox.exe --headless --scene triangle  # M1 validation
 
 ============================================================================
 
@@ -10006,16 +10673,16 @@ Usage:
 @version 1.0
 @date    2024
 C++ Standard: C++17
-Target: Windows (MSVC) + Vulkan
+Target: Windows (MSVC)
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L60) (line 60)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L85) (line 85)
 
 ---------------------------------------------------------------------------
-The compiled .spv shader files are placed next to the executable by CMake.
-We derive the executable's directory from argv[0] to construct an absolute
-path, so the binary works from any current working directory.
+The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
+to the executable by CMake.  We derive the executable's directory from
+argv[0] to construct an absolute path, so the binary works from any CWD.
 ---------------------------------------------------------------------------
 static std::string GetShaderDir(const char* argv0)
 {
@@ -10027,7 +10694,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L75) (line 75)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L100) (line 100)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -10044,43 +10711,53 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L88) (line 88)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L113) (line 113)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
 -------------------------------------------------------------------
-bool        headless  = false;
-std::string scene;   // empty = no scene; "triangle" = M1 scene
-std::string validateProject;  // M2: path to project dir for AssetDB validation
+bool        headless         = false;
+std::string scene;               // empty = no scene; "triangle" = M1
+std::string validateProject;     // M2: path to project dir
+std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L109) (line 109)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L135) (line 135)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
 database can be loaded and that every registered asset is
-accessible.  It runs without opening a Vulkan window and
+accessible.  It runs without opening a renderer window and
 exits 0 on success.
 
 Intended CI usage (after cook.exe has run):
   engine_sandbox.exe --validate-project samples/vertical_slice_project
-
-The flag:
-  1. Loads Cooked/assetdb.json into AssetDB.
-  2. Calls AssetLoader::LoadRaw for every entry.
-  3. Prints [PASS] and exits 0 if all loads succeed.
-  4. Prints [FAIL] and exits 1 if any load fails.
 -----------------------------------------------------------
 validateProject = argv[++i];
+}
+else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
+{
+-----------------------------------------------------------
+
+### --renderer flag
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L150) (line 150)
+
+-----------------------------------------------------------
+Selects the graphics backend at runtime.
+  --renderer d3d11   → Direct3D 11 (default; GT610 compatible)
+  --renderer vulkan  → Vulkan 1.0+ (requires Vulkan ICD)
+-----------------------------------------------------------
+rendererArg = argv[++i];
 }
 }
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L132) (line 132)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L163) (line 163)
 
-This path runs cook validation without opening a Vulkan window.
+This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
 -------------------------------------------------------------------
 if (!validateProject.empty())
@@ -10089,39 +10766,50 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L161) (line 161)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L192) (line 192)
 
-db.All() returns all GUIDs as a vector.  We iterate every GUID
-and call loader.LoadRaw(), which resolves the cooked path to an
-absolute path (thanks to AssetDB storing the project root) and
-opens the file.  An empty return vector signals a failure —
-either the cooked file is missing, corrupted, or the path is
-wrong.  This catches cook pipeline regressions before they reach
-the runtime renderer or audio system.
+db.All() returns all GUIDs.  We iterate every GUID and call
+loader.LoadRaw(), which opens the cooked file.  An empty return
+vector signals a failure — either the cooked file is missing,
+corrupted, or the path is wrong.
 for (const std::string& guid : db.All())
 {
 const auto bytes = loader.LoadRaw(guid);
 if (bytes.empty())
-{
 ++loadErrors;
 }
-}
 
-### Renderer Needs the Window's HWND
+### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L206) (line 206)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L217) (line 217)
 
-The Vulkan surface must be tied to a real OS window handle (HWND).
-That is why we create the window FIRST, then pass the handles to
-the renderer.  The order matters: renderer → window is impossible.
+If --renderer is not specified we use D3D11 because it works on all
+Windows machines from Win7 (GT610-compatible) and on CI runners
+with no GPU driver (via the WARP software renderer).
 -------------------------------------------------------------------
-engine::rendering::VulkanRenderer renderer;
+const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
+
+### Factory Usage
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L247) (line 247)
+
+CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
+is clear: main() owns the renderer, and it is automatically
+destroyed when the unique_ptr goes out of scope.
+-------------------------------------------------------------------
+auto renderer = engine::rendering::CreateRenderer(backend);
+if (!renderer)
+{
+std::cerr << "[engine_sandbox] Failed to create renderer.\n";
+window.Shutdown();
+return 1;
+}
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L245) (line 245)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L296) (line 296)
 
-Acceptance tests expect exactly one of these lines on stdout,
+Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
 -------------------------------------------------------------------
 if (headless)
@@ -10129,10 +10817,10 @@ if (headless)
 if (scene == "triangle")
 {
 Validate: record one frame to confirm the draw call works.
-if (!renderer.RecordHeadlessFrame())
+if (!renderer->RecordHeadlessFrame())
 {
 std::cout << "[FAIL] Headless frame recording failed.\n";
-renderer.Shutdown();
+renderer->Shutdown();
 window.Shutdown();
 return 1;
 }
@@ -10140,43 +10828,43 @@ std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
 }
 else
 {
-M0 baseline: Vulkan init + swapchain creation succeeded.
-std::cout << "[PASS] Vulkan device initialised. Swapchain created."
-" Headless mode: skipping present loop.\n";
+M0 baseline: device init succeeded.
+std::cout << "[PASS] " << renderer->BackendName()
+<< " device initialised. Headless mode: "
+"skipping present loop.\n";
 }
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L278) (line 278)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L330) (line 330)
 
 For this minimal demo we use a simple variable-timestep loop:
-render as fast as the GPU allows (limited by vsync / mailbox
-present mode).  A real game loop uses a fixed timestep for
-deterministic physics — that will be introduced in a future module.
+render as fast as the GPU allows (limited by vsync).
+A real game loop uses a fixed timestep for deterministic physics.
 -------------------------------------------------------------------
 double totalTime = 0.0;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L303) (line 303)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L354) (line 354)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
 const float speed = 0.5f;
 const float tF    = static_cast<float>(totalTime);
 float clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
-float clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2π/3
-float clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4π/3
+float clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2pi/3
+float clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L319) (line 319)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L369) (line 369)
 
 The renderer must be shut down BEFORE the window because the
-Vulkan surface references the HWND.  Destroying the window first
-would leave the surface pointing at a destroyed handle.
+swap chain / surface references the HWND.  Destroying the window
+first would leave the renderer pointing at a destroyed handle.
 -------------------------------------------------------------------
-renderer.Shutdown();
+renderer->Shutdown();
 window.Shutdown();
 
 ---

@@ -172,15 +172,16 @@ the next milestone starts.  This is non-negotiable.  See
 
 | Milestone | Name | Status | "Done" means |
 |---|---|---|---|
-| M0 | **Vulkan sandbox** | ✅ Complete | `engine_sandbox.exe` opens a window; Vulkan clears screen; `build-linux.yml` CI passes |
-| M1 | **Triangle** | ✅ Complete | `VulkanPipeline` + `VulkanMesh`; `shaders/triangle.vert/.frag` compiled to SPIR-V; coloured triangle draws; `--headless --scene triangle` exits 0 |
-| M2 | **AssetDB + Cooker** | ⬜ Next | `src/tools/cook/cook_main.cpp` (`cook.exe`); `src/engine/assets/asset_db.hpp/.cpp`; `engine_sandbox --headless --validate-project` exits 0; `contract-tests.yml` CI; `build-windows.yml` CI |
-| M3 | **Hello Texture + Audio** | ⬜ | Vulkan texture (DDS/BC7); descriptor sets; `src/engine/audio/xaudio2_backend.hpp/.cpp`; textured quad renders; cooked WAV plays |
+| M0 | **D3D11 sandbox (default)** | ✅ Complete | `engine_sandbox.exe --headless` exits 0 using D3D11 WARP; no Vulkan SDK needed |
+| M0v | **Vulkan sandbox (optional)** | ✅ Complete | `engine_sandbox.exe --renderer vulkan` opens a window; Vulkan clears screen |
+| M1 | **Triangle (Vulkan)** | ✅ Complete | `VulkanPipeline` + `VulkanMesh`; `shaders/triangle.vert/.frag` compiled to SPIR-V; coloured triangle draws; `--renderer vulkan --headless --scene triangle` exits 0 |
+| M2 | **AssetDB + Cooker** | ✅ Complete | `src/tools/cook/cook_main.cpp` (`cook.exe`); `src/engine/assets/asset_db.hpp/.cpp`; `engine_sandbox --headless --validate-project` exits 0; `contract-tests.yml` CI; `build-windows.yml` CI |
+| M3 | **Hello Texture + Audio** | ⬜ | D3D11/Vulkan texture (DDS/BC7); descriptor sets; `src/engine/audio/xaudio2_backend.hpp/.cpp`; textured quad renders; cooked WAV plays |
 | M4 | **Animation runtime** | ⬜ | `src/engine/animation/skeleton.hpp/.cpp` + `anim_clip` + `blend_tree` + `gpu_skinning`; animated character on screen |
 | M5 | **Physics integration** | ⬜ | Jolt Physics via vcpkg; `src/engine/physics/`; character capsule falls; raycast returns hit; headless physics tests pass |
 | M6 | **Editor improvements** | ⬜ | Entity inspector panel; scene ECS serialisation; Play-in-Engine button |
 | M7 | **World streaming** | ⬜ | `src/engine/world/world_streaming.hpp/.cpp`; async loader; headless streaming tests pass |
-| M8 | **Gameplay integration** | ⬜ | All gameplay systems (combat, AI, quests, camp, weather) wired into Vulkan runtime; Lua hooks fire; 300-frame headless sim passes |
+| M8 | **Gameplay integration** | ⬜ | All gameplay systems (combat, AI, quests, camp, weather) wired into D3D11/Vulkan runtime; Lua hooks fire; 300-frame headless sim passes |
 
 **Post-M8 work (in order):**
 1. `src/engine/ui/` — Vulkan HUD + menu stack + font renderer
@@ -249,11 +250,10 @@ cmake .. -DCMAKE_BUILD_TYPE=Debug
 make -j$(nproc)
 ctest --output-on-failure
 
-# Windows — build and headless-validate the Vulkan sandbox
-mkdir build && cd build
-cmake .. -G "Visual Studio 17 2022" -A x64
-cmake --build . --config Debug --target engine_sandbox
-.\Debug\engine_sandbox.exe --headless
+# Windows — build and headless-validate the D3D11 sandbox (no Vulkan SDK needed)
+cmake --preset windows-debug-engine-only
+cmake --build --preset windows-debug-engine-only --target engine_sandbox
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
 
 # Validate all asset manifests
 python3 tools/validate-assets.py assets/examples/ --verbose
@@ -261,16 +261,18 @@ python3 tools/validate-assets.py assets/examples/ --verbose
 
 ---
 
-## 6. Windows / Vulkan Build Assumptions
+## 6. Windows Build Assumptions
 
 These are **locked** decisions.  Do not ask about them again; do not change them
 without updating this section.
 
 | Decision | Value | Rationale |
 |---|---|---|
-| OS target | Windows (primary), Linux (terminal game) | Vulkan + XAudio2 require Windows; Linux keeps teaching baseline alive |
+| OS target | Windows (primary), Linux (terminal game) | D3D11 + XAudio2 require Windows; Linux keeps teaching baseline alive |
 | IDE / generator | Visual Studio 2022 (`Visual Studio 17 2022`) | Most approachable debugger for Windows C++ students |
-| Graphics API | Vulkan ≥ 1.3 | Modern, explicit, cross-vendor; matches AAA engine trajectory |
+| **Default graphics API** | **D3D11 (Feature Level 10_0 minimum)** | **Ships with Windows; GT610-compatible; WARP = CI works without GPU; no SDK install needed** |
+| **Optional graphics API** | **Vulkan ≥ 1.3** | **Modern explicit API for high-end targets; optional, not default; SDK required** |
+| Hardware baseline | GeForce GT 610 (D3D_FEATURE_LEVEL_11_0) | Common 2012 entry-level card; D3D11 FL 10_0 is the project-wide minimum |
 | Audio API | XAudio2 (Windows) | Ships with Windows SDK; zero extra install for students |
 | Physics library | Jolt Physics | MIT-licensed, modern C++17, excellent teaching clarity |
 | 3D source format | glTF 2.0 | Open standard; supported by Blender and every major DCC |
@@ -282,11 +284,22 @@ without updating this section.
 
 | Option | Default (Windows) | Default (Linux) | Description |
 |---|---|---|---|
-| `ENGINE_ENABLE_VULKAN` | `ON` | `OFF` | Build `engine_sandbox` Vulkan target |
+| `ENGINE_ENABLE_D3D11`   | `ON`  | `OFF` | Build D3D11 renderer backend (GT610-compatible default) |
+| `ENGINE_ENABLE_VULKAN`  | `ON`  | `OFF` | Build Vulkan renderer backend (high-end optional; auto-OFF if SDK missing) |
 | `ENGINE_ENABLE_TERMINAL` | `OFF` | `ON` | Build `game` ncurses terminal target |
-| `ENGINE_ENABLE_PHYSICS` | `OFF` | `OFF` | Build Jolt Physics integration (M5) |
+| `ENGINE_ENABLE_PHYSICS`  | `OFF` | `OFF` | Build Jolt Physics integration (M5) |
 
-### 6.2 vcpkg dependency manifest
+### 6.2 Runtime renderer selection
+
+Use the `--renderer` flag to select the backend at runtime:
+
+```cmd
+engine_sandbox.exe                   REM D3D11 (default, GT610-compatible)
+engine_sandbox.exe --renderer d3d11  REM D3D11 explicit
+engine_sandbox.exe --renderer vulkan REM Vulkan (requires Vulkan ICD)
+```
+
+### 6.3 vcpkg dependency manifest
 
 When the first third-party C++ dependency is added (M2 = `nlohmann-json`), create
 `vcpkg.json` in the repository root.  **Do not add dependencies to CMakeLists.txt
@@ -307,7 +320,7 @@ Per-milestone dependencies to add as work progresses:
 | Milestone | vcpkg package | Used by |
 |-----------|-------------|---------|
 | M2 | `nlohmann-json` | `cook.exe` — parse/write JSON manifests |
-| M3 | `directxtex` | Vulkan texture — DDS/BC7 compress/decompress |
+| M3 | `directxtex` | D3D11/Vulkan texture — DDS/BC7 compress/decompress |
 | M4 | `tinygltf` | Animation — load glTF skeleton + clips |
 | M5 | `joltphysics` | Physics — Jolt `PhysicsSystem` wrapper |
 

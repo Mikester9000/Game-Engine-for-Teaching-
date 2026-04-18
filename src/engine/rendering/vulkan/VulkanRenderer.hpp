@@ -80,6 +80,10 @@
 #include <windows.h>
 #include <vulkan/vulkan.h>
 
+// IRenderer abstract interface — VulkanRenderer implements it so the
+// factory can return a VulkanRenderer through an IRenderer pointer.
+#include "engine/rendering/IRenderer.hpp"
+
 // Forward declarations — keeps this header lean.
 // Full types are only needed in VulkanRenderer.cpp.
 namespace engine { namespace rendering {
@@ -119,8 +123,13 @@ static constexpr uint32_t kMaxFramesInFlight = 2;
 // vkDestroyXxx function.  Missing even one destroy call is a resource leak.
 // We use explicit Shutdown() rather than destructors here so the order of
 // destruction is visible and teachable.
+//
+// TEACHING NOTE — IRenderer interface
+// VulkanRenderer implements IRenderer (engine/rendering/IRenderer.hpp) so it
+// can be selected by RendererFactory at runtime via --renderer vulkan.
+// The D3D11Renderer implements the same interface as the default backend.
 // ===========================================================================
-class VulkanRenderer
+class VulkanRenderer : public IRenderer
 {
 public:
     // TEACHING NOTE — Constructor and Destructor Out-of-Line for Incomplete Types
@@ -141,14 +150,14 @@ public:
     // The fix: declare both here; define both in the .cpp where the full
     // vulkan_mesh.hpp and vulkan_pipeline.hpp are already included.
     VulkanRenderer();
-    ~VulkanRenderer();
+    ~VulkanRenderer() override;
 
     // No copying — Vulkan handles are not reference-counted by default.
     VulkanRenderer(const VulkanRenderer&)            = delete;
     VulkanRenderer& operator=(const VulkanRenderer&) = delete;
 
     // -----------------------------------------------------------------------
-    // Lifecycle
+    // IRenderer interface
     // -----------------------------------------------------------------------
 
     /**
@@ -158,20 +167,19 @@ public:
      * @param hwnd       Win32 HWND for the surface.
      * @param width      Initial swapchain width (pixels).
      * @param height     Initial swapchain height (pixels).
+     * @param headless   When true, skip the swapchain (headless validation).
      * @return true on success, false if any Vulkan call fails.
      */
-    bool Init(HINSTANCE hinstance, HWND hwnd, uint32_t width, uint32_t height);
+    bool Init(HINSTANCE hinstance, HWND hwnd,
+              uint32_t width, uint32_t height,
+              bool headless = false) override;
 
     /**
      * @brief Destroy all Vulkan objects in reverse-creation order.
      *
      * Safe to call multiple times.
      */
-    void Shutdown();
-
-    // -----------------------------------------------------------------------
-    // Per-frame interface
-    // -----------------------------------------------------------------------
+    void Shutdown() override;
 
     /**
      * @brief Acquire an image, record a clear command, submit, and present.
@@ -190,7 +198,7 @@ public:
      * @param clearG  Green channel of the clear colour.
      * @param clearB  Blue channel of the clear colour.
      */
-    void DrawFrame(float clearR, float clearG, float clearB);
+    void DrawFrame(float clearR, float clearG, float clearB) override;
 
     /**
      * @brief Load a named scene, creating its pipeline and geometry.
@@ -208,7 +216,8 @@ public:
      * LoadScene will parse a scene JSON file from the asset DB and spawn
      * entities, load meshes, and wire up scripts.
      */
-    bool LoadScene(const std::string& sceneName, const std::string& shaderDir);
+    bool LoadScene(const std::string& sceneName,
+                   const std::string& shaderDir) override;
 
     /**
      * @brief Record one command buffer without submitting or presenting.
@@ -218,7 +227,7 @@ public:
      *
      * @return true if recording succeeded.
      */
-    bool RecordHeadlessFrame();
+    bool RecordHeadlessFrame() override;
 
     /**
      * @brief Recreate the swapchain after a window resize.
@@ -230,7 +239,10 @@ public:
      * @param newWidth   New client-area width in pixels.
      * @param newHeight  New client-area height in pixels.
      */
-    void RecreateSwapchain(uint32_t newWidth, uint32_t newHeight);
+    void RecreateSwapchain(uint32_t newWidth, uint32_t newHeight) override;
+
+    /** @return "Vulkan" — identifies this backend to the factory/main loop. */
+    const char* BackendName() const override { return "Vulkan"; }
 
 private:
     // -----------------------------------------------------------------------
