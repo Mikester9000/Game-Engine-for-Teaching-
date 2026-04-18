@@ -11,6 +11,16 @@ InventorySystem::InventorySystem(World* world, EventBus<UIEvent>* uiBus)
     : m_world(world), m_uiBus(uiBus) {}
 
 // ---------------------------------------------------------------------------
+// TEACHING NOTE — AddItem: Stacking vs Slot Allocation
+// ---------------------------------------------------------------------------
+// When adding a stackable item we first try to merge it into an existing
+// slot that holds the same itemID (stacking).  Only if no existing stack
+// exists do we consume a new empty slot.  This mirrors how FF15 and most
+// RPGs manage inventory: potions stack to 99, weapons each take a full slot.
+// The m_uiBus publish notifies the UI layer without any direct dependency
+// between InventorySystem and the UI rendering code — a clean separation
+// achieved via the EventBus pattern.
+// ---------------------------------------------------------------------------
 bool InventorySystem::AddItem(EntityID entity, uint32_t itemID, uint32_t quantity)
 {
     if (!m_world->HasComponent<InventoryComponent>(entity)) return false;
@@ -75,6 +85,14 @@ bool InventorySystem::RemoveItem(EntityID entity, uint32_t itemID, uint32_t quan
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — UseItem: Remove-Then-Apply Pattern
+// ---------------------------------------------------------------------------
+// We remove the item from inventory BEFORE applying its effect.  This
+// prevents exploits where an effect callback might add the same item back
+// and allow infinite use.  It also means a "use" that fails (e.g. HP is
+// already full) still consumes the item — matching the design of most
+// action RPGs including FF15.
 // ---------------------------------------------------------------------------
 bool InventorySystem::UseItem(EntityID entity, uint32_t itemID)
 {
@@ -213,6 +231,13 @@ uint32_t InventorySystem::GetItemCount(EntityID entity, uint32_t itemID) const
     return (idx < MAX_INV_SLOTS) ? inv.slots[idx].quantity : 0u;
 }
 
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — TransferItem: Pre-flight Space Check
+// ---------------------------------------------------------------------------
+// Before removing the item from the source we verify the destination
+// inventory can accept it.  We check for an existing stack (if stackable)
+// or a free slot — exactly the same logic AddItem would run.  This avoids
+// the "item destroyed on transfer to full bag" bug that affects many games.
 // ---------------------------------------------------------------------------
 bool InventorySystem::TransferItem(EntityID from, EntityID to,
                                     uint32_t itemID, uint32_t qty)

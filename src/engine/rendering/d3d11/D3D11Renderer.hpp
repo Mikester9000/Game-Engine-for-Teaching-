@@ -161,6 +161,18 @@ private:
 
     D3D_FEATURE_LEVEL       m_featureLevel  = D3D_FEATURE_LEVEL_10_0;
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Storing Back-Buffer Dimensions
+    // -----------------------------------------------------------------------
+    // We cache the current back-buffer size so that DrawFrame can set the
+    // viewport correctly on every frame.  Without an explicit viewport the
+    // rasteriser uses a full-surface default on some drivers, but it is
+    // better practice to set it explicitly so the behaviour is predictable
+    // across hardware and WARP.
+    // -----------------------------------------------------------------------
+    uint32_t                m_width         = 0;
+    uint32_t                m_height        = 0;
+
     bool                    m_headless      = false;
     bool                    m_initialised   = false;
 };
