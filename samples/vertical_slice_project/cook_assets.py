@@ -325,8 +325,8 @@ def cook_animations(registry: list[dict]) -> int:
                 "id":     new_guid(),
                 "type":   "skeleton",
                 "name":   source_path.stem,
-                "source": str(source_path.relative_to(SCRIPT_DIR)) if source_path.is_relative_to(SCRIPT_DIR) else str(source_path),
-                "cooked": str(cooked_path.relative_to(SCRIPT_DIR)) if cooked_path.is_relative_to(SCRIPT_DIR) else str(cooked_path),
+                "source": _try_relative_to(source_path, SCRIPT_DIR),
+                "cooked": _try_relative_to(cooked_path, SCRIPT_DIR),
                 "hash":   sha256_file(source_path) if source_path.exists() else "",
                 "dependencies": [],
                 "tags":   ["skeleton"],
@@ -339,8 +339,8 @@ def cook_animations(registry: list[dict]) -> int:
                 "id":     new_guid(),
                 "type":   "anim_clip",
                 "name":   source_path.stem,
-                "source": str(source_path.relative_to(SCRIPT_DIR)) if source_path.is_relative_to(SCRIPT_DIR) else str(source_path),
-                "cooked": str(cooked_path.relative_to(SCRIPT_DIR)) if cooked_path.is_relative_to(SCRIPT_DIR) else str(cooked_path),
+                "source": _try_relative_to(source_path, SCRIPT_DIR),
+                "cooked": _try_relative_to(cooked_path, SCRIPT_DIR),
                 "hash":   sha256_file(source_path) if source_path.exists() else "",
                 "dependencies": [],
                 "tags":   ["animation"],
@@ -375,6 +375,20 @@ def cook_animations(registry: list[dict]) -> int:
 # ---------------------------------------------------------------------------
 # Registry update
 # ---------------------------------------------------------------------------
+
+def _try_relative_to(path: Path, base: Path) -> str:
+    """Return path relative to base as a string, or the original string if not relative.
+
+    TEACHING NOTE — Python 3.9 compatibility
+    Path.is_relative_to() was added in Python 3.9.  We use a try/except
+    approach so the code also runs on Python 3.8 (the minimum for some CI
+    runners).  When the path is not under base we return the full string.
+    """
+    try:
+        return str(path.relative_to(base))
+    except ValueError:
+        return str(path)
+
 
 def update_registry(registry: list[dict]) -> None:
     """Write the updated AssetRegistry.json.

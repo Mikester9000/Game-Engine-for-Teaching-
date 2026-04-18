@@ -95,10 +95,17 @@ jobs:
       # Verify the binaries were produced
       # -----------------------------------------------------------------------
       - name: Verify binaries exist
+        shell: pwsh
         run: |
-          test -f build/windows-debug/Debug/engine_sandbox.exe
-          test -f build/windows-debug/Debug/cook.exe
-        shell: bash
+          if (-not (Test-Path "build\windows-debug\Debug\engine_sandbox.exe")) {
+            Write-Error "engine_sandbox.exe not found"
+            exit 1
+          }
+          if (-not (Test-Path "build\windows-debug\Debug\cook.exe")) {
+            Write-Error "cook.exe not found"
+            exit 1
+          }
+          Write-Output "engine_sandbox.exe and cook.exe found."
 
       # -----------------------------------------------------------------------
       # TEACHING NOTE — Headless Validation
