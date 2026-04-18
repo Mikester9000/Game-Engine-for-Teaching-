@@ -10,7 +10,11 @@
       "name": "windows-base",
       "hidden": true,
       "description": "Base settings shared by all Windows presets",
-      "generator": "Visual Studio 17 2022",
+      "generator": "Visual Studio 18 2026",
+      "toolset": {
+        "value": "v180",
+        "strategy": "set"
+      },
       "architecture": {
         "value": "x64",
         "strategy": "set"
