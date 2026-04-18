@@ -126,6 +126,39 @@ static std::vector<std::string> SplitObjects(const std::string& arrayText) {
 } // anonymous namespace
 
 // ============================================================================
+// JSON string escaping helper
+// ============================================================================
+
+// TEACHING NOTE — JSON string escaping
+// Direct string concatenation into JSON output is unsafe: characters like
+// '"', '\', newlines, or Windows path separators can produce invalid JSON.
+// This helper escapes the minimal set required by the JSON spec (RFC 8259).
+static std::string JsonEscapeString(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (unsigned char c : s) {
+        switch (c) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n";  break;
+            case '\r': out += "\\r";  break;
+            case '\t': out += "\\t";  break;
+            default:
+                // Escape ASCII control characters (0x00–0x1F)
+                if (c < 0x20) {
+                    char buf[7];
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned>(c));
+                    out += buf;
+                } else {
+                    out += static_cast<char>(c);
+                }
+                break;
+        }
+    }
+    return out;
+}
+
+// ============================================================================
 // AssetEntry — one row from AssetRegistry.json
 // ============================================================================
 struct AssetEntry {
@@ -151,13 +184,27 @@ struct CookerConfig {
 // Helpers
 // ============================================================================
 
-static void CopyAsset(const fs::path& src, const fs::path& dst) {
+static bool CopyAsset(const fs::path& src, const fs::path& dst) {
     if (!fs::exists(src)) {
         std::cerr << "  [WARN] Source not found: " << src << "\n";
-        return;
+        return false;
     }
-    fs::create_directories(dst.parent_path());
-    fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
+    // TEACHING NOTE — filesystem operations can throw on permission failures,
+    // invalid paths, or locked files.  Converting the exception to a boolean
+    // lets the caller count failures and exit non-zero when cooking is
+    // incomplete, instead of crashing the process.
+    try {
+        fs::create_directories(dst.parent_path());
+        fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
+        return true;
+    } catch (const fs::filesystem_error& e) {
+        std::cerr << "  [ERROR] Failed to copy asset from " << src
+                  << " to " << dst << ": " << e.what() << "\n";
+    } catch (const std::exception& e) {
+        std::cerr << "  [ERROR] Unexpected error while copying asset from "
+                  << src << " to " << dst << ": " << e.what() << "\n";
+    }
+    return false;
 }
 
 // ============================================================================
@@ -226,12 +273,12 @@ static bool WriteAssetDb(
     for (std::size_t i = 0; i < entries.size(); ++i) {
         const auto& e = entries[i];
         ss << "    {\n";
-        ss << "      \"id\":     \"" << e.id     << "\",\n";
-        ss << "      \"type\":   \"" << e.type   << "\",\n";
-        ss << "      \"name\":   \"" << e.name   << "\",\n";
-        ss << "      \"source\": \"" << e.source << "\",\n";
-        ss << "      \"cooked\": \"" << e.cooked << "\",\n";
-        ss << "      \"hash\":   \"" << e.hash   << "\"\n";
+        ss << "      \"id\":     \"" << JsonEscapeString(e.id)     << "\",\n";
+        ss << "      \"type\":   \"" << JsonEscapeString(e.type)   << "\",\n";
+        ss << "      \"name\":   \"" << JsonEscapeString(e.name)   << "\",\n";
+        ss << "      \"source\": \"" << JsonEscapeString(e.source) << "\",\n";
+        ss << "      \"cooked\": \"" << JsonEscapeString(e.cooked) << "\",\n";
+        ss << "      \"hash\":   \"" << JsonEscapeString(e.hash)   << "\"\n";
         ss << "    }";
         if (i + 1 < entries.size()) ss << ",";
         ss << "\n";
@@ -317,8 +364,14 @@ int main(int argc, char* argv[]) {
         fs::path dstPath = cfg.projectDir / e.cooked;
 
         std::cout << "  [" << e.type << "] " << e.source << " → " << e.cooked << "\n";
-        CopyAsset(srcPath, dstPath);
-        ++cooked;
+        // TEACHING NOTE — Build tools must report partial cook failures.
+        // We only count an asset as cooked when the underlying copy succeeds;
+        // otherwise CI could receive exit code 0 even though cooked output is incomplete.
+        if (CopyAsset(srcPath, dstPath)) {
+            ++cooked;
+        } else {
+            ++errors;
+        }
     }
 
     // -----------------------------------------------------------------------

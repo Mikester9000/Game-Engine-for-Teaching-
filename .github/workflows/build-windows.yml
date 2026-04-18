@@ -97,16 +97,21 @@ jobs:
         run: cmake --build --preset windows-debug-engine-only --target engine_sandbox cook
 
       # -----------------------------------------------------------------------
-      # Verify the binaries were produced
+      # TEACHING NOTE — Binary directory path
+      # The 'windows-debug-engine-only' configure preset sets binaryDir to
+      # "${sourceDir}/build/${presetName}", so the output directory is
+      # build/windows-debug-engine-only, not build/windows-debug.
+      # Always derive the binary path from the preset name to avoid this
+      # common CI mistake.
       # -----------------------------------------------------------------------
       - name: Verify binaries exist
         shell: pwsh
         run: |
-          if (-not (Test-Path "build\windows-debug\Debug\engine_sandbox.exe")) {
+          if (-not (Test-Path "build\windows-debug-engine-only\Debug\engine_sandbox.exe")) {
             Write-Error "engine_sandbox.exe not found"
             exit 1
           }
-          if (-not (Test-Path "build\windows-debug\Debug\cook.exe")) {
+          if (-not (Test-Path "build\windows-debug-engine-only\Debug\cook.exe")) {
             Write-Error "cook.exe not found"
             exit 1
           }
@@ -120,7 +125,7 @@ jobs:
       # bootstrap is correct without needing a display.
       # -----------------------------------------------------------------------
       - name: Headless smoke test
-        run: .\build\windows-debug\Debug\engine_sandbox.exe --headless
+        run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
 
       # -----------------------------------------------------------------------
       # TEACHING NOTE — Cook validation (M2+)
@@ -129,4 +134,4 @@ jobs:
       # AssetRegistry.json, writes Cooked/ assets, and exits 0 on success.
       # -----------------------------------------------------------------------
       - name: Cook sample project (M2 validation)
-        run: .\build\windows-debug\Debug\cook.exe --project samples\vertical_slice_project
+        run: .\build\windows-debug-engine-only\Debug\cook.exe --project samples\vertical_slice_project

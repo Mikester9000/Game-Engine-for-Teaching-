@@ -5,9 +5,6 @@
   "description": "Game Engine for Teaching — FFXV-style action RPG monorepo",
 
   "dependencies": [
-    {
-      "name": "nlohmann-json",
-      "version>=": "3.11.2"
-    }
+    "nlohmann-json"
   ]
 }
