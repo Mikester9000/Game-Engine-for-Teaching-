@@ -1,392 +1,504 @@
-// ============================================================================
-// cook_main.cpp — C++ Asset Cooker (cook.exe)
-// ============================================================================
-//
-// TEACHING NOTE — What is a C++ Cooker?
-// ========================================
-// The Python cook_assets.py script is great for rapid iteration; the C++
-// cook.exe is the shipping version that:
-//   • Compiles to a standalone binary (no Python runtime required).
-//   • Reads AssetRegistry.json from a project directory.
-//   • Copies / converts source assets to Cooked/ directory.
-//   • Writes cooked/assetdb.json (a flat GUID → cooked path map).
-//   • Exits 0 on success, non-zero on any failure.
-//
-// TEACHING NOTE — Milestone M2 scope
-// The M2 implementation is intentionally simple:
-//   • Textures, audio, and animation are COPIED unchanged (not compressed).
-//   • Scene JSON files are copied verbatim.
-//   • assetdb.json is a minimal flat registry for the C++ runtime.
-// Real conversion (DDS compression, XAudio2 XWB, .animc binary) is M3+.
-//
-// Usage:
-//   cook.exe --project <project-dir>
-//   cook.exe --project samples\vertical_slice_project
-//
-// Output:
-//   <project-dir>/Cooked/assetdb.json   — runtime asset database
-//   <project-dir>/Cooked/<type>/<id>.<ext>  — cooked asset files
-//
-// TEACHING NOTE — Why read AssetRegistry.json (not discover files)?
-// Using the registry as the authoritative input means:
-//   1. Only assets that the editor has explicitly registered are cooked.
-//   2. The cook is deterministic — same registry → same output.
-//   3. The editor controls the cook, not the file system layout.
-// This mirrors Unreal's cook workflow (the editor drives the cook, not a
-// directory scanner).
-// ============================================================================
+/**
+ * @file cook_main.cpp
+ * @brief cook.exe — the M2 asset cooker entry point.
+ *
+ * ============================================================================
+ * TEACHING NOTE — What is cook.exe?
+ * ============================================================================
+ * Every commercial game engine has an "asset cooking" step that transforms
+ * raw source assets (PNG, WAV, FBX, JSON) into compact, engine-optimised
+ * binary files.  cook.exe is our standalone command-line cooker.
+ *
+ * Cooking serves three purposes:
+ *  1. Format conversion: PNG → BC7 DDS (GPU-compressed texture);
+ *                        WAV → OGG (smaller audio);
+ *                        FBX → .mesh (engine-native binary mesh).
+ *  2. Validation: ensure all referenced assets exist and are well-formed.
+ *  3. Indexing: build assetdb.json (GUID → cooked path map) for the runtime.
+ *
+ * For M2 the cook steps are stubs: we copy the source file to Cooked/ with
+ * the correct naming convention and write assetdb.json.  Real conversion will
+ * be added in M3 (textures) and M4 (audio/animation).
+ *
+ * ============================================================================
+ * TEACHING NOTE — Cook pipeline design
+ * ============================================================================
+ *
+ *  Input:  AssetRegistry.json   (produced by editor / cook_assets.py)
+ *          Content/             (raw source assets)
+ *
+ *  Output: Cooked/<type>/<name>.<ext>   (cooked assets — content unchanged for M2)
+ *          Cooked/assetdb.json          (GUID → cookedPath index for runtime)
+ *
+ * The assetdb.json format is deliberately minimal — it contains only what the
+ * engine runtime needs:
+ *  {
+ *    "version": "1.0.0",
+ *    "assets": [
+ *      { "id": "<uuid>", "cookedPath": "Cooked/<type>/<file>" },
+ *      ...
+ *    ]
+ *  }
+ *
+ * ============================================================================
+ * TEACHING NOTE — Why a standalone exe instead of a library?
+ * ============================================================================
+ * The cooker runs at AUTHOR time (on the developer's machine or in CI), not
+ * at RUNTIME (in the shipped game).  Keeping it as a separate executable:
+ *  • Means the cook logic never ships in the game binary (smaller, safer).
+ *  • Can be run from CI without starting the full engine.
+ *  • Is easy to invoke from Python scripts or shell scripts.
+ *  • Maps exactly to how Unreal's UnrealPak and Unity's BuildAssetBundles work.
+ *
+ * ============================================================================
+ *
+ * Usage:
+ *   cook.exe --project <path/to/project>
+ *
+ * Example:
+ *   cook.exe --project samples/vertical_slice_project
+ *
+ * Exit codes:
+ *   0  — all assets cooked successfully.
+ *   1  — fatal error (missing registry, malformed JSON, I/O failure).
+ *
+ * @author  Educational Game Engine Project
+ * @version 1.0
+ * @date    2024
+ * C++ Standard: C++17
+ */
 
-#include <algorithm>
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
+#include "engine/core/Logger.hpp"
+
 #include <iostream>
-#include <iterator>
+#include <fstream>
 #include <sstream>
+#include <filesystem>
 #include <string>
 #include <vector>
+#include <cstring>  // std::strcmp
 
+// ============================================================================
+// TEACHING NOTE — Using std::filesystem (C++17)
+// ============================================================================
+// std::filesystem provides cross-platform directory and path manipulation.
+// Key types:
+//   fs::path          — a file-system path (can be relative or absolute).
+//   fs::create_directories(p) — create all directories in the path.
+//   fs::copy_file(src, dst)   — copy a single file.
+//   fs::exists(p)             — check if a path exists.
+// This replaces platform-specific mkdir() / CopyFile() calls, making the
+// code portable across Windows, Linux, and macOS.
+// ============================================================================
 namespace fs = std::filesystem;
 
 // ============================================================================
-// Minimal JSON helpers (same approach as asset_db.cpp)
+// TEACHING NOTE — Minimal JSON helpers for cook output
 // ============================================================================
-
-namespace {
-
-static std::string ReadFile(const fs::path& path) {
-    std::ifstream ifs(path);
-    if (!ifs.is_open()) return {};
-    std::ostringstream ss;
-    ss << ifs.rdbuf();
-    return ss.str();
-}
-
-static bool WriteFile(const fs::path& path, const std::string& content) {
-    std::ofstream ofs(path);
-    if (!ofs.is_open()) return false;
-    ofs << content;
-    return true;
-}
-
-// Extract a JSON string field value from a flat object string.
-static std::string ExtractString(const std::string& obj, const std::string& key) {
-    std::string needle = "\"" + key + "\"";
-    auto pos = obj.find(needle);
-    if (pos == std::string::npos) return {};
-    pos += needle.size();
-    while (pos < obj.size() && (obj[pos] == ' ' || obj[pos] == ':' ||
-           obj[pos] == '\t' || obj[pos] == '\n' || obj[pos] == '\r')) {
-        ++pos;
-    }
-    if (pos >= obj.size() || obj[pos] != '"') return {};
-    ++pos;
-    std::string result;
-    while (pos < obj.size() && obj[pos] != '"') {
-        if (obj[pos] == '\\' && pos + 1 < obj.size()) {
-            ++pos;
-            switch (obj[pos]) {
-                case '"':  result += '"';  break;
-                case '\\': result += '\\'; break;
-                case 'n':  result += '\n'; break;
-                case 'r':  result += '\r'; break;
-                case 't':  result += '\t'; break;
-                default:   result += obj[pos]; break;
-            }
-        } else {
-            result += obj[pos];
-        }
-        ++pos;
-    }
-    return result;
-}
-
-// Split a JSON array body (without [ ]) into individual top-level objects.
-static std::vector<std::string> SplitObjects(const std::string& arrayText) {
-    std::vector<std::string> objects;
-    int depth = 0;
-    std::size_t start = std::string::npos;
-    bool inStr = false;
-    for (std::size_t i = 0; i < arrayText.size(); ++i) {
-        char c = arrayText[i];
-        if (c == '"' && (i == 0 || arrayText[i - 1] != '\\')) { inStr = !inStr; continue; }
-        if (inStr) continue;
-        if (c == '{') { if (depth == 0) start = i; ++depth; }
-        else if (c == '}') {
-            --depth;
-            if (depth == 0 && start != std::string::npos) {
-                objects.push_back(arrayText.substr(start, i - start + 1));
-                start = std::string::npos;
-            }
-        }
-    }
-    return objects;
-}
-
-} // anonymous namespace
-
+// For M2 we hand-write the JSON output rather than using a JSON library.
+// This is intentional: it teaches students exactly what JSON looks like and
+// how to produce it programmatically.  The format is simple enough that a
+// robust hand-written serialiser is fine.
+//
+// In M3 we will add nlohmann/json via vcpkg for both reading and writing.
 // ============================================================================
-// JSON string escaping helper
-// ============================================================================
+namespace
+{
 
-// TEACHING NOTE — JSON string escaping
-// Direct string concatenation into JSON output is unsafe: characters like
-// '"', '\', newlines, or Windows path separators can produce invalid JSON.
-// This helper escapes the minimal set required by the JSON spec (RFC 8259).
-static std::string JsonEscapeString(const std::string& s) {
+// ---------------------------------------------------------------------------
+// json_escape
+// ---------------------------------------------------------------------------
+// Escape special characters in a string for safe embedding in JSON.
+// TEACHING NOTE — JSON string escaping rules:
+//   \  → \\      (backslash)
+//   "  → \"      (double quote)
+//   \n → \n      (newline)
+// A minimal implementation is fine for file paths and GUIDs, which never
+// contain special characters.
+// ---------------------------------------------------------------------------
+static std::string json_escape(const std::string& s)
+{
     std::string out;
     out.reserve(s.size());
-    for (unsigned char c : s) {
-        switch (c) {
+    for (char c : s)
+    {
+        switch (c)
+        {
             case '"':  out += "\\\""; break;
             case '\\': out += "\\\\"; break;
             case '\n': out += "\\n";  break;
             case '\r': out += "\\r";  break;
             case '\t': out += "\\t";  break;
-            default:
-                // Escape ASCII control characters (0x00–0x1F)
-                if (c < 0x20) {
-                    char buf[7];
-                    std::snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned>(c));
-                    out += buf;
-                } else {
-                    out += static_cast<char>(c);
-                }
-                break;
+            default:   out += c;      break;
         }
     }
     return out;
 }
 
-// ============================================================================
+// ---------------------------------------------------------------------------
+// extract_json_string_value
+// ---------------------------------------------------------------------------
+// Minimal JSON string-value extractor for reading AssetRegistry.json.
+// ---------------------------------------------------------------------------
+static std::string extract_json_string_value(const std::string& text,
+                                              const std::string& key)
+{
+    const std::string search = "\"" + key + "\"";
+    std::size_t pos = text.find(search);
+    if (pos == std::string::npos) return "";
+
+    pos = text.find(':', pos + search.size());
+    if (pos == std::string::npos) return "";
+
+    pos = text.find('"', pos + 1);
+    if (pos == std::string::npos) return "";
+    const std::size_t start = pos + 1;
+
+    const std::size_t end = text.find('"', start);
+    if (end == std::string::npos) return "";
+
+    return text.substr(start, end - start);
+}
+
+// ---------------------------------------------------------------------------
 // AssetEntry — one row from AssetRegistry.json
-// ============================================================================
-struct AssetEntry {
+// ---------------------------------------------------------------------------
+struct AssetEntry
+{
     std::string id;
     std::string type;
     std::string name;
-    std::string source; // relative to project dir
-    std::string cooked; // relative to project dir (may be empty — we compute it)
-    std::string hash;
+    std::string source;   // relative path under the project root (Content/…)
+    std::string cooked;   // desired cooked output path (relative to project)
 };
 
-// ============================================================================
-// CookerConfig
-// ============================================================================
-struct CookerConfig {
-    fs::path projectDir;
-    fs::path registryPath;
-    fs::path cookedDir;
-    fs::path assetDbPath;
-};
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-static bool CopyAsset(const fs::path& src, const fs::path& dst) {
-    if (!fs::exists(src)) {
-        std::cerr << "  [WARN] Source not found: " << src << "\n";
-        return false;
-    }
-    // TEACHING NOTE — filesystem operations can throw on permission failures,
-    // invalid paths, or locked files.  Converting the exception to a boolean
-    // lets the caller count failures and exit non-zero when cooking is
-    // incomplete, instead of crashing the process.
-    try {
-        fs::create_directories(dst.parent_path());
-        fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
-        return true;
-    } catch (const fs::filesystem_error& e) {
-        std::cerr << "  [ERROR] Failed to copy asset from " << src
-                  << " to " << dst << ": " << e.what() << "\n";
-    } catch (const std::exception& e) {
-        std::cerr << "  [ERROR] Unexpected error while copying asset from "
-                  << src << " to " << dst << ": " << e.what() << "\n";
-    }
-    return false;
-}
-
-// ============================================================================
-// Parse AssetRegistry.json
-// ============================================================================
-static std::vector<AssetEntry> ParseRegistry(const fs::path& registryPath) {
-    std::string text = ReadFile(registryPath);
-    if (text.empty()) {
-        std::cerr << "[cook] Cannot read: " << registryPath << "\n";
+// ---------------------------------------------------------------------------
+// parse_asset_registry
+// ---------------------------------------------------------------------------
+// Read AssetRegistry.json and return a list of AssetEntry records.
+//
+// TEACHING NOTE — Simple JSON parsing with braces tracking
+// The registry contains an array of objects.  We extract each object using
+// brace-depth tracking (same technique used in AssetDB::Load), then pull out
+// the fields we need.  This is a teaching-grade parser; production code would
+// use nlohmann/json (M3+).
+// ---------------------------------------------------------------------------
+static std::vector<AssetEntry> parse_asset_registry(const fs::path& registryPath)
+{
+    std::ifstream f(registryPath);
+    if (!f.is_open())
+    {
+        std::cerr << "[cook] ERROR: Cannot open AssetRegistry.json: "
+                  << registryPath << "\n";
         return {};
     }
 
-    const std::string assetsKey = R"("assets")";
-    auto assetsPos = text.find(assetsKey);
-    if (assetsPos == std::string::npos) { std::cerr << "[cook] No 'assets' key\n"; return {}; }
-
-    auto bracketPos = text.find('[', assetsPos + assetsKey.size());
-    if (bracketPos == std::string::npos) { std::cerr << "[cook] No '[' after assets\n"; return {}; }
-
-    int depth = 0; std::size_t arrayEnd = std::string::npos; bool inStr = false;
-    for (std::size_t i = bracketPos; i < text.size(); ++i) {
-        char c = text[i];
-        if (c == '"' && (i == 0 || text[i-1] != '\\')) { inStr = !inStr; continue; }
-        if (inStr) continue;
-        if (c == '[') ++depth;
-        else if (c == ']') { --depth; if (depth == 0) { arrayEnd = i; break; } }
-    }
-    if (arrayEnd == std::string::npos) { std::cerr << "[cook] Unclosed '['\n"; return {}; }
-
-    std::string arrayText = text.substr(bracketPos + 1, arrayEnd - bracketPos - 1);
-    auto objects = SplitObjects(arrayText);
+    std::string contents((std::istreambuf_iterator<char>(f)),
+                          std::istreambuf_iterator<char>());
 
     std::vector<AssetEntry> entries;
-    entries.reserve(objects.size());
-    for (const auto& obj : objects) {
-        AssetEntry e;
-        e.id     = ExtractString(obj, "id");
-        e.type   = ExtractString(obj, "type");
-        e.name   = ExtractString(obj, "name");
-        e.source = ExtractString(obj, "source");
-        e.cooked = ExtractString(obj, "cooked");
-        e.hash   = ExtractString(obj, "hash");
-        if (!e.id.empty()) entries.push_back(std::move(e));
+    std::size_t braceDepth = 0;
+    std::size_t objectStart = std::string::npos;
+    bool inString = false;
+
+    for (std::size_t i = 0; i < contents.size(); ++i)
+    {
+        const char c = contents[i];
+        if (c == '"' && (i == 0 || contents[i - 1] != '\\'))
+            inString = !inString;
+        if (inString) continue;
+
+        if (c == '{')
+        {
+            ++braceDepth;
+            if (braceDepth == 2)
+                objectStart = i;
+        }
+        else if (c == '}')
+        {
+            if (braceDepth == 2 && objectStart != std::string::npos)
+            {
+                const std::string obj = contents.substr(objectStart,
+                                                         i - objectStart + 1);
+                AssetEntry e;
+                e.id     = extract_json_string_value(obj, "id");
+                e.type   = extract_json_string_value(obj, "type");
+                e.name   = extract_json_string_value(obj, "name");
+                e.source = extract_json_string_value(obj, "source");
+                e.cooked = extract_json_string_value(obj, "cooked");
+
+                if (!e.id.empty() && !e.source.empty())
+                    entries.push_back(std::move(e));
+
+                objectStart = std::string::npos;
+            }
+            if (braceDepth > 0) --braceDepth;
+        }
     }
+
     return entries;
 }
 
+} // anonymous namespace
+
 // ============================================================================
-// Write cooked/assetdb.json
+// TEACHING NOTE — Main function structure for a tool
 // ============================================================================
-static bool WriteAssetDb(
-    const fs::path&               assetDbPath,
-    const std::vector<AssetEntry>& entries)
+// A well-structured command-line tool main() does:
+//   1. Parse arguments — determine what to do.
+//   2. Validate inputs — fail fast with a clear error if something is wrong.
+//   3. Do work — iterate assets, copy/convert, write output.
+//   4. Report results — print a summary so CI can understand what happened.
+//   5. Return 0 on success, non-zero on any error — so CI scripts can check.
+// ============================================================================
+int main(int argc, char* argv[])
 {
-    // TEACHING NOTE — Manual JSON construction
-    // For a teaching project, writing JSON by hand is acceptable as long as
-    // the format is simple.  For a production engine, use nlohmann/json:
-    //   auto j = nlohmann::json::object();
-    //   j["version"] = "1.0.0";
-    //   j["assets"] = nlohmann::json::array();  etc.
-    std::ostringstream ss;
-    ss << "{\n";
-    ss << "  \"version\": \"1.0.0\",\n";
-    ss << "  \"assets\": [\n";
-
-    for (std::size_t i = 0; i < entries.size(); ++i) {
-        const auto& e = entries[i];
-        ss << "    {\n";
-        ss << "      \"id\":     \"" << JsonEscapeString(e.id)     << "\",\n";
-        ss << "      \"type\":   \"" << JsonEscapeString(e.type)   << "\",\n";
-        ss << "      \"name\":   \"" << JsonEscapeString(e.name)   << "\",\n";
-        ss << "      \"source\": \"" << JsonEscapeString(e.source) << "\",\n";
-        ss << "      \"cooked\": \"" << JsonEscapeString(e.cooked) << "\",\n";
-        ss << "      \"hash\":   \"" << JsonEscapeString(e.hash)   << "\"\n";
-        ss << "    }";
-        if (i + 1 < entries.size()) ss << ",";
-        ss << "\n";
-    }
-    ss << "  ]\n";
-    ss << "}\n";
-
-    fs::create_directories(assetDbPath.parent_path());
-    return WriteFile(assetDbPath, ss.str());
-}
-
-// ============================================================================
-// main
-// ============================================================================
-int main(int argc, char* argv[]) {
     // -----------------------------------------------------------------------
-    // Parse arguments
+    // Step 1 — Argument parsing.
     // -----------------------------------------------------------------------
-    std::string projectDirArg;
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if ((arg == "--project" || arg == "-p") && i + 1 < argc) {
-            projectDirArg = argv[++i];
+    std::string projectDir;
+    bool        verbose = false;
+
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::strcmp(argv[i], "--project") == 0 && i + 1 < argc)
+        {
+            projectDir = argv[++i];
+        }
+        else if (std::strcmp(argv[i], "--verbose") == 0 ||
+                 std::strcmp(argv[i], "-v") == 0)
+        {
+            verbose = true;
         }
     }
 
-    if (projectDirArg.empty()) {
-        std::cerr << "Usage: cook --project <project-dir>\n";
+    if (projectDir.empty())
+    {
+        std::cerr << "Usage: cook.exe --project <path/to/project> [--verbose]\n";
+        std::cerr << "Example: cook.exe --project samples/vertical_slice_project\n";
         return 1;
     }
 
     // -----------------------------------------------------------------------
-    // Build config
+    // Step 2 — Validate project directory and locate required files.
     // -----------------------------------------------------------------------
-    CookerConfig cfg;
-    cfg.projectDir   = fs::absolute(fs::path(projectDirArg));
-    cfg.registryPath = cfg.projectDir / "AssetRegistry.json";
-    cfg.cookedDir    = cfg.projectDir / "Cooked";
-    cfg.assetDbPath  = cfg.cookedDir / "assetdb.json";
-
-    if (!fs::exists(cfg.registryPath)) {
-        std::cerr << "[cook] AssetRegistry.json not found: " << cfg.registryPath << "\n";
+    const fs::path projectPath(projectDir);
+    if (!fs::exists(projectPath))
+    {
+        std::cerr << "[cook] ERROR: Project directory does not exist: "
+                  << projectDir << "\n";
         return 1;
     }
 
-    std::cout << "======================================\n";
+    const fs::path registryPath = projectPath / "AssetRegistry.json";
+    if (!fs::exists(registryPath))
+    {
+        std::cerr << "[cook] ERROR: AssetRegistry.json not found in: "
+                  << projectDir << "\n";
+        return 1;
+    }
+
+    const fs::path contentDir = projectPath / "Content";
+    const fs::path cookedDir  = projectPath / "Cooked";
+
+    std::cout << "============================================================\n";
     std::cout << " cook.exe — Asset Cooker (M2)\n";
-    std::cout << "======================================\n";
-    std::cout << " Project : " << cfg.projectDir  << "\n";
-    std::cout << " Registry: " << cfg.registryPath << "\n";
-    std::cout << " Output  : " << cfg.cookedDir   << "\n\n";
+    std::cout << "============================================================\n";
+    std::cout << " Project  : " << fs::absolute(projectPath).string() << "\n";
+    std::cout << " Registry : " << registryPath.filename().string() << "\n";
+    std::cout << " Content  : " << contentDir.filename().string() << "/\n";
+    std::cout << " Output   : " << cookedDir.filename().string() << "/\n";
+    std::cout << "\n";
 
     // -----------------------------------------------------------------------
-    // Parse the registry
+    // Step 3 — Parse AssetRegistry.json.
     // -----------------------------------------------------------------------
-    auto entries = ParseRegistry(cfg.registryPath);
-    if (entries.empty()) {
-        std::cout << "[cook] No assets to cook.\n";
+    const auto entries = parse_asset_registry(registryPath);
+    if (entries.empty())
+    {
+        std::cout << "[cook] WARNING: No assets in registry.  Nothing to cook.\n";
+        // Produce an empty assetdb.json so the engine can still start.
+    }
+    else
+    {
+        std::cout << "[cook] Registry parsed: " << entries.size()
+                  << " asset(s) found.\n\n";
     }
 
-    // -----------------------------------------------------------------------
-    // Cook each asset (M2: copy source → cooked path)
-    // -----------------------------------------------------------------------
-    int cooked = 0, errors = 0;
-    for (auto& e : entries) {
-        if (e.source.empty()) { ++errors; continue; }
-
-        // TEACHING NOTE — Source path resolution
-        // The AssetRegistry.json source paths may be:
-        //   • Relative to the project root:    "Content/Textures/Grass.png"
-        //   • Relative to Content/:            "Textures/Grass.png"
-        // We try both so the cook tool works with either convention.
-        fs::path srcPath = cfg.projectDir / e.source;
-        if (!fs::exists(srcPath)) {
-            fs::path withContent = cfg.projectDir / "Content" / e.source;
-            if (fs::exists(withContent)) srcPath = withContent;
-        }
-
-        // Compute cooked path if not already set in the registry
-        if (e.cooked.empty()) {
-            e.cooked = "Cooked/" + e.type + "/" + e.id + srcPath.extension().string();
-        }
-        fs::path dstPath = cfg.projectDir / e.cooked;
-
-        std::cout << "  [" << e.type << "] " << e.source << " → " << e.cooked << "\n";
-        // TEACHING NOTE — Build tools must report partial cook failures.
-        // We only count an asset as cooked when the underlying copy succeeds;
-        // otherwise CI could receive exit code 0 even though cooked output is incomplete.
-        if (CopyAsset(srcPath, dstPath)) {
-            ++cooked;
-        } else {
-            ++errors;
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Write assetdb.json
-    // -----------------------------------------------------------------------
-    if (!WriteAssetDb(cfg.assetDbPath, entries)) {
-        std::cerr << "[cook] Failed to write: " << cfg.assetDbPath << "\n";
+    // Ensure Cooked/ directory exists.
+    std::error_code ec;
+    fs::create_directories(cookedDir, ec);
+    if (ec)
+    {
+        std::cerr << "[cook] ERROR: Cannot create Cooked/ directory: "
+                  << ec.message() << "\n";
         return 1;
     }
-    std::cout << "\n[cook] assetdb.json written: " << entries.size() << " entries\n";
 
-    std::cout << "\n======================================\n";
-    std::cout << " Cook complete: " << cooked << " assets";
-    if (errors > 0) std::cout << ", " << errors << " errors";
-    std::cout << "\n======================================\n";
+    // -----------------------------------------------------------------------
+    // Step 4 — Cook each asset (M2: copy source → Cooked/).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Incremental cooking (future enhancement)
+    // A real cooker checks the hash of the source file against the stored
+    // hash in the registry.  If they match, the asset is up-to-date and the
+    // cook step is skipped.  For M2 we always recook (unconditional copy).
+    // Incremental cooking will be introduced when we add the real conversion
+    // steps in M3.
+    // -----------------------------------------------------------------------
+    int  cooked  = 0;
+    int  skipped = 0;
+    int  errors  = 0;
+
+    // assetdb entries accumulated for writing to assetdb.json
+    struct DbEntry { std::string id; std::string cookedPath; };
+    std::vector<DbEntry> dbEntries;
+
+    for (const auto& entry : entries)
+    {
+        // Resolve source path.
+        // TEACHING NOTE — Source path resolution strategy
+        // AssetRegistry.json stores the source path in two possible conventions:
+        //   1. Relative to the project root (e.g., "Content/Maps/file.json")
+        //   2. Relative to the Content/ directory (e.g., "Maps/file.json")
+        // We try both conventions so cook.exe works with registries generated
+        // by the Python cook_assets.py script (convention 2) and future
+        // editor-generated registries (convention 1).
+        fs::path srcPath;
+
+        if (fs::path(entry.source).is_absolute())
+        {
+            srcPath = fs::path(entry.source);
+        }
+        else if (fs::exists(projectPath / entry.source))
+        {
+            // Convention 1: relative to project root.
+            srcPath = projectPath / entry.source;
+        }
+        else if (fs::exists(contentDir / entry.source))
+        {
+            // Convention 2: relative to Content/ directory.
+            srcPath = contentDir / entry.source;
+        }
+        else
+        {
+            std::cerr << "[cook] ERROR: Source file not found: "
+                      << entry.source << "\n"
+                      << "  Tried: " << (projectPath / entry.source).string() << "\n"
+                      << "  Tried: " << (contentDir / entry.source).string() << "\n";
+            ++errors;
+            continue;
+        }
+
+        // Determine destination path.
+        // If the registry already has a "cooked" field, use it.
+        // Otherwise derive: Cooked/<type>/<filename>.
+        fs::path dstPath;
+        if (!entry.cooked.empty())
+        {
+            dstPath = fs::path(entry.cooked).is_relative()
+                      ? projectPath / entry.cooked
+                      : fs::path(entry.cooked);
+        }
+        else
+        {
+            // TEACHING NOTE — Derived cooked path
+            // When no cooked path is specified, we place the asset under
+            // Cooked/<AssetType>/<filename>.  This mirrors Unreal Engine's
+            // cooked content layout where each asset type has its own folder.
+            dstPath = cookedDir / entry.type / srcPath.filename();
+        }
+
+        // Create destination directory if needed.
+        fs::create_directories(dstPath.parent_path(), ec);
+        if (ec)
+        {
+            std::cerr << "[cook] ERROR: Cannot create directory: "
+                      << dstPath.parent_path().string()
+                      << " — " << ec.message() << "\n";
+            ++errors;
+            continue;
+        }
+
+        // Copy file (overwrite if already exists).
+        fs::copy_file(srcPath, dstPath, fs::copy_options::overwrite_existing, ec);
+        if (ec)
+        {
+            std::cerr << "[cook] ERROR: Copy failed: "
+                      << srcPath.string() << " -> " << dstPath.string()
+                      << " — " << ec.message() << "\n";
+            ++errors;
+            continue;
+        }
+
+        if (verbose)
+        {
+            std::cout << "  [" << entry.type << "] "
+                      << srcPath.filename().string()
+                      << "  →  "
+                      << fs::relative(dstPath, projectPath).string()
+                      << "\n";
+        }
+
+        // Compute relative cooked path for assetdb.json.
+        // Use forward slashes for portability (engine on Linux/Windows).
+        std::string relCooked = fs::relative(dstPath, projectPath).string();
+        // Normalise path separators to forward slash.
+        for (char& ch : relCooked)
+            if (ch == '\\') ch = '/';
+
+        dbEntries.push_back({ entry.id, relCooked });
+        ++cooked;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 5 — Write assetdb.json.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Why a separate assetdb.json and not just use the registry?
+    // AssetRegistry.json can be very large in a real project (hundreds of
+    // fields per asset).  assetdb.json is a stripped-down runtime index:
+    // only the GUID and cooked path are needed.  This keeps engine startup
+    // fast and reduces memory usage.
+    // -----------------------------------------------------------------------
+    const fs::path assetDbPath = cookedDir / "assetdb.json";
+
+    {
+        std::ofstream out(assetDbPath);
+        if (!out.is_open())
+        {
+            std::cerr << "[cook] ERROR: Cannot write assetdb.json: "
+                      << assetDbPath.string() << "\n";
+            return 1;
+        }
+
+        out << "{\n";
+        out << "  \"version\": \"1.0.0\",\n";
+        out << "  \"assets\": [\n";
+
+        for (std::size_t i = 0; i < dbEntries.size(); ++i)
+        {
+            out << "    { \"id\": \"" << json_escape(dbEntries[i].id)
+                << "\", \"cookedPath\": \"" << json_escape(dbEntries[i].cookedPath)
+                << "\" }";
+            if (i + 1 < dbEntries.size()) out << ",";
+            out << "\n";
+        }
+
+        out << "  ]\n";
+        out << "}\n";
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 6 — Print summary and return.
+    // -----------------------------------------------------------------------
+    std::cout << "\n";
+    std::cout << "============================================================\n";
+    std::cout << " Cook complete.\n";
+    std::cout << "   Cooked  : " << cooked  << "\n";
+    std::cout << "   Skipped : " << skipped << "\n";
+    std::cout << "   Errors  : " << errors  << "\n";
+    std::cout << "   AssetDB : " << assetDbPath.filename().string() << "  ("
+              << dbEntries.size() << " entries)\n";
+    std::cout << "============================================================\n";
 
     return (errors > 0) ? 1 : 0;
 }

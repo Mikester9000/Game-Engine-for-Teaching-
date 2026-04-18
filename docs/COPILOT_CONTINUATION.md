@@ -233,66 +233,12 @@ ctest --test-dir build -L contract
 
 | Workflow | Trigger | What it does | Status |
 |---|---|---|---|
-| `build-linux.yml` | push / PR | cmake + make; builds terminal `game`; runs 32+11 Python pytest | ✅ exists |
+| `build-linux.yml` | push / PR | cmake + make; builds terminal `game` + `cook`; runs 32+11 Python pytest | ✅ exists |
 | `validate-assets.yml` | push / PR touching `assets/` | runs `tools/validate-assets.py` | ✅ exists |
-| `build-windows.yml` | push / PR | cmake VS2022; builds `engine_sandbox` + `cook`; headless validate | ⬜ **create for M2** |
-| `contract-tests.yml` | push / PR | cook golden assets; diff against stored golden files in `tests/golden/` | ⬜ **create for M2** |
+| `build-windows.yml` | push / PR | cmake VS2022; builds `engine_sandbox` + `cook`; headless validate; cook sample project; validate-project | ✅ created (M2) |
+| `contract-tests.yml` | push / PR touching cook/assets | cooks vertical slice on Linux; diffs `assetdb.json` against `tests/golden/assetdb_expected.json`; runs TEACHING NOTE audit | ✅ created (M2) |
 
 **CI must be green before any PR is merged.**
-
-#### `build-windows.yml` template (create for M2)
-
-```yaml
-name: Build Windows (engine_sandbox)
-on: [push, pull_request]
-jobs:
-  build:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Vulkan SDK
-        uses: humbletim/setup-vulkan-sdk@v1.2.0
-        with:
-          vulkan-query-version: 1.3.250.0
-          vulkan-components: Vulkan-Headers, Vulkan-Loader
-          vulkan-use-cache: true
-      - name: Configure CMake
-        run: cmake --preset windows-debug
-      - name: Build engine_sandbox and cook
-        run: cmake --build --preset windows-debug --target engine_sandbox cook
-      - name: Headless validate engine
-        run: .\build\windows-debug\Debug\engine_sandbox.exe --headless
-      - name: Cook sample project (M2+)
-        run: .\build\windows-debug\Debug\cook.exe --project samples/vertical_slice_project/
-```
-
-#### `contract-tests.yml` template (create for M2)
-
-```yaml
-name: Contract Tests (golden-file)
-on: [push, pull_request]
-jobs:
-  contract:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build cook.exe
-        run: |
-          cmake --preset windows-debug
-          cmake --build --preset windows-debug --target cook
-      - name: Cook sample project
-        run: .\build\windows-debug\Debug\cook.exe --project samples/vertical_slice_project/
-      - name: Diff against golden assetdb
-        run: |
-          python -c "
-          import json, sys
-          actual   = json.load(open('samples/vertical_slice_project/Cooked/assetdb.json'))
-          expected = json.load(open('tests/golden/assetdb_expected.json'))
-          if actual != expected:
-              print('[FAIL] assetdb.json does not match golden file'); sys.exit(1)
-          print('[PASS] assetdb.json matches golden file')
-          "
-```
 
 ### 5.4 Headless validation commands (current)
 

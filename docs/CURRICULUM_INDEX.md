@@ -6,17 +6,17 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 707 across 33 subsystems.
+**Total lessons:** 744 across 34 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (21 lessons)
-- [ci/workflows](#ciworkflows) (23 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (22 lessons)
+- [ci/workflows](#ciworkflows) (26 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
-- [engine/assets](#engineassets) (11 lessons)
+- [engine/assets](#engineassets) (27 lessons)
 - [engine/core](#enginecore) (49 lessons)
 - [engine/ecs](#engineecs) (31 lessons)
 - [engine/input](#engineinput) (19 lessons)
@@ -29,7 +29,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/systems](#gamesystems) (80 lessons)
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (11 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (14 lessons)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (7 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
 - [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (1 lesson)
@@ -41,7 +41,8 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/anim_authoring](#toolsanim_authoring) (20 lessons)
 - [tools/audio_authoring](#toolsaudio_authoring) (28 lessons)
 - [tools/audio_engine.py](#toolsaudio_engine.py) (6 lessons)
-- [tools/cook](#toolscook) (8 lessons)
+- [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
+- [tools/cook](#toolscook) (12 lessons)
 - [tools/creation_engine.py](#toolscreation_engine.py) (5 lessons)
 - [tools/tests](#toolstests) (3 lessons)
 - [tools/validate-assets.py](#toolsvalidate-assets.py) (2 lessons)
@@ -214,21 +215,34 @@ if(ENGINE_ENABLE_VULKAN)
 
 ### VK_USE_PLATFORM_WIN32_KHR compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L286) (line 286)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L288) (line 288)
 
 This macro must be defined before including <vulkan/vulkan.h> so that
 the Win32-specific surface types and functions are declared.
 Passing it as a compile definition ensures it is set for every
 translation unit in this target without relying on the include order.
+
+### UNICODE and _UNICODE
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L294) (line 294)
+
+Win32Window.cpp uses std::wstring for the window title and
+const wchar_t* for the window class name (L"EngineWndClass").
+Without UNICODE/_UNICODE, MSVC maps CreateWindowEx → CreateWindowExA
+which expects LPCSTR (narrow string) — causing C2440/C2664 errors.
+Defining UNICODE and _UNICODE selects the wide-string (W) variants so
+CreateWindowEx → CreateWindowExW, RegisterClassEx → RegisterClassExW, etc.
 target_compile_definitions(engine_sandbox PRIVATE
 VK_USE_PLATFORM_WIN32_KHR
 WIN32_LEAN_AND_MEAN
 NOMINMAX
+UNICODE
+_UNICODE
 )
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L297) (line 297)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L309) (line 309)
 
 By default MSVC creates a GUI app (WinMain entry point, no console).
 We explicitly request CONSOLE so that std::cout / std::cerr output
@@ -241,7 +255,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L308) (line 308)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L320) (line 320)
 
 ---------------------------------------------------------------------------
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
@@ -263,7 +277,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L361) (line 361)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L373) (line 373)
 
 This CMake generator expression evaluates at build time to the
 directory containing the built engine_sandbox executable.
@@ -286,7 +300,7 @@ endif() # GLSLC_EXECUTABLE
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L386) (line 386)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L398) (line 398)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -308,7 +322,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L405) (line 405)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L417) (line 417)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -319,7 +333,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L413) (line 413)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L425) (line 425)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -329,7 +343,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L441) (line 441)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L453) (line 453)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -338,7 +352,7 @@ C++ standard already set above).
 
 ### Qt Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L448) (line 448)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L460) (line 460)
 
 The editor is a Qt 6 Widgets application that provides:
   • Project browser  — open a project folder, see its Content/ files
@@ -354,6 +368,90 @@ endif()
 ---
 
 ## ci/workflows
+
+### Why a Dedicated Architecture Lint Workflow?
+
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L5) (line 5)
+
+-----------------------------------------------------------
+Large codebases rot slowly.  Each individual commit that sneaks a
+cross-layer dependency or creates a 700-line source file seems harmless
+in isolation, but after dozens of such commits the codebase becomes hard
+to navigate and hard to teach from.  A dedicated CI gate that rejects
+these individual commits is the cheapest way to keep the codebase healthy.
+
+This workflow runs two scripts on every push and pull-request:
+
+  1. scripts/check_architecture.py
+     • Warns on C++ files exceeding 500 lines (teaching exceptions listed).
+     • Errors on forbidden cross-layer #include directives.
+     • Warns on C++ source files that contain no TEACHING NOTE block.
+
+  2. scripts/extract_teaching_notes.py
+     • Regenerates docs/CURRICULUM_INDEX.md from all TEACHING NOTE blocks.
+     • Fails if the committed index is out of date (on pull requests).
+
+Both scripts are pure Python with no third-party dependencies, so the
+job runs quickly without any pip install step.
+
+============================================================================
+
+### GitHub Actions Triggers (paths filter)
+
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L28) (line 28)
+
+-------------------------------------------------------
+The ``paths`` filter means this workflow only runs when files that could
+affect the architecture checks actually change.  A documentation-only PR
+that touches only ``docs/*.md`` will not trigger this workflow, saving CI
+minutes and reducing noise.
+============================================================================
+
+### Principle of Least Privilege
+
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L54) (line 54)
+
+Grant only the permissions this workflow actually needs.
+contents: read  — needed to check out the repository.
+No write permissions are needed.
+permissions:
+contents: read
+
+### actions/checkout
+
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L71) (line 71)
+
+Clones the repository so subsequent steps can read the source files.
+-----------------------------------------------------------------------
+- name: Checkout repository
+uses: actions/checkout@v4
+
+### Python Setup
+
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L78) (line 78)
+
+Both scripts require Python 3.9+ and use only the standard library.
+We pin to Python 3.11 in CI for reproducibility — the same version
+used by all other workflows in this repository.  No third-party
+packages are needed, so no pip install step is required.
+-----------------------------------------------------------------------
+- name: Set up Python 3.11
+uses: actions/setup-python@v5
+with:
+python-version: '3.11'
+
+### Stale-Index Detection Pattern
+
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L124) (line 124)
+
+-----------------------------------------------
+We regenerate the file, then run ``git diff --exit-code`` which exits
+with code 1 if the file changed.  This pattern is common in CI:
+generate → compare → fail if different.  It ensures that contributors
+who add TEACHING NOTE blocks also update the index before merging.
+-----------------------------------------------------------------------
+- name: Regenerate curriculum index
+run: python scripts/extract_teaching_notes.py --repo-root .
 
 ### CI Workflow Purpose
 
@@ -435,9 +533,20 @@ runners.
 - name: Build
 run: cmake --build build --config Debug -- -j$(nproc)
 
+### cook is not Vulkan-dependent
+
+**Source:** [`.github/workflows/build-linux.yml`](.github/workflows/build-linux.yml#L115) (line 115)
+
+The cook tool uses only C++17 standard library (std::filesystem,
+std::fstream, etc.) and our Logger.  It builds on Linux as well as
+Windows.  We verify it here to catch compile errors early.
+-----------------------------------------------------------------------
+- name: Verify cook binary exists
+run: test -f build/cook
+
 ### Python Setup
 
-**Source:** [`.github/workflows/build-linux.yml`](.github/workflows/build-linux.yml#L126) (line 126)
+**Source:** [`.github/workflows/build-linux.yml`](.github/workflows/build-linux.yml#L137) (line 137)
 
 We pin to Python 3.11 for reproducibility.  The tools require 3.9+.
 -----------------------------------------------------------------------
@@ -446,139 +555,109 @@ uses: actions/setup-python@v5
 with:
 python-version: '3.11'
 
-### Windows CI for a Vulkan engine
+### Windows CI Workflow Purpose
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L5) (line 5)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L4) (line 4)
 
-================================================
-The Vulkan renderer (engine_sandbox) is Windows-only.  This workflow:
+============================================================================
+This workflow validates the Windows Vulkan engine_sandbox and the
+cross-platform cook.exe tool on every push and pull request.
 
-  1. Configures CMake with the windows-debug-engine-only preset
-     (no Qt required; BUILD_EDITOR=OFF).
-  2. Builds engine_sandbox and the cook target.
-  3. Runs engine_sandbox --headless to verify the Vulkan bootstrap.
+What it validates:
+  1. CMake configure succeeds with Vulkan SDK present.
+  2. engine_sandbox.exe compiles without errors (MSVC /W4).
+  3. cook.exe compiles without errors.
+  4. engine_sandbox.exe runs in headless mode (Vulkan init + exit 0).
+  5. cook.exe successfully cooks the vertical slice sample project.
+  6. engine_sandbox.exe --validate-project loads the cooked AssetDB.
 
-### Vulkan SDK in CI
-
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L14) (line 14)
-
----------------------------------
-The humbletim/setup-vulkan-sdk action installs the Vulkan headers and
-loader on the runner.  We use version 1.3.250.0 which ships glslc.
-The VULKAN_SDK environment variable is set automatically so CMake's
-FindVulkan module can locate the libraries.
 ============================================================================
 
-### Principle of Least Privilege
+### humbletim/setup-vulkan-sdk
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L42) (line 42)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L18) (line 18)
 
-permissions:
-contents: read
+============================================================================
+The Vulkan SDK provides the Vulkan headers, the loader library (vulkan-1.lib)
+and the glslc shader compiler.  Without it, find_package(Vulkan) in CMake
+would fail.
 
-### actions/checkout
+humbletim/setup-vulkan-sdk is a community action that:
+  1. Downloads the requested Vulkan SDK version.
+  2. Installs it to a temp directory.
+  3. Sets VULKAN_SDK in the environment so CMake can find it.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L53) (line 53)
+We pin vulkan-query-version to 1.3.250.0 for reproducibility.  Always pin
+action versions and SDK versions in CI to avoid unexpected breakage from
+upstream changes.
+============================================================================
 
-fetch-depth: 0 gives the full git history, needed if build scripts
-reference git tags or commit counts.
------------------------------------------------------------------------
-- name: Checkout repository
-uses: actions/checkout@v4
-
-### Vulkan SDK Setup
+### Least-Privilege Permissions
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L61) (line 61)
 
-humbletim/setup-vulkan-sdk installs the Vulkan SDK headers and loader.
-It sets VULKAN_SDK so CMake's FindVulkan module finds vulkan-1.lib.
-We request only the components we need (Headers + Loader) to keep
-the download small; glslc comes with the full SDK.
+GitHub Actions tokens default to write access on the repository.
+Restricting to contents: read follows the principle of least privilege:
+a compromised action cannot push malicious commits to the repository.
+-------------------------------------------------------------------------
+permissions:
+contents: read
 
-### Action version pinning
+### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L67) (line 67)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L79) (line 79)
 
-v1.2.1 is required to avoid the deprecated actions/cache@v2 warning
-that v1.2.0 triggered.  Always pin to a specific tag (not @main) for
-reproducibility in CI.
+The Vulkan SDK is ~500 MB.  Without caching, every CI run would
+re-download it, wasting bandwidth and time.  vulkan-use-cache: true
+stores the download in GitHub's action cache, keyed by the version
+string.  Subsequent runs restore the cache in seconds.
 -----------------------------------------------------------------------
-- name: Setup Vulkan SDK
+- name: Install Vulkan SDK
 uses: humbletim/setup-vulkan-sdk@v1.2.1
 with:
 vulkan-query-version: 1.3.250.0
 vulkan-components: Vulkan-Headers, Vulkan-Loader
 vulkan-use-cache: true
 
-### CMake Presets
+### CMake Presets in CI
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L80) (line 80)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L95) (line 95)
 
-We use the 'windows-debug-engine-only' preset which sets:
-  - CMAKE_BUILD_TYPE=Debug
-  - ENGINE_ENABLE_VULKAN=ON
-  - ENGINE_ENABLE_TERMINAL=OFF
-  - BUILD_EDITOR=OFF        (no Qt required on CI)
-See CMakePresets.json for the full definition.
+cmake --preset windows-debug-engine-only uses the configuration from
+CMakePresets.json:
+  • Generator: Visual Studio 17 2022 (MSVC x64)
+  • ENGINE_ENABLE_VULKAN=ON
+  • BUILD_EDITOR=OFF  (Qt not installed on the CI runner)
+This is the correct preset for headless CI validation of the engine.
 -----------------------------------------------------------------------
-- name: Configure CMake
+- name: Configure CMake (engine-only, no Qt)
 run: cmake --preset windows-debug-engine-only
 
-### Building multiple targets
+### Building specific targets
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L92) (line 92)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L109) (line 109)
 
-We build engine_sandbox AND cook in one step.
-The cook target is the C++ asset cooker (Milestone M2).
+cmake --build --preset ... --target <name> builds only the specified
+target and its dependencies.  Building both engine_sandbox and cook
+validates both the Vulkan renderer path and the cross-platform cook
+tool in a single CI run.
 -----------------------------------------------------------------------
-- name: Build engine_sandbox and cook
-run: cmake --build --preset windows-debug-engine-only --target engine_sandbox cook
+- name: Build engine_sandbox
+run: cmake --build --preset windows-debug-engine-only --target engine_sandbox
 
-### Binary directory path
+### Headless CI Validation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L100) (line 100)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L135) (line 135)
 
-The 'windows-debug-engine-only' configure preset sets binaryDir to
-"${sourceDir}/build/${presetName}", so the output directory is
-build/windows-debug-engine-only, not build/windows-debug.
-Always derive the binary path from the preset name to avoid this
-common CI mistake.
+The CI runner has no monitor and no GPU, but it does have a software
+Vulkan implementation (SwiftShader or Mesa lavapipe via the Vulkan
+SDK's validation layers).  Running with --headless skips the render
+loop and just validates the Vulkan bootstrap.
+Expected output: "[PASS] ..." followed by exit code 0.
 -----------------------------------------------------------------------
-- name: Verify binaries exist
-shell: pwsh
-run: |
-if (-not (Test-Path "build\windows-debug-engine-only\Debug\engine_sandbox.exe")) {
-Write-Error "engine_sandbox.exe not found"
-exit 1
-}
-if (-not (Test-Path "build\windows-debug-engine-only\Debug\cook.exe")) {
-Write-Error "cook.exe not found"
-exit 1
-}
-Write-Output "engine_sandbox.exe and cook.exe found."
-
-### Headless Validation
-
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L121) (line 121)
-
-Running engine_sandbox with --headless skips the Win32 window creation
-and Vulkan surface.  It still initialises the Vulkan device, allocates
-command buffers, and records a single frame — enough to verify the
-bootstrap is correct without needing a display.
------------------------------------------------------------------------
-- name: Headless smoke test
+- name: Run headless validation (M0)
 run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
-
-### Cook validation (M2+)
-
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L131) (line 131)
-
-Once the cook binary is built we run it against the sample project.
-The --project flag points at the vertical slice directory; cook reads
-AssetRegistry.json, writes Cooked/ assets, and exits 0 on success.
------------------------------------------------------------------------
-- name: Cook sample project (M2 validation)
-run: .\build\windows-debug-engine-only\Debug\cook.exe --project samples\vertical_slice_project
+shell: cmd
 
 ### Contract Tests in CI
 
@@ -1313,159 +1392,466 @@ return app.exec();
 
 ## engine/assets
 
-### Minimal JSON parsing without external libraries
+### Why parse JSON in a separate .cpp file?
 
-**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L5) (line 5)
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L6) (line 6)
 
-================================================================
-We deliberately avoid adding a third-party JSON library for the AssetDB
-because the assetdb.json format is simple and stable:
+============================================================================
+The JSON parsing implementation (nlohmann/json or manual parsing) is an
+implementation detail.  By keeping it in the .cpp file we:
 
-  {
-    "version": "1.0.0",
-    "assets": [
-      { "id": "...", "type": "...", "name": "...",
-        "source": "...", "cooked": "...", "hash": "...",
-        "tags": [...] },
-      ...
-    ]
-  }
+ 1. Avoid exposing the JSON library headers to every translation unit that
+    #includes asset_db.hpp — this dramatically speeds up incremental builds.
+ 2. Allow swapping the JSON library without changing the public API.
+ 3. Follow the "Pimpl-light" principle: callers see only what they need.
 
-The parser uses a token-level approach:
-  1. Locate the "assets" array.
-  2. Split into individual object strings.
-  3. Extract named string fields with a tiny helper.
+For M2 we use a minimal hand-written JSON parser that handles the specific
+assetdb.json format rather than adding a third-party dependency.  This
+teaches the student exactly what JSON parsing involves.  In M3+ we will
+replace this with nlohmann/json (added via vcpkg) for full robustness.
 
-For a production engine (M2+) this should be replaced with nlohmann/json
-(add "nlohmann-json" to vcpkg.json).  The interface stays the same.
-
-### Why nlohmann/json for production?
-
-**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L28) (line 28)
-
-nlohmann/json provides:
-  • A clean, modern C++ API (json::parse, j["key"].get<std::string>()).
-  • Full RFC 8259 compliance including Unicode.
-  • Header-only, so adding it is a single line in CMakeLists.txt.
-  • Extremely well-tested (>95% branch coverage).
 ============================================================================
 
-### Why not regex?
+### assetdb.json format (produced by cook.exe)
 
-**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L70) (line 70)
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L22) (line 22)
 
-std::regex is available in C++11 but has poor performance on some
-standard library implementations (libstdc++ notably).  For a simple
-key-value extraction on well-formed JSON, a manual search is faster
-and avoids pulling in <regex>.
-std::string needle = "\"" + key + "\"";
-auto pos = obj.find(needle);
-if (pos == std::string::npos) return {};
+============================================================================
+{
+  "version": "1.0.0",
+  "assets": [
+    { "id": "<uuid>", "cookedPath": "<relative/path/to/cooked/file>" },
+    ...
+  ]
+}
 
-### Asset Database Pattern
+We only need "id" and "cookedPath" from each entry.
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Minimal JSON Parser Helpers
+
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L50) (line 50)
+
+============================================================================
+Rather than pulling in a full JSON library for this first iteration, we use
+a simple line-by-line extraction approach that works correctly for the flat
+assetdb.json format produced by cook_main.cpp.
+
+The algorithm:
+  1. Read the whole file into a string.
+  2. Find each JSON object that starts with { and ends with }.
+  3. Within each object, extract "id" and "cookedPath" values.
+
+This is intentionally simple and educational.  A production engine uses a
+proper JSON library (nlohmann/json, rapidjson, etc.).
+============================================================================
+namespace
+{
+
+### std::string::find + substr pattern
+
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L73) (line 73)
+
+This is a common "manual parsing" technique: find the key, skip past the
+opening quote, find the closing quote, extract the substring.  It is
+fragile (won't handle escaped quotes) but sufficient for machine-generated
+JSON with predictable formatting.
+---------------------------------------------------------------------------
+static std::string extract_string_value(const std::string& object,
+const std::string& key)
+{
+const std::string search = "\"" + key + "\"";
+std::size_t pos = object.find(search);
+if (pos == std::string::npos) return "";
+
+### std::ifstream for file reading
+
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L114) (line 114)
+
+std::ifstream opens a file for reading.  We check is_open() after
+construction because the constructor does not throw on failure by
+default (you can enable exceptions via f.exceptions() but that pattern
+is less common in game code which prefers explicit error checks).
+std::ifstream f(assetDbPath);
+if (!f.is_open())
+{
+LOG_ERROR("AssetDB::Load — cannot open file: " << assetDbPath);
+return false;
+}
+
+### Deriving the project root from the assetdb.json path
+
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L127) (line 127)
+
+-----------------------------------------------------------------------
+assetdb.json lives at <projectRoot>/Cooked/assetdb.json.
+std::filesystem::absolute() converts a relative path to absolute using
+the current working directory at Load() time — which is reliable because
+Load() is called once at startup before any directory changes.
+
+parent_path() twice gives us:
+  assetDbPath           → .../samples/project/Cooked/assetdb.json
+  .parent_path()        → .../samples/project/Cooked
+  .parent_path()        → .../samples/project          ← projectRoot
+
+Storing the absolute project root means GetCookedPath() can always
+produce a correct absolute path regardless of where the caller runs.
+-----------------------------------------------------------------------
+namespace fs = std::filesystem;
+m_baseDir = fs::absolute(fs::path(assetDbPath))
+.parent_path()  // .../Cooked
+.parent_path()  // .../projectRoot
+.string();
+
+### std::istreambuf_iterator trick
+
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L149) (line 149)
+
+Constructing a std::string from two istreambuf_iterators reads ALL
+characters in the stream in a single step — no loop required.
+This is the idiomatic "slurp file" pattern in C++.
+std::string contents((std::istreambuf_iterator<char>(f)),
+std::istreambuf_iterator<char>());
+
+### Simple object extraction
+
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L160) (line 160)
+
+The assetdb.json format produced by cook_main is:
+  { "assets": [ { "id": "...", "cookedPath": "..." }, ... ] }
+We scan for JSON object boundaries to extract each asset entry.
+-----------------------------------------------------------------------
+std::size_t braceDepth = 0;
+std::size_t objectStart = std::string::npos;
+bool inString = false;
+
+### Absolute path construction
+
+**Source:** [`src/engine/assets/asset_db.cpp`](src/engine/assets/asset_db.cpp#L241) (line 241)
+
+The stored value is a project-root-relative path (e.g. "Cooked/...").
+We join it with m_baseDir (the absolute project root captured during
+Load()) so the caller receives an absolute path that works regardless
+of the current working directory.
+namespace fs = std::filesystem;
+return (fs::path(m_baseDir) / it->second).string();
+}
+
+### What is an Asset Database?
 
 **Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L6) (line 6)
 
-=========================================
-In a game engine the "asset database" (AssetDB) is the runtime equivalent
-of the editor's asset registry.  It answers one central question:
+============================================================================
+In a game engine, "assets" are data files: textures, audio clips, meshes,
+animation clips, scenes, etc.  An asset database (AssetDB) is a lookup
+table that answers the question:
 
-  "Given a stable GUID, where is the cooked file?"
+  "Given an asset GUID, where is its cooked (runtime-ready) file?"
 
-Design decisions here:
-  • Loaded once at startup from  assetdb.json  (written by cook.exe / cook_assets.py).
-  • Immutable after load — no hot-reload in this teaching build.
-  • O(1) lookup via  std::unordered_map<string, Entry>.
-  • No external dependencies — uses only <string>, <unordered_map>,
-    and our own minimal JSON reader so this file compiles without vcpkg.
+Why GUIDs instead of file paths?
+  • Paths change when a file is moved or renamed; GUIDs never change.
+  • Two files can have the same name in different directories; GUIDs are
+    globally unique, so there is never ambiguity.
+  • The engine always refers to assets by GUID in scene files, scripts, and
+    code, so renaming a file on disk does not break anything.
 
-### Why a separate AssetDB vs. just reading AssetRegistry.json?
+How does it work at runtime?
+  1. At engine startup (or project load), call AssetDB::Load() with the
+     path to the cooked assetdb.json file.
+  2. AssetDB parses the JSON and builds an in-memory hash map:
+       GUID (string) → cooked file path (string)
+  3. Any system that needs a file calls AssetDB::GetCookedPath(guid).
 
-**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L20) (line 20)
-
-AssetRegistry.json is the *source-of-truth* manifest owned by the editor.
-assetdb.json is the *cook output* — a flat, engine-friendly snapshot that
-maps GUID → cooked path with no editor metadata.  Keeping them separate
-mirrors the AAA pipeline (e.g. Unreal's DerivedDataCache).
 ============================================================================
 
-### Why a private helper?
+### assetdb.json vs AssetRegistry.json
 
-**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L104) (line 104)
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L29) (line 29)
 
-Parsing JSON manually without a library produces verbose but readable
-code.  We isolate the parsing in a private helper so the public API
-stays clean and the parsing details don't leak into callers.
-bool ParseJson(const std::string& jsonText);
+============================================================================
+AssetRegistry.json  — source-of-truth registry maintained by the editors
+                        and cook scripts.  Contains source paths, hashes,
+                        and metadata.  Read by the cooker.
+
+assetdb.json        — lightweight runtime index produced by the cooker.
+                        Contains only what the engine needs at load time:
+                        { id → cooked_path }.  Read by AssetDB::Load().
+
+Keeping these separate means the runtime never has to parse large metadata
+blobs that are only relevant to the editor pipeline.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Forward-declaring vs full include
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L57) (line 57)
+
+============================================================================
+This header includes only the standard library headers needed for the
+public interface: std::string, std::unordered_map, std::vector.
+We deliberately avoid including heavy headers (json, filesystem) here —
+those are implementation details in asset_db.cpp.
+Keeping headers lightweight makes compilation faster and reduces coupling.
+============================================================================
+
+### Rule of Zero
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L101) (line 101)
+
+Because this class owns only an std::unordered_map (which manages its
+own memory), the compiler-generated copy/move/destructor are all correct
+by default.  We only need to delete copy operations to express intent.
+AssetDB(const AssetDB&)            = delete;
+AssetDB& operator=(const AssetDB&) = delete;
+
+### Why parse at load time?
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L119) (line 119)
+
+Parsing is a one-time O(N) cost at startup.  After that every lookup
+is O(1) because std::unordered_map uses a hash table internally.
+This pattern — "pay the cost once, amortise over many lookups" — is
+fundamental to game engine asset management.
+
+### Base directory derivation
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L125) (line 125)
+
+assetdb.json lives at <projectRoot>/Cooked/assetdb.json.
+The cooker writes cookedPath values relative to the project root
+(e.g. "Cooked/Maps/Town.json").  During Load() we derive the project
+root as the grandparent of assetDbPath and store it as m_baseDir.
+GetCookedPath() then joins m_baseDir with the stored relative path,
+producing an absolute path that resolves correctly regardless of the
+caller's working directory.
+
+@param assetDbPath  Absolute or relative path to assetdb.json.
+@return true on success; false if the file cannot be opened or parsed.
+
+### Absolute path returned
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L159) (line 159)
+
+The path returned is always absolute (or at minimum resolved from the
+project root stored during Load()).  This means callers do not need to
+know the current working directory — the path works from any location.
+
+Callers should always call Has() first.  If the id is not found, this
+function returns an empty string and logs an error.
+
+@param id  UUID v4 string.
+@return Absolute cooked file path, or empty string if not found.
+
+### Enabling iteration without exposing internals
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L175) (line 175)
+
+Rather than exposing the raw iterator pair of the internal hash map,
+we return a snapshot vector.  This keeps the API stable if the internal
+data structure changes (e.g. from unordered_map to a sorted map).
+The cost is a one-time O(N) copy — acceptable for the rare cases where
+the full list is needed (validation, debugging).
+
+@return Vector of all asset GUIDs in insertion-independent order.
+
+### std::unordered_map
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L194) (line 194)
+
+-----------------------------------------------------------------------
+std::unordered_map<Key, Value> is a hash table.  It provides:
+  • O(1) average insert, lookup, erase.
+  • O(N) worst-case (all keys hash to the same bucket — very rare).
+
+We use std::string keys (GUIDs) and std::string values (paths).
+The std::hash<std::string> specialisation handles hashing automatically.
+-----------------------------------------------------------------------
+std::unordered_map<std::string, std::string> m_idToPath;
+
+### Base directory for path resolution
+
+**Source:** [`src/engine/assets/asset_db.hpp`](src/engine/assets/asset_db.hpp#L206) (line 206)
+
+-----------------------------------------------------------------------
+assetdb.json lives at <projectRoot>/Cooked/assetdb.json.
+cookedPath values stored in the JSON are relative to projectRoot.
+m_baseDir is set to the absolute projectRoot during Load() so that
+GetCookedPath() can return absolute paths regardless of the caller's
+working directory.
+-----------------------------------------------------------------------
+std::string m_baseDir;
 };
 
-### rootDir normalisation
+### Binary File I/O in C++
 
-**Source:** [`src/engine/assets/asset_loader.cpp`](src/engine/assets/asset_loader.cpp#L21) (line 21)
+**Source:** [`src/engine/assets/asset_loader.cpp`](src/engine/assets/asset_loader.cpp#L6) (line 6)
 
-We ensure the root directory ends with a separator so that constructing
-"rootDir + cookedRelPath" always produces a valid path.
-if (!m_rootDir.empty() &&
-m_rootDir.back() != '/' && m_rootDir.back() != '\\') {
-m_rootDir += '/';
+============================================================================
+Opening a file with std::ios::binary is essential for non-text assets
+(textures, audio, compiled shaders).  Without it, on Windows, the runtime
+library translates "\r\n" line endings to "\n", corrupting binary data.
+
+The pattern used here:
+
+  std::ifstream f(path, std::ios::binary | std::ios::ate);
+  // std::ios::ate (At The End) opens the file with the read position
+  // at the end.  f.tellg() then returns the file size directly.
+
+  auto size = static_cast<std::streamsize>(f.tellg());
+  f.seekg(0);    // Rewind to beginning.
+
+  std::vector<uint8_t> buf(size);
+  f.read(reinterpret_cast<char*>(buf.data()), size);
+  // std::ifstream::read takes char*, but our buffer is uint8_t*.
+  // reinterpret_cast is safe here: char and uint8_t are both 1-byte types.
+
+Why pre-size the vector?
+Resizing first allocates the exact amount needed in one allocation.
+Using push_back/insert would trigger multiple re-allocations as the vector
+grows — wasteful for known-size reads.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Precondition assertion style
+
+**Source:** [`src/engine/assets/asset_loader.cpp`](src/engine/assets/asset_loader.cpp#L52) (line 52)
+
+In development builds we want to catch programming errors immediately.
+Using a LOG_ERROR + early return is gentler than a hard assert but still
+makes the problem visible in the log.  A shipping engine might use
+[[likely]]/[[unlikely]] hints or assert() with a descriptive message.
+if (!m_db)
+{
+LOG_ERROR("AssetLoader constructed with null AssetDB pointer.");
 }
 }
 
-### Path construction
+### tellg() after std::ios::ate
 
-**Source:** [`src/engine/assets/asset_loader.cpp`](src/engine/assets/asset_loader.cpp#L53) (line 53)
+**Source:** [`src/engine/assets/asset_loader.cpp`](src/engine/assets/asset_loader.cpp#L94) (line 94)
 
-We prepend rootDir (e.g. "samples/vertical_slice_project/") to the
-relative cooked path stored in the AssetDB so that the engine can
-load assets regardless of the working directory.
-const std::string fullPath = m_rootDir + cookedRelPath;
-
-### istreambuf_iterator
-
-**Source:** [`src/engine/assets/asset_loader.cpp`](src/engine/assets/asset_loader.cpp#L66) (line 66)
-
-std::istreambuf_iterator<char> reads the raw stream buffer byte-by-byte
-without any character conversion, making it the correct choice for
-binary files (textures, audio, compiled shaders).
-std::vector<uint8_t> data(
-(std::istreambuf_iterator<char>(ifs)),
-std::istreambuf_iterator<char>()
-);
-return data;
+When a file is opened with std::ios::ate, the initial read position
+is at the end of the file.  tellg() (tell get-position) therefore
+returns the file size in bytes.
+const auto fileSize = f.tellg();
+if (fileSize <= 0)
+{
+LOG_WARN("AssetLoader::LoadRawByPath — file is empty: " << path);
+return {};
 }
 
-### AssetLoader Design (M2 synchronous stub)
+### Synchronous vs Asynchronous Loading
 
 **Source:** [`src/engine/assets/asset_loader.hpp`](src/engine/assets/asset_loader.hpp#L6) (line 6)
 
-==========================================================
-The AssetLoader is the bridge between the AssetDB (which maps GUIDs to
-file paths) and the rest of the engine (which wants raw bytes or typed
-objects).
-
-M2 design — synchronous, blocking:
-  • LoadRaw(id)  reads the cooked file from disk into a byte vector.
-  • Simple, easy to understand, works on all platforms.
-  • The engine calls this once per asset at startup (not per-frame).
-
-M7 upgrade path — async, streaming:
-  • Replace LoadRaw with an async request queue processed on a worker thread.
-  • The interface (LoadRaw + Has) stays the same; callers need no change.
-  • See  src/engine/world/async_loader.hpp  (future M7 work).
-
-### Why return std::vector<uint8_t> (raw bytes)?
-
-**Source:** [`src/engine/assets/asset_loader.hpp`](src/engine/assets/asset_loader.hpp#L22) (line 22)
-
-The loader deliberately does NOT know how to deserialise the bytes — that
-is the job of per-type importers (TextureImporter, AudioImporter, …).
-Separation of concerns:
-  • AssetLoader = "give me the raw cooked bytes"
-  • *Importer   = "interpret these bytes as a Texture / AudioClip / …"
-
-This pattern is used in Unreal (FAssetData / UObject), Unity (AssetBundle /
-ScriptableObject), and most other engines.
 ============================================================================
+This M2 implementation is deliberately *synchronous*:
+  • Caller asks for an asset.
+  • Loader reads the file immediately (blocks the caller).
+  • Caller receives the bytes.
+
+Why synchronous for now?
+  Synchronous loading is simple, easy to understand, and correct.  It lets
+  us validate the full pipeline (cook → store → load → use) before adding
+  the complexity of threading.
+
+The async loader (M7) will use a worker thread + lock-free queue:
+  • Caller posts a load request (non-blocking).
+  • Worker thread loads the file in the background.
+  • Caller polls for completion each frame.
+  • On completion, the caller receives the bytes via a callback or future.
+
+This staged approach is how real game engines evolve: correct first,
+then optimise.
+
+============================================================================
+
+### Why return std::vector<uint8_t>?
+
+**Source:** [`src/engine/assets/asset_loader.hpp`](src/engine/assets/asset_loader.hpp#L28) (line 28)
+
+============================================================================
+Returning raw bytes (uint8_t = unsigned byte, range 0–255) is the most
+general format — every file can be represented as bytes.  Higher-level
+loaders (TextureLoader, AudioLoader, etc.) call LoadRaw and then parse
+the bytes into typed structures.
+
+Alternatives:
+  • std::string  — works but semantically wrong (suggests text data).
+  • std::span    — zero-copy view, but ownership is unclear.
+  • std::vector<uint8_t>  — owning container; clear semantics; correct.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Dependency Injection
+
+**Source:** [`src/engine/assets/asset_loader.hpp`](src/engine/assets/asset_loader.hpp#L96) (line 96)
+
+We take a raw pointer to AssetDB rather than owning it.  This is
+"dependency injection" — the caller provides the dependency, giving
+them full control over its lifetime.  The loader is a *consumer*, not
+an *owner*, of the database.
+
+Raw pointers are fine here because:
+ 1. Ownership is clear (caller owns the DB).
+ 2. The DB is not dynamically allocated on behalf of the loader.
+ 3. Using std::unique_ptr/shared_ptr here would impose unnecessary
+    ownership semantics that do not reflect the actual relationship.
+
+@param db  Pointer to a loaded AssetDB.  Must not be null; must outlive
+           this AssetLoader.
+
+### std::vector as a raw-bytes buffer
+
+**Source:** [`src/engine/assets/asset_loader.hpp`](src/engine/assets/asset_loader.hpp#L130) (line 130)
+
+Reading a file into a std::vector<uint8_t> is the idiomatic C++17
+pattern for binary file I/O:
+
+  std::ifstream f(path, std::ios::binary | std::ios::ate);
+  auto size = f.tellg();           // file size from end position
+  f.seekg(0);
+  std::vector<uint8_t> buf(size);
+  f.read(reinterpret_cast<char*>(buf.data()), size);
+
+std::ios::ate opens the file positioned at the end, so tellg() returns
+the file size directly.  seekg(0) then rewinds to the beginning.
+
+@param id  Asset GUID.
+@return Cooked file bytes, or empty vector if the asset is not found or
+        the file cannot be opened.
+
+### Why offer both overloads?
+
+**Source:** [`src/engine/assets/asset_loader.hpp`](src/engine/assets/asset_loader.hpp#L152) (line 152)
+
+LoadRaw(id) is the preferred production path — always reference assets
+by GUID so that renames do not break the engine.
+LoadRawByPath(path) is a developer convenience for tests and tools
+that want to load a specific file without registering it.
+
+@param path  Absolute or relative path to the cooked file.
+@return File bytes, or empty vector on failure.
 
 ---
 
@@ -9595,7 +9981,7 @@ Target: Windows (MSVC) + Vulkan
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L58) (line 58)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L60) (line 60)
 
 ---------------------------------------------------------------------------
 The compiled .spv shader files are placed next to the executable by CMake.
@@ -9612,7 +9998,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L73) (line 73)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L75) (line 75)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -9629,17 +10015,72 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L86) (line 86)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L88) (line 88)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
 -------------------------------------------------------------------
 bool        headless  = false;
 std::string scene;   // empty = no scene; "triangle" = M1 scene
+std::string validateProject;  // M2: path to project dir for AssetDB validation
+
+### --validate-project flag
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L109) (line 109)
+
+-----------------------------------------------------------
+This M2 flag validates that the project's cooked asset
+database can be loaded and that every registered asset is
+accessible.  It runs without opening a Vulkan window and
+exits 0 on success.
+
+Intended CI usage (after cook.exe has run):
+  engine_sandbox.exe --validate-project samples/vertical_slice_project
+
+The flag:
+  1. Loads Cooked/assetdb.json into AssetDB.
+  2. Calls AssetLoader::LoadRaw for every entry.
+  3. Prints [PASS] and exits 0 if all loads succeed.
+  4. Prints [FAIL] and exits 1 if any load fails.
+-----------------------------------------------------------
+validateProject = argv[++i];
+}
+}
+
+### Validate-Only Mode
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L132) (line 132)
+
+This path runs cook validation without opening a Vulkan window.
+It exercises the AssetDB + AssetLoader pipeline introduced in M2.
+-------------------------------------------------------------------
+if (!validateProject.empty())
+{
+namespace fs = std::filesystem;
+
+### Validating every asset in the database
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L161) (line 161)
+
+db.All() returns all GUIDs as a vector.  We iterate every GUID
+and call loader.LoadRaw(), which resolves the cooked path to an
+absolute path (thanks to AssetDB storing the project root) and
+opens the file.  An empty return vector signals a failure —
+either the cooked file is missing, corrupted, or the path is
+wrong.  This catches cook pipeline regressions before they reach
+the runtime renderer or audio system.
+for (const std::string& guid : db.All())
+{
+const auto bytes = loader.LoadRaw(guid);
+if (bytes.empty())
+{
+++loadErrors;
+}
+}
 
 ### Renderer Needs the Window's HWND
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L122) (line 122)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L206) (line 206)
 
 The Vulkan surface must be tied to a real OS window handle (HWND).
 That is why we create the window FIRST, then pass the handles to
@@ -9649,7 +10090,7 @@ engine::rendering::VulkanRenderer renderer;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L161) (line 161)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L245) (line 245)
 
 Acceptance tests expect exactly one of these lines on stdout,
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -9677,7 +10118,7 @@ std::cout << "[PASS] Vulkan device initialised. Swapchain created."
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L194) (line 194)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L278) (line 278)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync / mailbox
@@ -9688,7 +10129,7 @@ double totalTime = 0.0;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L219) (line 219)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L303) (line 303)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -9700,7 +10141,7 @@ float clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4π/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L235) (line 235)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L319) (line 319)
 
 The renderer must be shut down BEFORE the window because the
 Vulkan surface references the HWND.  Destroying the window first
@@ -10595,144 +11036,395 @@ accurate enough for game audio.
 
 ---
 
+## tools/audit_teaching_notes.py
+
+### Why Automate Code-Quality Audits?
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L6) (line 6)
+
+### Python dataclasses (PEP 557)
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L52) (line 52)
+
+===========================================================================
+@dataclass auto-generates __init__, __repr__, and __eq__ from annotated
+class fields.  This removes boilerplate and makes the code self-documenting:
+a reader can see all fields at a glance without searching through __init__.
+
+Comparison to namedtuple:
+  dataclass  — mutable, supports default values, inheritable.
+  namedtuple — immutable, slightly faster, tuple-compatible.
+For result aggregation we prefer dataclass for its mutability.
+===========================================================================
+
+### Why count distinct note *blocks*, not note *lines*?
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L97) (line 97)
+
+A teaching note often spans multiple lines::
+
+### Title
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L101) (line 101)
+
+============================================================
+Explanation line 1
+Explanation line 2
+
+### Counting distinct note blocks.
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L147) (line 147)
+
+We increment the counter when we encounter "TEACHING NOTE" for the
+first time after a non-note line.  This means a multi-line block
+counts as ONE note, not N lines.
+has_note_marker = "TEACHING NOTE" in stripped
+if has_note_marker and not prev_had_note:
+teaching_note_count += 1
+prev_had_note = True
+elif not has_note_marker:
+prev_had_note = False
+
+### Division-by-zero guard
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L180) (line 180)
+
+A file could have zero code lines (e.g., a header with only macros or
+blank lines).  We treat such files as passing to avoid false alarms.
+density = (note_count / code_lines * 100.0) if code_lines > 0 else 100.0
+
+### Generator-based file discovery with Path.rglob()
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L203) (line 203)
+
+``Path.rglob("*.cpp")`` recursively yields all .cpp files under a
+directory.  We filter out excluded paths with a simple substring check.
+Using generators (yield-based) keeps memory usage low — no need to
+materialise the full list of thousands of files.
+
+### Console output formatting
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L271) (line 271)
+
+We use fixed-width columns aligned with ljust/rjust to make the output
+easy to scan in a terminal.  The same technique is used by tools like
+pytest, eslint, and clang-tidy for their human-readable output.
+"""
+bar = "=" * 72
+print(bar)
+print("  TEACHING NOTE Coverage Audit")
+print(bar)
+print(f"  Minimum density  : {min_density:.1f} notes per 100 code lines")
+print(f"  Files scanned    : {result.total_files}")
+print(f"  Total code lines : {result.total_code_lines}")
+print(f"  Total notes      : {result.total_notes}")
+print(f"  Overall density  : {result.overall_density:.2f}")
+print()
+
+### argparse
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L359) (line 359)
+
+argparse is Python's standard command-line argument library.  It auto-
+generates --help text from the descriptions you provide and handles
+type conversion, defaults, and validation.  This is preferable to
+manually parsing sys.argv because it is robust and self-documenting.
+"""
+p = argparse.ArgumentParser(
+prog="audit_teaching_notes.py",
+description="Audit TEACHING NOTE comment coverage in C++ source files.",
+)
+p.add_argument(
+"--min-density",
+type=float,
+default=0.5,
+metavar="FLOAT",
+help="Minimum TEACHING NOTEs per 100 code lines per file (default: 0.5).",
+)
+p.add_argument(
+"--fail-below",
+type=float,
+default=0.3,
+metavar="FLOAT",
+help=(
+"Exit with code 1 if the overall project density drops below "
+"this value (default: 0.3).  Use 0 to never fail."
+),
+)
+p.add_argument(
+"--paths",
+nargs="+",
+default=["src", "editor"],
+metavar="PATH",
+help="Directories to scan (default: src editor).",
+)
+p.add_argument(
+"--ext",
+nargs="+",
+default=[".cpp", ".hpp", ".h"],
+metavar="EXT",
+help="File extensions to include (default: .cpp .hpp .h).",
+)
+p.add_argument(
+"--exclude",
+nargs="*",
+default=["build/", "build-", ".git/", "third_party/", "vcpkg/"],
+metavar="FRAGMENT",
+help="Path sub-strings that cause a file to be skipped.",
+)
+p.add_argument(
+"--report",
+choices=["text", "json"],
+default="text",
+help="Output format: 'text' (default) or 'json'.",
+)
+p.add_argument(
+"--verbose",
+"-v",
+action="store_true",
+help="Show per-file results for all files, not just failures.",
+)
+return p
+
+### Exit code conventions
+
+**Source:** [`tools/audit_teaching_notes.py`](tools/audit_teaching_notes.py#L449) (line 449)
+
+Unix convention: 0 = success, non-zero = failure.
+CI tools (GitHub Actions, Jenkins) check the exit code automatically:
+a non-zero exit marks the step as failed and stops the pipeline.
+if args.fail_below > 0 and result.overall_density < args.fail_below:
+if args.report == "text":
+print(
+f"\n[FAIL] Overall density {result.overall_density:.2f} is below "
+f"the required minimum {args.fail_below:.2f}."
+)
+return 1
+
+---
+
 ## tools/cook
 
-### What is a C++ Cooker?
+### What is cook.exe?
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L5) (line 5)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L6) (line 6)
 
-========================================
-The Python cook_assets.py script is great for rapid iteration; the C++
-cook.exe is the shipping version that:
-  • Compiles to a standalone binary (no Python runtime required).
-  • Reads AssetRegistry.json from a project directory.
-  • Copies / converts source assets to Cooked/ directory.
-  • Writes cooked/assetdb.json (a flat GUID → cooked path map).
-  • Exits 0 on success, non-zero on any failure.
+============================================================================
+Every commercial game engine has an "asset cooking" step that transforms
+raw source assets (PNG, WAV, FBX, JSON) into compact, engine-optimised
+binary files.  cook.exe is our standalone command-line cooker.
 
-### Milestone M2 scope
+Cooking serves three purposes:
+ 1. Format conversion: PNG → BC7 DDS (GPU-compressed texture);
+                       WAV → OGG (smaller audio);
+                       FBX → .mesh (engine-native binary mesh).
+ 2. Validation: ensure all referenced assets exist and are well-formed.
+ 3. Indexing: build assetdb.json (GUID → cooked path map) for the runtime.
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L15) (line 15)
+For M2 the cook steps are stubs: we copy the source file to Cooked/ with
+the correct naming convention and write assetdb.json.  Real conversion will
+be added in M3 (textures) and M4 (audio/animation).
 
-The M2 implementation is intentionally simple:
-  • Textures, audio, and animation are COPIED unchanged (not compressed).
-  • Scene JSON files are copied verbatim.
-  • assetdb.json is a minimal flat registry for the C++ runtime.
-Real conversion (DDS compression, XAudio2 XWB, .animc binary) is M3+.
-
-Usage:
-  cook.exe --project <project-dir>
-  cook.exe --project samples\vertical_slice_project
-
-Output:
-  <project-dir>/Cooked/assetdb.json   — runtime asset database
-  <project-dir>/Cooked/<type>/<id>.<ext>  — cooked asset files
-
-### Why read AssetRegistry.json (not discover files)?
-
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L30) (line 30)
-
-Using the registry as the authoritative input means:
-  1. Only assets that the editor has explicitly registered are cooked.
-  2. The cook is deterministic — same registry → same output.
-  3. The editor controls the cook, not the file system layout.
-This mirrors Unreal's cook workflow (the editor drives the cook, not a
-directory scanner).
 ============================================================================
 
-### JSON string escaping
+### Cook pipeline design
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L132) (line 132)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L24) (line 24)
 
-Direct string concatenation into JSON output is unsafe: characters like
-'"', '\', newlines, or Windows path separators can produce invalid JSON.
-This helper escapes the minimal set required by the JSON spec (RFC 8259).
-static std::string JsonEscapeString(const std::string& s) {
+============================================================================
+
+ Input:  AssetRegistry.json   (produced by editor / cook_assets.py)
+         Content/             (raw source assets)
+
+ Output: Cooked/<type>/<name>.<ext>   (cooked assets — content unchanged for M2)
+         Cooked/assetdb.json          (GUID → cookedPath index for runtime)
+
+The assetdb.json format is deliberately minimal — it contains only what the
+engine runtime needs:
+ {
+   "version": "1.0.0",
+   "assets": [
+     { "id": "<uuid>", "cookedPath": "Cooked/<type>/<file>" },
+     ...
+   ]
+ }
+
+============================================================================
+
+### Why a standalone exe instead of a library?
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L44) (line 44)
+
+============================================================================
+The cooker runs at AUTHOR time (on the developer's machine or in CI), not
+at RUNTIME (in the shipped game).  Keeping it as a separate executable:
+ • Means the cook logic never ships in the game binary (smaller, safer).
+ • Can be run from CI without starting the full engine.
+ • Is easy to invoke from Python scripts or shell scripts.
+ • Maps exactly to how Unreal's UnrealPak and Unity's BuildAssetBundles work.
+
+============================================================================
+
+Usage:
+  cook.exe --project <path/to/project>
+
+Example:
+  cook.exe --project samples/vertical_slice_project
+
+Exit codes:
+  0  — all assets cooked successfully.
+  1  — fatal error (missing registry, malformed JSON, I/O failure).
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Using std::filesystem (C++17)
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L82) (line 82)
+
+============================================================================
+std::filesystem provides cross-platform directory and path manipulation.
+Key types:
+  fs::path          — a file-system path (can be relative or absolute).
+  fs::create_directories(p) — create all directories in the path.
+  fs::copy_file(src, dst)   — copy a single file.
+  fs::exists(p)             — check if a path exists.
+This replaces platform-specific mkdir() / CopyFile() calls, making the
+code portable across Windows, Linux, and macOS.
+============================================================================
+namespace fs = std::filesystem;
+
+### Minimal JSON helpers for cook output
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L96) (line 96)
+
+============================================================================
+For M2 we hand-write the JSON output rather than using a JSON library.
+This is intentional: it teaches students exactly what JSON looks like and
+how to produce it programmatically.  The format is simple enough that a
+robust hand-written serialiser is fine.
+
+In M3 we will add nlohmann/json via vcpkg for both reading and writing.
+============================================================================
+namespace
+{
+
+### JSON string escaping rules:
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L112) (line 112)
+
+\  → \\      (backslash)
+  "  → \"      (double quote)
+  \n → \n      (newline)
+A minimal implementation is fine for file paths and GUIDs, which never
+contain special characters.
+---------------------------------------------------------------------------
+static std::string json_escape(const std::string& s)
+{
 std::string out;
 out.reserve(s.size());
-for (unsigned char c : s) {
-switch (c) {
+for (char c : s)
+{
+switch (c)
+{
 case '"':  out += "\\\""; break;
 case '\\': out += "\\\\"; break;
 case '\n': out += "\\n";  break;
 case '\r': out += "\\r";  break;
 case '\t': out += "\\t";  break;
-default:
-Escape ASCII control characters (0x00–0x1F)
-if (c < 0x20) {
-char buf[7];
-std::snprintf(buf, sizeof(buf), "\\u%04x", static_cast<unsigned>(c));
-out += buf;
-} else {
-out += static_cast<char>(c);
-}
-break;
+default:   out += c;      break;
 }
 }
 return out;
 }
 
-### filesystem operations can throw on permission failures,
+### Simple JSON parsing with braces tracking
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L192) (line 192)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L180) (line 180)
 
-invalid paths, or locked files.  Converting the exception to a boolean
-lets the caller count failures and exit non-zero when cooking is
-incomplete, instead of crashing the process.
-try {
-fs::create_directories(dst.parent_path());
-fs::copy_file(src, dst, fs::copy_options::overwrite_existing);
-return true;
-} catch (const fs::filesystem_error& e) {
-std::cerr << "  [ERROR] Failed to copy asset from " << src
-<< " to " << dst << ": " << e.what() << "\n";
-} catch (const std::exception& e) {
-std::cerr << "  [ERROR] Unexpected error while copying asset from "
-<< src << " to " << dst << ": " << e.what() << "\n";
-}
-return false;
+The registry contains an array of objects.  We extract each object using
+brace-depth tracking (same technique used in AssetDB::Load), then pull out
+the fields we need.  This is a teaching-grade parser; production code would
+use nlohmann/json (M3+).
+---------------------------------------------------------------------------
+static std::vector<AssetEntry> parse_asset_registry(const fs::path& registryPath)
+{
+std::ifstream f(registryPath);
+if (!f.is_open())
+{
+std::cerr << "[cook] ERROR: Cannot open AssetRegistry.json: "
+<< registryPath << "\n";
+return {};
 }
 
-### Manual JSON construction
+### Main function structure for a tool
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L262) (line 262)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L245) (line 245)
 
-For a teaching project, writing JSON by hand is acceptable as long as
-the format is simple.  For a production engine, use nlohmann/json:
-  auto j = nlohmann::json::object();
-  j["version"] = "1.0.0";
-  j["assets"] = nlohmann::json::array();  etc.
-std::ostringstream ss;
-ss << "{\n";
-ss << "  \"version\": \"1.0.0\",\n";
-ss << "  \"assets\": [\n";
+============================================================================
+A well-structured command-line tool main() does:
+  1. Parse arguments — determine what to do.
+  2. Validate inputs — fail fast with a clear error if something is wrong.
+  3. Do work — iterate assets, copy/convert, write output.
+  4. Report results — print a summary so CI can understand what happened.
+  5. Return 0 on success, non-zero on any error — so CI scripts can check.
+============================================================================
+int main(int argc, char* argv[])
+{
+-----------------------------------------------------------------------
+Step 1 — Argument parsing.
+-----------------------------------------------------------------------
+std::string projectDir;
+bool        verbose = false;
 
-### Source path resolution
+### Incremental cooking (future enhancement)
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L349) (line 349)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L341) (line 341)
 
-The AssetRegistry.json source paths may be:
-  • Relative to the project root:    "Content/Textures/Grass.png"
-  • Relative to Content/:            "Textures/Grass.png"
-We try both so the cook tool works with either convention.
-fs::path srcPath = cfg.projectDir / e.source;
-if (!fs::exists(srcPath)) {
-fs::path withContent = cfg.projectDir / "Content" / e.source;
-if (fs::exists(withContent)) srcPath = withContent;
+A real cooker checks the hash of the source file against the stored
+hash in the registry.  If they match, the asset is up-to-date and the
+cook step is skipped.  For M2 we always recook (unconditional copy).
+Incremental cooking will be introduced when we add the real conversion
+steps in M3.
+-----------------------------------------------------------------------
+int  cooked  = 0;
+int  skipped = 0;
+int  errors  = 0;
+
+### Source path resolution strategy
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L359) (line 359)
+
+AssetRegistry.json stores the source path in two possible conventions:
+  1. Relative to the project root (e.g., "Content/Maps/file.json")
+  2. Relative to the Content/ directory (e.g., "Maps/file.json")
+We try both conventions so cook.exe works with registries generated
+by the Python cook_assets.py script (convention 2) and future
+editor-generated registries (convention 1).
+fs::path srcPath;
+
+### Derived cooked path
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L404) (line 404)
+
+When no cooked path is specified, we place the asset under
+Cooked/<AssetType>/<filename>.  This mirrors Unreal Engine's
+cooked content layout where each asset type has its own folder.
+dstPath = cookedDir / entry.type / srcPath.filename();
 }
 
-### Build tools must report partial cook failures.
+### Why a separate assetdb.json and not just use the registry?
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L367) (line 367)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L456) (line 456)
 
-We only count an asset as cooked when the underlying copy succeeds;
-otherwise CI could receive exit code 0 even though cooked output is incomplete.
-if (CopyAsset(srcPath, dstPath)) {
-++cooked;
-} else {
-++errors;
-}
-}
+AssetRegistry.json can be very large in a real project (hundreds of
+fields per asset).  assetdb.json is a stripped-down runtime index:
+only the GUID and cooked path are needed.  This keeps engine startup
+fast and reduces memory usage.
+-----------------------------------------------------------------------
+const fs::path assetDbPath = cookedDir / "assetdb.json";
 
 ---
 

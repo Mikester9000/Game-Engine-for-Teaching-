@@ -1,96 +1,122 @@
-// ============================================================================
-// asset_loader.cpp — Synchronous Asset Loader implementation
-// ============================================================================
+/**
+ * @file asset_loader.cpp
+ * @brief AssetLoader implementation — reads cooked asset bytes from disk.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Binary File I/O in C++
+ * ============================================================================
+ * Opening a file with std::ios::binary is essential for non-text assets
+ * (textures, audio, compiled shaders).  Without it, on Windows, the runtime
+ * library translates "\r\n" line endings to "\n", corrupting binary data.
+ *
+ * The pattern used here:
+ *
+ *   std::ifstream f(path, std::ios::binary | std::ios::ate);
+ *   // std::ios::ate (At The End) opens the file with the read position
+ *   // at the end.  f.tellg() then returns the file size directly.
+ *
+ *   auto size = static_cast<std::streamsize>(f.tellg());
+ *   f.seekg(0);    // Rewind to beginning.
+ *
+ *   std::vector<uint8_t> buf(size);
+ *   f.read(reinterpret_cast<char*>(buf.data()), size);
+ *   // std::ifstream::read takes char*, but our buffer is uint8_t*.
+ *   // reinterpret_cast is safe here: char and uint8_t are both 1-byte types.
+ *
+ * Why pre-size the vector?
+ * Resizing first allocates the exact amount needed in one allocation.
+ * Using push_back/insert would trigger multiple re-allocations as the vector
+ * grows — wasteful for known-size reads.
+ *
+ * ============================================================================
+ *
+ * @author  Educational Game Engine Project
+ * @version 1.0
+ * @date    2024
+ * C++ Standard: C++17
+ */
 
 #include "asset_loader.hpp"
-#include "asset_db.hpp"
+#include "engine/core/Logger.hpp"
 
 #include <fstream>
-#include <iostream>
-#include <iterator>
+#include <ios>
 
-namespace engine::assets {
-
-// ---------------------------------------------------------------------------
-// Construction
-// ---------------------------------------------------------------------------
-AssetLoader::AssetLoader(const AssetDB* db, std::string rootDir)
-    : m_db(db)
-    , m_rootDir(std::move(rootDir))
+namespace engine::assets
 {
-    // TEACHING NOTE — rootDir normalisation
-    // We ensure the root directory ends with a separator so that constructing
-    // "rootDir + cookedRelPath" always produces a valid path.
-    if (!m_rootDir.empty() &&
-        m_rootDir.back() != '/' && m_rootDir.back() != '\\') {
-        m_rootDir += '/';
+
+// ----------------------------------------------------------------------------
+AssetLoader::AssetLoader(AssetDB* db)
+    : m_db(db)
+{
+    // TEACHING NOTE — Precondition assertion style
+    // In development builds we want to catch programming errors immediately.
+    // Using a LOG_ERROR + early return is gentler than a hard assert but still
+    // makes the problem visible in the log.  A shipping engine might use
+    // [[likely]]/[[unlikely]] hints or assert() with a descriptive message.
+    if (!m_db)
+    {
+        LOG_ERROR("AssetLoader constructed with null AssetDB pointer.");
     }
 }
 
-// ---------------------------------------------------------------------------
-// Has
-// ---------------------------------------------------------------------------
-bool AssetLoader::Has(const std::string& id) const {
-    return m_db && m_db->Has(id);
+// ----------------------------------------------------------------------------
+std::vector<uint8_t> AssetLoader::LoadRaw(const std::string& id) const
+{
+    if (!m_db)
+    {
+        LOG_ERROR("AssetLoader::LoadRaw — AssetDB pointer is null.");
+        return {};
+    }
+
+    if (!m_db->Has(id))
+    {
+        LOG_ERROR("AssetLoader::LoadRaw — GUID not in AssetDB: " << id);
+        return {};
+    }
+
+    const std::string path = m_db->GetCookedPath(id);
+    return LoadRawByPath(path);
 }
 
-// ---------------------------------------------------------------------------
-// LoadRaw
-// ---------------------------------------------------------------------------
-std::optional<std::vector<uint8_t>>
-AssetLoader::LoadRaw(const std::string& id) const {
-    if (!m_db) {
-        std::cerr << "[AssetLoader] No AssetDB attached\n";
-        return std::nullopt;
+// ----------------------------------------------------------------------------
+std::vector<uint8_t> AssetLoader::LoadRawByPath(const std::string& path) const
+{
+    // Open in binary mode, seeked to end so we can query file size via tellg().
+    std::ifstream f(path, std::ios::binary | std::ios::ate);
+    if (!f.is_open())
+    {
+        LOG_ERROR("AssetLoader::LoadRawByPath — cannot open file: " << path);
+        return {};
     }
 
-    const std::string cookedRelPath = m_db->GetCookedPath(id);
-    if (cookedRelPath.empty()) {
-        std::cerr << "[AssetLoader] Unknown asset id: " << id << "\n";
-        return std::nullopt;
+    // Determine file size.
+    // TEACHING NOTE — tellg() after std::ios::ate
+    // When a file is opened with std::ios::ate, the initial read position
+    // is at the end of the file.  tellg() (tell get-position) therefore
+    // returns the file size in bytes.
+    const auto fileSize = f.tellg();
+    if (fileSize <= 0)
+    {
+        LOG_WARN("AssetLoader::LoadRawByPath — file is empty: " << path);
+        return {};
     }
 
-    // TEACHING NOTE — Path construction
-    // We prepend rootDir (e.g. "samples/vertical_slice_project/") to the
-    // relative cooked path stored in the AssetDB so that the engine can
-    // load assets regardless of the working directory.
-    const std::string fullPath = m_rootDir + cookedRelPath;
+    // Rewind and read.
+    f.seekg(0);
+    std::vector<uint8_t> buf(static_cast<std::size_t>(fileSize));
+    f.read(reinterpret_cast<char*>(buf.data()),
+           static_cast<std::streamsize>(fileSize));
 
-    std::ifstream ifs(fullPath, std::ios::binary);
-    if (!ifs.is_open()) {
-        std::cerr << "[AssetLoader] Cannot open cooked file: " << fullPath << "\n";
-        return std::nullopt;
+    if (!f)
+    {
+        LOG_ERROR("AssetLoader::LoadRawByPath — read error on file: " << path);
+        return {};
     }
 
-    // Read entire file into a byte vector.
-    // TEACHING NOTE — istreambuf_iterator
-    // std::istreambuf_iterator<char> reads the raw stream buffer byte-by-byte
-    // without any character conversion, making it the correct choice for
-    // binary files (textures, audio, compiled shaders).
-    std::vector<uint8_t> data(
-        (std::istreambuf_iterator<char>(ifs)),
-        std::istreambuf_iterator<char>()
-    );
-    return data;
-}
-
-// ---------------------------------------------------------------------------
-// PreloadAll
-// ---------------------------------------------------------------------------
-std::size_t AssetLoader::PreloadAll() const {
-    if (!m_db) return 0;
-
-    std::size_t loaded = 0;
-    for (const auto& [id, entry] : m_db->AllEntries()) {
-        auto bytes = LoadRaw(id);
-        if (bytes) {
-            ++loaded;
-        } else {
-            std::cerr << "[AssetLoader] Failed to preload: " << id
-                      << " (" << entry.name << ")\n";
-        }
-    }
-    return loaded;
+    LOG_DEBUG("AssetLoader::LoadRawByPath — loaded "
+              << buf.size() << " bytes from " << path);
+    return buf;
 }
 
 } // namespace engine::assets

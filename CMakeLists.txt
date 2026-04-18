@@ -268,6 +268,8 @@ if(ENGINE_ENABLE_VULKAN)
         src/engine/rendering/vulkan/vulkan_buffer.cpp
         src/engine/rendering/vulkan/vulkan_mesh.cpp
         src/engine/core/Logger.cpp
+        src/engine/assets/asset_db.cpp
+        src/engine/assets/asset_loader.cpp
     )
 
     add_executable(engine_sandbox

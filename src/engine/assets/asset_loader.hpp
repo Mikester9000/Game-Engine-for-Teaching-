@@ -1,103 +1,170 @@
-#pragma once
-// ============================================================================
-// asset_loader.hpp — Synchronous Asset Loader
-// ============================================================================
-//
-// TEACHING NOTE — AssetLoader Design (M2 synchronous stub)
-// ==========================================================
-// The AssetLoader is the bridge between the AssetDB (which maps GUIDs to
-// file paths) and the rest of the engine (which wants raw bytes or typed
-// objects).
-//
-// M2 design — synchronous, blocking:
-//   • LoadRaw(id)  reads the cooked file from disk into a byte vector.
-//   • Simple, easy to understand, works on all platforms.
-//   • The engine calls this once per asset at startup (not per-frame).
-//
-// M7 upgrade path — async, streaming:
-//   • Replace LoadRaw with an async request queue processed on a worker thread.
-//   • The interface (LoadRaw + Has) stays the same; callers need no change.
-//   • See  src/engine/world/async_loader.hpp  (future M7 work).
-//
-// TEACHING NOTE — Why return std::vector<uint8_t> (raw bytes)?
-// The loader deliberately does NOT know how to deserialise the bytes — that
-// is the job of per-type importers (TextureImporter, AudioImporter, …).
-// Separation of concerns:
-//   • AssetLoader = "give me the raw cooked bytes"
-//   • *Importer   = "interpret these bytes as a Texture / AudioClip / …"
-//
-// This pattern is used in Unreal (FAssetData / UObject), Unity (AssetBundle /
-// ScriptableObject), and most other engines.
-// ============================================================================
+/**
+ * @file asset_loader.hpp
+ * @brief AssetLoader — reads cooked asset file bytes from disk.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Synchronous vs Asynchronous Loading
+ * ============================================================================
+ * This M2 implementation is deliberately *synchronous*:
+ *   • Caller asks for an asset.
+ *   • Loader reads the file immediately (blocks the caller).
+ *   • Caller receives the bytes.
+ *
+ * Why synchronous for now?
+ *   Synchronous loading is simple, easy to understand, and correct.  It lets
+ *   us validate the full pipeline (cook → store → load → use) before adding
+ *   the complexity of threading.
+ *
+ * The async loader (M7) will use a worker thread + lock-free queue:
+ *   • Caller posts a load request (non-blocking).
+ *   • Worker thread loads the file in the background.
+ *   • Caller polls for completion each frame.
+ *   • On completion, the caller receives the bytes via a callback or future.
+ *
+ * This staged approach is how real game engines evolve: correct first,
+ * then optimise.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Why return std::vector<uint8_t>?
+ * ============================================================================
+ * Returning raw bytes (uint8_t = unsigned byte, range 0–255) is the most
+ * general format — every file can be represented as bytes.  Higher-level
+ * loaders (TextureLoader, AudioLoader, etc.) call LoadRaw and then parse
+ * the bytes into typed structures.
+ *
+ * Alternatives:
+ *   • std::string  — works but semantically wrong (suggests text data).
+ *   • std::span    — zero-copy view, but ownership is unclear.
+ *   • std::vector<uint8_t>  — owning container; clear semantics; correct.
+ *
+ * ============================================================================
+ *
+ * @author  Educational Game Engine Project
+ * @version 1.0
+ * @date    2024
+ * C++ Standard: C++17
+ */
 
-#include <cstdint>
+#pragma once
+
+#include "asset_db.hpp"
+
+#include <cstdint>   // uint8_t
 #include <string>
 #include <vector>
-#include <optional>
 
-namespace engine::assets {
+namespace engine::assets
+{
 
-class AssetDB;  // forward declaration — avoid including asset_db.hpp here
+// ============================================================================
+// AssetLoader class
+// ============================================================================
 
-// ----------------------------------------------------------------------------
-/// Synchronous, blocking asset loader (M2 implementation).
-///
-/// Usage:
-/// @code
-///   AssetDB db;
-///   db.Load("Cooked/assetdb.json");
-///   AssetLoader loader(&db, "samples/vertical_slice_project/");
-///   auto bytes = loader.LoadRaw("f3f044c7-...");
-///   if (bytes) { /* bytes->data(), bytes->size() */ }
-/// @endcode
-// ----------------------------------------------------------------------------
-class AssetLoader {
+/**
+ * @class AssetLoader
+ * @brief Reads cooked asset data from disk, given an asset GUID.
+ *
+ * AssetLoader depends on an AssetDB instance to resolve GUIDs → file paths.
+ * Construct it with a pointer to the AssetDB; the AssetDB must outlive the
+ * AssetLoader.
+ *
+ * Typical usage:
+ * @code
+ *   engine::assets::AssetDB    db;
+ *   db.Load("Cooked/assetdb.json");
+ *
+ *   engine::assets::AssetLoader loader(&db);
+ *
+ *   auto bytes = loader.LoadRaw("f3f044c7-2a10-4be8-980d-7ee517382415");
+ *   if (bytes.empty()) {
+ *       LOG_ERROR("Failed to load asset");
+ *   } else {
+ *       // bytes contains the raw file data — parse it as JSON, binary, etc.
+ *   }
+ * @endcode
+ */
+class AssetLoader
+{
 public:
     // -----------------------------------------------------------------------
     // Construction
     // -----------------------------------------------------------------------
 
-    /// Construct a loader that resolves cooked paths via @p db.
-    ///
-    /// @param db        Pointer to a loaded AssetDB.  Must outlive the loader.
-    /// @param rootDir   Directory that cooked paths are relative to.
-    ///                  Typically the project root (ends with '/').
-    explicit AssetLoader(const AssetDB* db, std::string rootDir = "");
+    /**
+     * @brief Construct an AssetLoader backed by the given AssetDB.
+     *
+     * TEACHING NOTE — Dependency Injection
+     * We take a raw pointer to AssetDB rather than owning it.  This is
+     * "dependency injection" — the caller provides the dependency, giving
+     * them full control over its lifetime.  The loader is a *consumer*, not
+     * an *owner*, of the database.
+     *
+     * Raw pointers are fine here because:
+     *  1. Ownership is clear (caller owns the DB).
+     *  2. The DB is not dynamically allocated on behalf of the loader.
+     *  3. Using std::unique_ptr/shared_ptr here would impose unnecessary
+     *     ownership semantics that do not reflect the actual relationship.
+     *
+     * @param db  Pointer to a loaded AssetDB.  Must not be null; must outlive
+     *            this AssetLoader.
+     */
+    explicit AssetLoader(AssetDB* db);
 
-    // -----------------------------------------------------------------------
-    // Queries
-    // -----------------------------------------------------------------------
+    ~AssetLoader() = default;
 
-    /// Return true if @p id is registered in the database.
-    [[nodiscard]] bool Has(const std::string& id) const;
+    // Non-copyable: copying would duplicate the raw pointer without
+    // communicating ownership intent.
+    AssetLoader(const AssetLoader&)            = delete;
+    AssetLoader& operator=(const AssetLoader&) = delete;
+
+    AssetLoader(AssetLoader&&)            = default;
+    AssetLoader& operator=(AssetLoader&&) = default;
 
     // -----------------------------------------------------------------------
     // Loading
     // -----------------------------------------------------------------------
 
-    /// Load the cooked bytes for @p id from disk.
-    ///
-    /// @returns  Byte vector on success, std::nullopt if the asset is unknown
-    ///           or the file cannot be read.
-    ///
-    /// TEACHING NOTE — std::optional vs. exceptions
-    /// We return optional<> rather than throwing to match the engine-wide
-    /// convention of "return a sentinel on failure, log, continue".
-    /// Throwing across asset loads makes recovery logic harder to reason about.
-    [[nodiscard]] std::optional<std::vector<uint8_t>>
-    LoadRaw(const std::string& id) const;
+    /**
+     * @brief Load the cooked bytes of an asset identified by GUID.
+     *
+     * TEACHING NOTE — std::vector as a raw-bytes buffer
+     * Reading a file into a std::vector<uint8_t> is the idiomatic C++17
+     * pattern for binary file I/O:
+     *
+     *   std::ifstream f(path, std::ios::binary | std::ios::ate);
+     *   auto size = f.tellg();           // file size from end position
+     *   f.seekg(0);
+     *   std::vector<uint8_t> buf(size);
+     *   f.read(reinterpret_cast<char*>(buf.data()), size);
+     *
+     * std::ios::ate opens the file positioned at the end, so tellg() returns
+     * the file size directly.  seekg(0) then rewinds to the beginning.
+     *
+     * @param id  Asset GUID.
+     * @return Cooked file bytes, or empty vector if the asset is not found or
+     *         the file cannot be opened.
+     */
+    std::vector<uint8_t> LoadRaw(const std::string& id) const;
 
-    /// Load all registered assets and return the count successfully loaded.
-    ///
-    /// TEACHING NOTE — Bulk preload
-    /// Calling LoadRaw in a loop at startup avoids the per-frame I/O cost.
-    /// For M2 (synchronous load) this blocks the main thread.  In M7 this
-    /// will be replaced by async streaming.
-    std::size_t PreloadAll() const;
+    /**
+     * @brief Load cooked bytes by direct file path (bypasses AssetDB lookup).
+     *
+     * TEACHING NOTE — Why offer both overloads?
+     * LoadRaw(id) is the preferred production path — always reference assets
+     * by GUID so that renames do not break the engine.
+     * LoadRawByPath(path) is a developer convenience for tests and tools
+     * that want to load a specific file without registering it.
+     *
+     * @param path  Absolute or relative path to the cooked file.
+     * @return File bytes, or empty vector on failure.
+     */
+    std::vector<uint8_t> LoadRawByPath(const std::string& path) const;
 
 private:
-    const AssetDB* m_db;       ///< Non-owning pointer; caller manages lifetime.
-    std::string    m_rootDir;  ///< Prepended to all cooked paths.
+    // -----------------------------------------------------------------------
+    // The AssetDB pointer — not owned by this class.
+    // -----------------------------------------------------------------------
+    AssetDB* m_db = nullptr;
 };
 
 } // namespace engine::assets

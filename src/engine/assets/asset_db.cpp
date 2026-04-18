@@ -1,284 +1,268 @@
-// ============================================================================
-// asset_db.cpp — Runtime Asset Database implementation
-// ============================================================================
-//
-// TEACHING NOTE — Minimal JSON parsing without external libraries
-// ================================================================
-// We deliberately avoid adding a third-party JSON library for the AssetDB
-// because the assetdb.json format is simple and stable:
-//
-//   {
-//     "version": "1.0.0",
-//     "assets": [
-//       { "id": "...", "type": "...", "name": "...",
-//         "source": "...", "cooked": "...", "hash": "...",
-//         "tags": [...] },
-//       ...
-//     ]
-//   }
-//
-// The parser uses a token-level approach:
-//   1. Locate the "assets" array.
-//   2. Split into individual object strings.
-//   3. Extract named string fields with a tiny helper.
-//
-// For a production engine (M2+) this should be replaced with nlohmann/json
-// (add "nlohmann-json" to vcpkg.json).  The interface stays the same.
-//
-// TEACHING NOTE — Why nlohmann/json for production?
-// nlohmann/json provides:
-//   • A clean, modern C++ API (json::parse, j["key"].get<std::string>()).
-//   • Full RFC 8259 compliance including Unicode.
-//   • Header-only, so adding it is a single line in CMakeLists.txt.
-//   • Extremely well-tested (>95% branch coverage).
-// ============================================================================
+/**
+ * @file asset_db.cpp
+ * @brief AssetDB implementation — parse assetdb.json into an in-memory map.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Why parse JSON in a separate .cpp file?
+ * ============================================================================
+ * The JSON parsing implementation (nlohmann/json or manual parsing) is an
+ * implementation detail.  By keeping it in the .cpp file we:
+ *
+ *  1. Avoid exposing the JSON library headers to every translation unit that
+ *     #includes asset_db.hpp — this dramatically speeds up incremental builds.
+ *  2. Allow swapping the JSON library without changing the public API.
+ *  3. Follow the "Pimpl-light" principle: callers see only what they need.
+ *
+ * For M2 we use a minimal hand-written JSON parser that handles the specific
+ * assetdb.json format rather than adding a third-party dependency.  This
+ * teaches the student exactly what JSON parsing involves.  In M3+ we will
+ * replace this with nlohmann/json (added via vcpkg) for full robustness.
+ *
+ * ============================================================================
+ * TEACHING NOTE — assetdb.json format (produced by cook.exe)
+ * ============================================================================
+ * {
+ *   "version": "1.0.0",
+ *   "assets": [
+ *     { "id": "<uuid>", "cookedPath": "<relative/path/to/cooked/file>" },
+ *     ...
+ *   ]
+ * }
+ *
+ * We only need "id" and "cookedPath" from each entry.
+ * ============================================================================
+ *
+ * @author  Educational Game Engine Project
+ * @version 1.0
+ * @date    2024
+ * C++ Standard: C++17
+ */
 
 #include "asset_db.hpp"
+#include "engine/core/Logger.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-#include <algorithm>
-#include <iostream>
 
-namespace engine::assets {
-
-// ---------------------------------------------------------------------------
-// Internal helpers
-// ---------------------------------------------------------------------------
-
-namespace {
-
-/// Read the entire contents of @p path into a string.
-/// Returns an empty string and sets @p ok=false on failure.
-static std::string ReadFile(const std::string& path, bool& ok) {
-    std::ifstream ifs(path);
-    if (!ifs.is_open()) {
-        ok = false;
-        return {};
-    }
-    std::ostringstream ss;
-    ss << ifs.rdbuf();
-    ok = true;
-    return ss.str();
-}
-
-/// Extract the first JSON string value for @p key inside @p obj.
-/// E.g. ExtractString(R"({"id":"abc","type":"tex"})", "id") → "abc".
-/// Returns "" when the key is absent.
-static std::string ExtractString(const std::string& obj, const std::string& key) {
-    // TEACHING NOTE — Why not regex?
-    // std::regex is available in C++11 but has poor performance on some
-    // standard library implementations (libstdc++ notably).  For a simple
-    // key-value extraction on well-formed JSON, a manual search is faster
-    // and avoids pulling in <regex>.
-    std::string needle = "\"" + key + "\"";
-    auto pos = obj.find(needle);
-    if (pos == std::string::npos) return {};
-
-    pos += needle.size();
-    // skip optional whitespace + colon + optional whitespace
-    while (pos < obj.size() && (obj[pos] == ' ' || obj[pos] == '\t' ||
-           obj[pos] == '\n' || obj[pos] == '\r' || obj[pos] == ':')) {
-        ++pos;
-    }
-    if (pos >= obj.size() || obj[pos] != '"') return {};
-
-    ++pos; // skip opening quote
-    std::string result;
-    while (pos < obj.size() && obj[pos] != '"') {
-        if (obj[pos] == '\\' && pos + 1 < obj.size()) {
-            // basic escape handling
-            ++pos;
-            switch (obj[pos]) {
-                case '"':  result += '"';  break;
-                case '\\': result += '\\'; break;
-                case 'n':  result += '\n'; break;
-                case 'r':  result += '\r'; break;
-                case 't':  result += '\t'; break;
-                default:   result += obj[pos]; break;
-            }
-        } else {
-            result += obj[pos];
-        }
-        ++pos;
-    }
-    return result;
-}
-
-/// Extract a JSON array of strings for @p key inside @p obj.
-/// E.g. ExtractStringArray(R"({"tags":["a","b"]})", "tags") → {"a","b"}.
-static std::vector<std::string> ExtractStringArray(
-    const std::string& obj, const std::string& key)
+// ============================================================================
+// TEACHING NOTE — Minimal JSON Parser Helpers
+// ============================================================================
+// Rather than pulling in a full JSON library for this first iteration, we use
+// a simple line-by-line extraction approach that works correctly for the flat
+// assetdb.json format produced by cook_main.cpp.
+//
+// The algorithm:
+//   1. Read the whole file into a string.
+//   2. Find each JSON object that starts with { and ends with }.
+//   3. Within each object, extract "id" and "cookedPath" values.
+//
+// This is intentionally simple and educational.  A production engine uses a
+// proper JSON library (nlohmann/json, rapidjson, etc.).
+// ============================================================================
+namespace
 {
-    std::vector<std::string> result;
-    std::string needle = "\"" + key + "\"";
-    auto pos = obj.find(needle);
-    if (pos == std::string::npos) return result;
 
-    pos += needle.size();
-    // skip : and whitespace
-    while (pos < obj.size() && (obj[pos] == ' ' || obj[pos] == ':' ||
-           obj[pos] == '\t' || obj[pos] == '\n' || obj[pos] == '\r')) {
-        ++pos;
-    }
-    if (pos >= obj.size() || obj[pos] != '[') return result;
-    ++pos; // skip '['
+// ---------------------------------------------------------------------------
+// extract_string_value
+// ---------------------------------------------------------------------------
+// Given a JSON fragment like:  "someKey": "someValue",
+// and the key "someKey", extract and return "someValue".
+//
+// TEACHING NOTE — std::string::find + substr pattern
+// This is a common "manual parsing" technique: find the key, skip past the
+// opening quote, find the closing quote, extract the substring.  It is
+// fragile (won't handle escaped quotes) but sufficient for machine-generated
+// JSON with predictable formatting.
+// ---------------------------------------------------------------------------
+static std::string extract_string_value(const std::string& object,
+                                        const std::string& key)
+{
+    const std::string search = "\"" + key + "\"";
+    std::size_t pos = object.find(search);
+    if (pos == std::string::npos) return "";
 
-    while (pos < obj.size() && obj[pos] != ']') {
-        // skip whitespace + commas
-        while (pos < obj.size() && (obj[pos] == ' ' || obj[pos] == ',' ||
-               obj[pos] == '\t' || obj[pos] == '\n' || obj[pos] == '\r')) {
-            ++pos;
-        }
-        if (pos >= obj.size() || obj[pos] == ']') break;
-        if (obj[pos] == '"') {
-            ++pos;
-            std::string val;
-            while (pos < obj.size() && obj[pos] != '"') {
-                val += obj[pos++];
-            }
-            if (pos < obj.size()) ++pos; // skip closing '"'
-            result.push_back(std::move(val));
-        } else {
-            ++pos; // skip unexpected character
-        }
-    }
-    return result;
-}
+    // Advance past the key and the ": " separator.
+    pos = object.find(':', pos + search.size());
+    if (pos == std::string::npos) return "";
 
-/// Split the text of a JSON array (without the outer [ ]) into individual
-/// object strings.  Handles nested braces so objects with sub-objects are
-/// not split incorrectly.
-static std::vector<std::string> SplitJsonObjects(const std::string& arrayText) {
-    std::vector<std::string> objects;
-    int depth = 0;
-    std::size_t start = std::string::npos;
-    bool inString = false;
+    // Find the opening quote of the value.
+    pos = object.find('"', pos + 1);
+    if (pos == std::string::npos) return "";
+    const std::size_t start = pos + 1;
 
-    for (std::size_t i = 0; i < arrayText.size(); ++i) {
-        char c = arrayText[i];
-        if (c == '"' && (i == 0 || arrayText[i - 1] != '\\')) {
-            inString = !inString;
-            continue;
-        }
-        if (inString) continue;
+    // Find the closing quote (not preceded by a backslash for simplicity).
+    const std::size_t end = object.find('"', start);
+    if (end == std::string::npos) return "";
 
-        if (c == '{') {
-            if (depth == 0) start = i;
-            ++depth;
-        } else if (c == '}') {
-            --depth;
-            if (depth == 0 && start != std::string::npos) {
-                objects.push_back(arrayText.substr(start, i - start + 1));
-                start = std::string::npos;
-            }
-        }
-    }
-    return objects;
+    return object.substr(start, end - start);
 }
 
 } // anonymous namespace
 
-// ---------------------------------------------------------------------------
-// AssetDB::ParseJson
-// ---------------------------------------------------------------------------
-bool AssetDB::ParseJson(const std::string& jsonText) {
-    // Locate the "assets" array.
-    const std::string assetsKey = R"("assets")";
-    auto assetsPos = jsonText.find(assetsKey);
-    if (assetsPos == std::string::npos) {
-        std::cerr << "[AssetDB] JSON has no 'assets' key\n";
+// ============================================================================
+// AssetDB implementation
+// ============================================================================
+
+namespace engine::assets
+{
+
+// ----------------------------------------------------------------------------
+bool AssetDB::Load(const std::string& assetDbPath)
+{
+    // TEACHING NOTE — std::ifstream for file reading
+    // std::ifstream opens a file for reading.  We check is_open() after
+    // construction because the constructor does not throw on failure by
+    // default (you can enable exceptions via f.exceptions() but that pattern
+    // is less common in game code which prefers explicit error checks).
+    std::ifstream f(assetDbPath);
+    if (!f.is_open())
+    {
+        LOG_ERROR("AssetDB::Load — cannot open file: " << assetDbPath);
         return false;
     }
 
-    // Find the opening '[' after "assets":
-    auto bracketPos = jsonText.find('[', assetsPos + assetsKey.size());
-    if (bracketPos == std::string::npos) {
-        std::cerr << "[AssetDB] 'assets' key is not followed by '['\n";
-        return false;
-    }
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Deriving the project root from the assetdb.json path
+    // -----------------------------------------------------------------------
+    // assetdb.json lives at <projectRoot>/Cooked/assetdb.json.
+    // std::filesystem::absolute() converts a relative path to absolute using
+    // the current working directory at Load() time — which is reliable because
+    // Load() is called once at startup before any directory changes.
+    //
+    // parent_path() twice gives us:
+    //   assetDbPath           → .../samples/project/Cooked/assetdb.json
+    //   .parent_path()        → .../samples/project/Cooked
+    //   .parent_path()        → .../samples/project          ← projectRoot
+    //
+    // Storing the absolute project root means GetCookedPath() can always
+    // produce a correct absolute path regardless of where the caller runs.
+    // -----------------------------------------------------------------------
+    namespace fs = std::filesystem;
+    m_baseDir = fs::absolute(fs::path(assetDbPath))
+                    .parent_path()  // .../Cooked
+                    .parent_path()  // .../projectRoot
+                    .string();
 
-    // Find the matching closing ']'.
-    int depth = 0;
-    std::size_t arrayEnd = std::string::npos;
+    // Read the whole file into a string.
+    // TEACHING NOTE — std::istreambuf_iterator trick
+    // Constructing a std::string from two istreambuf_iterators reads ALL
+    // characters in the stream in a single step — no loop required.
+    // This is the idiomatic "slurp file" pattern in C++.
+    std::string contents((std::istreambuf_iterator<char>(f)),
+                          std::istreambuf_iterator<char>());
+
+    // Clear any existing data before repopulating.
+    m_idToPath.clear();
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Simple object extraction
+    // The assetdb.json format produced by cook_main is:
+    //   { "assets": [ { "id": "...", "cookedPath": "..." }, ... ] }
+    // We scan for JSON object boundaries to extract each asset entry.
+    // -----------------------------------------------------------------------
+    std::size_t braceDepth = 0;
+    std::size_t objectStart = std::string::npos;
     bool inString = false;
-    for (std::size_t i = bracketPos; i < jsonText.size(); ++i) {
-        char c = jsonText[i];
-        if (c == '"' && (i == 0 || jsonText[i - 1] != '\\')) {
+
+    for (std::size_t i = 0; i < contents.size(); ++i)
+    {
+        const char c = contents[i];
+
+        // Track string boundaries so braces inside strings are ignored.
+        if (c == '"' && (i == 0 || contents[i - 1] != '\\'))
+        {
             inString = !inString;
-            continue;
         }
+
         if (inString) continue;
-        if (c == '[') ++depth;
-        else if (c == ']') {
-            --depth;
-            if (depth == 0) { arrayEnd = i; break; }
+
+        if (c == '{')
+        {
+            ++braceDepth;
+            if (braceDepth == 2)  // top-level object is depth 1; asset entries are depth 2
+                objectStart = i;
+        }
+        else if (c == '}')
+        {
+            if (braceDepth == 2 && objectStart != std::string::npos)
+            {
+                // We have a complete asset object.
+                const std::string obj = contents.substr(objectStart, i - objectStart + 1);
+                const std::string id         = extract_string_value(obj, "id");
+                const std::string cookedPath = extract_string_value(obj, "cookedPath");
+
+                if (!id.empty() && !cookedPath.empty())
+                {
+                    m_idToPath[id] = cookedPath;
+                }
+                objectStart = std::string::npos;
+            }
+            if (braceDepth > 0) --braceDepth;
         }
     }
-    if (arrayEnd == std::string::npos) {
-        std::cerr << "[AssetDB] Unmatched '[' in 'assets' array\n";
-        return false;
+
+    if (m_idToPath.empty())
+    {
+        LOG_WARN("AssetDB::Load — no assets found in: " << assetDbPath);
+        // Return true: an empty database is valid (cook produced zero assets).
+        return true;
     }
 
-    std::string arrayText = jsonText.substr(bracketPos + 1, arrayEnd - bracketPos - 1);
-    auto objects = SplitJsonObjects(arrayText);
-
-    m_entries.reserve(objects.size());
-    for (const auto& obj : objects) {
-        AssetEntry entry;
-        entry.id     = ExtractString(obj, "id");
-        entry.type   = ExtractString(obj, "type");
-        entry.name   = ExtractString(obj, "name");
-        entry.source = ExtractString(obj, "source");
-        entry.cooked = ExtractString(obj, "cooked");
-        entry.hash   = ExtractString(obj, "hash");
-        entry.tags   = ExtractStringArray(obj, "tags");
-
-        if (entry.id.empty()) {
-            std::cerr << "[AssetDB] Skipping asset entry with empty id\n";
-            continue;
-        }
-        m_entries[entry.id] = std::move(entry);
-    }
+    LOG_INFO("AssetDB::Load — loaded " << m_idToPath.size()
+             << " assets from " << assetDbPath);
     return true;
 }
 
-// ---------------------------------------------------------------------------
-// AssetDB::Load
-// ---------------------------------------------------------------------------
-bool AssetDB::Load(const std::string& assetDbPath) {
-    m_entries.clear();
-    m_dbPath = assetDbPath;
+// ----------------------------------------------------------------------------
+void AssetDB::Clear()
+{
+    m_idToPath.clear();
+    m_baseDir.clear();
+}
 
-    bool ok = false;
-    std::string text = ReadFile(assetDbPath, ok);
-    if (!ok) {
-        std::cerr << "[AssetDB] Cannot open: " << assetDbPath << "\n";
-        return false;
+// ----------------------------------------------------------------------------
+bool AssetDB::Has(const std::string& id) const
+{
+    return m_idToPath.find(id) != m_idToPath.end();
+}
+
+// ----------------------------------------------------------------------------
+std::string AssetDB::GetCookedPath(const std::string& id) const
+{
+    auto it = m_idToPath.find(id);
+    if (it == m_idToPath.end())
+    {
+        LOG_ERROR("AssetDB::GetCookedPath — GUID not found: " << id);
+        return "";
     }
-    if (!ParseJson(text)) {
-        std::cerr << "[AssetDB] Parse error in: " << assetDbPath << "\n";
-        return false;
+
+    // TEACHING NOTE — Absolute path construction
+    // The stored value is a project-root-relative path (e.g. "Cooked/...").
+    // We join it with m_baseDir (the absolute project root captured during
+    // Load()) so the caller receives an absolute path that works regardless
+    // of the current working directory.
+    namespace fs = std::filesystem;
+    return (fs::path(m_baseDir) / it->second).string();
+}
+
+// ----------------------------------------------------------------------------
+std::vector<std::string> AssetDB::All() const
+{
+    std::vector<std::string> ids;
+    ids.reserve(m_idToPath.size());
+    for (const auto& [id, _] : m_idToPath)
+    {
+        ids.push_back(id);
     }
-    return true;
+    return ids;
 }
 
-// ---------------------------------------------------------------------------
-// AssetDB query methods
-// ---------------------------------------------------------------------------
-std::string AssetDB::GetCookedPath(const std::string& id) const {
-    auto it = m_entries.find(id);
-    return (it != m_entries.end()) ? it->second.cooked : std::string{};
-}
-
-const AssetEntry* AssetDB::GetEntry(const std::string& id) const {
-    auto it = m_entries.find(id);
-    return (it != m_entries.end()) ? &it->second : nullptr;
-}
-
-bool AssetDB::Has(const std::string& id) const {
-    return m_entries.count(id) > 0;
+// ----------------------------------------------------------------------------
+std::size_t AssetDB::Count() const
+{
+    return m_idToPath.size();
 }
 
 } // namespace engine::assets

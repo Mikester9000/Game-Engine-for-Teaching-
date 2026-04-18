@@ -46,6 +46,8 @@
 
 #include "engine/platform/win32/Win32Window.hpp"
 #include "engine/rendering/vulkan/VulkanRenderer.hpp"
+#include "engine/assets/asset_db.hpp"
+#include "engine/assets/asset_loader.hpp"
 
 #include <iostream>
 #include <exception>
@@ -89,6 +91,7 @@ int main(int argc, char* argv[])
         // -------------------------------------------------------------------
         bool        headless  = false;
         std::string scene;   // empty = no scene; "triangle" = M1 scene
+        std::string validateProject;  // M2: path to project dir for AssetDB validation
 
         for (int i = 1; i < argc; ++i)
         {
@@ -100,6 +103,87 @@ int main(int argc, char* argv[])
             {
                 scene = argv[++i];
             }
+            else if (std::strcmp(argv[i], "--validate-project") == 0 && i + 1 < argc)
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — --validate-project flag
+                // -----------------------------------------------------------
+                // This M2 flag validates that the project's cooked asset
+                // database can be loaded and that every registered asset is
+                // accessible.  It runs without opening a Vulkan window and
+                // exits 0 on success.
+                //
+                // Intended CI usage (after cook.exe has run):
+                //   engine_sandbox.exe --validate-project samples/vertical_slice_project
+                //
+                // The flag:
+                //   1. Loads Cooked/assetdb.json into AssetDB.
+                //   2. Calls AssetLoader::LoadRaw for every entry.
+                //   3. Prints [PASS] and exits 0 if all loads succeed.
+                //   4. Prints [FAIL] and exits 1 if any load fails.
+                // -----------------------------------------------------------
+                validateProject = argv[++i];
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // Step 0b — --validate-project: M2 AssetDB validation (no Vulkan).
+        // -------------------------------------------------------------------
+        // TEACHING NOTE — Validate-Only Mode
+        // This path runs cook validation without opening a Vulkan window.
+        // It exercises the AssetDB + AssetLoader pipeline introduced in M2.
+        // -------------------------------------------------------------------
+        if (!validateProject.empty())
+        {
+            namespace fs = std::filesystem;
+
+            const fs::path projectPath(validateProject);
+            const fs::path assetDbPath = projectPath / "Cooked" / "assetdb.json";
+
+            std::cout << "[validate-project] Project: " << validateProject << "\n";
+            std::cout << "[validate-project] Loading: " << assetDbPath.string() << "\n";
+
+            engine::assets::AssetDB db;
+            if (!db.Load(assetDbPath.string()))
+            {
+                std::cout << "[FAIL] AssetDB::Load failed for: "
+                          << assetDbPath.string() << "\n";
+                return 1;
+            }
+
+            std::cout << "[validate-project] AssetDB loaded: "
+                      << db.Count() << " asset(s).\n";
+
+            engine::assets::AssetLoader loader(&db);
+
+            int loadErrors = 0;
+
+            // TEACHING NOTE — Validating every asset in the database
+            // db.All() returns all GUIDs as a vector.  We iterate every GUID
+            // and call loader.LoadRaw(), which resolves the cooked path to an
+            // absolute path (thanks to AssetDB storing the project root) and
+            // opens the file.  An empty return vector signals a failure —
+            // either the cooked file is missing, corrupted, or the path is
+            // wrong.  This catches cook pipeline regressions before they reach
+            // the runtime renderer or audio system.
+            for (const std::string& guid : db.All())
+            {
+                const auto bytes = loader.LoadRaw(guid);
+                if (bytes.empty())
+                {
+                    ++loadErrors;
+                }
+            }
+
+            if (loadErrors > 0)
+            {
+                std::cout << "[FAIL] " << loadErrors
+                          << " asset(s) failed to load.\n";
+                return 1;
+            }
+
+            std::cout << "[PASS] AssetDB validated successfully.\n";
+            return 0;
         }
 
         // -------------------------------------------------------------------
