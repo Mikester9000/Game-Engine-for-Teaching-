@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 744 across 34 subsystems.
+**Total lessons:** 745 across 34 subsystems.
 
 ---
 
@@ -32,7 +32,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [sandbox/main.cpp](#sandboxmain.cpp) (14 lessons)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (7 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
-- [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (1 lesson)
+- [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (2 lessons)
 - [scripts/main.lua](#scriptsmain.lua) (2 lessons)
 - [scripts/quests.lua](#scriptsquests.lua) (1 lesson)
 - [shared/runtime](#sharedruntime) (12 lessons)
@@ -409,7 +409,7 @@ minutes and reducing noise.
 
 ### Principle of Least Privilege
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L54) (line 54)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L60) (line 60)
 
 Grant only the permissions this workflow actually needs.
 contents: read  — needed to check out the repository.
@@ -419,7 +419,7 @@ contents: read
 
 ### actions/checkout
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L71) (line 71)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L77) (line 77)
 
 Clones the repository so subsequent steps can read the source files.
 -----------------------------------------------------------------------
@@ -428,7 +428,7 @@ uses: actions/checkout@v4
 
 ### Python Setup
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L78) (line 78)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L84) (line 84)
 
 Both scripts require Python 3.9+ and use only the standard library.
 We pin to Python 3.11 in CI for reproducibility — the same version
@@ -442,7 +442,7 @@ python-version: '3.11'
 
 ### Stale-Index Detection Pattern
 
-**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L124) (line 124)
+**Source:** [`.github/workflows/architecture-lint.yml`](.github/workflows/architecture-lint.yml#L130) (line 130)
 
 -----------------------------------------------
 We regenerate the file, then run ``git diff --exit-code`` which exits
@@ -10239,6 +10239,19 @@ Value: human-readable rationale for allowing the exception.
 ### Automated Documentation Extraction
 
 **Source:** [`scripts/extract_teaching_notes.py`](scripts/extract_teaching_notes.py#L6) (line 6)
+
+### Deterministic Line Endings
+
+**Source:** [`scripts/extract_teaching_notes.py`](scripts/extract_teaching_notes.py#L434) (line 434)
+
+-------------------------------------------
+Explicitly write LF (\n) line endings regardless of the host platform.
+Without this, Python's default text mode on Windows translates every \n
+to \r\n (CRLF), causing ``git diff --exit-code`` to detect a spurious
+difference whenever the index is regenerated on a Windows CI runner or
+developer machine.  We open in binary mode and encode ourselves to
+guarantee byte-identical output across Linux, macOS, and Windows.
+output_path.write_bytes(markdown.encode("utf-8"))
 
 ---
 

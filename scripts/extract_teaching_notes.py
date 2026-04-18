@@ -272,8 +272,9 @@ def collect_all_notes(repo_root: Path) -> list[TeachingNote]:
 
         all_notes.extend(extract_notes_from_file(path, repo_root))
 
-    # Sort: primary = subsystem, secondary = file, tertiary = line number.
-    all_notes.sort(key=lambda n: (n.subsystem, str(n.file), n.line))
+    # Sort: primary = subsystem, secondary = file (posix separators for
+    # cross-platform stability), tertiary = line number.
+    all_notes.sort(key=lambda n: (n.subsystem, n.file.as_posix(), n.line))
     return all_notes
 
 
@@ -348,7 +349,10 @@ def build_markdown(notes: list[TeachingNote], repo_root: Path) -> str:
 
         for note in group.notes:
             # Link to the file on GitHub (works when the index is viewed on github.com).
-            file_link = f"[`{note.file}`]({note.file}#L{note.line})"
+            # Use as_posix() to ensure forward-slash separators on all platforms
+            # (Windows Path objects use backslashes which would break GitHub URLs).
+            posix_path = note.file.as_posix()
+            file_link = f"[`{posix_path}`]({posix_path}#L{note.line})"
             lines.append(f"### {note.title}")
             lines.append("")
             lines.append(f"**Source:** {file_link} (line {note.line})")
@@ -427,7 +431,15 @@ def main(argv: list[str] | None = None) -> int:
     markdown = build_markdown(notes, repo_root)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(markdown, encoding="utf-8")
+    # TEACHING NOTE — Deterministic Line Endings
+    # -------------------------------------------
+    # Explicitly write LF (\n) line endings regardless of the host platform.
+    # Without this, Python's default text mode on Windows translates every \n
+    # to \r\n (CRLF), causing ``git diff --exit-code`` to detect a spurious
+    # difference whenever the index is regenerated on a Windows CI runner or
+    # developer machine.  We open in binary mode and encode ourselves to
+    # guarantee byte-identical output across Linux, macOS, and Windows.
+    output_path.write_bytes(markdown.encode("utf-8"))
 
     if not args.quiet:
         print(f"Curriculum index written to: {output_path}")

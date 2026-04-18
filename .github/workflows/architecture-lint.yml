@@ -39,15 +39,21 @@ on:
   push:
     paths:
       - 'src/**'
-      - 'scripts/check_architecture.py'
-      - 'scripts/extract_teaching_notes.py'
-      - '.github/workflows/architecture-lint.yml'
+      - 'tools/**'
+      - 'editor/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - 'docs/CURRICULUM_INDEX.md'
+      - '.github/workflows/**'
   pull_request:
     paths:
       - 'src/**'
-      - 'scripts/check_architecture.py'
-      - 'scripts/extract_teaching_notes.py'
-      - '.github/workflows/architecture-lint.yml'
+      - 'tools/**'
+      - 'editor/**'
+      - 'shared/**'
+      - 'scripts/**'
+      - 'docs/CURRICULUM_INDEX.md'
+      - '.github/workflows/**'
   # Allow manual trigger from the GitHub Actions UI for diagnostics.
   workflow_dispatch:
 
