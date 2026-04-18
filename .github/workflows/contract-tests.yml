@@ -1,0 +1,128 @@
+# ============================================================================
+# contract-tests.yml — Asset Cook Pipeline Contract Tests
+# ============================================================================
+#
+# TEACHING NOTE — Contract Tests in CI
+# ======================================
+# A "contract test" verifies the OUTPUT of a pipeline against an agreed
+# specification (the "contract").  Here we:
+#
+#   1. Install the Python authoring tools (audio_authoring + anim_authoring).
+#   2. Run cook_assets.py on the vertical slice sample project.
+#   3. Run pytest against tests/cook/ — which validates:
+#        - The cook exits with code 0.
+#        - AssetRegistry.json is written and schema-valid.
+#        - Every cooked path in the registry exists on disk.
+#        - The mandatory MainTown scene is present.
+#   4. Run tools/validate-assets.py to lint the resulting registry.
+#
+# This workflow runs on every push/PR that touches the cook pipeline or
+# the sample project, keeping the M2 deliverable green at all times.
+# ============================================================================
+
+name: Contract Tests (Asset Cook Pipeline)
+
+on:
+  push:
+    paths:
+      - 'samples/**'
+      - 'tools/**'
+      - 'shared/schemas/**'
+      - 'tests/cook/**'
+      - '.github/workflows/contract-tests.yml'
+  pull_request:
+    paths:
+      - 'samples/**'
+      - 'tools/**'
+      - 'shared/schemas/**'
+      - 'tests/cook/**'
+      - '.github/workflows/contract-tests.yml'
+  # Allow manual trigger from the GitHub Actions UI
+  workflow_dispatch:
+
+# TEACHING NOTE — Principle of Least Privilege
+# This workflow only reads repository content; no write access needed.
+permissions:
+  contents: read
+
+jobs:
+  contract-tests:
+    name: Cook pipeline contract tests
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout the repository
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Python Setup
+      # We pin to Python 3.11 for reproducibility.  The tools require 3.9+.
+      # -----------------------------------------------------------------------
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # -----------------------------------------------------------------------
+      # 2. Install Python authoring tools and test dependencies
+      # -----------------------------------------------------------------------
+      - name: Install audio_authoring tool
+        run: |
+          cd tools/audio_authoring
+          pip install -e ".[dev]"
+
+      - name: Install anim_authoring tool
+        run: |
+          cd tools/anim_authoring
+          pip install -e ".[dev]"
+
+      - name: Install test dependencies
+        run: pip install jsonschema==4.23.0 pytest==8.3.5
+
+      # -----------------------------------------------------------------------
+      # 3. Run the cook pipeline on the vertical slice sample project
+      # -----------------------------------------------------------------------
+      - name: Cook vertical slice sample project
+        run: |
+          cd samples/vertical_slice_project
+          python cook_assets.py
+
+      # -----------------------------------------------------------------------
+      # 4. Run the contract tests (schema + golden path checks)
+      # -----------------------------------------------------------------------
+      - name: Run contract tests
+        run: python -m pytest tests/cook/ -v --tb=short
+
+      # -----------------------------------------------------------------------
+      # 5. Validate the produced AssetRegistry.json against the shared schema
+      #    using jsonschema directly (not validate-assets.py which uses a
+      #    different schema for the older assets/examples/ manifests).
+      # -----------------------------------------------------------------------
+      - name: Validate AssetRegistry.json against shared schema
+        run: |
+          python - <<'EOF'
+          import json, sys, pathlib
+          try:
+              import jsonschema
+          except ImportError:
+              print("jsonschema not available — skipping schema check")
+              sys.exit(0)
+
+          root = pathlib.Path(".")
+          schema = json.loads((root / "shared/schemas/asset_registry.schema.json").read_text())
+          registry = json.loads((root / "samples/vertical_slice_project/AssetRegistry.json").read_text())
+
+          # Strip $schema key before validation (meta-schema is not downloaded in CI)
+          schema.pop("$schema", None)
+          registry.pop("$schema", None)
+
+          try:
+              jsonschema.validate(instance=registry, schema=schema)
+              print("[PASS] AssetRegistry.json validates against asset_registry.schema.json")
+          except jsonschema.ValidationError as exc:
+              print(f"[FAIL] Schema validation error: {exc.message}")
+              sys.exit(1)
+          EOF

@@ -181,6 +181,8 @@ endif()
 set(ENGINE_CORE_SOURCES
     src/engine/core/Logger.cpp
     src/engine/scripting/LuaEngine.cpp
+    src/engine/assets/asset_db.cpp
+    src/engine/assets/asset_loader.cpp
 )
 
 # ---------------------------------------------------------------------------
@@ -379,8 +381,45 @@ if(ENGINE_ENABLE_VULKAN)
 endif() # ENGINE_ENABLE_VULKAN
 
 # ---------------------------------------------------------------------------
-# Print summary
+# cook target — standalone C++ asset cooker (Milestone M2)
 # ---------------------------------------------------------------------------
+# TEACHING NOTE — Standalone Tool Target
+# ─────────────────────────────────────────────────────────────────────────────
+# The cook tool is a platform-independent C++ executable that:
+#   1. Reads AssetRegistry.json from the given project directory.
+#   2. Copies/converts source assets → Cooked/ directory.
+#   3. Writes Cooked/assetdb.json for the C++ runtime (AssetDB).
+#
+# It is independent of the Vulkan renderer so it builds on all platforms
+# (Windows, Linux, macOS).
+#
+# Usage after build:
+#   ./cook --project samples/vertical_slice_project
+#   .\Debug\cook.exe --project samples\vertical_slice_project
+# ---------------------------------------------------------------------------
+add_executable(cook
+    src/tools/cook/cook_main.cpp
+    src/engine/core/Logger.cpp
+)
+
+# TEACHING NOTE — target_include_directories (PRIVATE)
+# Only this target needs to see src/ for #include "engine/core/Logger.hpp".
+# We use PRIVATE so the include path does not leak to anything that links
+# against cook (there is nothing, but it is good practice).
+target_include_directories(cook PRIVATE
+    src/
+)
+
+# TEACHING NOTE — MSVC /SUBSYSTEM:CONSOLE
+# Same reasoning as engine_sandbox: we want stdout/stderr visible in a
+# terminal window on Windows.
+if(MSVC)
+    set_target_properties(cook PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+endif()
+
+message(STATUS "  cook target      : ON (always built)")
+
+
 
 message(STATUS "=== Build Configuration ===")
 message(STATUS "  CXX Standard     : C++${CMAKE_CXX_STANDARD}")
