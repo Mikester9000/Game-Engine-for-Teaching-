@@ -273,7 +273,7 @@ int XAudio2Backend::Play(const std::string& clipID, float volume, bool looping)
         return -1;
 
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — XAUDIO2_BUFFER
+    // TEACHING NOTE — XAUDIO2_BUFFER and PCM Lifetime
     // -----------------------------------------------------------------------
     // The XAUDIO2_BUFFER struct describes one submitted audio buffer.
     //
@@ -287,37 +287,30 @@ int XAudio2Backend::Play(const std::string& clipID, float volume, bool looping)
     //   LoopCount     — XAUDIO2_LOOP_INFINITE for infinite loop; 0 = no loop.
     //   LoopBegin/End — loop region within the buffer (0 = full buffer).
     //
-    // We keep the PCM data alive in the slot until the voice is stopped.
-    // XAUDIO2 does NOT copy the buffer — the pointer must stay valid.
+    // CRITICAL: XAudio2 does NOT copy the buffer data.  pAudioData must
+    // remain valid for the entire duration of playback.  We move the PCM
+    // bytes into s.pcmCache (SourceVoiceSlot member), which lives as long
+    // as the slot is in use.  Stop() clears pcmCache after flushing.
     // -----------------------------------------------------------------------
 
-    // Transfer PCM ownership into the slot so it stays alive while playing.
-    // (Simple approach; a production engine would use a shared_ptr or pool.)
     auto& s = m_pool[slot];
 
-    XAUDIO2_BUFFER buf         = {};
-    buf.Flags                  = XAUDIO2_END_OF_STREAM;
-    buf.AudioBytes             = static_cast<UINT32>(wav.pcm.size());
-    buf.pAudioData             = wav.pcm.data();
-    buf.LoopCount              = looping ? XAUDIO2_LOOP_INFINITE : 0;
+    // Move PCM ownership into the slot — the pointer we give XAudio2 now
+    // points into s.pcmCache, which outlives this function call.
+    s.pcmCache = std::move(wav.pcm);
 
-    // We need to keep the PCM data alive for the voice lifetime.
-    // Re-use the slot's clipID field for identification; store data in voice.
-    // NOTE: In a production engine you would use a reference-counted asset
-    // cache.  Here we rely on the voice completing before the next Play call
-    // reuses the slot (safe for short SFX; music loops handle this via Stop).
-
-    // Store PCM in a temporary local... but we need it to outlive this call.
-    // Solution: stash it in a separate per-slot buffer vector.
-    // (We add m_pcmCache to the class by using a parallel array approach.)
-    // For now, submit synchronously and accept that the caller must ensure
-    // the sound completes before the slot is reused.
+    XAUDIO2_BUFFER buf = {};
+    buf.Flags          = XAUDIO2_END_OF_STREAM;
+    buf.AudioBytes     = static_cast<UINT32>(s.pcmCache.size());
+    buf.pAudioData     = s.pcmCache.data();  // points into the slot's own vector
+    buf.LoopCount      = looping ? XAUDIO2_LOOP_INFINITE : 0;
 
     HRESULT hr = s.voice->SubmitSourceBuffer(&buf);
     if (FAILED(hr))
     {
         LOG_ERROR("XAudio2Backend::Play — SubmitSourceBuffer failed. HRESULT=0x"
                   << std::hex << static_cast<unsigned long>(hr) << std::dec);
+        s.pcmCache.clear();
         return -1;
     }
 
@@ -351,11 +344,15 @@ void XAudio2Backend::Stop(int slotIndex)
     // IXAudio2SourceVoice::Stop() pauses the voice but does not reset it.
     // FlushSourceBuffers() discards all queued data.
     // Together they bring the voice back to a clean, re-usable state.
+    //
+    // After flushing we also clear pcmCache — the PCM bytes are no longer
+    // referenced by any buffer, so releasing the memory is safe here.
     // -----------------------------------------------------------------------
     s.voice->Stop();
     s.voice->FlushSourceBuffers();
     s.inUse  = false;
     s.clipID.clear();
+    s.pcmCache.clear();  // safe to free now that XAudio2 has no reference
 }
 
 void XAudio2Backend::StopByClipID(const std::string& clipID)
@@ -377,13 +374,33 @@ void XAudio2Backend::StopAll()
 }
 
 // ===========================================================================
-// SetMasterVolume
+// SetMasterVolume / SetSlotVolume
 // ===========================================================================
 
 void XAudio2Backend::SetMasterVolume(float volume)
 {
     if (m_masterVoice)
         m_masterVoice->SetVolume(volume);
+}
+
+void XAudio2Backend::SetSlotVolume(int slotIndex, float volume)
+{
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Per-Voice Volume for Crossfading
+    // -----------------------------------------------------------------------
+    // IXAudio2SourceVoice::SetVolume() applies a scalar gain to the voice's
+    // output.  0.0 = silent, 1.0 = unity gain.
+    //
+    // AudioSystem calls this every frame during a crossfade to linearly ramp
+    // the incoming stem from 0 → target and the outgoing stem from target → 0.
+    // The function is cheap: it queues a volume-change operation on the audio
+    // processing thread with no synchronisation overhead.
+    // -----------------------------------------------------------------------
+    if (slotIndex < 0 || slotIndex >= static_cast<int>(XAUDIO2_VOICE_POOL_SIZE))
+        return;
+    auto& s = m_pool[slotIndex];
+    if (s.inUse && s.voice)
+        s.voice->SetVolume(volume);
 }
 
 // ===========================================================================
@@ -529,7 +546,6 @@ bool XAudio2Backend::ReconfigureVoice(int slotIndex, const WAVEFORMATEX& fmt)
     // If the voice exists and the format matches, reset and reuse it.
     if (s.voice)
     {
-        WAVEFORMATEX* pFmt = nullptr;
         XAUDIO2_VOICE_DETAILS details{};
         s.voice->GetVoiceDetails(&details);
 
@@ -542,11 +558,10 @@ bool XAudio2Backend::ReconfigureVoice(int slotIndex, const WAVEFORMATEX& fmt)
             // Compatible format; no need to recreate.
             s.voice->Stop();
             s.voice->FlushSourceBuffers();
-            (void)pFmt; // suppress unused-variable warning
             return true;
         }
 
-        // Incompatible format — destroy existing voice.
+        // Incompatible format — destroy existing voice and recreate below.
         s.voice->Stop();
         s.voice->DestroyVoice();
         s.voice = nullptr;

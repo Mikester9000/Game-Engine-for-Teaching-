@@ -158,21 +158,14 @@ void AudioSystem::SetMusicVolume(float volume)
 {
     m_musicVolume = std::clamp(volume, 0.0f, 1.0f);
 
-    // Apply immediately to the active music voice.
-    if (m_musicSlot >= 0 && m_backend.IsPlaying(m_musicSlot))
+    // Apply immediately to the active music voice when not crossfading.
+    if (!m_crossfading && m_musicSlot >= 0 && m_backend.IsPlaying(m_musicSlot))
     {
         const MusicTrack* track = FindTrack(m_currentMusicState);
         const float targetVol   = track ? (track->volume * m_musicVolume) : m_musicVolume;
-        // If not crossfading, update volume directly.
-        if (!m_crossfading)
-        {
-            // Access via XAudio2 directly (backend provides opaque pool).
-            // For simplicity, we issue a new Play with the updated volume when
-            // SetMusicVolume is called outside of a crossfade.  A production
-            // engine would cache the IXAudio2SourceVoice* and call SetVolume().
-            (void)targetVol; // Volume applied at next crossfade tick.
-        }
+        m_backend.SetSlotVolume(m_musicSlot, targetVol);
     }
+    // If crossfading, the new volume is picked up naturally by TickCrossfade.
 }
 
 // ===========================================================================
@@ -239,6 +232,9 @@ void AudioSystem::TickCrossfade(float deltaTime)
     //   New stem volume = t * targetVolume   (fades IN from silence)
     //   Old stem volume = (1-t) * oldVolume  (fades OUT to silence)
     //
+    // We call XAudio2Backend::SetSlotVolume() each frame to update the
+    // IXAudio2SourceVoice volume directly on both stems.
+    //
     // At t=1 the old voice is stopped and the flag is cleared.
     // -----------------------------------------------------------------------
 
@@ -249,22 +245,19 @@ void AudioSystem::TickCrossfade(float deltaTime)
     const float t = std::clamp(m_crossfadeTimer / CROSSFADE_SECONDS, 0.0f, 1.0f);
 
     const MusicTrack* newTrack = FindTrack(m_currentMusicState);
+    const MusicTrack* oldTrack = FindTrack(m_previousMusicState);
     const float newTarget = newTrack ? (newTrack->volume * m_musicVolume) : m_musicVolume;
+    const float oldTarget = oldTrack ? (oldTrack->volume * m_musicVolume) : m_musicVolume;
 
-    // Ramp new stem in.
+    // Ramp new stem in: 0 → newTarget.
     if (m_musicSlot >= 0 && m_backend.IsPlaying(m_musicSlot))
-    {
-        // We don't expose per-slot volume here; use backend Stop+restart approach
-        // would be wasteful.  Instead the Play() call started at 0 volume and we
-        // rely on the backend exposing SetVolume in a future refactor.
-        // For now: the new stem started at full volume (simplification acceptable
-        // for M3 teaching purposes; a more precise implementation would call
-        // IXAudio2SourceVoice::SetVolume() via an added XAudio2Backend method).
-        (void)t;
-        (void)newTarget;
-    }
+        m_backend.SetSlotVolume(m_musicSlot, t * newTarget);
 
-    // Ramp old stem out and stop when done.
+    // Ramp old stem out: oldTarget → 0.
+    if (m_oldMusicSlot >= 0 && m_backend.IsPlaying(m_oldMusicSlot))
+        m_backend.SetSlotVolume(m_oldMusicSlot, (1.0f - t) * oldTarget);
+
+    // When the fade completes, stop the old stem.
     if (m_crossfadeTimer >= CROSSFADE_SECONDS)
     {
         if (m_oldMusicSlot >= 0)
@@ -272,6 +265,10 @@ void AudioSystem::TickCrossfade(float deltaTime)
             m_backend.Stop(m_oldMusicSlot);
             m_oldMusicSlot = -1;
         }
+        // Snap new stem to exact target volume (avoids floating-point drift).
+        if (m_musicSlot >= 0)
+            m_backend.SetSlotVolume(m_musicSlot, newTarget);
+
         m_crossfading    = false;
         m_crossfadeTimer = 0.0f;
         LOG_INFO("AudioSystem: crossfade complete → state "

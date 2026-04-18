@@ -107,12 +107,28 @@ struct WavData {
 /**
  * @struct SourceVoiceSlot
  * @brief One pre-allocated source voice plus playback metadata.
+ *
+ * TEACHING NOTE — PCM Buffer Lifetime
+ * ──────────────────────────────────────
+ * XAudio2 source voices operate asynchronously on an audio thread.  When
+ * you call SubmitSourceBuffer, XAudio2 stores a raw pointer (pAudioData)
+ * and continues reading from it on the audio thread until the buffer
+ * finishes.  The calling code MUST keep the PCM bytes alive for at least
+ * as long as the voice is playing.
+ *
+ * We solve this by storing the decoded PCM data directly in the slot.
+ * When Play() allocates a slot, it moves the parsed WavData::pcm vector
+ * here.  When Stop() frees the slot, the vector is cleared.
  */
 struct SourceVoiceSlot {
     IXAudio2SourceVoice* voice    = nullptr;
     std::string          clipID;            ///< Active clip GUID (empty = free).
     bool                 inUse   = false;   ///< True while sound is playing.
     bool                 looping = false;   ///< True if the voice loops.
+
+    /// Owns the PCM bytes referenced by the active XAUDIO2_BUFFER.
+    /// Must not be cleared while the voice is still consuming the buffer.
+    std::vector<uint8_t> pcmCache;
 };
 
 // ===========================================================================
@@ -200,6 +216,17 @@ public:
      * @param volume  [0.0 = silent, 1.0 = unity gain].
      */
     void SetMasterVolume(float volume);
+
+    /**
+     * @brief Set volume on a specific source voice slot.
+     *
+     * Used by AudioSystem to implement music crossfading: ramp the incoming
+     * stem from 0 → target and the outgoing stem from target → 0 each frame.
+     *
+     * @param slotIndex  Voice pool index returned by Play().
+     * @param volume     Volume scalar [0.0 = silent, 1.0 = unity gain].
+     */
+    void SetSlotVolume(int slotIndex, float volume);
 
     // -----------------------------------------------------------------------
     // Query

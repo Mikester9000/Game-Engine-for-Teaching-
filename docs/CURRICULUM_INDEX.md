@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 843 across 35 subsystems.
+**Total lessons:** 845 across 35 subsystems.
 
 ---
 
@@ -17,7 +17,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
 - [engine/assets](#engineassets) (27 lessons)
-- [engine/audio](#engineaudio) (30 lessons)
+- [engine/audio](#engineaudio) (32 lessons)
 - [engine/core](#enginecore) (49 lessons)
 - [engine/ecs](#engineecs) (32 lessons)
 - [engine/input](#engineinput) (19 lessons)
@@ -2077,7 +2077,7 @@ curve would be equal-power (√(t)), but linear is easier to teach.
 
 ### ECS View over AudioSourceComponent
 
-**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L190) (line 190)
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L183) (line 183)
 
 ──────────────────────────────────────────────────
 World::View iterates only the entities that have AudioSourceComponent.
@@ -2112,13 +2112,16 @@ src.isPlaying  = false;
 
 ### Linear Volume Crossfade
 
-**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L235) (line 235)
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L228) (line 228)
 
 -----------------------------------------------------------------------
 t ∈ [0, 1] where 0 = crossfade begins, 1 = crossfade complete.
 
   New stem volume = t * targetVolume   (fades IN from silence)
   Old stem volume = (1-t) * oldVolume  (fades OUT to silence)
+
+We call XAudio2Backend::SetSlotVolume() each frame to update the
+IXAudio2SourceVoice volume directly on both stems.
 
 At t=1 the old voice is stopped and the flag is cleared.
 -----------------------------------------------------------------------
@@ -2373,7 +2376,7 @@ LOG_ERROR("XAudio2Backend::Play — failed to load clip: " << clipID);
 return -1;
 }
 
-### XAUDIO2_BUFFER
+### XAUDIO2_BUFFER and PCM Lifetime
 
 **Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L276) (line 276)
 
@@ -2390,28 +2393,54 @@ The XAUDIO2_BUFFER struct describes one submitted audio buffer.
   LoopCount     — XAUDIO2_LOOP_INFINITE for infinite loop; 0 = no loop.
   LoopBegin/End — loop region within the buffer (0 = full buffer).
 
-We keep the PCM data alive in the slot until the voice is stopped.
-XAUDIO2 does NOT copy the buffer — the pointer must stay valid.
+CRITICAL: XAudio2 does NOT copy the buffer data.  pAudioData must
+remain valid for the entire duration of playback.  We move the PCM
+bytes into s.pcmCache (SourceVoiceSlot member), which lives as long
+as the slot is in use.  Stop() clears pcmCache after flushing.
 -----------------------------------------------------------------------
 
 ### Stopping a Source Voice
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L349) (line 349)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L342) (line 342)
 
 -----------------------------------------------------------------------
 IXAudio2SourceVoice::Stop() pauses the voice but does not reset it.
 FlushSourceBuffers() discards all queued data.
 Together they bring the voice back to a clean, re-usable state.
+
+After flushing we also clear pcmCache — the PCM bytes are no longer
+referenced by any buffer, so releasing the memory is safe here.
 -----------------------------------------------------------------------
 s.voice->Stop();
 s.voice->FlushSourceBuffers();
 s.inUse  = false;
 s.clipID.clear();
+s.pcmCache.clear();  // safe to free now that XAudio2 has no reference
+}
+
+### Per-Voice Volume for Crossfading
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L389) (line 389)
+
+-----------------------------------------------------------------------
+IXAudio2SourceVoice::SetVolume() applies a scalar gain to the voice's
+output.  0.0 = silent, 1.0 = unity gain.
+
+AudioSystem calls this every frame during a crossfade to linearly ramp
+the incoming stem from 0 → target and the outgoing stem from target → 0.
+The function is cheap: it queues a volume-change operation on the audio
+processing thread with no synchronisation overhead.
+-----------------------------------------------------------------------
+if (slotIndex < 0 || slotIndex >= static_cast<int>(XAUDIO2_VOICE_POOL_SIZE))
+return;
+auto& s = m_pool[slotIndex];
+if (s.inUse && s.voice)
+s.voice->SetVolume(volume);
 }
 
 ### Parsing RIFF/WAVE
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L411) (line 411)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L428) (line 428)
 
 -----------------------------------------------------------------------
 We walk the chunk tree manually using a byte offset.  Each chunk has:
@@ -2427,7 +2456,7 @@ All integer fields in RIFF are little-endian.
 
 ### WAVEFORMATEX layout
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L458) (line 458)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L475) (line 475)
 
 ---------------------------------------------------------------
 Minimum size is 16 bytes (WAVEFORMATEX without cbSize).
@@ -2439,7 +2468,7 @@ return wav;
 
 ### Source Voice Format
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L518) (line 518)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L535) (line 535)
 
 -----------------------------------------------------------------------
 A source voice is created for a specific WAVEFORMATEX.  If the existing
@@ -2453,7 +2482,7 @@ auto& s = m_pool[slotIndex];
 
 ### CreateSourceVoice
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L556) (line 556)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L571) (line 571)
 
 -----------------------------------------------------------------------
 Parameters:
@@ -2535,9 +2564,24 @@ mandatory chunks are:
 XAudio2 source voices are created with the fmt header and fed the data
 chunk as an XAUDIO2_BUFFER.
 
+### PCM Buffer Lifetime
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L111) (line 111)
+
+──────────────────────────────────────
+XAudio2 source voices operate asynchronously on an audio thread.  When
+you call SubmitSourceBuffer, XAudio2 stores a raw pointer (pAudioData)
+and continues reading from it on the audio thread until the buffer
+finishes.  The calling code MUST keep the PCM bytes alive for at least
+as long as the voice is playing.
+
+We solve this by storing the decoded PCM data directly in the slot.
+When Play() allocates a slot, it moves the parsed WavData::pcm vector
+here.  When Stop() frees the slot, the vector is cleared.
+
 ### Backend vs System
 
-**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L126) (line 126)
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L142) (line 142)
 
 ──────────────────────────────────
 The *backend* owns the low-level XAudio2 objects and knows nothing about
@@ -2551,7 +2595,7 @@ changing any gameplay code — only the backend changes.
 
 ### Voice Reuse
 
-**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L235) (line 235)
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L262) (line 262)
 
 ─────────────────────────────
 A source voice is format-bound at creation time.  When a new clip has
