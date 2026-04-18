@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 788 across 34 subsystems.
+**Total lessons:** 795 across 34 subsystems.
 
 ---
 
@@ -21,12 +21,12 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/ecs](#engineecs) (31 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (168 lessons)
+- [engine/rendering](#enginerendering) (172 lessons)
 - [engine/scripting](#enginescripting) (28 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
-- [game/systems](#gamesystems) (80 lessons)
+- [game/systems](#gamesystems) (83 lessons)
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
 - [sandbox/main.cpp](#sandboxmain.cpp) (17 lessons)
@@ -4937,9 +4937,21 @@ std::cerr << "[D3D11Renderer] GetBuffer failed.\n";
 return false;
 }
 
+### Caching Back-Buffer Dimensions
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L311) (line 311)
+
+-----------------------------------------------------------------------
+Store the back-buffer size so DrawFrame can set the viewport and bind
+the RTV correctly on every frame.  The viewport must match the
+back-buffer size or the rasteriser will clip rendered geometry.
+-----------------------------------------------------------------------
+m_width  = width;
+m_height = height;
+
 ### Flush and Flush-to-Idle before release
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L336) (line 336)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L346) (line 346)
 
 Before releasing any D3D11 objects we flush the immediate context so
 any in-flight GPU commands are drained.  Without this, destroying
@@ -4947,16 +4959,38 @@ resources the GPU is still referencing can cause device-removed errors.
 if (m_context)
 m_context->Flush();
 
+### D3D11 Frame Setup: Bind RTV + Viewport
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L371) (line 371)
+
+-----------------------------------------------------------------------
+Before issuing any draw or clear commands we must:
+
+  1. OMSetRenderTargets — tell the Output Merger (OM) stage which
+     texture(s) to write into.  The second parameter is the depth-
+     stencil view (nullptr here because we have no depth buffer yet;
+     depth testing is added in M3 D3D11 textures).
+
+  2. RSSetViewports — tell the Rasteriser (RS) stage the region of the
+     render target to use.  TopLeftX/Y = 0 means "use the full texture".
+     Without an explicit viewport call, the rasteriser falls back to
+     implementation-defined behaviour on some drivers.
+
+Even when there are no draw calls (clear + present only), binding the
+RTV here ensures the pipeline is in a known state before M3 adds real
+geometry passes on top of this frame setup.
+-----------------------------------------------------------------------
+
 ### D3D11 Clear + Present
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L361) (line 361)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L404) (line 404)
 
 -----------------------------------------------------------------------
 The minimal draw loop for a "clear screen" demo:
   1. ClearRenderTargetView — fill the back buffer with a solid colour.
   2. Present               — display the back buffer (flip/blt to screen).
-In a full renderer you would also:
-  • Set the render target and viewport.
+In a full renderer you would also (note: RTV and viewport are already
+bound above):
   • Bind shaders, vertex buffers, constant buffers.
   • Issue draw calls.
   • Then present.
@@ -4966,7 +5000,7 @@ m_context->ClearRenderTargetView(m_renderTarget, clearColor);
 
 ### Present interval
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L376) (line 376)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L419) (line 419)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -4978,7 +5012,7 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L394) (line 394)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L437) (line 437)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -4987,7 +5021,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### LoadScene Stub (M0 baseline)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L440) (line 440)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L487) (line 487)
 
 -----------------------------------------------------------------------
 The D3D11 renderer currently supports the M0 baseline (device creation +
@@ -5003,23 +5037,45 @@ std::cout << "[D3D11Renderer] LoadScene('" << sceneName
 return true;   // Non-fatal stub
 }
 
-### Headless Validation
+### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L462) (line 462)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L509) (line 509)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
-We validate device creation by issuing a no-op Flush() to the GPU
-(WARP) and returning true.  This confirms:
-  1. The D3D11 device was successfully created.
-  2. The immediate context is functional.
-  3. No crash on resource-less execution.
+To validate that the D3D11 device can actually render — not just that
+it was created — we:
 
-A future iteration could create an off-screen render target and
-validate a full clear→readback round-trip.
+  1. Create a small off-screen D3D11_TEXTURE2D (64×64, RGBA8).
+  2. Create a Render-Target View (RTV) for it.
+  3. Clear the RTV to a known colour.
+  4. Flush the command queue.
+  5. Release the temporary resources.
+
+This round-trip exercises the full D3D11 resource creation + clear
+path on the WARP software renderer, confirming the device is functional
+even without a physical GPU or display.
+
+A future iteration could read back the pixel data via a staging texture
+and assert the exact clear colour to catch subtle driver bugs.
 -----------------------------------------------------------------------
 if (!m_initialised)
 return false;
+
+### COM Reference Counting
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L558) (line 558)
+
+COM objects are reference-counted.  CreateRenderTargetView internally
+calls AddRef on the texture, so the texture stays alive even after we
+Release() our own handle (offscreenTex).  We release early to keep
+resource lifetimes tight and avoid leaks if the next check returns early.
+offscreenTex->Release();
+if (FAILED(hr))
+{
+std::cerr << "[D3D11Renderer] RecordHeadlessFrame: CreateRenderTargetView failed.\n";
+return false;
+}
 
 ### Why Direct3D 11?
 
@@ -5121,6 +5177,20 @@ D3D11Renderer();
 
 We prefix all COM interface pointers with m_ (member) and use the
 interface name as the type hint.  e.g. m_device is an ID3D11Device*.
+
+### Storing Back-Buffer Dimensions
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L165) (line 165)
+
+-----------------------------------------------------------------------
+We cache the current back-buffer size so that DrawFrame can set the
+viewport correctly on every frame.  Without an explicit viewport the
+rasteriser uses a full-surface default on some drivers, but it is
+better practice to set it explicitly so the behaviour is predictable
+across hardware and WARP.
+-----------------------------------------------------------------------
+uint32_t                m_width         = 0;
+uint32_t                m_height        = 0;
 
 ### Reading This File
 
@@ -8736,9 +8806,59 @@ from TACTICAL AI (handled here: which action to use in battle).
 This keeps each class focused on one responsibility (Single Responsibility
 Principle from SOLID design principles).
 
+### AddItem: Stacking vs Slot Allocation
+
+**Source:** [`src/game/systems/InventorySystem.cpp`](src/game/systems/InventorySystem.cpp#L14) (line 14)
+
+---------------------------------------------------------------------------
+When adding a stackable item we first try to merge it into an existing
+slot that holds the same itemID (stacking).  Only if no existing stack
+exists do we consume a new empty slot.  This mirrors how FF15 and most
+RPGs manage inventory: potions stack to 99, weapons each take a full slot.
+The m_uiBus publish notifies the UI layer without any direct dependency
+between InventorySystem and the UI rendering code — a clean separation
+achieved via the EventBus pattern.
+---------------------------------------------------------------------------
+bool InventorySystem::AddItem(EntityID entity, uint32_t itemID, uint32_t quantity)
+{
+if (!m_world->HasComponent<InventoryComponent>(entity)) return false;
+auto& inv = m_world->GetComponent<InventoryComponent>(entity);
+
+### UseItem: Remove-Then-Apply Pattern
+
+**Source:** [`src/game/systems/InventorySystem.cpp`](src/game/systems/InventorySystem.cpp#L89) (line 89)
+
+---------------------------------------------------------------------------
+We remove the item from inventory BEFORE applying its effect.  This
+prevents exploits where an effect callback might add the same item back
+and allow infinite use.  It also means a "use" that fails (e.g. HP is
+already full) still consumes the item — matching the design of most
+action RPGs including FF15.
+---------------------------------------------------------------------------
+bool InventorySystem::UseItem(EntityID entity, uint32_t itemID)
+{
+const ItemData* item = GameDatabase::FindItem(itemID);
+if (!item) return false;
+if (!RemoveItem(entity, itemID, 1)) return false;
+
+### TransferItem: Pre-flight Space Check
+
+**Source:** [`src/game/systems/InventorySystem.cpp`](src/game/systems/InventorySystem.cpp#L235) (line 235)
+
+---------------------------------------------------------------------------
+Before removing the item from the source we verify the destination
+inventory can accept it.  We check for an existing stack (if stackable)
+or a free slot — exactly the same logic AddItem would run.  This avoids
+the "item destroyed on transfer to full bag" bug that affects many games.
+---------------------------------------------------------------------------
+bool InventorySystem::TransferItem(EntityID from, EntityID to,
+uint32_t itemID, uint32_t qty)
+{
+if (GetItemCount(from, itemID) < qty) return false;
+
 ### Switch on Enum to Map to Struct Fields
 
-**Source:** [`src/game/systems/InventorySystem.cpp`](src/game/systems/InventorySystem.cpp#L241) (line 241)
+**Source:** [`src/game/systems/InventorySystem.cpp`](src/game/systems/InventorySystem.cpp#L266) (line 266)
 
 Each EquipSlot enum value maps to one field in EquipmentComponent.
 We return a reference so callers can both read and write the slot.
@@ -10946,7 +11066,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L147) (line 147)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L151) (line 151)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -10962,15 +11082,15 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L249) (line 249)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L253) (line 253)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L291) (line 291)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L295) (line 295)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L371) (line 371)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L375) (line 375)
 
 ---
 

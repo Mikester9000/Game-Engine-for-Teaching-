@@ -123,6 +123,10 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     "src/game/world/TileMap.cpp":             "tilemap subsystem — several inter-related helpers",
     # VulkanRenderer.cpp: Vulkan requires substantial boilerplate by design.
     "src/engine/rendering/vulkan/VulkanRenderer.cpp": "Vulkan boilerplate — unavoidably large",
+    # D3D11Renderer.cpp: comprehensive inline teaching notes on the D3D11 API.
+    "src/engine/rendering/d3d11/D3D11Renderer.cpp":   "D3D11 renderer — extensive inline TEACHING NOTEs cover COM, WARP, swap chain, viewport, off-screen rendering",
+    # cook_main.cpp: standalone asset cooker — verbose for teaching purposes.
+    "src/tools/cook/cook_main.cpp":                   "cook tool — single-file teaching tool; teaches JSON parsing, asset pipeline, and filesystem ops",
     # InputSystem: covers keyboard, mouse, and gamepad in one teaching file.
     "src/engine/input/InputSystem.hpp":       "input system — multiple device types in one file",
     # CombatSystem and Zone are large but structured subsystems.

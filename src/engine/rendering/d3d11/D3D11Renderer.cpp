@@ -307,6 +307,16 @@ bool D3D11Renderer::CreateSwapChainResources(HWND hwnd,
         return false;
     }
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Caching Back-Buffer Dimensions
+    // -----------------------------------------------------------------------
+    // Store the back-buffer size so DrawFrame can set the viewport and bind
+    // the RTV correctly on every frame.  The viewport must match the
+    // back-buffer size or the rasteriser will clip rendered geometry.
+    // -----------------------------------------------------------------------
+    m_width  = width;
+    m_height = height;
+
     return true;
 }
 
@@ -358,13 +368,46 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
         return;
 
     // -----------------------------------------------------------------------
+    // TEACHING NOTE — D3D11 Frame Setup: Bind RTV + Viewport
+    // -----------------------------------------------------------------------
+    // Before issuing any draw or clear commands we must:
+    //
+    //   1. OMSetRenderTargets — tell the Output Merger (OM) stage which
+    //      texture(s) to write into.  The second parameter is the depth-
+    //      stencil view (nullptr here because we have no depth buffer yet;
+    //      depth testing is added in M3 D3D11 textures).
+    //
+    //   2. RSSetViewports — tell the Rasteriser (RS) stage the region of the
+    //      render target to use.  TopLeftX/Y = 0 means "use the full texture".
+    //      Without an explicit viewport call, the rasteriser falls back to
+    //      implementation-defined behaviour on some drivers.
+    //
+    // Even when there are no draw calls (clear + present only), binding the
+    // RTV here ensures the pipeline is in a known state before M3 adds real
+    // geometry passes on top of this frame setup.
+    // -----------------------------------------------------------------------
+
+    // 1 — Bind render target (no depth buffer yet; added in M3 D3D11 textures).
+    m_context->OMSetRenderTargets(1, &m_renderTarget, nullptr);
+
+    // 2 — Set the viewport to match the back-buffer dimensions.
+    D3D11_VIEWPORT vp      = {};
+    vp.TopLeftX            = 0.0f;
+    vp.TopLeftY            = 0.0f;
+    vp.Width               = static_cast<float>(m_width);
+    vp.Height              = static_cast<float>(m_height);
+    vp.MinDepth            = 0.0f;
+    vp.MaxDepth            = 1.0f;
+    m_context->RSSetViewports(1, &vp);
+
+    // -----------------------------------------------------------------------
     // TEACHING NOTE — D3D11 Clear + Present
     // -----------------------------------------------------------------------
     // The minimal draw loop for a "clear screen" demo:
     //   1. ClearRenderTargetView — fill the back buffer with a solid colour.
     //   2. Present               — display the back buffer (flip/blt to screen).
-    // In a full renderer you would also:
-    //   • Set the render target and viewport.
+    // In a full renderer you would also (note: RTV and viewport are already
+    // bound above):
     //   • Bind shaders, vertex buffers, constant buffers.
     //   • Issue draw calls.
     //   • Then present.
@@ -427,6 +470,10 @@ void D3D11Renderer::RecreateSwapchain(uint32_t width, uint32_t height)
         m_device->CreateRenderTargetView(backBuffer, nullptr, &m_renderTarget);
         backBuffer->Release();
     }
+
+    // Update cached dimensions so DrawFrame uses the correct viewport.
+    m_width  = width;
+    m_height = height;
 }
 
 // ===========================================================================
@@ -459,23 +506,76 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
 bool D3D11Renderer::RecordHeadlessFrame()
 {
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — Headless Validation
+    // TEACHING NOTE — Off-Screen Validation for Headless CI
     // -----------------------------------------------------------------------
     // In headless mode the swap chain does not exist (no HWND surface).
-    // We validate device creation by issuing a no-op Flush() to the GPU
-    // (WARP) and returning true.  This confirms:
-    //   1. The D3D11 device was successfully created.
-    //   2. The immediate context is functional.
-    //   3. No crash on resource-less execution.
+    // To validate that the D3D11 device can actually render — not just that
+    // it was created — we:
     //
-    // A future iteration could create an off-screen render target and
-    // validate a full clear→readback round-trip.
+    //   1. Create a small off-screen D3D11_TEXTURE2D (64×64, RGBA8).
+    //   2. Create a Render-Target View (RTV) for it.
+    //   3. Clear the RTV to a known colour.
+    //   4. Flush the command queue.
+    //   5. Release the temporary resources.
+    //
+    // This round-trip exercises the full D3D11 resource creation + clear
+    // path on the WARP software renderer, confirming the device is functional
+    // even without a physical GPU or display.
+    //
+    // A future iteration could read back the pixel data via a staging texture
+    // and assert the exact clear colour to catch subtle driver bugs.
     // -----------------------------------------------------------------------
     if (!m_initialised)
         return false;
 
-    if (m_context)
-        m_context->Flush();
+    // Step 1 — Create a small off-screen render target texture.
+    D3D11_TEXTURE2D_DESC texDesc = {};
+    texDesc.Width              = 64;
+    texDesc.Height             = 64;
+    texDesc.MipLevels          = 1;
+    texDesc.ArraySize          = 1;
+    texDesc.Format             = DXGI_FORMAT_R8G8B8A8_UNORM;
+    texDesc.SampleDesc.Count   = 1;
+    texDesc.SampleDesc.Quality = 0;
+    texDesc.Usage              = D3D11_USAGE_DEFAULT;
+    texDesc.BindFlags          = D3D11_BIND_RENDER_TARGET;
+    texDesc.CPUAccessFlags     = 0;
+    texDesc.MiscFlags          = 0;
+
+    ID3D11Texture2D* offscreenTex = nullptr;
+    HRESULT hr = m_device->CreateTexture2D(&texDesc, nullptr, &offscreenTex);
+    if (FAILED(hr))
+    {
+        std::cerr << "[D3D11Renderer] RecordHeadlessFrame: CreateTexture2D failed. "
+                     "HRESULT=0x" << std::hex << static_cast<unsigned long>(hr)
+                  << std::dec << "\n";
+        return false;
+    }
+
+    // Step 2 — Create the RTV.
+    ID3D11RenderTargetView* offscreenRTV = nullptr;
+    hr = m_device->CreateRenderTargetView(offscreenTex, nullptr, &offscreenRTV);
+    // TEACHING NOTE — COM Reference Counting
+    // COM objects are reference-counted.  CreateRenderTargetView internally
+    // calls AddRef on the texture, so the texture stays alive even after we
+    // Release() our own handle (offscreenTex).  We release early to keep
+    // resource lifetimes tight and avoid leaks if the next check returns early.
+    offscreenTex->Release();
+    if (FAILED(hr))
+    {
+        std::cerr << "[D3D11Renderer] RecordHeadlessFrame: CreateRenderTargetView failed.\n";
+        return false;
+    }
+
+    // Step 3 — Clear the off-screen RTV to cornflower blue (the classic D3D test colour).
+    const float clearColor[4] = { 0.392f, 0.584f, 0.929f, 1.0f };
+    m_context->ClearRenderTargetView(offscreenRTV, clearColor);
+
+    // Step 4 — Flush to ensure the GPU (or WARP) processes the clear.
+    m_context->Flush();
+
+    // Step 5 — Release temporary resources.
+    offscreenRTV->Release();
 
     return true;
 }
