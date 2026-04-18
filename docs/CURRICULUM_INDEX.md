@@ -5274,7 +5274,9 @@ the CMake compile definition AND this header define the same macro.
 ifndef VK_USE_PLATFORM_WIN32_KHR
 define VK_USE_PLATFORM_WIN32_KHR
 endif
+ifndef WIN32_LEAN_AND_MEAN
 define WIN32_LEAN_AND_MEAN
+endif
 ifndef NOMINMAX
 define NOMINMAX
 endif
@@ -5283,7 +5285,7 @@ include <vulkan/vulkan.h>
 
 ### Frames in Flight
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L101) (line 101)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L103) (line 103)
 
 "Frames in flight" means we allow the CPU to record frame N+1 while the
 GPU is still rendering frame N.  2 is a common choice: more than 2 adds
@@ -5292,7 +5294,7 @@ static constexpr uint32_t kMaxFramesInFlight = 2;
 
 ### Object Ownership
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L114) (line 114)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L116) (line 116)
 
 Each VkXxx handle is just an opaque integer (64 bits on 64-bit platforms).
 Vulkan NEVER automatically destroys anything — you must call the matching
@@ -5307,7 +5309,7 @@ VulkanRenderer()  = default;
 
 ### Destructor Out-of-Line for Incomplete Types
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L125) (line 125)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L127) (line 127)
 
 The destructor must be defined in VulkanRenderer.cpp (not here) because
 m_pipeline and m_triangleMesh are std::unique_ptr<T> where T is only
@@ -5321,7 +5323,7 @@ all compilers.
 
 ### Frame Lifecycle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L169) (line 169)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L171) (line 171)
 
 1. vkWaitForFences        — stall the CPU until the GPU finished
                               the *previous* use of this frame slot.
@@ -5338,7 +5340,7 @@ all compilers.
 
 ### Scene Loading Pattern
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L196) (line 196)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L198) (line 198)
 
 For M1 the "scene" is just a hardcoded triangle.  In later milestones
 LoadScene will parse a scene JSON file from the asset DB and spawn
@@ -5346,7 +5348,7 @@ entities, load meshes, and wire up scripts.
 
 ### Pre-recording vs per-frame recording
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L262) (line 262)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L264) (line 264)
 
 For a fully static scene (triangle with no animated clear colour) we
 could pre-record once.  We keep per-frame recording here for two reasons:
@@ -5356,7 +5358,7 @@ could pre-record once.  We keep per-frame recording here for two reasons:
 
 ### Queue Family Indices
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L276) (line 276)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L278) (line 278)
 
 -----------------------------------------------------------------------
 A "queue" in Vulkan is a submission channel to the GPU.  Different queues
@@ -5372,7 +5374,7 @@ uint32_t presentFamily  = UINT32_MAX;
 
 ### Swapchain Support Details
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L299) (line 299)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L301) (line 301)
 
 -----------------------------------------------------------------------
 Before creating a swapchain we must query three things:
@@ -5389,7 +5391,7 @@ std::vector<VkPresentModeKHR>   presentModes;
 
 ### std::unique_ptr for Optional Subsystems
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L378) (line 378)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L380) (line 380)
 
 The pipeline and mesh may or may not exist (they are created only when
 LoadScene() is called).  Using unique_ptr<T> models "optionally present"
@@ -5400,7 +5402,7 @@ std::unique_ptr<VulkanMesh>     m_triangleMesh; ///< Triangle geometry (null unt
 
 ### Debug vs Release Validation
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L396) (line 396)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L398) (line 398)
 
 kEnableValidationLayers is a compile-time constant so the compiler can
 dead-code-eliminate all validation setup in Release builds.
@@ -5409,7 +5411,7 @@ endif
 
 ### Debug Callback Signature
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L413) (line 413)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L415) (line 415)
 
 The signature must exactly match PFN_vkDebugUtilsMessengerCallbackEXT.
 We print ERROR and WARNING messages; verbose INFO messages are ignored
