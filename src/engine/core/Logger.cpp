@@ -333,7 +333,16 @@ std::string Logger::GetTimestamp() const {
     // NOTE: std::localtime is NOT thread-safe on all platforms because it
     // returns a pointer to a shared static buffer.  We use it here for
     // simplicity; in production use localtime_r (POSIX) or localtime_s (MSVC).
+    //
+    // MSVC raises C4996 ("may be unsafe") for std::localtime; we use the
+    // thread-safe localtime_s variant on that platform to keep /W4 builds clean.
+#ifdef _WIN32
+    std::tm  local_tm_buf{};
+    localtime_s(&local_tm_buf, &now_t);
+    std::tm* local_tm = &local_tm_buf;
+#else
     std::tm* local_tm = std::localtime(&now_t);
+#endif
 
     std::ostringstream oss;
     // std::put_time formats the tm struct like strftime.

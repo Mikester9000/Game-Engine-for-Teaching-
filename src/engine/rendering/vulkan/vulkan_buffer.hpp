@@ -42,8 +42,12 @@
 
 #pragma once
 
-#define VK_USE_PLATFORM_WIN32_KHR
-#define WIN32_LEAN_AND_MEAN
+#ifndef VK_USE_PLATFORM_WIN32_KHR
+    #define VK_USE_PLATFORM_WIN32_KHR
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+#endif
 #ifndef NOMINMAX
     #define NOMINMAX
 #endif

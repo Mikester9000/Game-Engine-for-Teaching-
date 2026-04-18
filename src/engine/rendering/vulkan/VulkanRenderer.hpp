@@ -65,8 +65,12 @@
 // the Win32-specific declarations (VkWin32SurfaceCreateInfoKHR etc.) are
 // included.  We define it here; the CMakeLists also passes it as a compile
 // definition to be safe.
+// The #ifndef guard avoids MSVC C4005 "macro redefinition" warnings when both
+// the CMake compile definition AND this header define the same macro.
 // ---------------------------------------------------------------------------
-#define VK_USE_PLATFORM_WIN32_KHR
+#ifndef VK_USE_PLATFORM_WIN32_KHR
+    #define VK_USE_PLATFORM_WIN32_KHR
+#endif
 #define WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
     #define NOMINMAX
@@ -118,7 +122,16 @@ class VulkanRenderer
 {
 public:
     VulkanRenderer()  = default;
-    ~VulkanRenderer() { Shutdown(); }
+    // TEACHING NOTE — Destructor Out-of-Line for Incomplete Types
+    // The destructor must be defined in VulkanRenderer.cpp (not here) because
+    // m_pipeline and m_triangleMesh are std::unique_ptr<T> where T is only
+    // forward-declared in this header.  std::unique_ptr<T>::~unique_ptr()
+    // calls delete on T, which requires the *complete* type of T.  MSVC
+    // enforces this strictly (errors C2027/C2338); GCC/Clang also warn.
+    // Declaring the destructor here and defining it in the .cpp (where the
+    // full headers for VulkanPipeline and VulkanMesh are included) satisfies
+    // all compilers.
+    ~VulkanRenderer();
 
     // No copying — Vulkan handles are not reference-counted by default.
     VulkanRenderer(const VulkanRenderer&)            = delete;
