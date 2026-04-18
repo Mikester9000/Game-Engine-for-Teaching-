@@ -1,0 +1,158 @@
+name: Build Windows (engine_sandbox + cook)
+
+# ============================================================================
+# TEACHING NOTE — Windows CI Workflow Purpose
+# ============================================================================
+# This workflow validates the Windows Vulkan engine_sandbox and the
+# cross-platform cook.exe tool on every push and pull request.
+#
+# What it validates:
+#   1. CMake configure succeeds with Vulkan SDK present.
+#   2. engine_sandbox.exe compiles without errors (MSVC /W4).
+#   3. cook.exe compiles without errors.
+#   4. engine_sandbox.exe runs in headless mode (Vulkan init + exit 0).
+#   5. cook.exe successfully cooks the vertical slice sample project.
+#   6. engine_sandbox.exe --validate-project loads the cooked AssetDB.
+#
+# ============================================================================
+# TEACHING NOTE — humbletim/setup-vulkan-sdk
+# ============================================================================
+# The Vulkan SDK provides the Vulkan headers, the loader library (vulkan-1.lib)
+# and the glslc shader compiler.  Without it, find_package(Vulkan) in CMake
+# would fail.
+#
+# humbletim/setup-vulkan-sdk is a community action that:
+#   1. Downloads the requested Vulkan SDK version.
+#   2. Installs it to a temp directory.
+#   3. Sets VULKAN_SDK in the environment so CMake can find it.
+#
+# We pin vulkan-query-version to 1.3.250.0 for reproducibility.  Always pin
+# action versions and SDK versions in CI to avoid unexpected breakage from
+# upstream changes.
+# ============================================================================
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'shaders/**'
+      - 'shared/**'
+      - '.github/workflows/build-windows.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - 'shaders/**'
+      - 'shared/**'
+      - '.github/workflows/build-windows.yml'
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Job: Build engine_sandbox + cook on Windows with MSVC
+  # --------------------------------------------------------------------------
+  build-windows:
+    name: Build Windows (MSVC x64)
+    runs-on: windows-latest
+
+    # -------------------------------------------------------------------------
+    # TEACHING NOTE — Least-Privilege Permissions
+    # GitHub Actions tokens default to write access on the repository.
+    # Restricting to contents: read follows the principle of least privilege:
+    # a compromised action cannot push malicious commits to the repository.
+    # -------------------------------------------------------------------------
+    permissions:
+      contents: read
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout the repository.
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 2. Install the Vulkan SDK.
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Why cache the Vulkan SDK?
+      # The Vulkan SDK is ~500 MB.  Without caching, every CI run would
+      # re-download it, wasting bandwidth and time.  vulkan-use-cache: true
+      # stores the download in GitHub's action cache, keyed by the version
+      # string.  Subsequent runs restore the cache in seconds.
+      # -----------------------------------------------------------------------
+      - name: Install Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.0
+        with:
+          vulkan-query-version: 1.3.250.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+
+      # -----------------------------------------------------------------------
+      # 3. Configure CMake using the engine-only preset (no Qt required).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — CMake Presets in CI
+      # cmake --preset windows-debug-engine-only uses the configuration from
+      # CMakePresets.json:
+      #   • Generator: Visual Studio 17 2022 (MSVC x64)
+      #   • ENGINE_ENABLE_VULKAN=ON
+      #   • BUILD_EDITOR=OFF  (Qt not installed on the CI runner)
+      # This is the correct preset for headless CI validation of the engine.
+      # -----------------------------------------------------------------------
+      - name: Configure CMake (engine-only, no Qt)
+        run: cmake --preset windows-debug-engine-only
+
+      # -----------------------------------------------------------------------
+      # 4. Build engine_sandbox and cook.
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Building specific targets
+      # cmake --build --preset ... --target <name> builds only the specified
+      # target and its dependencies.  Building both engine_sandbox and cook
+      # validates both the Vulkan renderer path and the cross-platform cook
+      # tool in a single CI run.
+      # -----------------------------------------------------------------------
+      - name: Build engine_sandbox
+        run: cmake --build --preset windows-debug-engine-only --target engine_sandbox
+
+      - name: Build cook
+        run: cmake --build --preset windows-debug-engine-only --target cook
+
+      # -----------------------------------------------------------------------
+      # 5. Verify binaries exist.
+      # -----------------------------------------------------------------------
+      - name: Verify engine_sandbox.exe exists
+        run: Test-Path "build\windows-debug-engine-only\Debug\engine_sandbox.exe"
+        shell: pwsh
+
+      - name: Verify cook.exe exists
+        run: Test-Path "build\windows-debug-engine-only\Debug\cook.exe"
+        shell: pwsh
+
+      # -----------------------------------------------------------------------
+      # 6. Run engine_sandbox in headless mode (M0 validation).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Headless CI Validation
+      # The CI runner has no monitor and no GPU, but it does have a software
+      # Vulkan implementation (SwiftShader or Mesa lavapipe via the Vulkan
+      # SDK's validation layers).  Running with --headless skips the render
+      # loop and just validates the Vulkan bootstrap.
+      # Expected output: "[PASS] ..." followed by exit code 0.
+      # -----------------------------------------------------------------------
+      - name: Run headless validation (M0)
+        run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # 7. Cook the vertical slice sample project.
+      # -----------------------------------------------------------------------
+      - name: Cook vertical slice project
+        run: .\build\windows-debug-engine-only\Debug\cook.exe --project samples\vertical_slice_project --verbose
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # 8. Validate the AssetDB via engine_sandbox.
+      # -----------------------------------------------------------------------
+      - name: Validate-project (M2 AssetDB)
+        run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --validate-project samples\vertical_slice_project
+        shell: cmd

@@ -109,6 +109,17 @@ jobs:
       - name: Verify binary exists
         run: test -f build/game
 
+      # -----------------------------------------------------------------------
+      # Verify the cook binary was produced (cross-platform tool).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — cook is not Vulkan-dependent
+      # The cook tool uses only C++17 standard library (std::filesystem,
+      # std::fstream, etc.) and our Logger.  It builds on Linux as well as
+      # Windows.  We verify it here to catch compile errors early.
+      # -----------------------------------------------------------------------
+      - name: Verify cook binary exists
+        run: test -f build/cook
+
   # --------------------------------------------------------------------------
   # Job 2: Python tool tests (audio_authoring + anim_authoring)
   # --------------------------------------------------------------------------

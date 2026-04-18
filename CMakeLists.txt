@@ -266,6 +266,8 @@ if(ENGINE_ENABLE_VULKAN)
         src/engine/rendering/vulkan/vulkan_buffer.cpp
         src/engine/rendering/vulkan/vulkan_mesh.cpp
         src/engine/core/Logger.cpp
+        src/engine/assets/asset_db.cpp
+        src/engine/assets/asset_loader.cpp
     )
 
     add_executable(engine_sandbox
@@ -377,6 +379,46 @@ if(ENGINE_ENABLE_VULKAN)
     endif() # GLSLC_EXECUTABLE
 
 endif() # ENGINE_ENABLE_VULKAN
+
+# ---------------------------------------------------------------------------
+# cook standalone asset-cooker tool (M2)
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Standalone Tool Target
+# ---------------------------------------------------------------------------
+# cook.exe is a developer/CI tool that:
+#   1. Reads AssetRegistry.json from a project directory.
+#   2. Copies source assets to Cooked/<type>/ (real conversion added in M3+).
+#   3. Writes Cooked/assetdb.json — the runtime GUID → path index.
+#
+# It is built as a standalone executable (not linked into the engine) so it:
+#   • Never ships in the game binary.
+#   • Can run from any CI machine without Vulkan or ncurses.
+#   • Is easy to invoke from Python cook scripts.
+#
+# Dependencies:
+#   - Logger.cpp (for LOG_* macros during cook output).
+#   - std::filesystem (C++17 standard library — no extra packages needed).
+#
+# Usage after build:
+#   cook.exe --project samples/vertical_slice_project
+# ---------------------------------------------------------------------------
+add_executable(cook
+    src/tools/cook/cook_main.cpp
+    src/engine/core/Logger.cpp
+)
+
+target_include_directories(cook PRIVATE
+    src/
+)
+
+# TEACHING NOTE — /SUBSYSTEM:CONSOLE on MSVC
+# Ensures the cook.exe runs as a console application so its output is
+# visible when launched from a terminal or CI script.
+if(MSVC)
+    set_target_properties(cook PROPERTIES
+        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+    )
+endif()
 
 # ---------------------------------------------------------------------------
 # Print summary
