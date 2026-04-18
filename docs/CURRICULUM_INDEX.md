@@ -6,13 +6,13 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 876 across 37 subsystems.
+**Total lessons:** 878 across 37 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (35 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (36 lessons)
 - [ci/workflows](#ciworkflows) (27 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
@@ -33,7 +33,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [sandbox/main.cpp](#sandboxmain.cpp) (19 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (16 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (3 lessons)
-- [scripts/check_architecture.py](#scriptscheck_architecture.py) (7 lessons)
+- [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
 - [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (2 lessons)
 - [scripts/main.lua](#scriptsmain.lua) (2 lessons)
@@ -209,47 +209,65 @@ find_package(Curses REQUIRED)
 message(STATUS "ncurses found: ${CURSES_LIBRARIES}")
 endif()
 
-### Multi-version Lua detection
+### Build Lua from source (preferred)
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L170) (line 170)
 
-─────────────────────────────────────────────
-The scripting subsystem is optional.  We try to locate Lua in this order:
+──────────────────────────────────────────────────
+Lua is a small, self-contained library (~30 .c files).  Building it from the
+bundled source in  Lua/lua-5.5.0/src/  has several advantages over linking
+against a pre-built system library:
 
-  1. Bundled Lua 5.5 headers in <repo>/Lua/include/  (Windows + any platform).
-     Copy the Lua 5.5 work-release headers there and set LUA_BUNDLED=ON to
-     enable scripting on Windows without a system-wide Lua install.
+  • Zero external dependencies — works on any platform, in any CI, with any
+    compiler.  No "sudo apt install liblua5.4-dev" step required.
+  • Consistent version — everyone builds against Lua 5.5.0 regardless of what
+    is installed on their machine.
+  • Transparent — students can read the Lua source alongside the engine source.
 
-  2. System Lua 5.4 via pkg-config (most Linux distros).
-
-  3. Manual search in common install prefixes.
-
-If Lua is found via any route the terminal game target and engine_sandbox
-(when built on Windows with the bundled headers) will define
-ENGINE_ENABLE_LUA and link against the Lua library / DLL.
+Detection order:
+  1. Bundled source in Lua/lua-5.5.0/src/   ← preferred (always present)
+  2. System Lua 5.5 via pkg-config           ← fallback for distros
+  3. System Lua 5.4 via pkg-config           ← further fallback
+  4. Scripting disabled (warning only)       ← never a hard error
 ---------------------------------------------------------------------------
 
-### prefer bundled Lua 5.5 when headers are present.
+### Building a static library from C source in CMake
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L196) (line 196)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L197) (line 197)
 
-set(LUA_INCLUDE_DIRS "${LUA_BUNDLED_INCLUDE_DIR}")
-find_library(LUA_LIBRARIES
-NAMES lua55 lua5.5 lua54 lua5.4 lua
-HINTS "${LUA_BUNDLED_LIB_DIR}"
-NO_DEFAULT_PATH)
-if(LUA_LIBRARIES)
-set(LUA_BUNDLED ON)
-message(STATUS "Lua: using bundled headers + lib at ${LUA_BUNDLED_LIB_DIR}")
+-----------------------------------------------------------------------
+add_library(target STATIC files…) compiles the listed .c files and
+archives them into a single .a / .lib file.  Any target that links
+against lua55_static will automatically get the include directories via
+the PUBLIC target_include_directories() call below — no manual
+include_directories() needed at the call-site.
+-----------------------------------------------------------------------
+
+### Platform compile flags for Lua
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L223) (line 223)
+
+On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
+popen().  On Windows MSVC we disable several noisy warnings that come from
+Lua's intentional C idioms (e.g. condition is always true for integer type).
+if(MSVC)
+target_compile_options(lua55_static PRIVATE
+/wd4244   # conversion from 'double' to 'float'
+/wd4267   # size_t → int narrowing
+/wd4310   # cast truncates constant value
+/wd4324   # structure padding
+/wd4702   # unreachable code (Lua uses deliberate unreachable paths)
+)
 else()
-message(STATUS "Lua: bundled headers found but no lib — scripting disabled")
-set(LUA_INCLUDE_DIRS "")
-endif()
+target_compile_definitions(lua55_static PRIVATE _GNU_SOURCE)
+target_compile_options(lua55_static PRIVATE
+-w   # suppress all warnings in third-party Lua source
+)
 endif()
 
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L247) (line 247)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L279) (line 279)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -280,7 +298,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L289) (line 289)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L321) (line 321)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -290,20 +308,19 @@ if(ENGINE_ENABLE_TERMINAL)
 
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L334) (line 334)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L366) (line 366)
 
-The terminal game links Lua 5.4, so it defines ENGINE_ENABLE_LUA to
-enable the Lua scripting hooks in CombatSystem.cpp and CampSystem.cpp.
-engine_sandbox (Windows) does NOT define this flag — Lua is not required
-there and the hooks compile out cleanly, leaving all other system logic
-intact.
+The terminal game links against Lua 5.5 (built from bundled source or
+found as a system package).  ENGINE_ENABLE_LUA activates the Lua
+scripting hooks in CombatSystem.cpp and CampSystem.cpp.  When Lua is not
+found (unlikely given the bundled source) the hooks compile out cleanly.
 if(LUA_LIBRARIES)
 target_compile_definitions(game PRIVATE ENGINE_ENABLE_LUA)
 endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L357) (line 357)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L388) (line 388)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -328,7 +345,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L396) (line 396)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L427) (line 427)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -340,7 +357,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L404) (line 404)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L435) (line 435)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -350,7 +367,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L426) (line 426)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L457) (line 457)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -363,7 +380,7 @@ src/engine/audio/audio_system.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L439) (line 439)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L470) (line 470)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -376,7 +393,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L452) (line 452)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L483) (line 483)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -400,7 +417,7 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L492) (line 492)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L523) (line 523)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -412,7 +429,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L501) (line 501)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L532) (line 532)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -421,7 +438,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L514) (line 514)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L545) (line 545)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -430,7 +447,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L520) (line 520)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L551) (line 551)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -439,7 +456,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L525) (line 525)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L556) (line 556)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -448,26 +465,26 @@ so the factory can gate which concrete renderer header(s) it includes.
 -----------------------------------------------------------------------
 set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
-### Bundled Lua on Windows
+### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L546) (line 546)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L577) (line 577)
 
 ──────────────────────────────────────
-The repository ships Lua 5.5 runtime binaries in Lua/ (lua55.dll, etc.).
-To enable scripting in engine_sandbox, place the Lua 5.5 headers in
-Lua/include/ and the import library in Lua/lib/lua55.lib.  CMake will
-detect these via the LUA_BUNDLED flag set above and:
-  1. Add Lua/include/ to the include path so LuaEngine.hpp can find lua.h.
-  2. Link against lua55.lib.
-  3. Copy lua55.dll alongside engine_sandbox.exe post-build.
-  4. Define ENGINE_ENABLE_LUA so the scripting hooks compile in.
-Without these files the sandbox builds without scripting (no error).
+When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
+target is already built from source.  We:
+  1. Link engine_sandbox against lua55_static (static lib — no DLL needed).
+  2. Include directories are inherited via target_link_libraries PUBLIC.
+  3. Define ENGINE_ENABLE_LUA to activate all scripting hooks.
+  4. Copy lua55.dll alongside the exe (optional — only needed if users
+     also run standalone .lua scripts via lua55.exe; the embedded engine
+     uses the static lib).
 -----------------------------------------------------------------------
 if(LUA_BUNDLED)
-target_include_directories(engine_sandbox PRIVATE ${LUA_INCLUDE_DIRS})
+LUA_LIBRARIES is the CMake target lua55_static; include dirs are
+inherited via the PUBLIC target_include_directories on that target.
 target_link_libraries(engine_sandbox PRIVATE ${LUA_LIBRARIES})
 target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_LUA)
-Copy lua55.dll alongside the exe so it can be found at runtime.
+Copy lua55.dll alongside the exe for convenience (running scripts).
 set(LUA55_DLL "${CMAKE_SOURCE_DIR}/Lua/lua55.dll")
 if(EXISTS "${LUA55_DLL}")
 add_custom_command(TARGET engine_sandbox POST_BUILD
@@ -477,14 +494,14 @@ COMMAND ${CMAKE_COMMAND} -E copy_if_different
 COMMENT "Copying lua55.dll alongside engine_sandbox.exe"
 )
 endif()
-message(STATUS "engine_sandbox: Lua scripting ENABLED (bundled Lua/)")
+message(STATUS "engine_sandbox: Lua 5.5 scripting ENABLED (static, from source)")
 else()
 message(STATUS "engine_sandbox: Lua scripting DISABLED (no Lua/include/ or Lua/lib/)")
 endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L578) (line 578)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L609) (line 609)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -499,7 +516,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L593) (line 593)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L624) (line 624)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -514,7 +531,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L635) (line 635)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L666) (line 666)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -537,7 +554,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L660) (line 660)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L691) (line 691)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -559,7 +576,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L679) (line 679)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L710) (line 710)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -570,7 +587,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L687) (line 687)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -580,7 +597,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L716) (line 716)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L747) (line 747)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -589,7 +606,7 @@ C++ standard already set above).
 
 ### Qt Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L723) (line 723)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L754) (line 754)
 
 The editor is a Qt 6 Widgets application that provides:
   • Project browser  — open a project folder, see its Content/ files
@@ -7989,7 +8006,7 @@ C++ Standard: C++17
 
 ### Why SetWorld is not a trivial one-liner
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L156) (line 156)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L155) (line 155)
 
 ─────────────────────────────────────────────────────────
 RegisterEngineBindings() stores the World* in the Lua registry under the
@@ -8009,7 +8026,7 @@ m_world = world;
 
 ### luaL_loadfile internals
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L199) (line 199)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L198) (line 198)
 
 ─────────────────────────────────────────
 luaL_loadfile(L, filename):
@@ -8031,7 +8048,7 @@ return false;
 
 ### Anonymous Namespace for Binding Functions
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L529) (line 529)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L528) (line 528)
 
 ──────────────────────────────────────────────────────────
 We put the binding functions in an anonymous namespace so they have
@@ -8045,7 +8062,7 @@ different (and confusing) meaning for class members.
 
 ### Lua Registry
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L545) (line 545)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L544) (line 544)
 
 ──────────────────────────────
 The Lua registry is a special table accessible only from C (not from Lua
@@ -8067,7 +8084,7 @@ return w;   // may be nullptr if SetWorld() was never called
 
 ### Single Source of Truth for Gil
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L652) (line 652)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L651) (line 651)
 
 Gil is stored exclusively in CurrencyComponent, NOT in InventoryComponent.
 Always read CurrencyComponent when you need the player's currency balance.
@@ -8083,7 +8100,7 @@ gold = static_cast<int>(cc.gil);
 
 ### Finding the player and modifying their inventory.
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L682) (line 682)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L681) (line 681)
 
 GameDatabase::FindItem(name) does a linear search by name.
 We look up the ItemData first so we can use its canonical ID.
@@ -8099,7 +8116,7 @@ const uint32_t itemID = itemData->id;
 
 ### Lua Registry Storage
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L805) (line 805)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L804) (line 804)
 
 ──────────────────────────────────────
 lua_pushlightuserdata(L, ptr) pushes a raw pointer as a "light userdata"
@@ -8115,7 +8132,7 @@ lua_setfield(m_L, LUA_REGISTRYINDEX, "engine_world");
 
 ### Two Names, One Function
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L820) (line 820)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L819) (line 819)
 
 ─────────────────────────────────────────
 Lua scripts in this project consistently use the name "engine_log" for
@@ -8136,7 +8153,7 @@ lua_register(m_L, "game_show_message",    binding_game_show_message);
 
 ### Exposing C++ Constants to Lua
 
-**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L841) (line 841)
+**Source:** [`src/engine/scripting/LuaEngine.cpp`](src/engine/scripting/LuaEngine.cpp#L840) (line 840)
 
 ──────────────────────────────────────────────
 We push each constant as a Lua global.  In Lua, uppercase globals by
@@ -8253,47 +8270,52 @@ don't exist in the Lua library, causing linker errors.
 `extern "C" { ... }` tells the C++ compiler to use C-style (unmangled)
 linkage for everything inside the block.
 
-### Multi-version Lua include paths
+### Lua include-path cascade
 
 **Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L116) (line 116)
 
-─────────────────────────────────────────────────
-The exact path for Lua headers varies by platform and installation:
-  • Linux (apt): lua5.4/lua.h   (package: liblua5.4-dev)
-  • Windows (bundled): lua.h    (headers placed in Lua/include/ in the repo)
-  • macOS (brew): lua.h         (in HOMEBREW_PREFIX/include/lua5.x/)
+─────────────────────────────────────────
+Lua headers reach the compiler via different paths depending on how Lua was
+set up.  We check in order of preference:
 
-We use a cascade of #if checks so the file compiles on every supported
-platform without manual per-platform configuration.
+  1. <lua.h> directly on the include path — used when CMake built Lua from
+     the bundled source (Lua/lua-5.5.0/src/) and exposed its directory as
+     a PUBLIC include on the lua55_static target.  This works on all
+     platforms (Windows MSVC, Linux GCC/Clang, macOS).
+
+  2. <lua5.5/lua.h> — system Lua 5.5 installed in a versioned sub-dir
+     (e.g. /usr/include/lua5.5/).
+
+  3. <lua5.4/lua.h> — system Lua 5.4 installed in a versioned sub-dir
+     (e.g. /usr/include/lua5.4/ on Debian/Ubuntu via liblua5.4-dev).
+
+The cascade ensures the file compiles on every supported platform without
+manual per-developer configuration.
 extern "C" {
-if defined(_WIN32) && __has_include(<lua.h>)
-Windows with bundled Lua headers (Lua/include/ added to include path by CMake)
+if __has_include(<lua.h>)
+Bundled Lua (any platform) — Lua/lua-5.5.0/src/ on the include path via
+the lua55_static CMake target PUBLIC include dirs.
  include <lua.h>
  include <lualib.h>
  include <lauxlib.h>
 elif __has_include(<lua5.5/lua.h>)
-Linux/macOS with Lua 5.5 installed system-wide
+System Lua 5.5 installed in a versioned subdirectory.
  include <lua5.5/lua.h>
  include <lua5.5/lualib.h>
  include <lua5.5/lauxlib.h>
 elif __has_include(<lua5.4/lua.h>)
-Linux/macOS with Lua 5.4 installed system-wide (most common)
+System Lua 5.4 installed in a versioned subdirectory (Debian/Ubuntu).
  include <lua5.4/lua.h>
  include <lua5.4/lualib.h>
  include <lua5.4/lauxlib.h>
-elif __has_include(<lua.h>)
-Generic fallback — lua.h is directly on the include path
- include <lua.h>
- include <lualib.h>
- include <lauxlib.h>
 else
- error "Lua headers not found. See LuaEngine.hpp for setup instructions."
+ error "Lua headers not found.  Ensure Lua/lua-5.5.0/ is present in the repo."
 endif
 }
 
 ### Lua Tables
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L166) (line 166)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L171) (line 171)
 
 ────────────────────────────
 In Lua, tables are the ONLY data structure.  They function as:
@@ -8316,7 +8338,7 @@ Usage:
 
 ### Engine ↔ Script Communication
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L237) (line 237)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L242) (line 242)
 
 ───────────────────────────────────────────────
 There are two directions of communication:
@@ -8335,7 +8357,7 @@ C++ functions so Lua scripts can call them freely.
 
 ### lua_State Lifecycle
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L253) (line 253)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L258) (line 258)
 
 ─────────────────────────────────────
 A lua_State (often called "L") represents one Lua interpreter instance.
@@ -8353,7 +8375,7 @@ Multiple states are possible (e.g., sandboxed scripts), but one is simpler.
 
 ### Non-Owning Pointers
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L316) (line 316)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L321) (line 321)
 
 ─────────────────────────────────────
 A raw pointer T* in C++ is non-owning by convention (the pointee is
@@ -8363,7 +8385,7 @@ Here the World is owned by the Application, which outlives LuaEngine.
 
 ### Why we ALSO update the Lua registry here
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L323) (line 323)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L328) (line 328)
 
 ──────────────────────────────────────────────────────────
 RegisterEngineBindings() stores the initial World pointer in the Lua
@@ -8383,7 +8405,7 @@ stored pointer while the Lua state is still valid.
 
 ### luaL_loadfile vs luaL_dofile
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L349) (line 349)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L354) (line 354)
 
 ──────────────────────────────────────────────
 luaL_dofile(L, path)  — loads AND runs the file.  Simple but provides
@@ -8403,7 +8425,7 @@ We use loadfile + pcall so we can:
 
 ### Overloads vs Templates for Lua calls
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L391) (line 391)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L396) (line 396)
 
 ──────────────────────────────────────────────────────
 We provide typed overloads rather than a single variadic template
@@ -8425,7 +8447,7 @@ as convenient wrappers for the common cases).
 
 ### lua_CFunction Type
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L450) (line 450)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L455) (line 455)
 
 ────────────────────────────────────
 Every function exposed to Lua must have this exact signature:
@@ -8445,7 +8467,7 @@ lua_register(L, "name", fn) is a macro for:
 
 ### Template Specialisation
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L476) (line 476)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L481) (line 481)
 
 ─────────────────────────────────────────
 GetGlobal<T> is a function template.  The implementation uses
@@ -8468,7 +8490,7 @@ completely removed from the binary (unlike a runtime `if`).
 
 ### SetGlobal and Type Dispatch
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L502) (line 502)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L507) (line 507)
 
 ─────────────────────────────────────────────
 Like GetGlobal, this template uses if constexpr to select the right
@@ -8486,7 +8508,7 @@ This is useful for:
 
 ### When to Use the Raw Pointer
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L542) (line 542)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L547) (line 547)
 
 ─────────────────────────────────────────────
 Most code should use the LuaEngine API.  Use the raw state only when:
@@ -8496,7 +8518,7 @@ Most code should use the LuaEngine API.  Use the raw state only when:
 
 ### Templates in Headers
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L602) (line 602)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L607) (line 607)
 
 ──────────────────────────────────────
 Function templates must have their FULL implementation visible at the point
@@ -8512,7 +8534,7 @@ Alternatives:
 
 ### if constexpr (C++17)
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L635) (line 635)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L640) (line 640)
 
 ──────────────────────────────────────
 `if constexpr` evaluates its condition at COMPILE TIME.
@@ -12629,6 +12651,22 @@ Value: human-readable rationale for allowing the exception.
 
 **Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L388) (line 388)
 
+### skip_dirs excludes build artefacts and third-party sources.
+
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L425) (line 425)
+
+"Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
+source that intentionally has no TEACHING NOTE blocks and may be large.
+Scanning it would produce false-positive warnings.
+skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules", "Lua"}
+result: list[Path] = []
+for path in sorted(repo_root.rglob("*")):
+if any(part in skip_dirs for part in path.parts):
+continue
+if path.suffix in (".cpp", ".hpp", ".h", ".c"):
+result.append(path)
+return result
+
 ---
 
 ## scripts/enemies.lua
@@ -12647,7 +12685,7 @@ Value: human-readable rationale for allowing the exception.
 
 ### Deterministic Line Endings
 
-**Source:** [`scripts/extract_teaching_notes.py`](scripts/extract_teaching_notes.py#L434) (line 434)
+**Source:** [`scripts/extract_teaching_notes.py`](scripts/extract_teaching_notes.py#L435) (line 435)
 
 -------------------------------------------
 Explicitly write LF (\n) line endings regardless of the host platform.

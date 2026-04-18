@@ -422,7 +422,11 @@ def check_teaching_notes(
 
 def collect_cpp_files(repo_root: Path) -> list[Path]:
     """Return all ``.cpp`` and ``.hpp`` files under *repo_root*, sorted."""
-    skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules"}
+    # TEACHING NOTE — skip_dirs excludes build artefacts and third-party sources.
+    # "Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
+    # source that intentionally has no TEACHING NOTE blocks and may be large.
+    # Scanning it would produce false-positive warnings.
+    skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules", "Lua"}
     result: list[Path] = []
     for path in sorted(repo_root.rglob("*")):
         if any(part in skip_dirs for part in path.parts):

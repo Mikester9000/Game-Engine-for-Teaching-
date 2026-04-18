@@ -56,6 +56,7 @@ SCANNABLE_EXTENSIONS: set[str] = {
 SKIP_DIRS: set[str] = {
     "build", "build-test", ".git", "node_modules",
     "__pycache__", ".venv", "venv",
+    "Lua",   # vendored third-party Lua 5.5.0 source — not engine code
 }
 
 # The marker that starts a teaching block (case-sensitive per project standard).
