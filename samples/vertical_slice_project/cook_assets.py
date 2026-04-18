@@ -47,6 +47,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
+# TEACHING NOTE — Optional Tool Integration
+# ---------------------------------------------------------------------------
+# We try to import the Python authoring tools that live in tools/.  If they
+# are installed (e.g. via  pip install -e tools/audio_authoring)  the cook
+# step will use them for real audio/animation processing.  If they are NOT
+# installed (e.g. on a machine that only has the raw C++ build tools) we fall
+# back to simple file-copy stubs so the pipeline still works end-to-end.
+# ---------------------------------------------------------------------------
+try:
+    from animation_engine.integration import AnimAssetPipeline  # type: ignore
+    _HAS_ANIM_ENGINE = True
+except ImportError:
+    _HAS_ANIM_ENGINE = False
+
+try:
+    from audio_engine.integration import AssetPipeline as _AudioAssetPipeline  # noqa: F401
+    _HAS_AUDIO_ENGINE = True
+except ImportError:
+    _HAS_AUDIO_ENGINE = False
+
+# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
@@ -130,26 +151,66 @@ def cook_textures(registry: list[dict]) -> int:
 
 
 def cook_audio(registry: list[dict]) -> int:
-    """STUB: Copy WAV audio to Cooked/Audio/.
+    """Cook WAV audio from Content/Audio/ to Cooked/Audio/.
 
-    TEACHING NOTE — Audio Cooking (Stub)
-    A real cook step would:
-      1. Import the AudioEngine from tools/audio_authoring/.
-      2. Call AudioEngine.generate_track() or load the source WAV.
-      3. Apply DSP (normalise, compress, add loop points).
-      4. Export as OGG Vorbis (smaller than WAV) into a .bank container.
-    For now we copy WAV files and write a minimal .bank JSON manifest.
+    TEACHING NOTE — Audio Cooking
+    When the  tools/audio_authoring  package is installed, this function uses
+    the  audio_engine.dsp  module to normalise each WAV file (target LUFS,
+    true-peak ceiling) before writing to Cooked/Audio/.  It also writes a
+    .bank JSON manifest that the C++ runtime reads at startup.
+
+    When the package is NOT installed (stub mode) we simply copy WAV files
+    without any DSP processing.  The pipeline still works end-to-end.
+
+    TEACHING NOTE — Why normalise at cook time?
+    Normalising audio during the cook step (not at runtime) means:
+      1. The runtime doesn't waste CPU cycles on DSP during gameplay.
+      2. All audio has consistent loudness regardless of how the source WAVs
+         were recorded.
+      3. The cooked asset is the final, verified form — what ships in the game.
     """
     audio_src  = CONTENT_DIR / "Audio"
     audio_dst  = COOKED_DIR  / "Audio"
     ensure_dir(audio_dst)
 
     clips: list[dict] = []
-    for src in sorted(audio_src.glob("**/*.wav")):
+    source_wavs = sorted(audio_src.glob("**/*.wav"))
+
+    if not source_wavs:
+        return 0
+
+    for src in source_wavs:
         rel = src.relative_to(audio_src)   # relative to Audio/
         dst = audio_dst / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+
+        # ------------------------------------------------------------------
+        # Path A: use audio_engine DSP to normalise (if package installed)
+        # ------------------------------------------------------------------
+        processed = False
+        if _HAS_AUDIO_ENGINE:
+            try:
+                from audio_engine.export.audio_exporter import AudioExporter  # type: ignore
+                from audio_engine.render.offline_bounce import OfflineBounce   # type: ignore
+                import numpy as np  # type: ignore
+
+                # Read the source WAV via the exporter's importer helper
+                from audio_engine.dsp.normaliser import Normaliser  # type: ignore
+                normaliser = Normaliser(target_lufs=-16.0, ceiling_db=-1.0)
+                import scipy.io.wavfile as sio_wav  # type: ignore
+                sr, data = sio_wav.read(str(src))
+                audio = data.astype(np.float32) / 32768.0
+                if audio.ndim > 1:
+                    audio = audio.mean(axis=1)
+                normalised = normaliser.process(audio)
+                AudioExporter(sample_rate=sr, bit_depth=16).export(normalised, dst, fmt="wav")
+                processed = True
+            except Exception as exc:
+                print(f"  [WARN] audio_engine DSP failed for {src.name}: {exc} — falling back to copy")
+
+        if not processed:
+            # Path B: simple file copy (stub / fallback)
+            shutil.copy2(src, dst)
 
         clip_id = new_guid()
         clips.append({
@@ -229,38 +290,84 @@ def cook_scenes(registry: list[dict]) -> int:
 
 
 def cook_animations(registry: list[dict]) -> int:
-    """STUB: Cook animation JSON files to Cooked/Anim/.
+    """Cook animation JSON files to Cooked/Anim/ using anim_engine when available.
 
-    TEACHING NOTE — Animation Cooking (Stub)
-    A real cook step would:
-      1. Load the source .anim JSON using animation_engine.io.Importer.
-      2. Apply key-frame reduction (remove redundant keys within tolerance).
-      3. Write a compact .animc binary (header + packed float channels).
-      4. Do the same for skeletons (.skelc).
+    TEACHING NOTE — Animation Cooking
+    When the  tools/anim_authoring  package is installed, this function uses
+    the  AnimAssetPipeline  class from  animation_engine.integration  to
+    deserialise skeletons and clips, apply key-frame reduction and then write
+    the cooked .skelc / .animc files.
+
+    When the package is NOT installed (stub mode) we copy JSON files directly
+    (renamed to .animc) so the rest of the pipeline still functions.
     """
     anim_src = CONTENT_DIR / "Animations"
     anim_dst = COOKED_DIR  / "Anim"
     ensure_dir(anim_dst)
 
     count = 0
-    for src in sorted(anim_src.glob("**/*.json")):
-        rel = src.relative_to(anim_src)     # relative to Animations/
-        dst = anim_dst / rel.with_suffix(".animc")
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)  # STUB: copy; real cook converts to binary
 
-        registry.append({
-            "id":     new_guid(),
-            "type":   "anim_clip",
-            "name":   src.stem,
-            "source": "Animations/" + str(rel),
-            "cooked": str(dst.relative_to(SCRIPT_DIR)),
-            "hash":   sha256_file(src),
-            "dependencies": [],
-            "tags":   ["animation"],
-        })
-        count += 1
-        print(f"  [ANI] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+    # ------------------------------------------------------------------
+    # Path A: use the real animation_engine pipeline (installed package)
+    # ------------------------------------------------------------------
+    if _HAS_ANIM_ENGINE:
+        print("  [INFO] animation_engine package found — using AnimAssetPipeline")
+        pipeline = AnimAssetPipeline(skip_existing=False)
+        manifest = pipeline.cook_all(
+            content_dir=str(anim_src),
+            cooked_dir=str(anim_dst),
+        )
+        print(f"  {manifest.summary()}")
+        for entry in manifest.skeletons:
+            cooked_path = Path(entry["cooked"])
+            source_path = Path(entry["source"])
+            registry.append({
+                "id":     new_guid(),
+                "type":   "skeleton",
+                "name":   source_path.stem,
+                "source": _try_relative_to(source_path, SCRIPT_DIR),
+                "cooked": _try_relative_to(cooked_path, SCRIPT_DIR),
+                "hash":   sha256_file(source_path) if source_path.exists() else "",
+                "dependencies": [],
+                "tags":   ["skeleton"],
+            })
+            count += 1
+        for entry in manifest.clips:
+            cooked_path = Path(entry["cooked"])
+            source_path = Path(entry["source"])
+            registry.append({
+                "id":     new_guid(),
+                "type":   "anim_clip",
+                "name":   source_path.stem,
+                "source": _try_relative_to(source_path, SCRIPT_DIR),
+                "cooked": _try_relative_to(cooked_path, SCRIPT_DIR),
+                "hash":   sha256_file(source_path) if source_path.exists() else "",
+                "dependencies": [],
+                "tags":   ["animation"],
+            })
+            count += 1
+    else:
+        # ------------------------------------------------------------------
+        # Path B: stub — copy JSON → .animc
+        # ------------------------------------------------------------------
+        for src in sorted(anim_src.glob("**/*.json")):
+            rel = src.relative_to(anim_src)     # relative to Animations/
+            dst = anim_dst / rel.with_suffix(".animc")
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)  # STUB: copy; real cook converts to binary
+
+            registry.append({
+                "id":     new_guid(),
+                "type":   "anim_clip",
+                "name":   src.stem,
+                "source": "Animations/" + str(rel),
+                "cooked": str(dst.relative_to(SCRIPT_DIR)),
+                "hash":   sha256_file(src),
+                "dependencies": [],
+                "tags":   ["animation"],
+            })
+            count += 1
+            print(f"  [ANI] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -268,6 +375,20 @@ def cook_animations(registry: list[dict]) -> int:
 # ---------------------------------------------------------------------------
 # Registry update
 # ---------------------------------------------------------------------------
+
+def _try_relative_to(path: Path, base: Path) -> str:
+    """Return path relative to base as a string, or the original string if not relative.
+
+    TEACHING NOTE — Python 3.9 compatibility
+    Path.is_relative_to() was added in Python 3.9.  We use a try/except
+    approach so the code also runs on Python 3.8 (the minimum for some CI
+    runners).  When the path is not under base we return the full string.
+    """
+    try:
+        return str(path.relative_to(base))
+    except ValueError:
+        return str(path)
+
 
 def update_registry(registry: list[dict]) -> None:
     """Write the updated AssetRegistry.json.

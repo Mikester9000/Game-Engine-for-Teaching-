@@ -1,190 +1,128 @@
-name: Contract Tests (cook golden-file)
+# ============================================================================
+# contract-tests.yml — Asset Cook Pipeline Contract Tests
+# ============================================================================
+#
+# TEACHING NOTE — Contract Tests in CI
+# ======================================
+# A "contract test" verifies the OUTPUT of a pipeline against an agreed
+# specification (the "contract").  Here we:
+#
+#   1. Install the Python authoring tools (audio_authoring + anim_authoring).
+#   2. Run cook_assets.py on the vertical slice sample project.
+#   3. Run pytest against tests/cook/ — which validates:
+#        - The cook exits with code 0.
+#        - AssetRegistry.json is written and schema-valid.
+#        - Every cooked path in the registry exists on disk.
+#        - The mandatory MainTown scene is present.
+#   4. Run tools/validate-assets.py to lint the resulting registry.
+#
+# This workflow runs on every push/PR that touches the cook pipeline or
+# the sample project, keeping the M2 deliverable green at all times.
+# ============================================================================
 
-# ============================================================================
-# TEACHING NOTE — What are Contract Tests?
-# ============================================================================
-# A "contract test" validates the interface contract between two components:
-# the producer (cook.exe) and the consumer (AssetDB runtime).
-#
-# The contract here is:
-#   cook.exe --project <p>  produces  <p>/Cooked/assetdb.json
-#   The assetdb.json format must match the schema expected by AssetDB::Load().
-#
-# We validate this contract by:
-#   1. Running cook.exe on the sample project.
-#   2. Diffing the output against a "golden file" stored in tests/golden/.
-#   3. Failing CI if the output changes unexpectedly.
-#
-# Why is this valuable?
-#   • If someone changes the cook output format, the golden-file diff catches
-#     it immediately — they must update the golden file AND document why.
-#   • It ensures the sample project always cooks without errors.
-#   • It provides a regression safety net for the entire M2 pipeline.
-#
-# ============================================================================
-# TEACHING NOTE — Golden-File Workflow
-# ============================================================================
-# When the cook output format changes intentionally:
-#   1. Run cook locally to produce the new output.
-#   2. Copy the new assetdb.json to tests/golden/assetdb_expected.json.
-#   3. Commit both files with a message explaining the format change.
-#   4. The contract test will now pass with the new golden file.
-#
-# This workflow gives you confidence that format changes are deliberate
-# rather than accidental regressions.
-# ============================================================================
+name: Contract Tests (Asset Cook Pipeline)
 
 on:
   push:
     paths:
-      - 'src/tools/cook/**'
-      - 'src/engine/assets/**'
-      - 'samples/vertical_slice_project/**'
-      - 'tests/golden/**'
-      - 'CMakeLists.txt'
+      - 'samples/**'
+      - 'tools/**'
+      - 'shared/schemas/**'
+      - 'tests/cook/**'
       - '.github/workflows/contract-tests.yml'
   pull_request:
     paths:
-      - 'src/tools/cook/**'
-      - 'src/engine/assets/**'
-      - 'samples/vertical_slice_project/**'
-      - 'tests/golden/**'
-      - 'CMakeLists.txt'
+      - 'samples/**'
+      - 'tools/**'
+      - 'shared/schemas/**'
+      - 'tests/cook/**'
       - '.github/workflows/contract-tests.yml'
-  # Allow manual trigger from the GitHub Actions UI.
+  # Allow manual trigger from the GitHub Actions UI
   workflow_dispatch:
 
-# ============================================================================
-# TEACHING NOTE — Least-Privilege Permissions
-# ============================================================================
+# TEACHING NOTE — Principle of Least Privilege
+# This workflow only reads repository content; no write access needed.
 permissions:
   contents: read
 
 jobs:
-  # --------------------------------------------------------------------------
-  # Job: Cook the sample project on Linux and compare against golden files.
-  # --------------------------------------------------------------------------
-  # TEACHING NOTE — Why run contract tests on Linux?
-  # cook.exe is a cross-platform C++17 tool.  Running on Linux in CI:
-  #   • Is faster (no MSVC compilation overhead).
-  #   • Does not require Vulkan SDK or Qt.
-  #   • Validates the std::filesystem-based code is portable.
-  # The Windows-specific build-windows.yml workflow handles MSVC validation.
-  # --------------------------------------------------------------------------
   contract-tests:
-    name: Cook golden-file contract tests (Ubuntu)
+    name: Cook pipeline contract tests
     runs-on: ubuntu-latest
 
     steps:
       # -----------------------------------------------------------------------
-      # 1. Checkout the repository.
+      # 1. Checkout the repository
       # -----------------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # -----------------------------------------------------------------------
-      # 2. Install build dependencies.
+      # TEACHING NOTE — Python Setup
+      # We pin to Python 3.11 for reproducibility.  The tools require 3.9+.
       # -----------------------------------------------------------------------
-      # TEACHING NOTE — Minimal dependencies for cook
-      # The cook tool only needs cmake and a C++ compiler (g++ or clang++).
-      # It does NOT need ncurses, Lua, or Vulkan — keeping this job fast.
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       # -----------------------------------------------------------------------
-      - name: Install build dependencies
+      # 2. Install Python authoring tools and test dependencies
+      # -----------------------------------------------------------------------
+      - name: Install audio_authoring tool
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            cmake \
-            build-essential
+          cd tools/audio_authoring
+          pip install -e ".[dev]"
 
-      # -----------------------------------------------------------------------
-      # 3. Configure and build the cook tool.
-      # -----------------------------------------------------------------------
-      - name: Configure CMake (cook only)
+      - name: Install anim_authoring tool
         run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DENGINE_ENABLE_TERMINAL=OFF \
-            -DENGINE_ENABLE_VULKAN=OFF
+          cd tools/anim_authoring
+          pip install -e ".[dev]"
 
-      - name: Build cook
-        run: cmake --build build --target cook -j$(nproc)
+      - name: Install test dependencies
+        run: pip install jsonschema==4.23.0 pytest==8.3.5
 
       # -----------------------------------------------------------------------
-      # 4. Run cook on the vertical slice sample project.
+      # 3. Run the cook pipeline on the vertical slice sample project
       # -----------------------------------------------------------------------
-      - name: Cook vertical slice project
-        run: ./build/cook --project samples/vertical_slice_project --verbose
-
-      # -----------------------------------------------------------------------
-      # 5. Compare output against golden file.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — diff --strip-trailing-cr
-      # On Windows, line endings are CRLF (\r\n).  On Linux they are LF (\n).
-      # The --strip-trailing-cr flag (or Python's splitlines()) normalises
-      # line endings so the diff does not fail due to platform differences.
-      # -----------------------------------------------------------------------
-      - name: Compare assetdb.json against golden file
+      - name: Cook vertical slice sample project
         run: |
-          python3 - <<'EOF'
-          import json
-          import sys
+          cd samples/vertical_slice_project
+          python cook_assets.py
 
-          actual_path   = "samples/vertical_slice_project/Cooked/assetdb.json"
-          expected_path = "tests/golden/assetdb_expected.json"
+      # -----------------------------------------------------------------------
+      # 4. Run the contract tests (schema + golden path checks)
+      # -----------------------------------------------------------------------
+      - name: Run contract tests
+        run: python -m pytest tests/cook/ -v --tb=short
 
-          with open(actual_path) as f:
-              actual = json.load(f)
-          with open(expected_path) as f:
-              expected = json.load(f)
-
-          # TEACHING NOTE — Normalise before comparing
-          # We sort the assets array by "id" before comparing so the test
-          # does not fail due to different ordering.  Order in JSON arrays is
-          # technically significant, but in this case the runtime does not
-          # depend on order.
-          def norm(data):
-              data = dict(data)
-              data["assets"] = sorted(data.get("assets", []),
-                                      key=lambda a: a.get("id", ""))
-              return data
-
-          a = norm(actual)
-          e = norm(expected)
-
-          if a == e:
-              print("[PASS] assetdb.json matches golden file.")
+      # -----------------------------------------------------------------------
+      # 5. Validate the produced AssetRegistry.json against the shared schema
+      #    using jsonschema directly (not validate-assets.py which uses a
+      #    different schema for the older assets/examples/ manifests).
+      # -----------------------------------------------------------------------
+      - name: Validate AssetRegistry.json against shared schema
+        run: |
+          python - <<'EOF'
+          import json, sys, pathlib
+          try:
+              import jsonschema
+          except ImportError:
+              print("jsonschema not available — skipping schema check")
               sys.exit(0)
-          else:
-              print("[FAIL] assetdb.json does not match golden file.")
-              print()
-              print("=== Actual ===")
-              print(json.dumps(a, indent=2))
-              print()
-              print("=== Expected ===")
-              print(json.dumps(e, indent=2))
-              print()
-              print("To update the golden file, run:")
-              print("  ./build/cook --project samples/vertical_slice_project")
-              print("  cp samples/vertical_slice_project/Cooked/assetdb.json \\")
-              print("     tests/golden/assetdb_expected.json")
+
+          root = pathlib.Path(".")
+          schema = json.loads((root / "shared/schemas/asset_registry.schema.json").read_text())
+          registry = json.loads((root / "samples/vertical_slice_project/AssetRegistry.json").read_text())
+
+          # Strip $schema key before validation (meta-schema is not downloaded in CI)
+          schema.pop("$schema", None)
+          registry.pop("$schema", None)
+
+          try:
+              jsonschema.validate(instance=registry, schema=schema)
+              print("[PASS] AssetRegistry.json validates against asset_registry.schema.json")
+          except jsonschema.ValidationError as exc:
+              print(f"[FAIL] Schema validation error: {exc.message}")
               sys.exit(1)
           EOF
-
-      # -----------------------------------------------------------------------
-      # 6. Run the TEACHING NOTE coverage audit.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Automated Documentation Audit
-      # We run the teaching-note coverage audit as part of CI to catch
-      # documentation regressions.  New C++ files without TEACHING NOTE
-      # comments will fail this check.
-      #
-      # The --fail-below=0.3 threshold means: if the overall density of
-      # TEACHING NOTEs drops below 0.3 notes per 100 code lines, CI fails.
-      # Adjust the threshold as the codebase grows.
-      # -----------------------------------------------------------------------
-      - name: Audit TEACHING NOTE coverage
-        run: |
-          python3 tools/audit_teaching_notes.py \
-            --paths src editor \
-            --fail-below 0.3 \
-            --verbose

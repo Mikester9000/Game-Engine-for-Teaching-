@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "educational-game-engine",
+  "version-string": "1.0.0",
+  "description": "Game Engine for Teaching — FFXV-style action RPG monorepo",
+
+  "dependencies": [
+    "nlohmann-json"
+  ]
+}

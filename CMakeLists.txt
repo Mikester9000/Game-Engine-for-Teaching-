@@ -181,6 +181,8 @@ endif()
 set(ENGINE_CORE_SOURCES
     src/engine/core/Logger.cpp
     src/engine/scripting/LuaEngine.cpp
+    src/engine/assets/asset_db.cpp
+    src/engine/assets/asset_loader.cpp
 )
 
 # ---------------------------------------------------------------------------
@@ -288,10 +290,20 @@ if(ENGINE_ENABLE_VULKAN)
     # the Win32-specific surface types and functions are declared.
     # Passing it as a compile definition ensures it is set for every
     # translation unit in this target without relying on the include order.
+    #
+    # TEACHING NOTE — UNICODE and _UNICODE
+    # Win32Window.cpp uses std::wstring for the window title and
+    # const wchar_t* for the window class name (L"EngineWndClass").
+    # Without UNICODE/_UNICODE, MSVC maps CreateWindowEx → CreateWindowExA
+    # which expects LPCSTR (narrow string) — causing C2440/C2664 errors.
+    # Defining UNICODE and _UNICODE selects the wide-string (W) variants so
+    # CreateWindowEx → CreateWindowExW, RegisterClassEx → RegisterClassExW, etc.
     target_compile_definitions(engine_sandbox PRIVATE
         VK_USE_PLATFORM_WIN32_KHR
         WIN32_LEAN_AND_MEAN
         NOMINMAX
+        UNICODE
+        _UNICODE
     )
 
     # TEACHING NOTE — SUBSYSTEM:CONSOLE
@@ -381,48 +393,45 @@ if(ENGINE_ENABLE_VULKAN)
 endif() # ENGINE_ENABLE_VULKAN
 
 # ---------------------------------------------------------------------------
-# cook standalone asset-cooker tool (M2)
+# cook target — standalone C++ asset cooker (Milestone M2)
 # ---------------------------------------------------------------------------
 # TEACHING NOTE — Standalone Tool Target
-# ---------------------------------------------------------------------------
-# cook.exe is a developer/CI tool that:
-#   1. Reads AssetRegistry.json from a project directory.
-#   2. Copies source assets to Cooked/<type>/ (real conversion added in M3+).
-#   3. Writes Cooked/assetdb.json — the runtime GUID → path index.
+# ─────────────────────────────────────────────────────────────────────────────
+# The cook tool is a platform-independent C++ executable that:
+#   1. Reads AssetRegistry.json from the given project directory.
+#   2. Copies/converts source assets → Cooked/ directory.
+#   3. Writes Cooked/assetdb.json for the C++ runtime (AssetDB).
 #
-# It is built as a standalone executable (not linked into the engine) so it:
-#   • Never ships in the game binary.
-#   • Can run from any CI machine without Vulkan or ncurses.
-#   • Is easy to invoke from Python cook scripts.
-#
-# Dependencies:
-#   - Logger.cpp (for LOG_* macros during cook output).
-#   - std::filesystem (C++17 standard library — no extra packages needed).
+# It is independent of the Vulkan renderer so it builds on all platforms
+# (Windows, Linux, macOS).
 #
 # Usage after build:
-#   cook.exe --project samples/vertical_slice_project
+#   ./cook --project samples/vertical_slice_project
+#   .\Debug\cook.exe --project samples\vertical_slice_project
 # ---------------------------------------------------------------------------
 add_executable(cook
     src/tools/cook/cook_main.cpp
     src/engine/core/Logger.cpp
 )
 
+# TEACHING NOTE — target_include_directories (PRIVATE)
+# Only this target needs to see src/ for #include "engine/core/Logger.hpp".
+# We use PRIVATE so the include path does not leak to anything that links
+# against cook (there is nothing, but it is good practice).
 target_include_directories(cook PRIVATE
     src/
 )
 
-# TEACHING NOTE — /SUBSYSTEM:CONSOLE on MSVC
-# Ensures the cook.exe runs as a console application so its output is
-# visible when launched from a terminal or CI script.
+# TEACHING NOTE — MSVC /SUBSYSTEM:CONSOLE
+# Same reasoning as engine_sandbox: we want stdout/stderr visible in a
+# terminal window on Windows.
 if(MSVC)
-    set_target_properties(cook PROPERTIES
-        LINK_FLAGS "/SUBSYSTEM:CONSOLE"
-    )
+    set_target_properties(cook PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
 endif()
 
-# ---------------------------------------------------------------------------
-# Print summary
-# ---------------------------------------------------------------------------
+message(STATUS "  cook target      : ON (always built)")
+
+
 
 message(STATUS "=== Build Configuration ===")
 message(STATUS "  CXX Standard     : C++${CMAKE_CXX_STANDARD}")
