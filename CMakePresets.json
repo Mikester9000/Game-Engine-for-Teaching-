@@ -87,14 +87,14 @@
       "displayName": "Build Windows Debug (Engine Only)",
       "configurePreset": "windows-debug-engine-only",
       "configuration": "Debug",
-      "targets": ["engine_sandbox"]
+      "targets": ["engine_sandbox", "cook"]
     },
     {
       "name": "windows-release-engine-only",
       "displayName": "Build Windows Release (Engine Only)",
       "configurePreset": "windows-release-engine-only",
       "configuration": "Release",
-      "targets": ["engine_sandbox"]
+      "targets": ["engine_sandbox", "cook"]
     }
   ]
 }
