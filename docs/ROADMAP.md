@@ -6,7 +6,7 @@
 
 ---
 
-## Milestone 1 — Monorepo Foundation ✅ *(current)*
+## Milestone 1 — Monorepo Foundation ✅ *(complete)*
 
 **Goal:** All repos under one roof with a working Windows build and clear teaching structure.
 
@@ -23,71 +23,132 @@
 | Vertical slice sample project skeleton + cook script | ✅ Done |
 | `docs/ARCHITECTURE.md` + `docs/ROADMAP.md` | ✅ Done |
 | Updated `README.md` with monorepo build instructions | ✅ Done |
+| Vulkan bootstrap (M0) + colored triangle (M1) | ✅ Done |
 
 ---
 
-## Milestone 2 — Import & Cook Pipeline *(next)*
+## Milestone 2 — Import & Cook Pipeline ✅ *(complete)*
 
 **Goal:** A complete round-trip: import source asset → cook → engine loads it.
 
-| Item | Priority |
-|------|----------|
-| Texture importer: PNG/JPG → compressed `.tex` cooked format | HIGH |
-| Audio cook: WAV → OGG with loop-point metadata → `.bank` | HIGH |
-| Animation cook: Python anim_authoring → `.skelc` + `.animc` | HIGH |
-| Asset registry update step (run after cook, updates `AssetRegistry.json`) | HIGH |
-| Mesh importer: OBJ/GLTF → engine mesh format | MEDIUM |
-| Material importer: JSON material def → cooked material | MEDIUM |
-| Engine texture/mesh loader from `Cooked/` directory | MEDIUM |
-| Editor import settings UI (mip count, sRGB/linear, compression) | LOW |
+| Item | Status |
+|------|--------|
+| `cook.exe` C++ standalone cooker (`src/tools/cook/cook_main.cpp`) | ✅ Done |
+| `AssetDB` runtime (`src/engine/assets/asset_db.hpp/.cpp`) | ✅ Done |
+| `AssetLoader` runtime (`src/engine/assets/asset_loader.hpp/.cpp`) | ✅ Done |
+| `engine_sandbox --validate-project` exits 0 | ✅ Done |
+| `vcpkg.json` with `nlohmann-json` dependency | ✅ Done |
+| Golden-file tests (`tests/golden/`) + 13 pytest cook pipeline tests | ✅ Done |
+| CI: Windows build + headless (`.github/workflows/build-windows.yml`) | ✅ Done |
+| CI: Contract tests (`.github/workflows/contract-tests.yml`) | ✅ Done |
+| CI: Architecture lint (`.github/workflows/architecture-lint.yml`) | ✅ Done |
 
 ---
 
-## Milestone 3 — Editor → Engine "Play In Engine" *(near-term)*
+## Milestone 3 — Vulkan Textures + XAudio2 *(next — active)*
+
+**Goal:** First textured 3D surface rendered on screen; audio plays from cooked assets.
+
+| Item | Priority |
+|------|----------|
+| Vulkan texture loader: cooked DDS → `VkImage` + `VkImageView` (DirectXTex via vcpkg) | HIGH |
+| Vulkan descriptor set: bind texture sampler to fragment shader | HIGH |
+| Textured quad shaders (`shaders/textured_quad.vert/.frag`) | HIGH |
+| `LoadScene("textured_quad")` in `VulkanRenderer` | HIGH |
+| XAudio2 backend (`src/engine/audio/xaudio2_backend.hpp/.cpp`) | HIGH |
+| Audio system (`src/engine/audio/audio_system.hpp/.cpp`) — ECS-driven play/stop | HIGH |
+| `AudioSourceComponent` added to `ECS.hpp` | HIGH |
+| Cook pipeline: texture cook stub → cooked DDS; audio cook stub → cooked WAV | MEDIUM |
+| CI: headless `--scene textured_quad` validation | MEDIUM |
+
+---
+
+## Milestone 4 — Animation Runtime *(near-term)*
+
+**Goal:** GPU-skinned skeletal animation running on screen.
+
+| Item | Priority |
+|------|----------|
+| C++ skeleton runtime (`src/engine/animation/skeleton.hpp/.cpp`) | HIGH |
+| C++ anim clip evaluation (`src/engine/animation/anim_clip.hpp/.cpp`) | HIGH |
+| C++ blend tree (`src/engine/animation/blend_tree.hpp/.cpp`) | HIGH |
+| GPU skinning UBO upload (`src/engine/animation/gpu_skinning.hpp/.cpp`) | HIGH |
+| `AnimatorComponent` added to `ECS.hpp` | HIGH |
+| Skinned mesh shaders (`shaders/skinned_mesh.vert/.frag`) | HIGH |
+| Animation system ECS update (`src/engine/animation/animation_system.hpp/.cpp`) | MEDIUM |
+| IK solver (`src/engine/animation/ik_solver.hpp/.cpp`) | LOW |
+
+---
+
+## Milestone 5 — Physics *(medium-term)*
+
+**Goal:** Real rigid-body physics and character controller.
+
+| Item | Priority |
+|------|----------|
+| Jolt Physics via vcpkg (`joltphysics`) | HIGH |
+| `PhysicsWorld` wrapper (`src/engine/physics/physics_world.hpp/.cpp`) | HIGH |
+| Character capsule controller (`src/engine/physics/character_controller.hpp/.cpp`) | HIGH |
+| `RigidBodyComponent` + `ColliderComponent` added to `ECS.hpp` | HIGH |
+| Hit volumes for combat (`src/engine/physics/hit_volume.hpp/.cpp`) | MEDIUM |
+| Raycast interface (`src/engine/physics/raycast.hpp/.cpp`) | MEDIUM |
+
+---
+
+## Milestone 6 — Editor *(medium-term)*
 
 **Goal:** Save a scene in the editor and immediately run it in the engine.
 
 | Item | Priority |
 |------|----------|
-| Scene save/load (JSON → ECS entities) wired to engine Zone | HIGH |
-| "Play In Engine" button in editor — launches engine with current scene | HIGH |
-| Hot-reload: engine watches scene file, reloads on save | MEDIUM |
-| Basic entity inspector in editor (name, transform, component properties) | MEDIUM |
-| Mesh placement in scene editor (pick from content browser, drag to canvas) | MEDIUM |
+| Entity inspector / property editor (`editor/src/panels/inspector.hpp/.cpp`) | HIGH |
+| Scene hierarchy panel (`editor/src/panels/scene_hierarchy.hpp/.cpp`) | HIGH |
+| Scene ECS serialization (`src/engine/scene/scene_serialiser.hpp/.cpp`) | HIGH |
+| "Play In Engine" button — launches `engine_sandbox.exe` with current scene | HIGH |
+| Mesh placement in scene editor (drag from content browser) | MEDIUM |
 | Undo/redo stack in scene editor | LOW |
 
 ---
 
-## Milestone 4 — World Systems *(medium-term)*
+## Milestone 7 — World Streaming *(medium-term)*
 
-**Goal:** A living open world with streaming, navigation, and combat.
+**Goal:** Open-world zone streaming without loading screens.
 
 | Item | Priority |
 |------|----------|
-| World streaming: chunked zone loading/unloading by player position | HIGH |
-| PBR renderer: IBL + directional shadow + basic post-FX (tonemap + bloom) | HIGH |
-| Navigation mesh generation + runtime pathfinding (A*) | HIGH |
-| Character controller: capsule physics, slopes, jump | HIGH |
-| Camera system: third-person follow with collision avoidance | HIGH |
-| Combat rework: warp-strike, link-strike, combos (FFXV style) | MEDIUM |
-| Behavior tree AI: boss patterns using BT instead of FSM | MEDIUM |
-| Cloth / particle system (basic) | LOW |
+| `world_streaming` proximity-based loader (`src/engine/world/world_streaming.hpp/.cpp`) | HIGH |
+| `world_partition` spatial grid (`src/engine/world/world_partition.hpp/.cpp`) | HIGH |
+| Async loader worker thread (`src/engine/world/async_loader.hpp/.cpp`) | HIGH |
+| No frame spikes during zone transition | HIGH |
 
 ---
 
-## Milestone 5 — Vertical Slice *(long-term)*
+## Milestone 8 — Gameplay Integration *(long-term)*
 
-**Goal:** One playable chunk of an FFXV-style world to prove the whole pipeline.
+**Goal:** Wire all terminal gameplay systems into the Vulkan runtime.
 
 | Item | Priority |
 |------|----------|
-| Town chunk: 1 explorable town (shops, NPC quests, inn) | HIGH |
-| Dungeon chunk: 1 dungeon with combat, traps, and a boss | HIGH |
-| Overworld: drive between town and dungeon (vehicle system stub) | MEDIUM |
-| Cinematic system: simple cutscene player (entity sequences) | MEDIUM |
-| Save/load system: deterministic serialization | HIGH |
-| Full asset cook pipeline for the vertical slice | HIGH |
-| Performance budget: 60 fps in Debug, 120+ fps in Release | MEDIUM |
+| CombatSystem → Vulkan (replace ncurses rendering) | HIGH |
+| AISystem → Vulkan + physics raycasts | HIGH |
+| QuestSystem → Vulkan HUD | HIGH |
+| WeatherSystem → sky renderer + weather VFX | MEDIUM |
+| Dialogue system (`src/game/systems/dialogue_system.hpp/.cpp`) | MEDIUM |
+| Production save system: 15 slots + auto-save + migration (`src/engine/save/`) | MEDIUM |
+
+---
+
+## Post-M8 Work
+
+- PBR rendering (IBL + directional shadows + bloom + tonemap)
+- Dynamic sky / procedural time-of-day
+- Vehicle physics
+- Behaviour tree AI (`src/engine/ai/behaviour_tree.hpp/.cpp`)
+- Formation system (`src/engine/ai/formation_system.hpp/.cpp`)
+- Cinematic sequencer + camera rig
+- Vulkan HUD / menu stack
+- Nav-mesh generation + runtime pathfinding
+- PAK file packager
 
 ---
 
@@ -97,7 +158,7 @@
 - Update `docs/ARCHITECTURE.md` when new systems are added
 - Keep `samples/vertical_slice_project/` buildable and runnable
 - Write tests: C++ test targets + Python pytest
-- Keep build green: `cmake --preset windows-debug` must succeed on a clean clone
+- Keep all CI green: Architecture Lint + Linux Build + Windows Build + Contract Tests + Asset Validation
 
 ---
 
@@ -111,3 +172,5 @@
 | JSON for all shared formats | Human-readable, no extra library on Windows |
 | Shared schemas in `shared/` | Single source of truth for all data formats |
 | Keep `src/` in place | Avoid breaking existing Linux terminal build |
+| nlohmann-json via vcpkg | Header-only, widely used, easy to integrate |
+| Synchronous AssetLoader first | Correct before concurrent; async deferred to M7 |

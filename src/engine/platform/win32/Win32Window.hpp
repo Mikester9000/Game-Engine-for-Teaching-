@@ -47,7 +47,9 @@
 // subsystems (COM, OLE, Cryptography, etc.) and dramatically speeds up
 // compilation.  Always define it in engine code.
 // ---------------------------------------------------------------------------
-#define WIN32_LEAN_AND_MEAN
+#ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+#endif
 #ifndef NOMINMAX
     // TEACHING NOTE — NOMINMAX
     // Windows.h defines macros called `min` and `max` that clash with

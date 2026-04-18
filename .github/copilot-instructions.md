@@ -28,8 +28,10 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Shared runtime headers | ✅ | `shared/runtime/`: `Guid.hpp`, `VersionedFile.hpp`, `Log.hpp` |
 | CI — Linux build + Python tests | ✅ | `.github/workflows/build-linux.yml`: builds terminal game, runs 32+11 pytest |
 | CI — asset manifest validation | ✅ | `.github/workflows/validate-assets.yml` |
-| CI — Windows build + headless | ⬜ | `.github/workflows/build-windows.yml` does not exist yet |
-| CI — contract / golden-file tests | ⬜ | `.github/workflows/contract-tests.yml` does not exist yet |
+| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + Vulkan SDK; builds `engine_sandbox` + `cook`; runs `--headless` + `--validate-project` |
+| CI — contract / golden-file tests | ✅ | `.github/workflows/contract-tests.yml`: runs `cook`, diffs against `tests/golden/assetdb_expected.json`; pytest cook pipeline (13 tests); TEACHING NOTE audit |
+| CI — Architecture Lint | ✅ | `.github/workflows/architecture-lint.yml`: runs `check_architecture.py` (file-size + layer rules) and `extract_teaching_notes.py`; fails if `CURRICULUM_INDEX.md` is stale |
+| `vcpkg.json` | ✅ | Repo root; `nlohmann-json` dependency added for M2 cook pipeline |
 | Vertical slice sample skeleton | ✅ | `samples/vertical_slice_project/`: `cook_assets.py` (stubs), `Project.json`, `AssetRegistry.json`, `Content/`, `Cooked/` |
 
 ---
@@ -96,7 +98,7 @@ They must be re-wired to the Vulkan runtime at **Milestone M8**.
 | `Zone` | ✅ | Zone lifecycle (Load/Unload/Update), spawn points, respawn timers |
 | `TileMap` / `WorldMap` | ✅ | Tile-based 2D world |
 | `Game` (main loop) | ✅ | All systems wired; game state machine; `ncurses` rendering |
-| `SaveGame`/`LoadGame` | 🔨 | Declared in `Game.hpp`; no `src/engine/save/` directory yet |
+| `SaveGame`/`LoadGame` | 🔨 | Implemented in `Game.cpp` (text key=value: HP/MP/Level/Gil + WorldMap tile data); wired to CampSystem auto-save; no `src/engine/save/` production system with versioning/migration yet |
 | Dialogue system | ⬜ | `src/game/systems/dialogue_system.hpp/.cpp` — referenced but not created |
 | Behaviour tree AI | ⬜ | `src/engine/ai/behaviour_tree.hpp/.cpp` — FSM exists; BT not implemented |
 | Formation system | ⬜ | `src/engine/ai/formation_system.hpp/.cpp` |
@@ -161,14 +163,14 @@ Add `ENGINE_ENABLE_PHYSICS` CMake option. Create `physics_world.hpp/.cpp` wrappi
 | `tools/creation_engine.py` CLI | ✅ | Multi-type asset emit/consume |
 | `tools/validate-assets.py` | ✅ | Schema validation against `assets/schema/asset-manifest.schema.json` |
 | `cook_assets.py` (Python stubs) | 🔨 | Copies files; texture/audio/anim cook steps are stubs |
-| `cook.exe` (C++ standalone cooker) | ⬜ | `src/tools/cook/cook_main.cpp` — reads manifests, writes `cooked/` + `assetdb.json` |
-| `AssetDB` runtime (C++) | ⬜ | `src/engine/assets/asset_db.hpp/.cpp` — ID → cooked path, load/unload |
-| `AssetLoader` (C++) | ⬜ | `src/engine/assets/asset_loader.hpp/.cpp` — async loader interface |
-| Golden files + contract tests | ⬜ | `tests/golden/` + `.github/workflows/contract-tests.yml` |
+| `cook.exe` (C++ standalone cooker) | ✅ | `src/tools/cook/cook_main.cpp` (504 lines); reads `AssetRegistry.json`, copies source → `Cooked/`, writes `Cooked/assetdb.json`; uses nlohmann/json via vcpkg |
+| `AssetDB` runtime (C++) | ✅ | `src/engine/assets/asset_db.hpp/.cpp` (268 lines); GUID → absolute cooked path; `Load()`, `GetCookedPath()`, `Has()`, `All()` |
+| `AssetLoader` (C++) | ✅ | `src/engine/assets/asset_loader.hpp/.cpp`; synchronous `LoadRaw(id)` → `std::vector<uint8_t>`; async deferred to M7 |
+| Golden files + contract tests | ✅ | `tests/golden/assetdb_expected.json`; `tests/cook/test_cook_pipeline.py` (13 pytest); `.github/workflows/contract-tests.yml` |
 
-**Next step (M2):** Create `src/tools/cook/cook_main.cpp` — reads `AssetRegistry.json`,
-calls per-type cook functions (copy for textures/audio stubs initially), writes `cooked/assetdb.json`.
-Then create `src/engine/assets/asset_db.hpp/.cpp` so `engine_sandbox --validate-project` loads it.
+**M2 is complete.** `engine_sandbox --validate-project samples/vertical_slice_project` loads AssetDB and all cooked assets, exits 0.
+
+**Next step (M3):** See M3 Bootstrap Guide below.
 
 ---
 
@@ -192,8 +194,8 @@ streaming cell type. Use `std::thread` + a lock-free queue for the async loader.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `SaveGame`/`LoadGame` stubs | 🔨 | Declared in `src/game/Game.hpp`; no implementation yet |
-| `SaveSystem` / `SaveSchema` | ⬜ | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` |
+| `SaveGame`/`LoadGame` (basic) | 🔨 | Implemented in `src/game/Game.cpp` — text key=value format (HP/MP/Level/Gil + WorldMap); called by CampSystem auto-save; no versioning or migration |
+| `SaveSystem` / `SaveSchema` | ⬜ | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` — production system with 15 slots + auto-save + migration not yet started |
 
 **Next step:** Create `src/engine/save/save_system.hpp/.cpp`. Serialize ECS `World` state
 to JSON (all components per entity). Include a `"version"` field with migration support.
@@ -237,20 +239,19 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M1 complete (Vulkan triangle), M2 is next.**
+> **Current position: M2 complete (AssetDB + cook.exe + contract CI), M3 is next.**
 
 Recommended implementation order to reach project completion:
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **1 — Now** | **M2: AssetDB + Cooker** | `cook.exe`; `AssetDB` C++ runtime; `engine_sandbox --validate-project` exits 0; `contract-tests.yml` CI |
-| **2** | **M3: Texture + Audio** | Vulkan texture (DDS/BC7); XAudio2 backend; textured quad renders; cooked audio plays |
-| **3** | **M4: Animation runtime** | C++ skeleton + clip evaluation + blend tree; GPU skinning UBO; animated character on screen |
-| **4** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work |
-| **5** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
-| **6** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
-| **7** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into Vulkan runtime |
-| **8+** | **Post-M8** | Cinematics, vehicle physics, Vulkan HUD, PBR, dynamic sky, save system, PAK packager, behaviour tree, nav-mesh, dialogue |
+| **1 — Now** | **M3: Texture + Audio** | Vulkan texture (DDS/BC7) via `directxtex`; `vulkan_texture.hpp/.cpp`; XAudio2 backend; `audio_system.hpp/.cpp`; textured quad renders; cooked audio plays; `AudioSourceComponent` added to ECS |
+| **2** | **M4: Animation runtime** | C++ skeleton + clip evaluation + blend tree; GPU skinning UBO; `AnimatorComponent` added to ECS; animated character on screen |
+| **3** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work; `RigidBodyComponent` + `ColliderComponent` added to ECS |
+| **4** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
+| **5** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
+| **6** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into Vulkan runtime |
+| **7+** | **Post-M8** | Cinematics, vehicle physics, Vulkan HUD, PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
 
 ---
 
@@ -460,78 +461,58 @@ endif()
 
 ---
 
-## M2 Bootstrap Guide (Active Milestone)
+## M3 Bootstrap Guide (Active Milestone)
 
-M2 is the AssetDB + Cooker milestone.  Build in this exact order:
+M2 is complete. M3 is the Vulkan Texture + XAudio2 Audio milestone. Build in this order:
 
-### Step 1 — `src/tools/cook/cook_main.cpp` (the `cook.exe` binary)
+### Step 1 — Add `directxtex` to vcpkg.json
+```json
+{
+  "dependencies": [
+    "nlohmann-json",
+    "directxtex"
+  ]
+}
 ```
-Reads:  samples/vertical_slice_project/AssetRegistry.json
-Writes: samples/vertical_slice_project/Cooked/assetdb.json
-        Cooked/<type>/<id>.<ext>   (copy for now; real conversion later)
-```
-- Parse `AssetRegistry.json` with `nlohmann/json` (add via vcpkg: `nlohmann-json`).
-- For each asset entry: copy source → cooked path, write entry to `assetdb.json`.
-- Exit code 0 on success, non-zero on any failure.
-- Add `cook` target to `CMakeLists.txt` (see CMake pattern above).
+This provides `DirectXTex` for DDS/BC7 texture compression on Windows.
 
-### Step 2 — `src/engine/assets/asset_db.hpp/.cpp`
-```cpp
-// Minimal API — load the assetdb.json; resolve cooked path by GUID
-class AssetDB {
-public:
-    bool Load(const std::string& assetDbPath);   // parse assetdb.json
-    std::string GetCookedPath(const std::string& id) const;
-    bool Has(const std::string& id) const;
-private:
-    std::unordered_map<std::string, std::string> m_idToPath;
-};
-```
+### Step 2 — `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp`
+- Load a DDS file (using DirectXTex) into a `VkImage` + `VkImageView`.
+- Support BC7 compressed format (`VK_FORMAT_BC7_UNORM_BLOCK`).
+- Expose `VulkanTexture::Load(device, physicalDevice, commandPool, queue, path)`.
+- Add a `Sampler()` accessor returning a `VkSampler`.
 
-### Step 3 — `src/engine/assets/asset_loader.hpp/.cpp`
-```cpp
-// Minimal synchronous loader for now; async in M7
-class AssetLoader {
-public:
-    explicit AssetLoader(AssetDB* db);
-    std::vector<uint8_t> LoadRaw(const std::string& id) const;  // reads cooked file bytes
-};
-```
+### Step 3 — `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp`
+- Wrap `VkDescriptorPool` + `VkDescriptorSetLayout` + `VkDescriptorSet`.
+- Bind the texture sampler to binding 0 (fragment shader).
 
-### Step 4 — Wire into `engine_sandbox`
-Add `--validate-project <path>` flag in `src/sandbox/main.cpp`:
-- Construct `AssetDB`, call `Load(path + "/Cooked/assetdb.json")`.
-- Call `AssetLoader::LoadRaw` for each entry; assert no failures.
-- Print `[PASS]` and exit 0.
+### Step 4 — Textured quad shaders (`shaders/textured_quad.vert/.frag`)
+- `.vert`: pass UV coordinates through to fragment stage.
+- `.frag`: sample from a `sampler2D` at binding 0.
+- Add both to `GLSL_SHADERS` list in `CMakeLists.txt`.
 
-### Step 5 — `.github/workflows/build-windows.yml`
-```yaml
-name: Build Windows (engine_sandbox)
-on: [push, pull_request]
-jobs:
-  build:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Vulkan SDK
-        uses: humbletim/setup-vulkan-sdk@v1.2.0
-        with:
-          vulkan-query-version: 1.3.250.0
-          vulkan-components: Vulkan-Headers, Vulkan-Loader
-          vulkan-use-cache: true
-      - name: Configure CMake
-        run: cmake --preset windows-debug
-      - name: Build
-        run: cmake --build --preset windows-debug --target engine_sandbox cook
-      - name: Headless validate
-        run: .\build\windows-debug\Debug\engine_sandbox.exe --headless
-      - name: Cook assets (M2+)
-        run: .\build\windows-debug\Debug\cook.exe --project samples/vertical_slice_project/
-```
+### Step 5 — `LoadScene("textured_quad", ...)` in `VulkanRenderer`
+- Create `VulkanTexture` from a cooked DDS in `Cooked/`.
+- Create `VulkanDescriptor` binding the texture sampler.
+- Use the textured quad pipeline + a quad mesh.
+- Acceptance: `engine_sandbox.exe --headless --scene textured_quad` exits 0.
 
-### Step 6 — `tests/golden/` directory + `.github/workflows/contract-tests.yml`
-Create `tests/golden/assetdb_expected.json` with the expected output of cooking
-the sample project.  Contract test: run `cook.exe`; diff output against golden.
+### Step 6 — `src/engine/audio/xaudio2_backend.hpp/.cpp`
+- XAudio2 device init → `IXAudio2MasteringVoice`.
+- Source voice pool: pre-allocate N `IXAudio2SourceVoice` instances.
+- `Play(clipId)` → resolve cooked `.wav` via `AssetDB`, submit to source voice.
+- `Stop(clipId)` → stop the matching source voice.
+- Add `AudioSourceComponent` to `ECS.hpp`.
+- Add `CMakeLists.txt` entry: link `xaudio2.lib` on Windows only.
+
+### Step 7 — `src/engine/audio/audio_system.hpp/.cpp`
+- ECS system: each frame, iterate `AudioSourceComponent`; call `Play`/`Stop` on backend.
+- Music layer FSM: EXPLORATION / BATTLE / VICTORY / MENU states, crossfade on transition.
+- Event-driven triggers via `EventBus`.
+
+### Step 8 — Wire into CI
+- `build-windows.yml` step: `engine_sandbox.exe --headless --scene textured_quad`
+- Contract test: cook a 1×1 DDS texture stub; verify `AssetDB` resolves it.
 
 ---
 
@@ -565,30 +546,28 @@ end
 
 ---
 
-## vcpkg Setup (Required for M2 + M5)
+## vcpkg Setup
 
-When the first third-party C++ dependency is needed, add a `vcpkg.json` manifest
-in the repository root.  This makes the dependency reproducible on any Windows
-machine.
+`vcpkg.json` already exists in the repository root with `nlohmann-json` (added for M2).
+Add new dependencies as milestones progress by editing `vcpkg.json`:
 
 ```json
-// vcpkg.json — create in repo root before adding any vcpkg dependency
+// vcpkg.json — current state (M2 complete)
 {
   "name": "educational-game-engine",
   "version-string": "1.0.0",
   "dependencies": [
-    "nlohmann-json"
+    "nlohmann-json",          // M2 — cook.exe JSON parsing ✅
+    "directxtex"              // M3 — DDS/BC7 texture compression (add now)
   ]
 }
 ```
 
-Add dependencies as milestones progress:
-- **M2** (cook.exe): `"nlohmann-json"`
-- **M3** (textures): `"directxtex"` (DDS/BC7 compression)
+Planned additions:
 - **M5** (physics): `"joltphysics"`
 - **M5+** (glTF mesh loading): `"tinygltf"`
 
-Integrate with CMake (add to `CMakeLists.txt`):
+Integrate with CMake (in `CMakeLists.txt`):
 ```cmake
 # TEACHING NOTE — vcpkg toolchain file
 # If VCPKG_ROOT is set, the toolchain file automatically finds all
@@ -601,27 +580,35 @@ Integrate with CMake (add to `CMakeLists.txt`):
 
 ## Test Directory Structure
 
-The `tests/` directory does not exist yet.  Create it with this layout when M2 lands:
+The `tests/` directory exists and has the following layout (created for M2):
 
 ```
 tests/
-├── golden/                    # Golden-file reference outputs for contract tests
-│   ├── assetdb_expected.json  # Expected cook.exe output for sample project
-│   └── README.md
-├── unit/                      # C++ unit tests (one file per system)
-│   ├── test_asset_db.cpp      # Tests for AssetDB::Load, GetCookedPath
-│   ├── test_combat.cpp        # Tests for CalculateDamage, status effects
-│   └── CMakeLists.txt
-└── CMakeLists.txt             # Adds 'tests' as a CTest subdirectory
+├── __init__.py
+├── cook/                      # Python pytest: cook pipeline validation
+│   ├── __init__.py
+│   └── test_cook_pipeline.py  # 13 tests: cook output, schema compliance, cooked paths
+└── golden/                    # Golden-file reference outputs for contract tests
+    ├── assetdb_expected.json  # Expected cook.exe output for sample project
+    └── README.md
 ```
 
-Add to root `CMakeLists.txt`:
+**Still needed for M3+:**
+```
+tests/
+└── unit/                      # C++ unit tests (one file per system) — NOT YET CREATED
+    ├── test_asset_db.cpp      # Tests for AssetDB::Load, GetCookedPath
+    ├── test_combat.cpp        # Tests for CalculateDamage, status effects
+    └── CMakeLists.txt
+```
+
+When C++ unit tests are added, also add to root `CMakeLists.txt`:
 ```cmake
 enable_testing()
 add_subdirectory(tests)
 ```
 
-Add to `tests/CMakeLists.txt`:
+And create `tests/CMakeLists.txt`:
 ```cmake
 add_executable(unit_tests
     unit/test_asset_db.cpp
@@ -692,8 +679,8 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 |-----------|------|--------|
 | M0 | Vulkan window + clear screen | ✅ |
 | M1 | Colored triangle (SPIR-V pipeline) | ✅ |
-| M2 | AssetDB + `cook.exe` + contract CI | ⬜ **active** |
-| M3 | Vulkan texture + XAudio2 | ⬜ |
+| M2 | AssetDB + `cook.exe` + contract CI | ✅ |
+| M3 | Vulkan texture + XAudio2 | ⬜ **active** |
 | M4 | Animation runtime (C++) | ⬜ |
 | M5 | Jolt Physics | ⬜ |
 | M6 | Editor inspector + Play-in-Engine | ⬜ |
