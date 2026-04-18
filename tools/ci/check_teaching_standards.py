@@ -25,7 +25,7 @@ the codebase grows, and this script enforces both automatically:
 USAGE
 -----
   # Check specific files (e.g., passed by a CI workflow):
-  python3 tools/ci/check_teaching_standards.py src/engine/audio/xaudio2_backend.cpp
+  python3 tools/ci/check_teaching_standards.py src/engine/core/Logger.cpp
 
   # Check all files changed since a git base ref (recommended for CI):
   python3 tools/ci/check_teaching_standards.py --git-diff origin/main
@@ -225,13 +225,15 @@ def _get_changed_files(base_ref: str, repo_root: Path) -> list:
     )
     if result.returncode != 0:
         # TEACHING NOTE — Fallback diff syntax
-        # The three-dot syntax (A...B) finds the merge-base between A and B and
-        # computes the diff from there to B.  This is what we want for PRs.
-        # If A...B fails (e.g. A is a simple commit ref like HEAD~1 that has no
-        # remote tracking), we fall back to the two-dot syntax (A..B) which
-        # diffs directly between two commit objects.  Both produce the same
-        # result when A is a direct ancestor of B, which is always true for
-        # HEAD~1...HEAD or a feature branch that hasn't diverged from its base.
+        # We prefer the three-dot syntax (A...B) for PRs: it finds the
+        # merge-base between A and B and computes the diff from there, which
+        # correctly shows only the commits unique to the PR branch.
+        #
+        # If three-dot fails (e.g. A is a short ref like HEAD~1 that git
+        # cannot resolve with the merge-base algorithm), we fall back to the
+        # two-dot syntax (A..B), which diffs directly between two commit
+        # objects. For a linear branch history (HEAD~1 is always a direct
+        # ancestor of HEAD) both produce identical output.
         result = subprocess.run(
             ["git", "diff", "--name-only", "--diff-filter=ACMR", f"{base_ref}..HEAD"],
             capture_output=True,

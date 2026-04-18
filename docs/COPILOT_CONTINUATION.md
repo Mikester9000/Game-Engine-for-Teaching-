@@ -547,7 +547,7 @@ ALLOWLIST_SIZE: frozenset = frozenset({
 python3 tools/ci/check_teaching_standards.py --git-diff origin/main
 
 # Check specific files you are about to commit:
-python3 tools/ci/check_teaching_standards.py src/engine/audio/xaudio2_backend.cpp
+python3 tools/ci/check_teaching_standards.py src/engine/core/Logger.cpp
 
 # Full audit of every tracked file (useful for periodic housekeeping):
 python3 tools/ci/check_teaching_standards.py --all
