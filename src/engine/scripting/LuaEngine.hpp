@@ -113,12 +113,39 @@
 // `extern "C" { ... }` tells the C++ compiler to use C-style (unmangled)
 // linkage for everything inside the block.
 //
-// The lua.hpp header (Lua's own C++ wrapper) already wraps itself in
-// extern "C", so we can include it directly:
+// TEACHING NOTE — Multi-version Lua include paths
+// ─────────────────────────────────────────────────
+// The exact path for Lua headers varies by platform and installation:
+//   • Linux (apt): lua5.4/lua.h   (package: liblua5.4-dev)
+//   • Windows (bundled): lua.h    (headers placed in Lua/include/ in the repo)
+//   • macOS (brew): lua.h         (in HOMEBREW_PREFIX/include/lua5.x/)
+//
+// We use a cascade of #if checks so the file compiles on every supported
+// platform without manual per-platform configuration.
 extern "C" {
-#include <lua5.4/lua.h>       // Core Lua API: lua_State, lua_push*, lua_to*, …
-#include <lua5.4/lualib.h>    // Standard library loaders: luaL_openlibs
-#include <lua5.4/lauxlib.h>   // Auxiliary helpers: luaL_newstate, luaL_loadfile
+#if defined(_WIN32) && __has_include(<lua.h>)
+// Windows with bundled Lua headers (Lua/include/ added to include path by CMake)
+#  include <lua.h>
+#  include <lualib.h>
+#  include <lauxlib.h>
+#elif __has_include(<lua5.5/lua.h>)
+// Linux/macOS with Lua 5.5 installed system-wide
+#  include <lua5.5/lua.h>
+#  include <lua5.5/lualib.h>
+#  include <lua5.5/lauxlib.h>
+#elif __has_include(<lua5.4/lua.h>)
+// Linux/macOS with Lua 5.4 installed system-wide (most common)
+#  include <lua5.4/lua.h>
+#  include <lua5.4/lualib.h>
+#  include <lua5.4/lauxlib.h>
+#elif __has_include(<lua.h>)
+// Generic fallback — lua.h is directly on the include path
+#  include <lua.h>
+#  include <lualib.h>
+#  include <lauxlib.h>
+#else
+#  error "Lua headers not found. See LuaEngine.hpp for setup instructions."
+#endif
 }
 
 // ---------------------------------------------------------------------------

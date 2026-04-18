@@ -107,26 +107,29 @@
  *
  * Any message with a level BELOW the minimum is silently discarded.
  *
- * TEACHING NOTE — Why ERR and not ERROR?
- * ─────────────────────────────────────────
- * The Windows SDK header <wingdi.h> (included transitively through <windows.h>,
- * <d3d11.h>, and <xaudio2.h>) contains:
+ * TEACHING NOTE — Why LERR and not ERROR or ERR?
+ * ─────────────────────────────────────────────────
+ * Two different system headers define conflicting macros:
  *
- *   #define ERROR  0
+ *  1. Windows SDK (<wingdi.h>, included via <windows.h> / <d3d11.h> / <xaudio2.h>):
+ *       #define ERROR  0
+ *     Using ERROR as an enum member would produce the illegal expression
+ *     `0 = 3` — MSVC error C2143.
  *
- * This is a text-substitution macro.  If the enum value were named ERROR, the
- * preprocessor would replace it before the compiler sees the declaration,
- * producing the illegal expression  0 = 3  → MSVC error C2143.
+ *  2. ncurses (<curses.h>, included by the Linux terminal renderer):
+ *       #define ERR  (-1)
+ *     Using ERR as an enum member would produce `(-1) = 3` — GCC error.
  *
- * The idiomatic fix is to choose a name the Windows headers do not define.
- * ERR is safe.  Callers continue to use the LOG_ERROR() convenience macro —
- * the rename is invisible at call-sites.
+ * The idiomatic fix is to choose a name neither header defines.  LERR (short
+ * for "Logger Error") is safe on both platforms.  Callers continue to use
+ * the LOG_ERROR() convenience macro — the internal name is invisible at
+ * call-sites.
  */
 enum class LogLevel : uint8_t {
     DEBUG    = 0,  ///< Detailed development info — very verbose.
     INFO     = 1,  ///< Normal operational events (entity spawned, etc.).
     WARNING  = 2,  ///< Recoverable problems that shouldn't happen normally.
-    ERR      = 3,  ///< Serious problems that will affect gameplay.
+    LERR     = 3,  ///< Serious problems that will affect gameplay.
     CRITICAL = 4   ///< Fatal errors — engine cannot continue.
 };
 
@@ -389,7 +392,7 @@ private:
     do {                                                                      \
         std::ostringstream _oss;                                              \
         _oss << msg;                                                          \
-        Logger::Instance().Log(LogLevel::ERR, _oss.str(), __FILE__, __LINE__); \
+        Logger::Instance().Log(LogLevel::LERR, _oss.str(), __FILE__, __LINE__); \
     } while(false)
 
 /// Log at CRITICAL level — usually precedes shutdown / abort.

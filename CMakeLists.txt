@@ -166,31 +166,79 @@ if(ENGINE_ENABLE_TERMINAL)
     message(STATUS "ncurses found: ${CURSES_LIBRARIES}")
 endif()
 
-# ---- Lua 5.4 (scripting — used by the terminal game target) ---------------
-# Try pkg-config first (most Linux distros), fallback to manual search.
-find_package(PkgConfig QUIET)
-if(PKG_CONFIG_FOUND)
-    pkg_check_modules(LUA lua5.4)
+# ---- Lua 5.4 / 5.5 (scripting — used by the terminal game target) ----------
+# TEACHING NOTE — Multi-version Lua detection
+# ─────────────────────────────────────────────
+# The scripting subsystem is optional.  We try to locate Lua in this order:
+#
+#   1. Bundled Lua 5.5 headers in <repo>/Lua/include/  (Windows + any platform).
+#      Copy the Lua 5.5 work-release headers there and set LUA_BUNDLED=ON to
+#      enable scripting on Windows without a system-wide Lua install.
+#
+#   2. System Lua 5.4 via pkg-config (most Linux distros).
+#
+#   3. Manual search in common install prefixes.
+#
+# If Lua is found via any route the terminal game target and engine_sandbox
+# (when built on Windows with the bundled headers) will define
+# ENGINE_ENABLE_LUA and link against the Lua library / DLL.
+# ---------------------------------------------------------------------------
+
+# Route 1 — bundled Lua in the repo's Lua/ directory.
+# Place Lua 5.5 headers at  Lua/include/lua.h  (or  Lua/include/lua5.5/lua.h)
+# and a static library / import lib at  Lua/lib/lua55.lib  (Windows) or
+# Lua/lib/liblua55.a  (Linux).
+set(LUA_BUNDLED_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/Lua/include")
+set(LUA_BUNDLED_LIB_DIR     "${CMAKE_SOURCE_DIR}/Lua/lib")
+
+set(LUA_BUNDLED OFF)
+if(EXISTS "${LUA_BUNDLED_INCLUDE_DIR}/lua.h")
+    # TEACHING NOTE — prefer bundled Lua 5.5 when headers are present.
+    set(LUA_INCLUDE_DIRS "${LUA_BUNDLED_INCLUDE_DIR}")
+    find_library(LUA_LIBRARIES
+        NAMES lua55 lua5.5 lua54 lua5.4 lua
+        HINTS "${LUA_BUNDLED_LIB_DIR}"
+        NO_DEFAULT_PATH)
+    if(LUA_LIBRARIES)
+        set(LUA_BUNDLED ON)
+        message(STATUS "Lua: using bundled headers + lib at ${LUA_BUNDLED_LIB_DIR}")
+    else()
+        message(STATUS "Lua: bundled headers found but no lib — scripting disabled")
+        set(LUA_INCLUDE_DIRS "")
+    endif()
 endif()
 
-if(NOT LUA_FOUND)
-    # Fallback: manual search.
-    find_path(LUA_INCLUDE_DIRS lua.h
-        PATHS /usr/include/lua5.4
-              /usr/local/include/lua5.4
-              /usr/include/lua
-              /usr/local/include/lua)
-    find_library(LUA_LIBRARIES
-        NAMES lua5.4 lua54 lua
-        PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu)
+# Routes 2 & 3 — system Lua (Linux/macOS).
+if(NOT LUA_BUNDLED)
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(LUA lua5.5 QUIET)
+        if(NOT LUA_FOUND)
+            pkg_check_modules(LUA lua5.4 QUIET)
+        endif()
+    endif()
+
+    if(NOT LUA_FOUND)
+        # Fallback: manual search.
+        find_path(LUA_INCLUDE_DIRS lua.h
+            PATHS /usr/include/lua5.5
+                  /usr/include/lua5.4
+                  /usr/local/include/lua5.5
+                  /usr/local/include/lua5.4
+                  /usr/include/lua
+                  /usr/local/include/lua)
+        find_library(LUA_LIBRARIES
+            NAMES lua5.5 lua55 lua5.4 lua54 lua
+            PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu)
+    endif()
 endif()
 
 if(LUA_LIBRARIES AND LUA_INCLUDE_DIRS)
     message(STATUS "Found Lua: ${LUA_LIBRARIES}")
 else()
-    message(WARNING
-        "Lua 5.4 not found. Install with: sudo apt install liblua5.4-dev\n"
-        "  Scripting features will be disabled.")
+    message(STATUS "Lua not found — scripting will be disabled.")
+    message(STATUS "  Linux:   sudo apt install liblua5.4-dev")
+    message(STATUS "  Windows: place Lua 5.5 headers in Lua/include/ and lib in Lua/lib/")
     set(LUA_LIBRARIES "")
     set(LUA_INCLUDE_DIRS "")
 endif()
@@ -386,6 +434,19 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     )
 
     # -----------------------------------------------------------------------
+    # LuaEngine sources (optional — only when bundled Lua headers are present).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Conditional Scripting in engine_sandbox
+    # LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
+    # (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
+    # Without bundled Lua the scripting system compiles out via ENGINE_ENABLE_LUA
+    # guards.  No build error occurs — scripting is simply unavailable.
+    # -----------------------------------------------------------------------
+    if(LUA_BUNDLED)
+        list(APPEND SANDBOX_SOURCES src/engine/scripting/LuaEngine.cpp)
+    endif()
+
+    # -----------------------------------------------------------------------
     # TestWorld — game systems compiled into engine_sandbox (M3+).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Cross-Platform Game Systems
@@ -478,6 +539,40 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     endif()
 
     target_compile_definitions(engine_sandbox PRIVATE ${SANDBOX_DEFS})
+
+    # -----------------------------------------------------------------------
+    # Bundled Lua 5.5 support for engine_sandbox (Windows scripting).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Bundled Lua on Windows
+    # ──────────────────────────────────────
+    # The repository ships Lua 5.5 runtime binaries in Lua/ (lua55.dll, etc.).
+    # To enable scripting in engine_sandbox, place the Lua 5.5 headers in
+    # Lua/include/ and the import library in Lua/lib/lua55.lib.  CMake will
+    # detect these via the LUA_BUNDLED flag set above and:
+    #   1. Add Lua/include/ to the include path so LuaEngine.hpp can find lua.h.
+    #   2. Link against lua55.lib.
+    #   3. Copy lua55.dll alongside engine_sandbox.exe post-build.
+    #   4. Define ENGINE_ENABLE_LUA so the scripting hooks compile in.
+    # Without these files the sandbox builds without scripting (no error).
+    # -----------------------------------------------------------------------
+    if(LUA_BUNDLED)
+        target_include_directories(engine_sandbox PRIVATE ${LUA_INCLUDE_DIRS})
+        target_link_libraries(engine_sandbox PRIVATE ${LUA_LIBRARIES})
+        target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_LUA)
+        # Copy lua55.dll alongside the exe so it can be found at runtime.
+        set(LUA55_DLL "${CMAKE_SOURCE_DIR}/Lua/lua55.dll")
+        if(EXISTS "${LUA55_DLL}")
+            add_custom_command(TARGET engine_sandbox POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${LUA55_DLL}"
+                    "$<TARGET_FILE_DIR:engine_sandbox>/lua55.dll"
+                COMMENT "Copying lua55.dll alongside engine_sandbox.exe"
+            )
+        endif()
+        message(STATUS "engine_sandbox: Lua scripting ENABLED (bundled Lua/)")
+    else()
+        message(STATUS "engine_sandbox: Lua scripting DISABLED (no Lua/include/ or Lua/lib/)")
+    endif()
 
     # -----------------------------------------------------------------------
     # TEACHING NOTE — SUBSYSTEM:CONSOLE

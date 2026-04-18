@@ -6,31 +6,33 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 845 across 35 subsystems.
+**Total lessons:** 876 across 37 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (29 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (35 lessons)
 - [ci/workflows](#ciworkflows) (27 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
-- [engine/core](#enginecore) (49 lessons)
+- [engine/core](#enginecore) (50 lessons)
 - [engine/ecs](#engineecs) (32 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
 - [engine/rendering](#enginerendering) (186 lessons)
-- [engine/scripting](#enginescripting) (28 lessons)
+- [engine/scripting](#enginescripting) (29 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
-- [game/systems](#gamesystems) (83 lessons)
+- [game/systems](#gamesystems) (85 lessons)
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (17 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (19 lessons)
+- [sandbox/test_world.cpp](#sandboxtest_world.cpp) (16 lessons)
+- [sandbox/test_world.hpp](#sandboxtest_world.hpp) (3 lessons)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (7 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
 - [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (2 lessons)
@@ -207,9 +209,47 @@ find_package(Curses REQUIRED)
 message(STATUS "ncurses found: ${CURSES_LIBRARIES}")
 endif()
 
+### Multi-version Lua detection
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L170) (line 170)
+
+─────────────────────────────────────────────
+The scripting subsystem is optional.  We try to locate Lua in this order:
+
+  1. Bundled Lua 5.5 headers in <repo>/Lua/include/  (Windows + any platform).
+     Copy the Lua 5.5 work-release headers there and set LUA_BUNDLED=ON to
+     enable scripting on Windows without a system-wide Lua install.
+
+  2. System Lua 5.4 via pkg-config (most Linux distros).
+
+  3. Manual search in common install prefixes.
+
+If Lua is found via any route the terminal game target and engine_sandbox
+(when built on Windows with the bundled headers) will define
+ENGINE_ENABLE_LUA and link against the Lua library / DLL.
+---------------------------------------------------------------------------
+
+### prefer bundled Lua 5.5 when headers are present.
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L196) (line 196)
+
+set(LUA_INCLUDE_DIRS "${LUA_BUNDLED_INCLUDE_DIR}")
+find_library(LUA_LIBRARIES
+NAMES lua55 lua5.5 lua54 lua5.4 lua
+HINTS "${LUA_BUNDLED_LIB_DIR}"
+NO_DEFAULT_PATH)
+if(LUA_LIBRARIES)
+set(LUA_BUNDLED ON)
+message(STATUS "Lua: using bundled headers + lib at ${LUA_BUNDLED_LIB_DIR}")
+else()
+message(STATUS "Lua: bundled headers found but no lib — scripting disabled")
+set(LUA_INCLUDE_DIRS "")
+endif()
+endif()
+
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L199) (line 199)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L247) (line 247)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -240,7 +280,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L241) (line 241)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L289) (line 289)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -248,9 +288,22 @@ the ncurses-dependent Renderer.cpp and InputSystem.cpp.
 ---------------------------------------------------------------------------
 if(ENGINE_ENABLE_TERMINAL)
 
+### ENGINE_ENABLE_LUA compile definition
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L334) (line 334)
+
+The terminal game links Lua 5.4, so it defines ENGINE_ENABLE_LUA to
+enable the Lua scripting hooks in CombatSystem.cpp and CampSystem.cpp.
+engine_sandbox (Windows) does NOT define this flag — Lua is not required
+there and the hooks compile out cleanly, leaving all other system logic
+intact.
+if(LUA_LIBRARIES)
+target_compile_definitions(game PRIVATE ENGINE_ENABLE_LUA)
+endif()
+
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L299) (line 299)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L357) (line 357)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -275,7 +328,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L338) (line 338)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L396) (line 396)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -287,7 +340,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L346) (line 346)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L404) (line 404)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -297,7 +350,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L368) (line 368)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L426) (line 426)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -308,9 +361,46 @@ src/engine/audio/xaudio2_backend.cpp
 src/engine/audio/audio_system.cpp
 )
 
+### Conditional Scripting in engine_sandbox
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L439) (line 439)
+
+LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
+(i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
+Without bundled Lua the scripting system compiles out via ENGINE_ENABLE_LUA
+guards.  No build error occurs — scripting is simply unavailable.
+-----------------------------------------------------------------------
+if(LUA_BUNDLED)
+list(APPEND SANDBOX_SOURCES src/engine/scripting/LuaEngine.cpp)
+endif()
+
+### Cross-Platform Game Systems
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L452) (line 452)
+
+The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
+pure C++17 with no platform or ncurses dependencies.  They compile on
+both Linux (terminal game) and Windows (engine_sandbox) alike.
+Including them here lets engine_sandbox run a full simulation and visually
+verify all systems are operational via the --scene testworld flag.
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/sandbox/test_world.cpp
+src/game/systems/CombatSystem.cpp
+src/game/systems/AISystem.cpp
+src/game/systems/WeatherSystem.cpp
+src/game/systems/QuestSystem.cpp
+src/game/systems/InventorySystem.cpp
+src/game/systems/ShopSystem.cpp
+src/game/systems/CampSystem.cpp
+src/game/world/TileMap.cpp
+src/game/world/WorldMap.cpp
+src/game/world/Zone.cpp
+)
+
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L397) (line 397)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L492) (line 492)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -322,7 +412,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L406) (line 406)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L501) (line 501)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -331,7 +421,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L419) (line 419)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L514) (line 514)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -340,7 +430,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L425) (line 425)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L520) (line 520)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -349,7 +439,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L430) (line 430)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L525) (line 525)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -358,9 +448,43 @@ so the factory can gate which concrete renderer header(s) it includes.
 -----------------------------------------------------------------------
 set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
+### Bundled Lua on Windows
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L546) (line 546)
+
+──────────────────────────────────────
+The repository ships Lua 5.5 runtime binaries in Lua/ (lua55.dll, etc.).
+To enable scripting in engine_sandbox, place the Lua 5.5 headers in
+Lua/include/ and the import library in Lua/lib/lua55.lib.  CMake will
+detect these via the LUA_BUNDLED flag set above and:
+  1. Add Lua/include/ to the include path so LuaEngine.hpp can find lua.h.
+  2. Link against lua55.lib.
+  3. Copy lua55.dll alongside engine_sandbox.exe post-build.
+  4. Define ENGINE_ENABLE_LUA so the scripting hooks compile in.
+Without these files the sandbox builds without scripting (no error).
+-----------------------------------------------------------------------
+if(LUA_BUNDLED)
+target_include_directories(engine_sandbox PRIVATE ${LUA_INCLUDE_DIRS})
+target_link_libraries(engine_sandbox PRIVATE ${LUA_LIBRARIES})
+target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_LUA)
+Copy lua55.dll alongside the exe so it can be found at runtime.
+set(LUA55_DLL "${CMAKE_SOURCE_DIR}/Lua/lua55.dll")
+if(EXISTS "${LUA55_DLL}")
+add_custom_command(TARGET engine_sandbox POST_BUILD
+COMMAND ${CMAKE_COMMAND} -E copy_if_different
+"${LUA55_DLL}"
+"$<TARGET_FILE_DIR:engine_sandbox>/lua55.dll"
+COMMENT "Copying lua55.dll alongside engine_sandbox.exe"
+)
+endif()
+message(STATUS "engine_sandbox: Lua scripting ENABLED (bundled Lua/)")
+else()
+message(STATUS "engine_sandbox: Lua scripting DISABLED (no Lua/include/ or Lua/lib/)")
+endif()
+
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L449) (line 449)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L578) (line 578)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -375,7 +499,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L464) (line 464)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L593) (line 593)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -390,7 +514,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L506) (line 506)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L635) (line 635)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -413,7 +537,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L531) (line 531)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L660) (line 660)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -435,7 +559,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L550) (line 550)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L679) (line 679)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -446,7 +570,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L558) (line 558)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L687) (line 687)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -456,7 +580,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L587) (line 587)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L716) (line 716)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -465,7 +589,7 @@ C++ standard already set above).
 
 ### Qt Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L594) (line 594)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L723) (line 723)
 
 The editor is a Qt 6 Widgets application that provides:
   • Project browser  — open a project folder, see its Content/ files
@@ -3062,9 +3186,30 @@ Setting a minimum level lets you control verbosity at runtime:
 
 Any message with a level BELOW the minimum is silently discarded.
 
+### Why LERR and not ERROR or ERR?
+
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L110) (line 110)
+
+─────────────────────────────────────────────────
+Two different system headers define conflicting macros:
+
+ 1. Windows SDK (<wingdi.h>, included via <windows.h> / <d3d11.h> / <xaudio2.h>):
+      #define ERROR  0
+    Using ERROR as an enum member would produce the illegal expression
+    `0 = 3` — MSVC error C2143.
+
+ 2. ncurses (<curses.h>, included by the Linux terminal renderer):
+      #define ERR  (-1)
+    Using ERR as an enum member would produce `(-1) = 3` — GCC error.
+
+The idiomatic fix is to choose a name neither header defines.  LERR (short
+for "Logger Error") is safe on both platforms.  Callers continue to use
+the LOG_ERROR() convenience macro — the internal name is invisible at
+call-sites.
+
 ### Meyers Singleton
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L150) (line 150)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L168) (line 168)
 
 ───────────────────────────────────
 The `static` keyword on a local variable gives it *static storage
@@ -3076,7 +3221,7 @@ simpler and safer.
 
 ### std::chrono vs std::time
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L259) (line 259)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L277) (line 277)
 
 ──────────────────────────────────────────
 std::chrono (C++11) provides high-resolution clocks.
@@ -3088,7 +3233,7 @@ calendar strings.
 
 ### ANSI Escape Codes
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L280) (line 280)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L298) (line 298)
 
 ────────────────────────────────────
 Most Unix/Linux terminals support ANSI escape sequences embedded in
@@ -3104,7 +3249,7 @@ a runtime flag.
 
 ### Why Use Macros Here?
 
-**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L315) (line 315)
+**Source:** [`src/engine/core/Logger.hpp`](src/engine/core/Logger.hpp#L333) (line 333)
 
 ──────────────────────────────────────
 Normally macros are discouraged in modern C++ because they ignore scoping
@@ -8108,17 +8253,47 @@ don't exist in the Lua library, causing linker errors.
 `extern "C" { ... }` tells the C++ compiler to use C-style (unmangled)
 linkage for everything inside the block.
 
-The lua.hpp header (Lua's own C++ wrapper) already wraps itself in
-extern "C", so we can include it directly:
+### Multi-version Lua include paths
+
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L116) (line 116)
+
+─────────────────────────────────────────────────
+The exact path for Lua headers varies by platform and installation:
+  • Linux (apt): lua5.4/lua.h   (package: liblua5.4-dev)
+  • Windows (bundled): lua.h    (headers placed in Lua/include/ in the repo)
+  • macOS (brew): lua.h         (in HOMEBREW_PREFIX/include/lua5.x/)
+
+We use a cascade of #if checks so the file compiles on every supported
+platform without manual per-platform configuration.
 extern "C" {
-include <lua5.4/lua.h>       // Core Lua API: lua_State, lua_push*, lua_to*, …
-include <lua5.4/lualib.h>    // Standard library loaders: luaL_openlibs
-include <lua5.4/lauxlib.h>   // Auxiliary helpers: luaL_newstate, luaL_loadfile
+if defined(_WIN32) && __has_include(<lua.h>)
+Windows with bundled Lua headers (Lua/include/ added to include path by CMake)
+ include <lua.h>
+ include <lualib.h>
+ include <lauxlib.h>
+elif __has_include(<lua5.5/lua.h>)
+Linux/macOS with Lua 5.5 installed system-wide
+ include <lua5.5/lua.h>
+ include <lua5.5/lualib.h>
+ include <lua5.5/lauxlib.h>
+elif __has_include(<lua5.4/lua.h>)
+Linux/macOS with Lua 5.4 installed system-wide (most common)
+ include <lua5.4/lua.h>
+ include <lua5.4/lualib.h>
+ include <lua5.4/lauxlib.h>
+elif __has_include(<lua.h>)
+Generic fallback — lua.h is directly on the include path
+ include <lua.h>
+ include <lualib.h>
+ include <lauxlib.h>
+else
+ error "Lua headers not found. See LuaEngine.hpp for setup instructions."
+endif
 }
 
 ### Lua Tables
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L139) (line 139)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L166) (line 166)
 
 ────────────────────────────
 In Lua, tables are the ONLY data structure.  They function as:
@@ -8141,7 +8316,7 @@ Usage:
 
 ### Engine ↔ Script Communication
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L210) (line 210)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L237) (line 237)
 
 ───────────────────────────────────────────────
 There are two directions of communication:
@@ -8160,7 +8335,7 @@ C++ functions so Lua scripts can call them freely.
 
 ### lua_State Lifecycle
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L226) (line 226)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L253) (line 253)
 
 ─────────────────────────────────────
 A lua_State (often called "L") represents one Lua interpreter instance.
@@ -8178,7 +8353,7 @@ Multiple states are possible (e.g., sandboxed scripts), but one is simpler.
 
 ### Non-Owning Pointers
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L289) (line 289)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L316) (line 316)
 
 ─────────────────────────────────────
 A raw pointer T* in C++ is non-owning by convention (the pointee is
@@ -8188,7 +8363,7 @@ Here the World is owned by the Application, which outlives LuaEngine.
 
 ### Why we ALSO update the Lua registry here
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L296) (line 296)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L323) (line 323)
 
 ──────────────────────────────────────────────────────────
 RegisterEngineBindings() stores the initial World pointer in the Lua
@@ -8208,7 +8383,7 @@ stored pointer while the Lua state is still valid.
 
 ### luaL_loadfile vs luaL_dofile
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L322) (line 322)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L349) (line 349)
 
 ──────────────────────────────────────────────
 luaL_dofile(L, path)  — loads AND runs the file.  Simple but provides
@@ -8228,7 +8403,7 @@ We use loadfile + pcall so we can:
 
 ### Overloads vs Templates for Lua calls
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L364) (line 364)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L391) (line 391)
 
 ──────────────────────────────────────────────────────
 We provide typed overloads rather than a single variadic template
@@ -8250,7 +8425,7 @@ as convenient wrappers for the common cases).
 
 ### lua_CFunction Type
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L423) (line 423)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L450) (line 450)
 
 ────────────────────────────────────
 Every function exposed to Lua must have this exact signature:
@@ -8270,7 +8445,7 @@ lua_register(L, "name", fn) is a macro for:
 
 ### Template Specialisation
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L449) (line 449)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L476) (line 476)
 
 ─────────────────────────────────────────
 GetGlobal<T> is a function template.  The implementation uses
@@ -8293,7 +8468,7 @@ completely removed from the binary (unlike a runtime `if`).
 
 ### SetGlobal and Type Dispatch
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L475) (line 475)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L502) (line 502)
 
 ─────────────────────────────────────────────
 Like GetGlobal, this template uses if constexpr to select the right
@@ -8311,7 +8486,7 @@ This is useful for:
 
 ### When to Use the Raw Pointer
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L515) (line 515)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L542) (line 542)
 
 ─────────────────────────────────────────────
 Most code should use the LuaEngine API.  Use the raw state only when:
@@ -8321,7 +8496,7 @@ Most code should use the LuaEngine API.  Use the raw state only when:
 
 ### Templates in Headers
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L575) (line 575)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L602) (line 602)
 
 ──────────────────────────────────────
 Function templates must have their FULL implementation visible at the point
@@ -8337,7 +8512,7 @@ Alternatives:
 
 ### if constexpr (C++17)
 
-**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L608) (line 608)
+**Source:** [`src/engine/scripting/LuaEngine.hpp`](src/engine/scripting/LuaEngine.hpp#L635) (line 635)
 
 ──────────────────────────────────────
 `if constexpr` evaluates its condition at COMPILE TIME.
@@ -9151,15 +9326,23 @@ When we reach the goal, we walk backwards through cameFrom:
   goal → parent → grandparent → … → start
 Then reverse the list to get start → goal order.
 
+### Optional Lua dependency (see CombatSystem.cpp for context)
+
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L11) (line 11)
+
+ifdef ENGINE_ENABLE_LUA
+include "../../engine/scripting/LuaEngine.hpp"  // on_camp_rest, on_level_up hooks
+endif
+
 ### We use const TileMap& to signal read-only access.
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L33) (line 33)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L36) (line 36)
 
 const Tile& tile = map.GetTile(x, y);
 
 ### Check ALL ingredients before consuming ANY.
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L118) (line 118)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L121) (line 121)
 
 if (!HasIngredients(player, *recipe)) {
 if (m_uiBus) {
@@ -9173,7 +9356,7 @@ return false;
 
 ### FF15's pending XP system: combat awards "tentative" XP
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L208) (line 208)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L211) (line 211)
 
 which only converts to real levels at camp.  This creates tension.
 if (m_world->HasComponent<LevelComponent>(player)) {
@@ -9184,7 +9367,7 @@ lc.ApplyBankedXP();
 
 ### Conditional Hook Firing
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L224) (line 224)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L227) (line 227)
 
 We only fire on_level_up when the level actually changed.
 Comparing oldLevel to lc.level (after ApplyBankedXP) is the
@@ -9196,14 +9379,16 @@ branch on specific thresholds:
       if newLevel == 10 then unlock_ultimate_technique() end
   end
 if (lc.level > oldLevel) {
+ifdef ENGINE_ENABLE_LUA
 LuaEngine::Get().CallFunction("on_level_up",
 static_cast<int>(lc.level));
+endif
 }
 }
 
 ### Ordering Hook Calls
 
-**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L253) (line 253)
+**Source:** [`src/game/systems/CampSystem.cpp`](src/game/systems/CampSystem.cpp#L258) (line 258)
 
 on_camp_rest fires AFTER HP/MP restoration, XP application, and level-ups
 are all complete.  This means Lua scripts can safely query the player's
@@ -9214,7 +9399,9 @@ Example use in quests.lua:
       GameState.day = GameState.day + 1
       engine_log("Day " .. GameState.day .. " begins.")
   end
+ifdef ENGINE_ENABLE_LUA
 LuaEngine::Get().CallFunction("on_camp_rest");
+endif
 
 ### Camp System Inspiration (FF15)
 
@@ -9330,9 +9517,22 @@ Use static members for data that is genuinely SINGULAR: the current
 meal, the game clock, the player's currency.  Avoid statics for data
 that could plausibly need multiple instances in a future design.
 
+### Optional Lua scripting dependency
+
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L13) (line 13)
+
+LuaEngine.hpp requires the Lua 5.4 headers (lua5.4/lua.h) which are only
+available when Lua is installed.  ENGINE_ENABLE_LUA is defined by CMake for
+targets that link Lua (the terminal `game` target).  engine_sandbox builds
+on Windows without Lua, so the scripting hook is compiled out — combat
+still works fully, the Lua callback simply does not fire.
+ifdef ENGINE_ENABLE_LUA
+include "../../engine/scripting/LuaEngine.hpp"  // on_combat_start hook
+endif
+
 ### Using the EventBus Singleton
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L83) (line 83)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L91) (line 91)
 
 EventBus<CombatEvent>::Instance() returns the global bus for CombatEvents.
 Any system that subscribed (UI, audio, camera) will receive this event.
@@ -9343,7 +9543,7 @@ EventBus<CombatEvent>::Instance().Publish(ev);
 
 ### C++ → Lua Hook Pattern
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L100) (line 100)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L108) (line 108)
 
 ─────────────────────────────────────────
 A "hook" is a named Lua function that the engine calls at a predefined
@@ -9367,13 +9567,15 @@ if (m_world->HasComponent<NameComponent>(firstEnemy)) {
 firstEnemyName = m_world->GetComponent<NameComponent>(firstEnemy).name;
 }
 }
+ifdef ENGINE_ENABLE_LUA
 LuaEngine::Get().CallFunction("on_combat_start", firstEnemyName);
+endif
 }
 }
 
 ### Status Effect Ticking
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L137) (line 137)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L147) (line 147)
 
 We accumulate time in m_statusTickTimer.  When it crosses the interval,
 we process all DoT/buff effects and reset the timer.
@@ -9385,7 +9587,7 @@ m_statusTickTimer = STATUS_TICK_INTERVAL;
 
 ### Player vs. Enemy Action Timing
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L168) (line 168)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L178) (line 178)
 
 m_turn == 0 means it is the player's turn.  Player actions are triggered
 by button presses (PlayerAttack, PlayerFlee, etc.), not by the ATB timer.
@@ -9402,7 +9604,7 @@ AdvanceTurn();
 
 ### Reading Equipment Stats
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L199) (line 199)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L209) (line 209)
 
 The weapon's attack bonus is stored as a CACHED value in
 EquipmentComponent::bonusStrength to avoid re-scanning the database
@@ -9416,7 +9618,7 @@ weaponBonus = eq.bonusStrength;
 
 ### Order Matters Here
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L216) (line 216)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L226) (line 226)
 
 Base player damage is applied first, then link strikes.
 ProcessLinkStrikes() applies its own damage to targetHp internally
@@ -9425,7 +9627,7 @@ targetHp.hp = std::max(0, targetHp.hp - damage);
 
 ### Skill Damage Scaling
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L289) (line 289)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L299) (line 299)
 
 Each skill multiplies base physical attack by a skill-specific factor.
 For simplicity, we hardcode 1.5× for all skills here.  In a full
@@ -9437,7 +9639,7 @@ weaponBonus = m_world->GetComponent<EquipmentComponent>(m_playerID).bonusStrengt
 
 ### Magic Damage Formula
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L361) (line 361)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L371) (line 371)
 
 magic_damage = spellData.baseDamage × (caster.magic / 10.0)
 The caster's magic stat scales spell power.  Division by 10 normalises
@@ -9449,7 +9651,7 @@ magicStat = m_world->GetComponent<StatsComponent>(m_playerID).magic;
 
 ### Warp-Strike Teleportation
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L467) (line 467)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L477) (line 477)
 
 We copy the target's TransformComponent position to the player,
 offset by one tile.  No projectile arc is simulated in the
@@ -9467,7 +9669,7 @@ playerTf.position.z = targetTf.position.z - TILE_SIZE;
 
 ### Enemy Ability Selection
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L587) (line 587)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L597) (line 597)
 
 A real AI would pick from a list of abilities based on HP, MP, and
 cooldowns.  For this base implementation, all enemies use a basic
@@ -9480,7 +9682,7 @@ enemyAttack = m_world->GetComponent<StatsComponent>(enemy).strength;
 
 ### Damage Formula Breakdown
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L659) (line 659)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L669) (line 669)
 
 raw = max(1, (strength × 2 + baseDmg) - defence)
 
@@ -9494,7 +9696,7 @@ int raw = std::max(1, (atkStrength * 2 + baseDmg) - defDefence);
 
 ### Damage Variance
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L684) (line 684)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L694) (line 694)
 
 A small random range (85–115% of base) prevents combat from feeling
 mechanical.  The player doesn't know the exact formula, so variance
@@ -9506,7 +9708,7 @@ float variance = varianceDist(m_rng);
 
 ### DoT Scaling
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L713) (line 713)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L723) (line 723)
 
 Poison deals 5% of the target's max HP per tick.
 This scales with target's health, making poison relevant at all
@@ -9518,7 +9720,7 @@ tickDmg = m_world->GetComponent<HealthComponent>(target).maxHp * 0.05f;
 
 ### Looking Up Enemy Data
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L818) (line 818)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L828) (line 828)
 
 We use NameComponent to find the enemy's data ID.  In a production engine
 you'd store the EnemyData::id in a dedicated EnemyTypeComponent.
@@ -9527,7 +9729,7 @@ if (!m_world->HasComponent<CombatComponent>(defender)) return 1.0f;
 
 ### Party Link Strikes
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L864) (line 864)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L874) (line 874)
 
 ─────────────────────────────────────────────────────────────────────────
 In FF15, party members spontaneously assist the player when the player
@@ -9545,7 +9747,7 @@ avoids multiple redundant death checks.
 
 ### Why apply damage here instead of in PlayerAttack?
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L916) (line 916)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L926) (line 926)
 
 ProcessLinkStrikes is a helper that owns the full link-strike
 resolution: roll chances, compute damage, AND apply it.  The caller
@@ -9555,7 +9757,7 @@ targetHp.hp = std::max(0, targetHp.hp - totalLinkDamage);
 
 ### Iterating and Removing from Arrays
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L945) (line 945)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L955) (line 955)
 
 We iterate backward so that erasing an entry doesn't skip the next one.
 for (uint32_t i = 0; i < se.count; ) {
@@ -9564,7 +9766,7 @@ entry.remaining -= dt;
 
 ### Level-Difference XP Bonus
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L991) (line 991)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1001) (line 1001)
 
 If the enemy is higher level than the player, the player earns a
 10% XP bonus per level difference.  This rewards the risk of
@@ -9583,7 +9785,7 @@ int xpGained  = static_cast<int>(combat.xpReward * xpMult);
 
 ### Random Item Drops
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1021) (line 1021)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1031) (line 1031)
 
 We look up the enemy's species data to find the drop table.
 Each item in dropItemIDs has a 30% chance to drop (simple model).
@@ -9597,7 +9799,7 @@ m_result.itemsDropped.push_back(dropID);
 
 ### Turn Cycling
 
-**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1061) (line 1061)
+**Source:** [`src/game/systems/CombatSystem.cpp`](src/game/systems/CombatSystem.cpp#L1071) (line 1071)
 
 Turn order cycles: 0 (player) → 1 → 2 → ... → aliveEnemies.size() → 0
 We skip turns for dead entities automatically.
@@ -11742,6 +11944,8 @@ Usage:
   engine_sandbox.exe --headless                   # D3D11 WARP headless (CI)
   engine_sandbox.exe --renderer vulkan --headless # Vulkan headless
   engine_sandbox.exe --headless --scene triangle  # M1 validation
+  engine_sandbox.exe --scene testworld            # M3 full system demo (windowed)
+  engine_sandbox.exe --headless --scene testworld # M3 full system demo (CI)
 
 ============================================================================
 
@@ -11753,7 +11957,7 @@ Target: Windows (MSVC)
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L85) (line 85)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L89) (line 89)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -11770,7 +11974,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L100) (line 100)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L104) (line 104)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -11787,7 +11991,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L113) (line 113)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L117) (line 117)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -11799,7 +12003,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L135) (line 135)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L139) (line 139)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -11818,7 +12022,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L150) (line 150)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L154) (line 154)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -11831,7 +12035,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L163) (line 163)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -11842,7 +12046,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L192) (line 192)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -11857,7 +12061,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L217) (line 217)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L221) (line 221)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -11867,7 +12071,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L247) (line 247)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L251) (line 251)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -11883,7 +12087,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L296) (line 296)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L300) (line 300)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -11902,17 +12106,31 @@ return 1;
 }
 std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
 }
-else
+else if (scene == "testworld")
 {
-M0 baseline: device init succeeded.
-std::cout << "[PASS] " << renderer->BackendName()
-<< " device initialised. Headless mode: "
-"skipping present loop.\n";
+-----------------------------------------------------------
+
+### Headless TestWorld
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L321) (line 321)
+
+-----------------------------------------------------------
+Boots all gameplay systems, runs 600 fixed-dt frames, then
+exits 0 if every system reported OK.  Ideal for CI: no GPU
+or audio hardware required.
+-----------------------------------------------------------
+engine::sandbox::TestWorld tw;
+if (!tw.Init())
+{
+std::cout << "[FAIL] TestWorld::Init() returned false.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
 }
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L330) (line 330)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L367) (line 367)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -11920,21 +12138,52 @@ A real game loop uses a fixed timestep for deterministic physics.
 -------------------------------------------------------------------
 double totalTime = 0.0;
 
+### TestWorld integration in the render loop
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L375) (line 375)
+
+-----------------------------------------------------------------------
+When --scene testworld is specified, we create a TestWorld and call
+tw.Update(dt) each frame.  The TestWorld returns an RGB clear-colour
+(GetClearColour) that reflects the current game state:
+
+  Combat active → red tint       Night → deep navy
+  Victory flash → gold pulse     Rain  → grey-blue
+  Camping       → warm orange    Day   → sky blue
+
+This gives a visual confirmation that the game systems are running
+and changing state.  As more rendering milestones land, replace the
+clear-colour with actual geometry + lighting draw calls.
+-----------------------------------------------------------------------
+std::unique_ptr<engine::sandbox::TestWorld> testWorld;
+if (scene == "testworld")
+{
+testWorld = std::make_unique<engine::sandbox::TestWorld>();
+if (!testWorld->Init())
+{
+std::cerr << "[FAIL] TestWorld::Init() returned false.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+}
+
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L354) (line 354)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L429) (line 429)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
 const float speed = 0.5f;
 const float tF    = static_cast<float>(totalTime);
-float clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
-float clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2pi/3
-float clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
+clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
+clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2pi/3
+clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
+}
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L369) (line 369)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L445) (line 445)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -11942,6 +12191,369 @@ first would leave the renderer pointing at a destroyed handle.
 -------------------------------------------------------------------
 renderer->Shutdown();
 window.Shutdown();
+
+---
+
+## sandbox/test_world.cpp
+
+### System Dependency Order
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L6) (line 6)
+
+============================================================================
+Game systems are updated each frame in a specific order to ensure that
+outputs of one system are available as inputs to the next:
+
+  1. WeatherSystem   — Advances day/night cycle; fires WorldEvent on
+                       time/weather changes.  No game-state reads.
+  2. AISystem        — Reads player position (TransformComponent) and
+                       WeatherSystem time (nocturnal enemy behaviour).
+                       Moves enemies toward player.
+  3. CombatSystem    — Resolves attacks between combatants set up by AI.
+                       Fires CombatEvent on damage / death.
+  4. QuestSystem     — Listens for CombatEvent (kill objectives) and
+                       WorldEvent (reach-location objectives).
+  5. InventorySystem — Distributes loot after CombatSystem resolves.
+  6. ShopSystem      — Processes player buy/sell requests (scripted here).
+  7. CampSystem      — Applies rest bonuses once combat is inactive.
+  8. AudioSystem     — Submits audio source components to XAudio2 backend;
+                       transitions music FSM based on CombatSystem state.
+
+============================================================================
+
+### ECS Entity Composition
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L27) (line 27)
+
+============================================================================
+Each entity in this world is a pure EntityID with components attached:
+
+  Player  — TransformComponent + HealthComponent + StatsComponent +
+            NameComponent + CombatComponent + InventoryComponent +
+            LevelComponent + CurrencyComponent + QuestComponent +
+            MagicComponent + EquipmentComponent + MovementComponent +
+            PartyComponent + AudioSourceComponent
+
+  Enemy   — TransformComponent + HealthComponent + StatsComponent +
+            NameComponent + CombatComponent + AIComponent +
+            StatusEffectsComponent
+
+  NPC     — TransformComponent + NameComponent + RenderComponent +
+            DialogueComponent (stub)
+
+  Building — TransformComponent + NameComponent + RenderComponent
+
+  Door    — TransformComponent + NameComponent + DialogueComponent
+             (isInteractable = true)
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC) + Linux (cook / CI)
+
+### member initialiser list
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L76) (line 76)
+
+m_tileMap is constructed with width/height here because TileMap does
+not have a default (width=0) constructor that can be resized later.
+All other members use in-class initialisers (= default values).
+}
+
+### Initialisation Sequence
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L89) (line 89)
+
+-----------------------------------------------------------------------
+We follow a strict order:
+  1. Tile map (no system deps)
+  2. ECS entities (requires tile map for spawn positions)
+  3. Systems (require entity IDs and event buses)
+  4. Quests / inventory / shop bootstrapping
+  5. Audio last (may fail gracefully if no audio hardware)
+-----------------------------------------------------------------------
+
+### Component Registration
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L116) (line 116)
+
+RegisterAllComponents() assigns each component type a unique integer
+index used internally by the ComponentStorage sparse-set.  It must be
+called exactly once before any entity is created.
+-----------------------------------------------------------------------
+RegisterAllComponents(m_world);
+std::cout << "  [OK] ECS components registered\n";
+
+### Lambda Subscriptions
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L212) (line 212)
+
+Each Subscribe call registers a lambda that fires whenever the bus
+publishes an event.  The capture [this] lets the lambda access member
+variables.  We store the token so we could Unsubscribe on teardown
+(skipped here for brevity — the EventBus is destroyed with TestWorld).
+-----------------------------------------------------------------------
+
+### Graceful Degradation
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L249) (line 249)
+
+Audio requires a Windows audio device.  On headless CI runners there
+is no audio hardware, so XAudio2Create may fail.  We treat audio
+as a non-fatal subsystem: the test world still validates all other
+systems if audio is unavailable.
+-----------------------------------------------------------------------
+m_audioReady = m_audio.InitAudio(nullptr);  // nullptr = no AssetDB yet
+if (m_audioReady)
+{
+Register music tracks (clip IDs will be resolved when AssetDB
+exists; until then, Play() returns gracefully without crashing).
+m_audio.RegisterMusicTrack({
+audio::MusicState::EXPLORATION,
+"guid-music-exploration",
+0.80f
+});
+m_audio.RegisterMusicTrack({
+audio::MusicState::BATTLE,
+"guid-music-battle",
+0.90f
+});
+m_audio.RegisterMusicTrack({
+audio::MusicState::VICTORY,
+"guid-music-victory",
+0.70f
+});
+m_audio.SetMusicState(audio::MusicState::EXPLORATION);
+std::cout << "  [OK] AudioSystem ready (XAudio2 device acquired)\n";
+}
+else
+{
+std::cout << "  [--] AudioSystem: no audio device (CI / headless OK)\n";
+}
+
+### State-Driven Clear Colour
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L403) (line 403)
+
+-----------------------------------------------------------------------
+Priority (highest wins):
+  1. Active combat       → red tint
+  2. Victory flash       → gold pulse (decaying)
+  3. Camping             → warm campfire orange
+  4. Time of day         → sky-blue (day) / navy (night) / amber (dawn)
+  5. Weather override    → rain desaturates, storm darkens
+-----------------------------------------------------------------------
+
+### ECS Component Reads
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L519) (line 519)
+
+-----------------------------------------------------------------------
+All game state is stored in ECS components.  To display the player's
+HP we read it with m_world.GetComponent<HealthComponent>(m_player).
+The returned reference is valid as long as the entity exists.
+-----------------------------------------------------------------------
+
+### Map Layout
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L654) (line 654)
+
+-----------------------------------------------------------------------
+The 40×30 tile map is divided into distinct biomes, showing the
+"open world" structure of a typical RPG:
+
+ Rows  0– 1 : mountain border (impassable)
+ Rows  2– 4 : northern plains (GRASS)
+ Row   5    : road (horizontal)
+ Rows  6–10 : town area (buildings + courtyards)
+ Row  11    : road (horizontal)
+ Rows 12–16 : central plains (GRASS)
+ Rows 17–19 : forest (FOREST — semi-impassable)
+ Row  20    : river (WATER — impassable)
+ Rows 21–24 : ruins / dungeon area (FLOOR + WALL)
+ Rows 25–26 : southern plains
+ Rows 27–29 : mountain border
+-----------------------------------------------------------------------
+
+### Building as Tiles
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L745) (line 745)
+
+A building is represented as a rectangle of WALL tiles with a FLOOR
+interior.  The door tile replaces one WALL tile on the south face.
+This is exactly how classic tile-based RPGs like Final Fantasy VI/VII
+represent indoor/outdoor transitions.
+
+### Tile-Based Movement
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1022) (line 1022)
+
+-----------------------------------------------------------------------
+The player's position is stored as floats in TransformComponent so that
+movement can be interpolated smoothly.  At each frame we compute the
+vector toward the current waypoint and move a fixed speed along it.
+When we overshoot we snap to the waypoint and advance to the next one.
+This is the classic "waypoint following" algorithm used in almost every
+tile-RPG's event system.
+-----------------------------------------------------------------------
+
+### Starting Combat
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1089) (line 1089)
+
+----------------------------------------------------------------
+StartCombat receives the player entity and a list of enemy
+entities.  Internally it builds turn-order priority queues from
+each combatant's SpeedComponent (part of StatsComponent here),
+resets all ATB gauges, and fires BATTLE_START on the CombatBus.
+----------------------------------------------------------------
+const auto& nm = m_world.GetComponent<NameComponent>(enemy);
+std::cout << "  ⚔  COMBAT START: Noctis vs " << nm.name << "\n";
+m_combat->StartCombat(m_player, { enemy });
+m_combatTriggered = true;
+
+### Handling Combat Outcome
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1121) (line 1121)
+
+-----------------------------------------------------------------------
+After CombatSystem::IsActive() returns false, GetCombatResult() gives
+us a CombatResult struct with:
+  playerWon     — true if all enemies are dead.
+  xpGained      — total XP to distribute.
+  gilGained     — total Gil to distribute.
+  droppedItems  — vector<uint32_t> of item IDs to add to inventory.
+
+We apply these here rather than inside CombatSystem so that different
+callers (multiplayer, story mode, arena) can apply results differently.
+-----------------------------------------------------------------------
+const CombatResult result = m_combat->GetCombatResult();
+if (!result.playerWon)
+{
+std::cout << "  ✗  COMBAT: Noctis was defeated!\n";
+Restore minimal HP so the test world can continue.
+auto& hp = m_world.GetComponent<HealthComponent>(m_player);
+hp.hp = hp.maxHp / 2;
+return;
+}
+
+### Camping (CampSystem)
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1176) (line 1176)
+
+----------------------------------------------------------------
+SetupCamp() starts a resting session for the entity.
+Rest() applies HP/MP regen and, if a meal was cooked, applies its
+temporary stat bonuses.  In a full game this is gated behind
+CanCamp() which checks the tile type (CAMP or SAFE_ZONE).
+We skip that check here because the test world always allows rest.
+----------------------------------------------------------------
+m_camp->SetupCamp(m_player);
+m_camp->Rest(m_player);
+
+### Shop System
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L1213) (line 1213)
+
+----------------------------------------------------------------
+OpenShop() binds the shop to a player for the current session.
+BuyItem() checks the player's gil against the item price, deducts
+the gil, and adds the item to InventoryComponent.
+The entire transaction is atomic: if AddItem fails (full inventory),
+the gil is refunded and BuyItem returns false.
+----------------------------------------------------------------
+m_shop->OpenShop(m_player, SHOP_HAMMERHEAD);
+
+---
+
+## sandbox/test_world.hpp
+
+### Why a Test World?
+
+**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L6) (line 6)
+
+============================================================================
+A *test world* is an in-engine scene that boots all implemented systems at
+once so a developer can verify the whole stack is functional in a running
+debug or release build.  It is not a level designed for players — it is a
+living integration test.
+
+The test world demonstrates:
+  • Open world  — 40×30 tile map with plains, roads, forest, and ruins.
+  • Character   — Noctis (player entity) with full component suite.
+  • Movement    — Entity position updates each frame; printed to console.
+  • Doors       — Interactable door entities in the building perimeter.
+  • Buildings   — Crown City Inn + Hammerhead Outpost (camp + shop).
+  • Enemies     — Goblin / Wyvern / Tonberry with AI state machines.
+  • Combat      — ATB-based CombatSystem engaged when enemies close range.
+  • AI          — FSM + A* pathfinding (AISystem) chases player.
+  • Weather     — Day/night cycle + probabilistic weather FSM.
+  • Quests      — "Hunt the Goblins" kill-objective tracked live.
+  • Inventory   — Player starts with potions; drops loot on enemy death.
+  • Camp        — Player rests at the Inn; HP/MP restored; meal buff.
+  • Shop        — Hammerhead shop BuyItem demo; gil transaction.
+  • Audio       — XAudio2 backend initialised; music FSM wired.
+
+============================================================================
+
+### Rendered Visual Feedback
+
+**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L30) (line 30)
+
+============================================================================
+The D3D11 renderer cannot yet draw geometry, but it can clear the back-
+buffer to any colour.  TestWorld maps game state to a clear-colour:
+
+  Day + Clear weather   → sky-blue (0.40, 0.60, 0.90)
+  Night                 → deep navy (0.03, 0.05, 0.18)
+  Dawn / Dusk           → warm amber (0.90, 0.50, 0.20)
+  Rain                  → slate (0.25, 0.32, 0.42)
+  Active combat         → red tint (0.70, 0.12, 0.12)
+  Victory               → gold pulse (1.00, 0.85, 0.10)
+  Camp / resting        → campfire orange (0.50, 0.28, 0.06)
+
+As more rendering milestones (M3 texture, M4 animation, M5 physics) land,
+replace the clear-colour logic here with actual draw calls.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC) + Linux (for cook / CI builds)
+
+### Integration Tests vs Unit Tests
+
+**Source:** [`src/sandbox/test_world.hpp`](src/sandbox/test_world.hpp#L94) (line 94)
+
+──────────────────────────────────────────────────
+Unit tests check a single class in isolation.  Integration tests check
+that multiple systems collaborate correctly.  TestWorld is an integration
+test expressed as a *running game scene*, which has several advantages:
+
+  1. Real timing — systems run at variable dt, just as in shipping code.
+  2. Cross-system events — QuestSystem reacts to CombatSystem kills via
+     EventBus, just as in the final game.
+  3. Visual confirmation — a developer watching the window can see state
+     changes (red flash on combat entry, gold on victory) without reading
+     raw log output.
+
+Usage:
+@code
+  TestWorld tw;
+  if (!tw.Init()) return 1;
+
+  while (window.IsRunning()) {
+      tw.Update(dt);
+      float r, g, b;
+      tw.GetClearColour(r, g, b);
+      renderer->DrawFrame(r, g, b);
+  }
+@endcode
 
 ---
 
@@ -11991,7 +12603,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L159) (line 159)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L164) (line 164)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -12007,15 +12619,15 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L261) (line 261)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L266) (line 266)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L303) (line 303)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L308) (line 308)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L383) (line 383)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L388) (line 388)
 
 ---
 

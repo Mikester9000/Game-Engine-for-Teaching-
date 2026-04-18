@@ -244,7 +244,7 @@ void Logger::Log(LogLevel           level,
         m_file << formatted << '\n';
         // Flush immediately for ERROR / CRITICAL so data is on disk even if
         // the program crashes right after.
-        if (level >= LogLevel::ERR) {
+        if (level >= LogLevel::LERR) {
             m_file.flush();
         }
     }
@@ -252,7 +252,7 @@ void Logger::Log(LogLevel           level,
     // Write to console with optional colour
     if (m_console) {
         // CRITICAL and ERROR go to stderr; everything else to stdout.
-        std::ostream& out = (level >= LogLevel::ERR) ? std::cerr : std::cout;
+        std::ostream& out = (level >= LogLevel::LERR) ? std::cerr : std::cout;
 
         // ANSI colour prefix
         out << LevelColour(level);
@@ -392,7 +392,7 @@ const char* Logger::LevelColour(LogLevel level) {
         case LogLevel::DEBUG:    return "\033[37m";   // White
         case LogLevel::INFO:     return "\033[32m";   // Green
         case LogLevel::WARNING:  return "\033[33m";   // Yellow
-        case LogLevel::ERR:      return "\033[31m";   // Red
+        case LogLevel::LERR:      return "\033[31m";   // Red
         case LogLevel::CRITICAL: return "\033[35m";   // Magenta
         default:                 return "\033[0m";    // Reset
     }
