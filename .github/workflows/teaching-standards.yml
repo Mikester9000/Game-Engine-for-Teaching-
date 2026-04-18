@@ -115,7 +115,12 @@ jobs:
       - name: Fetch base branch (pull_request only)
         if: github.event_name == 'pull_request'
         run: |
-          git fetch origin ${{ github.base_ref }}
+          # TEACHING NOTE — Force fetch the base branch
+          # '--force' ensures we get the latest commit on the base branch even
+          # if the local ref is out of date (e.g. because the base branch moved
+          # forward since the PR was opened). Without --force, the fetch could
+          # silently no-op and leave us diffing against a stale base commit.
+          git fetch --force origin ${{ github.base_ref }}
 
       # -----------------------------------------------------------------------
       # Run the teaching-standards check.

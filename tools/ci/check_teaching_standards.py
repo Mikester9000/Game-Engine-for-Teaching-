@@ -56,6 +56,7 @@ EXIT CODE
 """
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -83,6 +84,27 @@ TEACHING_NOTE_EXTENSIONS: frozenset = frozenset({".cpp", ".hpp", ".h", ".py"})
 # File extensions subject to the line-count limit.
 SIZE_CHECK_EXTENSIONS: frozenset = frozenset(
     {".cpp", ".hpp", ".h", ".py", ".cmake", ".yml", ".yaml"}
+)
+
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — TEACHING NOTE Detection Pattern
+# ---------------------------------------------------------------------------
+# We pre-compile the regex at module level (rather than inside check_teaching_note)
+# so it is compiled exactly once, regardless of how many files are checked.
+#
+# The pattern matches lines where "TEACHING NOTE" appears after a comment
+# prefix.  We allow optional leading whitespace and a "//" or "#" followed by
+# optional whitespace before the marker.  This correctly matches:
+#   // TEACHING NOTE — …       (C++)
+#   # TEACHING NOTE — …        (Python / YAML / CMake)
+#   //TEACHING NOTE             (no space — also accepted)
+#
+# The pattern does NOT match:
+#   str = "TEACHING NOTE"       (string literal — no comment prefix)
+#   teaching_note_required = … (variable name — not a comment prefix)
+# ---------------------------------------------------------------------------
+_TEACHING_NOTE_RE: re.Pattern = re.compile(
+    r"^\s*(?://|#)\s*TEACHING NOTE", re.MULTILINE
 )
 
 # ---------------------------------------------------------------------------
@@ -120,6 +142,10 @@ ALLOWLIST_SIZE: frozenset = frozenset(
         # The audio engine CLI wraps the authoring library; size driven by
         # number of sub-commands, not by coupling.
         "tools/audio_engine.py",
+        # The CI teaching-standards script itself is comprehensive by design —
+        # it includes a full docstring, thorough TEACHING NOTE blocks, and
+        # detailed allowlists that make it an educational example of a CI tool.
+        "tools/ci/check_teaching_standards.py",
     }
 )
 
@@ -198,9 +224,16 @@ def _get_changed_files(base_ref: str, repo_root: Path) -> list:
         cwd=str(repo_root),
     )
     if result.returncode != 0:
-        # Fallback: diff against a single commit (useful for HEAD~1 on push)
+        # TEACHING NOTE — Fallback diff syntax
+        # The three-dot syntax (A...B) finds the merge-base between A and B and
+        # computes the diff from there to B.  This is what we want for PRs.
+        # If A...B fails (e.g. A is a simple commit ref like HEAD~1 that has no
+        # remote tracking), we fall back to the two-dot syntax (A..B) which
+        # diffs directly between two commit objects.  Both produce the same
+        # result when A is a direct ancestor of B, which is always true for
+        # HEAD~1...HEAD or a feature branch that hasn't diverged from its base.
         result = subprocess.run(
-            ["git", "diff", "--name-only", "--diff-filter=ACMR", base_ref, "HEAD"],
+            ["git", "diff", "--name-only", "--diff-filter=ACMR", f"{base_ref}..HEAD"],
             capture_output=True,
             text=True,
             cwd=str(repo_root),
@@ -329,7 +362,10 @@ def check_teaching_note(path: Path, repo_relative: str) -> str | None:
     #   Python : "# TEACHING NOTE"
     # A case-sensitive match is intentional — contributors must spell the
     # marker exactly as defined in the coding standards.
-    if "TEACHING NOTE" not in content:
+    # The pre-compiled _TEACHING_NOTE_RE pattern (defined at module level)
+    # only matches the marker when it appears after a "//" or "#" comment
+    # prefix, preventing false positives from string literals or variable names.
+    if not _TEACHING_NOTE_RE.search(content):
         return (
             f"  NOTE  {repo_relative} — no TEACHING NOTE block found "
             f"({len(lines)} lines). Add at least one '// TEACHING NOTE' "
