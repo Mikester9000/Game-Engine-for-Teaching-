@@ -142,6 +142,14 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     # comprehensive API it demonstrates for students studying XAudio2 integration.
     "tools/audio_authoring/audio_engine/integration/cpp/AudioSystem.hpp":
         "audio tool C++ integration example — comprehensive XAudio2 API demonstration",
+    # xaudio2_backend.cpp: M3 XAudio2 backend — extensive teaching notes cover COM
+    # init, RIFF/WAVE parsing, source voice pools, and XAudio2 buffer submission.
+    "src/engine/audio/xaudio2_backend.cpp":
+        "XAudio2 backend — M3 audio milestone; TEACHING NOTEs cover COM, RIFF/WAV, voice pool, buffer submission",
+    # d3d11_texture.cpp: M3 D3D11 DDS texture loader — teaching notes cover DDS
+    # format, block compression (BC1/BC3/BC7), mip maps, and D3D11 resource upload.
+    "src/engine/rendering/d3d11/d3d11_texture.cpp":
+        "D3D11 DDS texture loader — M3 texture milestone; TEACHING NOTEs cover DDS format, BC7 compression, mip map upload",
 }
 
 # ---------------------------------------------------------------------------

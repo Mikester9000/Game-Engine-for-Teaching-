@@ -343,6 +343,10 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     if(ENGINE_ENABLE_D3D11)
         list(APPEND SANDBOX_SOURCES
             src/engine/rendering/d3d11/D3D11Renderer.cpp
+            # TEACHING NOTE — M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
+            # d3d11_texture.cpp is a self-contained DDS parser that uses only
+            # the Windows SDK headers already required by D3D11Renderer.
+            src/engine/rendering/d3d11/d3d11_texture.cpp
         )
     endif()
 
@@ -357,6 +361,19 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             src/engine/rendering/vulkan/vulkan_mesh.cpp
         )
     endif()
+
+    # -----------------------------------------------------------------------
+    # Audio backend sources (Windows-only, M3 XAudio2 backend).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — XAudio2 is Windows-only
+    # xaudio2.h and xaudio2.lib ship with every Windows SDK installation
+    # (alongside d3d11.h / d3d11.lib).  No separate download is needed.
+    # The sources are added to engine_sandbox (not the Linux terminal game).
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/engine/audio/xaudio2_backend.cpp
+        src/engine/audio/audio_system.cpp
+    )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})
 
@@ -385,6 +402,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     if(ENGINE_ENABLE_D3D11)
         target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
     endif()
+
+    # TEACHING NOTE — xaudio2.lib and ole32.lib
+    # xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
+    # ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
+    # required by XAudio2.  Both are always present on any MSVC installation.
+    target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
     if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
         target_link_libraries(engine_sandbox PRIVATE Vulkan::Vulkan)

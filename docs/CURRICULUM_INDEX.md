@@ -6,22 +6,23 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 795 across 34 subsystems.
+**Total lessons:** 843 across 35 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (26 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (29 lessons)
 - [ci/workflows](#ciworkflows) (27 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
 - [engine/assets](#engineassets) (27 lessons)
+- [engine/audio](#engineaudio) (30 lessons)
 - [engine/core](#enginecore) (49 lessons)
-- [engine/ecs](#engineecs) (31 lessons)
+- [engine/ecs](#engineecs) (32 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (172 lessons)
+- [engine/rendering](#enginerendering) (186 lessons)
 - [engine/scripting](#enginescripting) (28 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
@@ -283,12 +284,33 @@ files belong to which backend.
 if(ENGINE_ENABLE_D3D11)
 list(APPEND SANDBOX_SOURCES
 src/engine/rendering/d3d11/D3D11Renderer.cpp
+
+### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L346) (line 346)
+
+d3d11_texture.cpp is a self-contained DDS parser that uses only
+the Windows SDK headers already required by D3D11Renderer.
+src/engine/rendering/d3d11/d3d11_texture.cpp
 )
 endif()
 
+### XAudio2 is Windows-only
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L368) (line 368)
+
+xaudio2.h and xaudio2.lib ship with every Windows SDK installation
+(alongside d3d11.h / d3d11.lib).  No separate download is needed.
+The sources are added to engine_sandbox (not the Linux terminal game).
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/engine/audio/xaudio2_backend.cpp
+src/engine/audio/audio_system.cpp
+)
+
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L380) (line 380)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L397) (line 397)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -298,9 +320,18 @@ if(ENGINE_ENABLE_D3D11)
 target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
 endif()
 
+### xaudio2.lib and ole32.lib
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L406) (line 406)
+
+xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
+ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
+required by XAudio2.  Both are always present on any MSVC installation.
+target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
+
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L396) (line 396)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L419) (line 419)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -309,7 +340,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L402) (line 402)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L425) (line 425)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -318,7 +349,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L407) (line 407)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L430) (line 430)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -329,7 +360,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L426) (line 426)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L449) (line 449)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -344,7 +375,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L441) (line 441)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L464) (line 464)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -359,7 +390,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L483) (line 483)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L506) (line 506)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -382,7 +413,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L508) (line 508)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L531) (line 531)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -404,7 +435,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L527) (line 527)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L550) (line 550)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -415,7 +446,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L535) (line 535)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L558) (line 558)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -425,7 +456,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L564) (line 564)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L587) (line 587)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -434,7 +465,7 @@ C++ standard already set above).
 
 ### Qt Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L571) (line 571)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L594) (line 594)
 
 The editor is a Qt 6 Widgets application that provides:
   • Project browser  — open a project folder, see its Content/ files
@@ -1963,6 +1994,573 @@ that want to load a specific file without registering it.
 
 ---
 
+## engine/audio
+
+### ECS Audio Loop Design
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L6) (line 6)
+
+============================================================================
+Each frame, AudioSystem does two passes:
+
+  Pass 1 — Entity SFX:
+    Iterate every AudioSourceComponent.  If isPlaying == true and
+    voiceIndex == -1 (not yet submitted), call backend.Play() and store
+    the returned slot index.  If isPlaying == false and voiceIndex != -1,
+    call backend.Stop() and clear the slot.
+
+  Pass 2 — Music FSM:
+    If a crossfade is active, ramp the outgoing voice's volume down and
+    the incoming voice's volume up linearly.  When the fade completes,
+    stop the old voice and clear the fade flag.
+
+============================================================================
+
+### Why Separate Music from SFX?
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L22) (line 22)
+
+============================================================================
+Music stems loop and are long-lived; SFX are triggered once per event
+(footstep, sword swing, ability activation) and are typically short.
+Treating them differently lets us:
+  • Crossfade only the music channel.
+  • Apply 3D spatialisation only to SFX voices.
+  • Keep music volume and SFX volume controllable independently.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### Music Track Registry
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L70) (line 70)
+
+-----------------------------------------------------------------------
+We store one MusicTrack per MusicState in a fixed-size array indexed
+by the enum value.  This gives O(1) lookup with no heap allocation.
+The enum values start at 0 (NONE) and go to 4 (MENU) — 5 total.
+-----------------------------------------------------------------------
+const auto idx = static_cast<size_t>(track.state);
+if (idx >= m_tracks.size())
+{
+LOG_WARN("AudioSystem::RegisterMusicTrack — invalid state index " << idx);
+return;
+}
+m_tracks[idx]    = track;
+m_tracksSet[idx] = true;
+LOG_INFO("AudioSystem: registered music track state="
+<< static_cast<int>(track.state)
+<< " clip=" << track.clipID);
+}
+
+### Music State Transition
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L96) (line 96)
+
+-----------------------------------------------------------------------
+If the new state is the same as the current one, do nothing.
+Otherwise:
+  1. Save the current slot as the "old" (fading out) slot.
+  2. Start the new stem on a fresh voice slot.
+  3. Set the new stem's volume to 0 (it will fade in).
+  4. Kick off the crossfade timer.
+
+XAUDIO2 SetVolume is linear gain (not dB).  We ramp from 0 → target
+and target → 0 linearly over CROSSFADE_SECONDS.  A perceptually nicer
+curve would be equal-power (√(t)), but linear is easier to teach.
+-----------------------------------------------------------------------
+
+### ECS View over AudioSourceComponent
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L190) (line 190)
+
+──────────────────────────────────────────────────
+World::View iterates only the entities that have AudioSourceComponent.
+Entities without it are skipped at zero cost.
+-----------------------------------------------------------------------
+world.View<AudioSourceComponent>(
+[this](EntityID /*id*/, AudioSourceComponent& src)
+{
+if (src.isPlaying && src.voiceIndex == -1)
+{
+Start playback — obtain a voice slot.
+src.voiceIndex = m_backend.Play(
+src.clipID,
+src.volume * m_sfxVolume,
+src.isLooping
+);
+}
+else if (!src.isPlaying && src.voiceIndex >= 0)
+{
+Stop playback.
+m_backend.Stop(src.voiceIndex);
+src.voiceIndex = -1;
+}
+else if (src.voiceIndex >= 0 && !m_backend.IsPlaying(src.voiceIndex))
+{
+Voice finished naturally (non-looping clip completed).
+src.voiceIndex = -1;
+src.isPlaying  = false;
+}
+}
+);
+
+### Linear Volume Crossfade
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L235) (line 235)
+
+-----------------------------------------------------------------------
+t ∈ [0, 1] where 0 = crossfade begins, 1 = crossfade complete.
+
+  New stem volume = t * targetVolume   (fades IN from silence)
+  Old stem volume = (1-t) * oldVolume  (fades OUT to silence)
+
+At t=1 the old voice is stopped and the flag is cleared.
+-----------------------------------------------------------------------
+
+### Layered Music FSM
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L6) (line 6)
+
+============================================================================
+FF15 uses a layered music system.  The field music is one stem; entering
+combat crossfades to the battle stem; winning crossfades to a victory sting
+and back to the field stem.  We model this with a simple FSM:
+
+  EXPLORATION ──(enemy spotted)──► BATTLE
+  BATTLE      ──(all enemies dead)──► VICTORY
+  VICTORY     ──(sting ends)──► EXPLORATION
+  ANY         ──(menu opened)──► MENU
+  MENU        ──(menu closed)──► previous state
+
+Each state has one music clip GUID.  On transition we:
+  1. Fade out the old voice over CROSSFADE_SECONDS.
+  2. Fade in the new voice.
+
+============================================================================
+
+### AudioSystem as ECS System
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L23) (line 23)
+
+============================================================================
+AudioSystem is NOT a standard SystemBase (which updates all matching
+entities) — it has two responsibilities:
+
+  a) ECS layer: iterate AudioSourceComponent-bearing entities and
+     start/stop source voices in XAudio2Backend.
+
+  b) Music layer: manage the music FSM independently of entities.
+
+We inherit from SystemBase for consistency with the rest of the ECS but
+also expose SetMusicState() for direct game-loop use.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### Music State Machine
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L64) (line 64)
+
+──────────────────────────────────────
+The music state drives which audio stem is playing.  Transitions trigger
+a crossfade rather than an abrupt cut to maintain musical continuity.
+
+NONE means no music is configured for the current zone (silence).
+
+### Dual Responsibility (by design)
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L101) (line 101)
+
+──────────────────────────────────────────────────
+Real game engines often split entity SFX and music management into separate
+systems.  Here we combine them to keep the audio subsystem contained in
+two files.  When the engine grows, refactor into:
+  - SFXSystem    — entity-level sounds only
+  - MusicSystem  — music FSM only
+
+### Why pass World explicitly?
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L124) (line 124)
+
+─────────────────────────────────────────────
+SystemBase::Update(float dt) does not give us the World pointer.
+We override the extended version AudioSystem::Update(World&, float) and
+leave the base version as a no-op to satisfy the interface.
+
+### XAudio2 Initialisation Sequence
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L6) (line 6)
+
+============================================================================
+Creating a working XAudio2 device takes three steps:
+
+  1. CoInitializeEx()      — initialise the Windows COM runtime.
+  2. XAudio2Create()       — create the XAudio2 engine object.
+  3. CreateMasteringVoice() — create the final mix stage that outputs
+                              to the default audio device.
+
+After that, source voices are created per sound (or pooled for reuse).
+Source voices receive PCM data via XAUDIO2_BUFFER structs and are submitted
+with SubmitSourceBuffer() + Start().
+
+============================================================================
+
+### WAV File Format (RIFF/WAVE)
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L20) (line 20)
+
+============================================================================
+A .wav file is a RIFF (Resource Interchange File Format) container:
+
+  Offset  Size  Content
+  ------  ----  -------
+       0     4  'RIFF'
+       4     4  Total file size - 8 (uint32 LE)
+       8     4  'WAVE'
+      12     4  Chunk ID ('fmt ' or 'data' or others)
+      16     4  Chunk size (uint32 LE)
+      20+      Chunk data
+
+The 'fmt ' chunk contains a WAVEFORMATEX struct:
+  - wFormatTag     (1 = PCM, 3 = float, 0xFFFE = extensible)
+  - nChannels      (1 = mono, 2 = stereo)
+  - nSamplesPerSec (e.g. 44100, 48000)
+  - nAvgBytesPerSec
+  - nBlockAlign
+  - wBitsPerSample (8, 16, 24, 32)
+
+The 'data' chunk contains the raw interleaved PCM samples.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### pragma comment(lib, ...) for xaudio2
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L58) (line 58)
+
+---------------------------------------------------------------------------
+xaudio2.lib ships with the Windows SDK alongside d3d11.lib and dxgi.lib.
+No separate SDK download is required.  We also link ole32.lib for
+CoInitializeEx which is required before XAudio2Create.
+---------------------------------------------------------------------------
+pragma comment(lib, "xaudio2.lib")
+pragma comment(lib, "ole32.lib")
+
+### COM Initialisation
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L92) (line 92)
+
+-----------------------------------------------------------------------
+XAudio2 is a COM object.  Before calling any COM API we must initialise
+the COM runtime for this thread.  COINIT_MULTITHREADED allows COM objects
+to be used safely across threads — important if you later add an audio
+streaming thread.
+
+CoInitializeEx returns S_FALSE if COM is already initialised (not an
+error), and RPC_E_CHANGED_MODE if init was called with a conflicting
+threading model.  We ignore S_FALSE and treat other failures as fatal.
+-----------------------------------------------------------------------
+HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+if (FAILED(hr) && hr != S_FALSE)
+{
+LOG_ERROR("XAudio2Backend::Init — CoInitializeEx failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec);
+return false;
+}
+
+### XAudio2Create
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L112) (line 112)
+
+-----------------------------------------------------------------------
+XAudio2Create creates the central audio engine object.  Parameters:
+  Flags       = 0          (reserved, must be 0)
+  Processor   = XAUDIO2_DEFAULT_PROCESSOR  (let XAudio2 pick a thread)
+
+The engine object (IXAudio2) manages the audio processing graph and
+owns all voices.
+-----------------------------------------------------------------------
+hr = XAudio2Create(&m_xaudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+if (FAILED(hr))
+{
+LOG_ERROR("XAudio2Backend::Init — XAudio2Create failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec);
+return false;
+}
+
+### Mastering Voice
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L130) (line 130)
+
+-----------------------------------------------------------------------
+The mastering voice is the final stage in the audio graph:
+  Source Voices → [Submix Voices →] Mastering Voice → OS Audio
+
+Parameters:
+  InputChannels    = XAUDIO2_DEFAULT_CHANNELS  (match output device)
+  InputSampleRate  = XAUDIO2_DEFAULT_SAMPLERATE (match output device)
+  Flags            = 0
+  DeviceId         = nullptr (default audio device)
+  EffectChain      = nullptr (no DSP effects on the master bus)
+
+Only one mastering voice can be active at a time.
+-----------------------------------------------------------------------
+hr = m_xaudio2->CreateMasteringVoice(
+&m_masterVoice,
+XAUDIO2_DEFAULT_CHANNELS,
+XAUDIO2_DEFAULT_SAMPLERATE,
+0,
+nullptr,
+nullptr
+);
+if (FAILED(hr))
+{
+LOG_ERROR("XAudio2Backend::Init — CreateMasteringVoice failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec);
+m_xaudio2->Release();
+m_xaudio2 = nullptr;
+return false;
+}
+
+### XAudio2 Teardown Order
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L177) (line 177)
+
+-----------------------------------------------------------------------
+Shutdown order matters:
+  1. Stop and destroy all source voices.
+  2. Destroy the mastering voice.
+  3. Release the IXAudio2 engine object.
+  4. CoUninitialize — balance the CoInitializeEx call.
+
+Destroying the engine (step 3) while voices are running would leave
+dangling IXAudio2SourceVoice pointers — always stop voices first.
+-----------------------------------------------------------------------
+
+### Resolving Asset IDs to File Paths
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L239) (line 239)
+
+-----------------------------------------------------------------------
+The AssetDB maps GUID strings (like "3a7f-...") to absolute paths of
+cooked .wav files on disk.  We load the raw bytes with AssetLoader,
+then parse the RIFF/WAVE header ourselves.
+
+For a production engine you would cache decoded WavData objects so
+the same clip can be played concurrently without re-reading the file.
+-----------------------------------------------------------------------
+engine::assets::AssetLoader loader(m_assetDB);
+const std::vector<uint8_t> bytes = loader.LoadRaw(clipID);
+if (bytes.empty())
+{
+LOG_ERROR("XAudio2Backend::Play — failed to load clip: " << clipID);
+return -1;
+}
+
+### XAUDIO2_BUFFER
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L276) (line 276)
+
+-----------------------------------------------------------------------
+The XAUDIO2_BUFFER struct describes one submitted audio buffer.
+
+  Flags         — XAUDIO2_END_OF_STREAM marks the last buffer in a
+                  sequence.  Without it, the voice stalls when the
+                  buffer runs out (waiting for more data).
+
+  AudioBytes    — total byte count of the PCM data.
+  pAudioData    — pointer to the raw PCM bytes.
+
+  LoopCount     — XAUDIO2_LOOP_INFINITE for infinite loop; 0 = no loop.
+  LoopBegin/End — loop region within the buffer (0 = full buffer).
+
+We keep the PCM data alive in the slot until the voice is stopped.
+XAUDIO2 does NOT copy the buffer — the pointer must stay valid.
+-----------------------------------------------------------------------
+
+### Stopping a Source Voice
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L349) (line 349)
+
+-----------------------------------------------------------------------
+IXAudio2SourceVoice::Stop() pauses the voice but does not reset it.
+FlushSourceBuffers() discards all queued data.
+Together they bring the voice back to a clean, re-usable state.
+-----------------------------------------------------------------------
+s.voice->Stop();
+s.voice->FlushSourceBuffers();
+s.inUse  = false;
+s.clipID.clear();
+}
+
+### Parsing RIFF/WAVE
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L411) (line 411)
+
+-----------------------------------------------------------------------
+We walk the chunk tree manually using a byte offset.  Each chunk has:
+
+  uint32_t  id   (4 ASCII chars, e.g. 'fmt ', 'data')
+  uint32_t  size (byte count of chunk data; does NOT include id/size)
+  uint8_t   data[size]
+
+The RIFF root chunk also has a 4-byte form type ("WAVE").
+
+All integer fields in RIFF are little-endian.
+-----------------------------------------------------------------------
+
+### WAVEFORMATEX layout
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L458) (line 458)
+
+---------------------------------------------------------------
+Minimum size is 16 bytes (WAVEFORMATEX without cbSize).
+We copy exactly sizeof(WAVEFORMATEX) bytes but never more than
+the chunk provides, filling the rest with zeros.
+---------------------------------------------------------------
+if (chunkSize < 16)
+return wav;
+
+### Source Voice Format
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L518) (line 518)
+
+-----------------------------------------------------------------------
+A source voice is created for a specific WAVEFORMATEX.  If the existing
+voice was created for a different format (e.g. mono 22 kHz vs stereo
+44 kHz), we must destroy and recreate it.
+
+For performance, compare the formats first — recreating voices is a
+kernel-level operation and should be minimised.
+-----------------------------------------------------------------------
+auto& s = m_pool[slotIndex];
+
+### CreateSourceVoice
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L556) (line 556)
+
+-----------------------------------------------------------------------
+Parameters:
+  ppSourceVoice  — output pointer.
+  pSourceFormat  — pointer to WAVEFORMATEX (or WAVEFORMATEXTENSIBLE).
+  Flags          — XAUDIO2_VOICE_NOPITCH disables pitch shifting for
+                   a minor performance gain when pitch isn't needed.
+  MaxFrequencyRatio — 1.0 = no pitch shift; 2.0 = up to +1 octave.
+  pCallback      — optional IXAudio2VoiceCallback for buffer events.
+-----------------------------------------------------------------------
+const HRESULT hr = m_xaudio2->CreateSourceVoice(
+&s.voice,
+&fmt,
+0,       // No flags (allow pitch shift for music tempo control)
+2.0f,    // Allow up to 2× frequency ratio (one octave up)
+nullptr  // No callback for now
+);
+
+### Why XAudio2?
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L6) (line 6)
+
+============================================================================
+XAudio2 is Microsoft's low-level audio API, included in every Windows
+installation since Windows 8 (and available as a redistributable for Win 7).
+It is the audio backbone of every modern Microsoft title including:
+  - Final Fantasy XV (SQUARE ENIX used WASAPI / XAudio2 on PC)
+  - Xbox first-party games
+  - Most Unity / Unreal games on Windows
+
+XAudio2 sits just above the hardware:
+
+  App → XAudio2 Source Voices → Submix Voices → Mastering Voice → Speakers
+
+Advantages over legacy DirectSound / FMOD (for a teaching engine):
+  • Ships with the Windows SDK — zero extra dependency.
+  • Runs on GT610-era hardware (XAudio2 is CPU-only; GPU not involved).
+  • Supports 3D positional audio via X3DAudio.
+  • Minimal overhead: source voices submit raw PCM buffers directly.
+
+============================================================================
+
+### Source Voice Pool
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L26) (line 26)
+
+============================================================================
+Creating and destroying source voices is expensive (kernel transition).
+Real engines pre-allocate a fixed pool of voices at init time and re-use
+them.  Each slot tracks which clipID is playing so we can stop by ID.
+
+Pool size of 16 handles:
+  • Up to 4 party-member SFX channels
+  • Up to 6 enemy SFX channels
+  • 2 ambient layers (wind, environment)
+  • 2 music crossfade slots
+  • 2 UI feedback slots
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC) — XAudio2 is Windows-only.
+Requires: xaudio2.lib (Windows SDK — always present)
+
+### RIFF/WAVE Format
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L86) (line 86)
+
+────────────────────────────────
+A .wav file is a RIFF container with a "WAVE" form type.  The two
+mandatory chunks are:
+
+  "fmt " — WAVEFORMATEX: sample rate, channels, bit depth, etc.
+  "data" — Raw PCM samples.
+
+XAudio2 source voices are created with the fmt header and fed the data
+chunk as an XAUDIO2_BUFFER.
+
+### Backend vs System
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L126) (line 126)
+
+──────────────────────────────────
+The *backend* owns the low-level XAudio2 objects and knows nothing about
+the ECS or game state.  It exposes simple Play/Stop primitives.
+
+The *AudioSystem* (audio_system.hpp) is the ECS-aware layer that reads
+AudioSourceComponent data and forwards commands to this backend.
+
+This separation means we could swap XAudio2 for FMOD/SDL_mixer without
+changing any gameplay code — only the backend changes.
+
+### Voice Reuse
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L235) (line 235)
+
+─────────────────────────────
+A source voice is format-bound at creation time.  When a new clip has
+a different format (e.g. different sample rate) we must destroy and
+recreate the voice.  For clips with matching formats we simply reuse
+the existing voice, which is cheaper.
+
+---
+
 ## engine/core
 
 ### Why a Publish-Subscribe (Observer) Pattern?
@@ -3166,9 +3764,42 @@ In FF15, characters level up only when resting at camp.  XP is accumulated
 during combat and exploration, then "banked" to actual levels at camp.
 We model this with pendingXP (accumulated) vs currentXP (cashed in).
 
+### Data-Driven Audio via ECS
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1504) (line 1504)
+
+============================================================================
+Instead of hard-coding sound triggers in gameplay code, we attach an
+AudioSourceComponent to any entity that should make noise.  The
+AudioSystem (src/engine/audio/audio_system.hpp) iterates all entities that
+have this component every frame and forwards play/stop requests to the
+XAudio2Backend.
+
+Fields mirror the design from docs/FF15_REQUIREMENTS_BLUEPRINT.md §8:
+
+  clipID       — GUID of the cooked .wav asset in the AssetDB.
+  is3D         — Enable position-based volume attenuation.
+                 2D (false) = same volume everywhere (UI SFX, music).
+                 3D (true)  = attenuated by distance to listener.
+  volume       — Master volume scalar [0.0 = silent, 1.0 = full].
+  isLooping    — When true the source voice loops until stopped.
+  isPlaying    — Set true to start playback; AudioSystem clears it when done.
+  maxDistance  — World-units at which 3D audio reaches zero volume.
+
+─── Usage Example ──────────────────────────────────────────────────────────
+
+  // Attach footstep sound to the player entity.
+  auto& audio  = world.AddComponent<AudioSourceComponent>(player);
+  audio.clipID = "a3f2-footstep-stone";   // AssetDB GUID
+  audio.is3D   = false;
+  audio.volume = 0.8f;
+  audio.isPlaying = true;
+
+============================================================================
+
 ### Facade Pattern
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1506) (line 1506)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1587) (line 1587)
 
 ────────────────────────────────
 The World class is a *facade*: it provides a simple unified API over the
@@ -3187,7 +3818,7 @@ all entities, components, and systems cleanly.
 
 ### Variadic Templates
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1720) (line 1720)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1801) (line 1801)
 
 ────────────────────────────────────
 `template<typename... Components>` accepts any number of type arguments.
@@ -3200,7 +3831,7 @@ Fold expressions were introduced in C++17:
 
 ### Update Order
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1767) (line 1767)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1848) (line 1848)
 
 ──────────────────────────────
 Systems are updated in the order they were registered.  Order matters:
@@ -3213,7 +3844,7 @@ Systems are updated in the order they were registered.  Order matters:
 
 ### View Pattern / Query
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1794) (line 1794)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1875) (line 1875)
 
 ──────────────────────────────────────
 A "view" is an on-demand filter over living entities.  It avoids
@@ -3230,7 +3861,7 @@ Example usage:
 
 ### `if constexpr` and Fold Expressions
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1808) (line 1808)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1889) (line 1889)
 
 ──────────────────────────────────────────────────────
 The implementation uses parameter pack expansion to call HasComponent<C>
@@ -3239,7 +3870,7 @@ a single boolean.
 
 ### Factory Methods
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1861) (line 1861)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1942) (line 1942)
 
 ─────────────────────────────────
 Rather than calling AddComponent 10 times at every call site, a factory
@@ -3251,7 +3882,7 @@ individual components afterwards.
 
 ### static_cast vs dynamic_cast
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1945) (line 1945)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2026) (line 2026)
 
 ─────────────────────────────────────────────
 dynamic_cast performs a runtime type check (RTTI) and returns nullptr
@@ -3267,7 +3898,7 @@ fine; using it on user-supplied pointers would be dangerous.
 
 ### Why a free function?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2022) (line 2022)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2103) (line 2103)
 
 ───────────────────────────────────────
 Putting registration in a free function keeps the World constructor clean
@@ -5191,6 +5822,256 @@ across hardware and WARP.
 -----------------------------------------------------------------------
 uint32_t                m_width         = 0;
 uint32_t                m_height        = 0;
+
+### DDS Parsing without a Third-Party Library
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L6) (line 6)
+
+============================================================================
+Many engines pull in DirectXTex or DirectXTK for DDS loading.  This file
+implements a minimal, self-contained parser that handles the formats
+needed by the M3 milestone:
+
+  - RGBA8 uncompressed (for UI textures, debugging).
+  - BC1 / DXT1         (for low-quality opaque geometry).
+  - BC3 / DXT5         (for textures with alpha channels).
+  - BC7                (high-quality; preferred for M3 cooked assets).
+
+Implementing the parser from scratch makes it easy to understand what the
+DirectXTex library does internally — and shows that DDS files are not magic,
+just a well-specified binary format.
+
+============================================================================
+
+### D3D11 Texture Upload
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L22) (line 22)
+
+============================================================================
+Creating a GPU texture from CPU data (DDS bytes) in D3D11:
+
+  1. Fill D3D11_TEXTURE2D_DESC with width, height, mip count, DXGI format.
+  2. Fill D3D11_SUBRESOURCE_DATA for each mip level:
+       pSysMem     = pointer into the DDS data bytes for this mip.
+       SysMemPitch = bytes per row (for block-compressed: (w/4)*blockSize).
+  3. Call ID3D11Device::CreateTexture2D with desc + subresource array.
+  4. Call ID3D11Device::CreateShaderResourceView on the texture.
+
+The GPU copies the data at creation time — we do not need to keep the
+CPU-side bytes alive after CreateTexture2D returns.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+
+### DDS Magic Number
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L60) (line 60)
+
+All DDS files begin with the 4-byte magic value 0x20534444 ('DDS ').
+This lets us quickly reject non-DDS files before parsing the header.
+static constexpr uint32_t DDS_MAGIC = 0x20534444u;  // 'DDS '
+
+### Packed structs
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L83) (line 83)
+
+#pragma pack ensures no compiler-inserted padding.  DDS structures must
+match the byte layout exactly as stored in the file.
+
+### Row Pitch for Block-Compressed Textures
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L139) (line 139)
+
+──────────────────────────────────────────────────────────
+Block-compressed formats work on 4×4 texel blocks.  The minimum width is
+one block (4 texels).  Row pitch = ceil(width/4) * bytesPerBlock.
+
+  BC1 / DXT1 = 8 bytes per 4×4 block (0.5 bytes/texel on average).
+  BC3 / DXT5 = 16 bytes per 4×4 block (1 byte/texel on average).
+  BC7        = 16 bytes per 4×4 block (same as BC3 but higher quality).
+  RGBA8      = 4 bytes per texel.
+
+### Release Order
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L242) (line 242)
+
+The SRV holds an internal reference to the Texture2D.  We release the
+SRV first so the Texture2D can be destroyed immediately after.
+if (m_srv)     { m_srv->Release();     m_srv     = nullptr; }
+if (m_sampler) { m_sampler->Release(); m_sampler = nullptr; }
+m_width  = 0;
+m_height = 0;
+m_format = DXGI_FORMAT_UNKNOWN;
+}
+
+### Binary File Reading
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L261) (line 261)
+
+-----------------------------------------------------------------------
+We open in binary mode (std::ios::binary) to prevent the C++ runtime
+from translating CR/LF pairs on Windows, which would corrupt the data.
+-----------------------------------------------------------------------
+std::ifstream file(filePath, std::ios::binary | std::ios::ate);
+if (!file.is_open())
+{
+LOG_ERROR("D3D11Texture::LoadFromFile — file not found: " << filePath);
+return false;
+}
+
+### DDS Format Detection
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L347) (line 347)
+
+──────────────────────────────────────
+Old DDS files (pre-DX10) use FourCC codes in DDS_PIXELFORMAT.
+New DDS files (DX10 header) carry a DXGI_FORMAT value directly.
+We detect which variant we have by checking for the 'DX10' FourCC.
+-----------------------------------------------------------------------
+
+### Mip Map Upload
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L398) (line 398)
+
+───────────────────────────────
+We pass all mip levels to CreateTexture2D in one call.
+Each mip level has its own D3D11_SUBRESOURCE_DATA:
+  pSysMem     = pointer to the mip's data in the DDS buffer.
+  SysMemPitch = bytes per row for this mip's width.
+
+The subresource index is computed as: arraySlice * mipCount + mipIndex.
+For a single 2D texture (arraySlice = 0), index == mipIndex.
+-----------------------------------------------------------------------
+
+### SRV for Texture2D with Mips
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L461) (line 461)
+
+────────────────────────────────────────────
+D3D11_SRV_DIMENSION_TEXTURE2D tells D3D11 this is a 2D texture SRV.
+MostDetailedMip = 0  → start from the highest-res mip.
+MipLevels = -1       → include all mip levels down to the smallest.
+-----------------------------------------------------------------------
+D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+srvDesc.Format                    = m_format;
+srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+srvDesc.Texture2D.MostDetailedMip = 0;
+srvDesc.Texture2D.MipLevels       = static_cast<UINT>(-1); // all mips
+
+### Sampler States
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.cpp`](src/engine/rendering/d3d11/d3d11_texture.cpp#L506) (line 506)
+
+-----------------------------------------------------------------------
+A D3D11_SAMPLER_DESC controls how the GPU interpolates texels:
+
+  Filter       — how to blend between texels.
+                 D3D11_FILTER_ANISOTROPIC uses the surrounding texels
+                 weighted by angle of incidence — produces the sharpest
+                 results on surfaces viewed at oblique angles (floors,
+                 walls).  Bilinear is cheaper but blurrier at angles.
+
+  AddressU/V/W — what happens beyond [0,1] UV:
+                 WRAP  = texture tiles (repeat).
+                 CLAMP = edge pixel is stretched.
+                 MIRROR = alternating flip.
+
+  MaxAnisotropy — quality level for anisotropic filtering (1–16).
+                  D3D_FEATURE_LEVEL_10_0 supports up to 16×.
+                  GT610 supports 16× anisotropic; use 4–8 for a
+                  performance/quality balance on older hardware.
+
+  MipLODBias   — shifts the selected mip up or down.  0 = automatic.
+  MinLOD/MaxLOD — clamps the mip level.  0 to FLT_MAX = all mips.
+-----------------------------------------------------------------------
+D3D11_SAMPLER_DESC sampDesc = {};
+sampDesc.Filter         = D3D11_FILTER_ANISOTROPIC;
+sampDesc.AddressU       = D3D11_TEXTURE_ADDRESS_WRAP;
+sampDesc.AddressV       = D3D11_TEXTURE_ADDRESS_WRAP;
+sampDesc.AddressW       = D3D11_TEXTURE_ADDRESS_WRAP;
+sampDesc.MaxAnisotropy  = 4;          // 4× anisotropic — good quality on GT610.
+sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+sampDesc.MinLOD         = 0.0f;
+sampDesc.MaxLOD         = D3D11_FLOAT32_MAX;
+
+### Why DDS for Game Textures?
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.hpp`](src/engine/rendering/d3d11/d3d11_texture.hpp#L6) (line 6)
+
+============================================================================
+PNG and JPEG store full RGBA8 data.  A 2048×2048 RGBA8 texture uses 16 MB
+of GPU VRAM.  DDS (DirectDraw Surface) with block compression:
+
+  BC1 (DXT1)  — 4 bits/pixel (8:1 ratio vs RGBA8).  No alpha.
+  BC3 (DXT5)  — 8 bits/pixel (4:1 ratio).  Full alpha channel.
+  BC7          — 8 bits/pixel (4:1 ratio).  High quality; replaces BC3.
+
+A 2048×2048 BC7 texture uses only 4 MB instead of 16 MB — critical for
+GT610-class GPUs which have 1–2 GB VRAM at most.
+
+BC7 is hardware-decompressed on every D3D11_FEATURE_LEVEL_11_0 GPU
+(including the GT610) with zero GPU cost.  The CPU never sees the raw pixels.
+
+============================================================================
+
+### DDS File Format
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.hpp`](src/engine/rendering/d3d11/d3d11_texture.hpp#L22) (line 22)
+
+============================================================================
+DDS is a Microsoft container format with this layout:
+
+  Offset  Size   Content
+  ------  ----   -------
+       0     4   Magic: 0x20534444 ('DDS ')
+       4   124   DDS_HEADER struct
+     128   var   DDS_HEADER_DXT10 (optional, present when FourCC == 'DX10')
+     128+  var   Texture data (mip 0, then mip 1, ...; face 0, face 1, ...)
+
+The DDS_HEADER_DXT10 extension (introduced in Direct3D 10) carries the
+DXGI_FORMAT enum, enabling formats like BC7 that didn't exist in earlier
+DDS revisions.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC)
+Requires: d3d11.lib, dxgi.lib (Windows SDK — always present)
+
+### Resource View Types
+
+**Source:** [`src/engine/rendering/d3d11/d3d11_texture.hpp`](src/engine/rendering/d3d11/d3d11_texture.hpp#L73) (line 73)
+
+──────────────────────────────────────
+D3D11 separates resource *creation* from resource *binding*:
+
+  ID3D11Texture2D          — the raw texture data on the GPU.
+  ID3D11ShaderResourceView — a "window" into that data that a shader can
+                             read via a `Texture2D` or `sampler2D`.
+  ID3D11SamplerState       — filtering and wrap mode settings.
+
+Shaders never take raw Texture2D pointers — they always bind through a
+ShaderResourceView.  This indirection allows one texture to be bound as
+different "views" (e.g. one mip level at a time).
+
+Usage:
+@code
+  D3D11Texture tex;
+  if (tex.LoadFromFile(device, context, "Cooked/textures/hero.dds")) {
+      ID3D11ShaderResourceView* srv = tex.GetSRV();
+      ID3D11SamplerState*       smp = tex.GetSampler();
+      ctx->PSSetShaderResources(0, 1, &srv);
+      ctx->PSSetSamplers(0, 1, &smp);
+  }
+@endcode
 
 ### Reading This File
 
@@ -11066,7 +11947,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L151) (line 151)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L159) (line 159)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -11082,15 +11963,15 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L253) (line 253)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L261) (line 261)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L295) (line 295)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L303) (line 303)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L375) (line 375)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L383) (line 383)
 
 ---
 

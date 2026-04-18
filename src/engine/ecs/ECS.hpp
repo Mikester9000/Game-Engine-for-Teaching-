@@ -1492,6 +1492,87 @@ struct VehicleComponent {
     }
 };
 
+// ---------------------------------------------------------------------------
+// AudioSourceComponent — spatial / non-spatial audio emitter (M3)
+// ---------------------------------------------------------------------------
+
+/**
+ * @struct AudioSourceComponent
+ * @brief Marks an entity as an audio emitter.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Data-Driven Audio via ECS
+ * ============================================================================
+ * Instead of hard-coding sound triggers in gameplay code, we attach an
+ * AudioSourceComponent to any entity that should make noise.  The
+ * AudioSystem (src/engine/audio/audio_system.hpp) iterates all entities that
+ * have this component every frame and forwards play/stop requests to the
+ * XAudio2Backend.
+ *
+ * Fields mirror the design from docs/FF15_REQUIREMENTS_BLUEPRINT.md §8:
+ *
+ *   clipID       — GUID of the cooked .wav asset in the AssetDB.
+ *   is3D         — Enable position-based volume attenuation.
+ *                  2D (false) = same volume everywhere (UI SFX, music).
+ *                  3D (true)  = attenuated by distance to listener.
+ *   volume       — Master volume scalar [0.0 = silent, 1.0 = full].
+ *   isLooping    — When true the source voice loops until stopped.
+ *   isPlaying    — Set true to start playback; AudioSystem clears it when done.
+ *   maxDistance  — World-units at which 3D audio reaches zero volume.
+ *
+ * ─── Usage Example ──────────────────────────────────────────────────────────
+ *
+ *   // Attach footstep sound to the player entity.
+ *   auto& audio  = world.AddComponent<AudioSourceComponent>(player);
+ *   audio.clipID = "a3f2-footstep-stone";   // AssetDB GUID
+ *   audio.is3D   = false;
+ *   audio.volume = 0.8f;
+ *   audio.isPlaying = true;
+ *
+ * ============================================================================
+ */
+struct AudioSourceComponent {
+    // -----------------------------------------------------------------------
+    // Asset reference
+    // -----------------------------------------------------------------------
+
+    /// AssetDB GUID of the cooked .wav file to play.
+    /// Empty string = no clip loaded.
+    std::string clipID;
+
+    // -----------------------------------------------------------------------
+    // Playback control
+    // -----------------------------------------------------------------------
+
+    /// Set true to begin playback.  AudioSystem clears it once the source
+    /// voice is submitted.  Toggle back on to retrigger.
+    bool  isPlaying   = false;
+
+    /// When true the voice loops indefinitely.  Stop by clearing isPlaying.
+    bool  isLooping   = false;
+
+    // -----------------------------------------------------------------------
+    // Volume / spatialisation
+    // -----------------------------------------------------------------------
+
+    /// Master volume scalar (0.0 = silent, 1.0 = unity gain, >1.0 = boosted).
+    float volume      = 1.0f;
+
+    /// True = emitter is 3-D; XAudio2 applies distance-based attenuation.
+    /// False = 2-D (background music, UI sounds, etc.).
+    bool  is3D        = false;
+
+    /// Distance at which 3-D audio reaches zero volume (world units).
+    float maxDistance = 50.0f;
+
+    // -----------------------------------------------------------------------
+    // Internal state (written by AudioSystem — do not modify manually)
+    // -----------------------------------------------------------------------
+
+    /// Index of the source voice in XAudio2Backend's pool (-1 = not playing).
+    int   voiceIndex  = -1;
+};
+
 /** @} */ // end of Components
 
 
@@ -2049,6 +2130,7 @@ inline void RegisterAllComponents(World& world) {
     world.RegisterComponent<SkillsComponent>();
     world.RegisterComponent<CampComponent>();
     world.RegisterComponent<VehicleComponent>();
+    world.RegisterComponent<AudioSourceComponent>();
 
-    LOG_INFO("All 20 component types registered with World");
+    LOG_INFO("All 21 component types registered with World");
 }
