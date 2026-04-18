@@ -9,7 +9,7 @@
     {
       "name": "windows-base",
       "hidden": true,
-      "description": "Base settings shared by all Windows presets",
+      "description": "Base settings shared by all Windows presets. Uses the default MSVC toolset for the installed Visual Studio (v143 on VS 2022, used by GitHub Actions windows-latest). No toolset override — CI compatible.",
       "generator": "Visual Studio 17 2022",
       "architecture": {
         "value": "x64",
@@ -18,6 +18,16 @@
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release"
+      }
+    },
+    {
+      "name": "windows-base-v180",
+      "hidden": true,
+      "description": "Base settings for Visual Studio Insiders 2026 (toolset v180). Inherits windows-base and overrides the toolset to v180. Use these presets locally when you have VS Insiders 2026 installed. Do NOT use in CI — GitHub Actions windows-latest only has v143.",
+      "inherits": "windows-base",
+      "toolset": {
+        "value": "v180",
+        "strategy": "set"
       }
     },
     {
@@ -84,6 +94,71 @@
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "OFF"
       }
+    },
+    {
+      "name": "windows-debug-v180",
+      "displayName": "Windows Debug — VS Insiders 2026 (v180, D3D11 + Vulkan + Editor)",
+      "description": "VS Insiders 2026 / toolset v180 variant of windows-debug. Requires Visual Studio Insiders 2026 installed locally. NOT for CI (windows-latest only has v143).",
+      "inherits": "windows-base-v180",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "windows-release-v180",
+      "displayName": "Windows Release — VS Insiders 2026 (v180, D3D11 + Vulkan + Editor)",
+      "description": "VS Insiders 2026 / toolset v180 variant of windows-release. Requires Visual Studio Insiders 2026 installed locally. NOT for CI.",
+      "inherits": "windows-base-v180",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "ON"
+      }
+    },
+    {
+      "name": "windows-debug-engine-only-v180",
+      "displayName": "Windows Debug — Engine Only, VS Insiders 2026 (v180)",
+      "description": "VS Insiders 2026 / toolset v180 variant of windows-debug-engine-only. D3D11 only, no Qt or Vulkan SDK required. Use on a machine with VS Insiders 2026. NOT for CI.",
+      "inherits": "windows-base-v180",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "windows-release-engine-only-v180",
+      "displayName": "Windows Release — Engine Only, VS Insiders 2026 (v180)",
+      "description": "VS Insiders 2026 / toolset v180 variant of windows-release-engine-only. D3D11 only, no Qt or Vulkan SDK required. NOT for CI.",
+      "inherits": "windows-base-v180",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
+    },
+    {
+      "name": "windows-debug-vulkan-v180",
+      "displayName": "Windows Debug — Vulkan backend, VS Insiders 2026 (v180)",
+      "description": "VS Insiders 2026 / toolset v180 variant of windows-debug-vulkan. Requires Vulkan SDK + VS Insiders 2026. NOT for CI.",
+      "inherits": "windows-base-v180",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -117,6 +192,39 @@
       "name": "windows-debug-vulkan",
       "displayName": "Build Windows Debug (Vulkan backend)",
       "configurePreset": "windows-debug-vulkan",
+      "configuration": "Debug",
+      "targets": ["engine_sandbox", "cook"]
+    },
+    {
+      "name": "windows-debug-v180",
+      "displayName": "Build Windows Debug — VS Insiders 2026 (v180)",
+      "configurePreset": "windows-debug-v180",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-release-v180",
+      "displayName": "Build Windows Release — VS Insiders 2026 (v180)",
+      "configurePreset": "windows-release-v180",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-debug-engine-only-v180",
+      "displayName": "Build Windows Debug Engine Only — VS Insiders 2026 (v180)",
+      "configurePreset": "windows-debug-engine-only-v180",
+      "configuration": "Debug",
+      "targets": ["engine_sandbox", "cook"]
+    },
+    {
+      "name": "windows-release-engine-only-v180",
+      "displayName": "Build Windows Release Engine Only — VS Insiders 2026 (v180)",
+      "configurePreset": "windows-release-engine-only-v180",
+      "configuration": "Release",
+      "targets": ["engine_sandbox", "cook"]
+    },
+    {
+      "name": "windows-debug-vulkan-v180",
+      "displayName": "Build Windows Debug Vulkan — VS Insiders 2026 (v180)",
+      "configurePreset": "windows-debug-vulkan-v180",
       "configuration": "Debug",
       "targets": ["engine_sandbox", "cook"]
     }
