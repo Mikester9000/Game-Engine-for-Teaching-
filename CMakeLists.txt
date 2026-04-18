@@ -283,6 +283,16 @@ if(ENGINE_ENABLE_TERMINAL)
         ${LUA_LIBRARIES}
     )
 
+    # TEACHING NOTE — ENGINE_ENABLE_LUA compile definition
+    # The terminal game links Lua 5.4, so it defines ENGINE_ENABLE_LUA to
+    # enable the Lua scripting hooks in CombatSystem.cpp and CampSystem.cpp.
+    # engine_sandbox (Windows) does NOT define this flag — Lua is not required
+    # there and the hooks compile out cleanly, leaving all other system logic
+    # intact.
+    if(LUA_LIBRARIES)
+        target_compile_definitions(game PRIVATE ENGINE_ENABLE_LUA)
+    endif()
+
     # Copy Lua scripts to build directory after build.
     add_custom_command(TARGET game POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -373,6 +383,30 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     list(APPEND SANDBOX_SOURCES
         src/engine/audio/xaudio2_backend.cpp
         src/engine/audio/audio_system.cpp
+    )
+
+    # -----------------------------------------------------------------------
+    # TestWorld — game systems compiled into engine_sandbox (M3+).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Cross-Platform Game Systems
+    # The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
+    # pure C++17 with no platform or ncurses dependencies.  They compile on
+    # both Linux (terminal game) and Windows (engine_sandbox) alike.
+    # Including them here lets engine_sandbox run a full simulation and visually
+    # verify all systems are operational via the --scene testworld flag.
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/sandbox/test_world.cpp
+        src/game/systems/CombatSystem.cpp
+        src/game/systems/AISystem.cpp
+        src/game/systems/WeatherSystem.cpp
+        src/game/systems/QuestSystem.cpp
+        src/game/systems/InventorySystem.cpp
+        src/game/systems/ShopSystem.cpp
+        src/game/systems/CampSystem.cpp
+        src/game/world/TileMap.cpp
+        src/game/world/WorldMap.cpp
+        src/game/world/Zone.cpp
     )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})

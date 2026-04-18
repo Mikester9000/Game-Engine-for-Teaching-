@@ -58,6 +58,8 @@
  *   engine_sandbox.exe --headless                   # D3D11 WARP headless (CI)
  *   engine_sandbox.exe --renderer vulkan --headless # Vulkan headless
  *   engine_sandbox.exe --headless --scene triangle  # M1 validation
+ *   engine_sandbox.exe --scene testworld            # M3 full system demo (windowed)
+ *   engine_sandbox.exe --headless --scene testworld # M3 full system demo (CI)
  *
  * ============================================================================
  *
@@ -73,6 +75,7 @@
 #include "engine/rendering/RendererFactory.hpp"
 #include "engine/assets/asset_db.hpp"
 #include "engine/assets/asset_loader.hpp"
+#include "sandbox/test_world.hpp"
 
 #include <iostream>
 #include <exception>
@@ -80,6 +83,7 @@
 #include <cmath>        // std::sin — used for the animated clear colour
 #include <string>
 #include <filesystem>   // std::filesystem::path (C++17)
+#include <chrono>       // high_resolution_clock (testworld dt measurement)
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — Shader Directory Resolution
@@ -311,6 +315,39 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
             }
+            else if (scene == "testworld")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Headless TestWorld
+                // -----------------------------------------------------------
+                // Boots all gameplay systems, runs 600 fixed-dt frames, then
+                // exits 0 if every system reported OK.  Ideal for CI: no GPU
+                // or audio hardware required.
+                // -----------------------------------------------------------
+                engine::sandbox::TestWorld tw;
+                if (!tw.Init())
+                {
+                    std::cout << "[FAIL] TestWorld::Init() returned false.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+
+                constexpr float FIXED_DT = 1.0f / 60.0f;
+                constexpr int   FRAMES   = 600;
+                for (int f = 0; f < FRAMES; ++f)
+                    tw.Update(FIXED_DT);
+
+                if (!tw.AllSystemsOk())
+                {
+                    std::cout << "[FAIL] TestWorld: one or more systems failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+
+                std::cout << "[PASS] TestWorld: all systems exercised OK.\n";
+            }
             else
             {
                 // M0 baseline: device init succeeded.
@@ -334,6 +371,34 @@ int main(int argc, char* argv[])
         // -------------------------------------------------------------------
         double totalTime = 0.0;
 
+        // -----------------------------------------------------------------------
+        // TEACHING NOTE — TestWorld integration in the render loop
+        // -----------------------------------------------------------------------
+        // When --scene testworld is specified, we create a TestWorld and call
+        // tw.Update(dt) each frame.  The TestWorld returns an RGB clear-colour
+        // (GetClearColour) that reflects the current game state:
+        //
+        //   Combat active → red tint       Night → deep navy
+        //   Victory flash → gold pulse     Rain  → grey-blue
+        //   Camping       → warm orange    Day   → sky blue
+        //
+        // This gives a visual confirmation that the game systems are running
+        // and changing state.  As more rendering milestones land, replace the
+        // clear-colour with actual geometry + lighting draw calls.
+        // -----------------------------------------------------------------------
+        std::unique_ptr<engine::sandbox::TestWorld> testWorld;
+        if (scene == "testworld")
+        {
+            testWorld = std::make_unique<engine::sandbox::TestWorld>();
+            if (!testWorld->Init())
+            {
+                std::cerr << "[FAIL] TestWorld::Init() returned false.\n";
+                renderer->Shutdown();
+                window.Shutdown();
+                return 1;
+            }
+        }
+
         while (window.IsRunning())
         {
             // Poll Win32 messages (resize, keyboard, close, etc.)
@@ -350,15 +415,26 @@ int main(int argc, char* argv[])
             double dt = window.GetDeltaTime();
             totalTime += dt;
 
-            // Compute an animated clear colour.
-            // TEACHING NOTE — std::sin / std::cos for animation
-            // Each channel has a different phase offset so they don't all
-            // peak at the same moment, producing a smooth rainbow sweep.
-            const float speed = 0.5f;
-            const float tF    = static_cast<float>(totalTime);
-            float clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
-            float clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2pi/3
-            float clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
+            float clearR, clearG, clearB;
+
+            if (testWorld)
+            {
+                // -- TestWorld mode: update all game systems, map state to colour.
+                testWorld->Update(static_cast<float>(dt));
+                testWorld->GetClearColour(clearR, clearG, clearB);
+            }
+            else
+            {
+                // -- Default mode: animated rainbow clear colour.
+                // TEACHING NOTE — std::sin / std::cos for animation
+                // Each channel has a different phase offset so they don't all
+                // peak at the same moment, producing a smooth rainbow sweep.
+                const float speed = 0.5f;
+                const float tF    = static_cast<float>(totalTime);
+                clearR = (std::sin(tF * speed + 0.0f)   + 1.0f) * 0.5f;
+                clearG = (std::sin(tF * speed + 2.094f) + 1.0f) * 0.5f;  // 2pi/3
+                clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
+            }
 
             renderer->DrawFrame(clearR, clearG, clearB);
         }

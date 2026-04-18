@@ -150,6 +150,11 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     # format, block compression (BC1/BC3/BC7), mip maps, and D3D11 resource upload.
     "src/engine/rendering/d3d11/d3d11_texture.cpp":
         "D3D11 DDS texture loader — M3 texture milestone; TEACHING NOTEs cover DDS format, BC7 compression, mip map upload",
+    # test_world.cpp: M3 integration test scene — exercises every gameplay system.
+    # Size is justified: it boots 8 systems, spawns 10+ entity types, runs a
+    # scripted demo, and maps game state to D3D11 clear colour for visual feedback.
+    "src/sandbox/test_world.cpp":
+        "TestWorld integration scene — M3 system verification; exercises CombatSystem, AISystem, WeatherSystem, QuestSystem, InventorySystem, ShopSystem, CampSystem, and AudioSystem together",
 }
 
 # ---------------------------------------------------------------------------
