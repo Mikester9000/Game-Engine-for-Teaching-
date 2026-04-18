@@ -41,6 +41,7 @@
 #include "asset_db.hpp"
 #include "engine/core/Logger.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -122,6 +123,28 @@ bool AssetDB::Load(const std::string& assetDbPath)
         return false;
     }
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Deriving the project root from the assetdb.json path
+    // -----------------------------------------------------------------------
+    // assetdb.json lives at <projectRoot>/Cooked/assetdb.json.
+    // std::filesystem::absolute() converts a relative path to absolute using
+    // the current working directory at Load() time — which is reliable because
+    // Load() is called once at startup before any directory changes.
+    //
+    // parent_path() twice gives us:
+    //   assetDbPath           → .../samples/project/Cooked/assetdb.json
+    //   .parent_path()        → .../samples/project/Cooked
+    //   .parent_path()        → .../samples/project          ← projectRoot
+    //
+    // Storing the absolute project root means GetCookedPath() can always
+    // produce a correct absolute path regardless of where the caller runs.
+    // -----------------------------------------------------------------------
+    namespace fs = std::filesystem;
+    m_baseDir = fs::absolute(fs::path(assetDbPath))
+                    .parent_path()  // .../Cooked
+                    .parent_path()  // .../projectRoot
+                    .string();
+
     // Read the whole file into a string.
     // TEACHING NOTE — std::istreambuf_iterator trick
     // Constructing a std::string from two istreambuf_iterators reads ALL
@@ -196,6 +219,7 @@ bool AssetDB::Load(const std::string& assetDbPath)
 void AssetDB::Clear()
 {
     m_idToPath.clear();
+    m_baseDir.clear();
 }
 
 // ----------------------------------------------------------------------------
@@ -213,7 +237,26 @@ std::string AssetDB::GetCookedPath(const std::string& id) const
         LOG_ERROR("AssetDB::GetCookedPath — GUID not found: " << id);
         return "";
     }
-    return it->second;
+
+    // TEACHING NOTE — Absolute path construction
+    // The stored value is a project-root-relative path (e.g. "Cooked/...").
+    // We join it with m_baseDir (the absolute project root captured during
+    // Load()) so the caller receives an absolute path that works regardless
+    // of the current working directory.
+    namespace fs = std::filesystem;
+    return (fs::path(m_baseDir) / it->second).string();
+}
+
+// ----------------------------------------------------------------------------
+std::vector<std::string> AssetDB::All() const
+{
+    std::vector<std::string> ids;
+    ids.reserve(m_idToPath.size());
+    for (const auto& [id, _] : m_idToPath)
+    {
+        ids.push_back(id);
+    }
+    return ids;
 }
 
 // ----------------------------------------------------------------------------

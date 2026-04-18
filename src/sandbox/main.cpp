@@ -157,16 +157,23 @@ int main(int argc, char* argv[])
             engine::assets::AssetLoader loader(&db);
 
             int loadErrors = 0;
-            for (std::size_t i = 0; i < db.Count(); ++i)
+
+            // TEACHING NOTE — Validating every asset in the database
+            // db.All() returns all GUIDs as a vector.  We iterate every GUID
+            // and call loader.LoadRaw(), which resolves the cooked path to an
+            // absolute path (thanks to AssetDB storing the project root) and
+            // opens the file.  An empty return vector signals a failure —
+            // either the cooked file is missing, corrupted, or the path is
+            // wrong.  This catches cook pipeline regressions before they reach
+            // the runtime renderer or audio system.
+            for (const std::string& guid : db.All())
             {
-                // We don't have an "iterate all GUIDs" API yet — the simple
-                // validation here just confirms Load() succeeded and Count() > 0.
-                // Full asset iteration will be added when AssetDB gains an
-                // All() / begin()/end() interface in M3.
-                (void)i;
+                const auto bytes = loader.LoadRaw(guid);
+                if (bytes.empty())
+                {
+                    ++loadErrors;
+                }
             }
-            // For now, a successful Load() with at least zero entries == PASS.
-            (void)loader;
 
             if (loadErrors > 0)
             {

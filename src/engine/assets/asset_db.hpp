@@ -51,13 +51,15 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 // ============================================================================
 // TEACHING NOTE — Forward-declaring vs full include
 // ============================================================================
-// This header only uses std::string and std::unordered_map, so we only
-// include those headers.  We deliberately avoid including heavy headers
-// (json, filesystem) here — those are implementation details in asset_db.cpp.
+// This header includes only the standard library headers needed for the
+// public interface: std::string, std::unordered_map, std::vector.
+// We deliberately avoid including heavy headers (json, filesystem) here —
+// those are implementation details in asset_db.cpp.
 // Keeping headers lightweight makes compilation faster and reduces coupling.
 // ============================================================================
 
@@ -120,6 +122,15 @@ public:
      * This pattern — "pay the cost once, amortise over many lookups" — is
      * fundamental to game engine asset management.
      *
+     * TEACHING NOTE — Base directory derivation
+     * assetdb.json lives at <projectRoot>/Cooked/assetdb.json.
+     * The cooker writes cookedPath values relative to the project root
+     * (e.g. "Cooked/Maps/Town.json").  During Load() we derive the project
+     * root as the grandparent of assetDbPath and store it as m_baseDir.
+     * GetCookedPath() then joins m_baseDir with the stored relative path,
+     * producing an absolute path that resolves correctly regardless of the
+     * caller's working directory.
+     *
      * @param assetDbPath  Absolute or relative path to assetdb.json.
      * @return true on success; false if the file cannot be opened or parsed.
      */
@@ -145,15 +156,32 @@ public:
     /**
      * @brief Return the cooked file path for the given GUID.
      *
-     * TEACHING NOTE — Precondition checking
+     * TEACHING NOTE — Absolute path returned
+     * The path returned is always absolute (or at minimum resolved from the
+     * project root stored during Load()).  This means callers do not need to
+     * know the current working directory — the path works from any location.
+     *
      * Callers should always call Has() first.  If the id is not found, this
-     * function returns an empty string and logs an error.  In a release build
-     * you might prefer a hard assertion to catch programmer errors early.
+     * function returns an empty string and logs an error.
      *
      * @param id  UUID v4 string.
-     * @return Cooked file path, or empty string if not found.
+     * @return Absolute cooked file path, or empty string if not found.
      */
     std::string GetCookedPath(const std::string& id) const;
+
+    /**
+     * @brief Return all GUIDs currently in the database.
+     *
+     * TEACHING NOTE — Enabling iteration without exposing internals
+     * Rather than exposing the raw iterator pair of the internal hash map,
+     * we return a snapshot vector.  This keeps the API stable if the internal
+     * data structure changes (e.g. from unordered_map to a sorted map).
+     * The cost is a one-time O(N) copy — acceptable for the rare cases where
+     * the full list is needed (validation, debugging).
+     *
+     * @return Vector of all asset GUIDs in insertion-independent order.
+     */
+    std::vector<std::string> All() const;
 
     /**
      * @brief Return the total number of assets in the database.
@@ -173,6 +201,17 @@ private:
     // The std::hash<std::string> specialisation handles hashing automatically.
     // -----------------------------------------------------------------------
     std::unordered_map<std::string, std::string> m_idToPath;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Base directory for path resolution
+    // -----------------------------------------------------------------------
+    // assetdb.json lives at <projectRoot>/Cooked/assetdb.json.
+    // cookedPath values stored in the JSON are relative to projectRoot.
+    // m_baseDir is set to the absolute projectRoot during Load() so that
+    // GetCookedPath() can return absolute paths regardless of the caller's
+    // working directory.
+    // -----------------------------------------------------------------------
+    std::string m_baseDir;
 };
 
 } // namespace engine::assets
