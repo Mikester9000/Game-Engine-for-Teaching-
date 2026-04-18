@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 862 across 37 subsystems.
+**Total lessons:** 864 across 37 subsystems.
 
 ---
 
@@ -31,7 +31,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
 - [sandbox/main.cpp](#sandboxmain.cpp) (19 lessons)
-- [sandbox/test_world.cpp](#sandboxtest_world.cpp) (2 lessons)
+- [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
 - [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
@@ -12220,20 +12220,44 @@ window.Shutdown();
 
 ### Keep TestWorld as a low-risk integration smoke test.
 
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L13) (line 13)
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L30) (line 30)
 
 It should depend only on stable APIs so CI can quickly verify that
 engine_sandbox starts, updates ECS state, and renders a deterministic frame.
 RegisterAllComponents(m_world);
 
+### Placeholder clip GUID
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L55) (line 55)
+
+The clip ID here is a non-fatal placeholder for sandbox smoke testing.
+If the backend cannot resolve it through AssetDB, playback simply no-ops.
+auto& audio = m_world.AddComponent<AudioSourceComponent>(m_player);
+audio.clipID = "guid-sfx-footstep";
+audio.volume = 0.5f;
+audio.isPlaying = false;
+
 ### Simple deterministic motion is ideal for CI checks.
 
-**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L75) (line 75)
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L96) (line 96)
 
 A predictable sine-wave path gives a visible animated signal in windowed
 runs while remaining fully deterministic in headless mode.
-tf.position.x += dt * 1.5f;
-tf.position.y = std::sin(m_time * 0.8f) * 2.0f;
+tf.position.x += dt * kMoveSpeed;
+tf.position.y = std::sin(m_time * kSineFrequency) * kSineAmplitude;
+
+### Oscillation formula for deterministic visual feedback
+
+**Source:** [`src/sandbox/test_world.cpp`](src/sandbox/test_world.cpp#L102) (line 102)
+
+Uses base + amplitude * sin(frequency * t) for a smooth periodic pulse.
+Choosing a pulse frequency different from movement frequency creates a
+subtle beat effect, making state motion easier to observe in test runs.
+const float pulse = kPulseBase + kPulseScale * std::sin(m_time * kPulseFrequency);
+m_clearR = kRedBase + pulse * kRedVariation;
+m_clearG = kGreenBase + pulse * kGreenVariation;
+m_clearB = kBlueBase + pulse * kBlueVariation;
+}
 
 ---
 
