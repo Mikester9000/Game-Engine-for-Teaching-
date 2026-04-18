@@ -4522,7 +4522,7 @@ Then read DrawFrame() to see how a single frame is rendered.
 
 ### VK_CHECK
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L57) (line 57)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L65) (line 65)
 
 Vulkan functions return VkResult.  VK_SUCCESS = 0; anything else is a
 warning or error.  This macro prints the failing call and returns false
@@ -4541,7 +4541,7 @@ return false;                                                  \
 
 ### VkInstance
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L76) (line 76)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L84) (line 84)
 
 The instance is the connection between your application and the Vulkan
 runtime library (vulkan-1.dll on Windows).  It holds global state (layers,
@@ -4559,7 +4559,7 @@ bool VulkanRenderer::CreateInstance()
 
 ### VkApplicationInfo
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L90) (line 90)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L98) (line 98)
 
 This struct is purely informational — the driver uses it for crash
 reports and optimisation hints.  The important field is apiVersion:
@@ -4575,7 +4575,7 @@ appInfo.apiVersion         = VK_API_VERSION_1_2;
 
 ### Validation Layer Check
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L116) (line 116)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L124) (line 124)
 
 Before requesting validation layers, confirm the Vulkan runtime actually
 has them installed.  If the Vulkan SDK is not installed, or the SDK
@@ -4590,7 +4590,7 @@ vkEnumerateInstanceLayerProperties(&layerCount, available.data());
 
 ### Extension Functions
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L170) (line 170)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L178) (line 178)
 
 VK_EXT_debug_utils adds new Vulkan functions that are not in the core API.
 You must load them at runtime via vkGetInstanceProcAddr (similar to
@@ -4604,7 +4604,7 @@ return true;   // Nothing to do in Release builds.
 
 ### Message Severity and Type Filters
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L194) (line 194)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L202) (line 202)
 
 We subscribe to ERROR and WARNING messages from all message types
 (general Vulkan issues, validation layer checks, and performance hints).
@@ -4624,7 +4624,7 @@ messengerInfo.pUserData       = nullptr;
 
 ### VkSurfaceKHR
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L225) (line 225)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L233) (line 233)
 
 A surface is the abstract "window connection" that Vulkan uses to present
 rendered images.  On Windows we use VK_KHR_win32_surface to attach the
@@ -4639,7 +4639,7 @@ surfaceInfo.hwnd      = hwnd;
 
 ### Physical Device Selection
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L246) (line 246)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L254) (line 254)
 
 A machine may have multiple GPUs (e.g. integrated + discrete).  We
 enumerate all of them and pick the first one that:
@@ -4662,7 +4662,7 @@ return false;
 
 ### Logical Device vs Physical Device
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L293) (line 293)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L301) (line 301)
 
 Physical device  = the actual GPU chip.
 Logical device   = your application's interface to that GPU.
@@ -4677,7 +4677,7 @@ QueueFamilyIndices indices = FindQueueFamilies(m_physicalDevice);
 
 ### Unique Queue Families
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L306) (line 306)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L314) (line 314)
 
 If the graphics family and present family are the same (common on
 desktop GPUs) we only need one VkDeviceQueueCreateInfo.  Using a set
@@ -4690,7 +4690,7 @@ indices.presentFamily
 
 ### VkPhysicalDeviceFeatures
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L329) (line 329)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L337) (line 337)
 
 This struct enables optional GPU features (geometry shaders, multi-viewport,
 etc.).  We request none for the minimal clear-screen starter.
@@ -4698,7 +4698,7 @@ VkPhysicalDeviceFeatures deviceFeatures = {};
 
 ### Swapchain
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L355) (line 355)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L363) (line 363)
 
 The swapchain is a ring of images.  The GPU renders into one image while
 the display controller scans out another.  When the rendered image is
@@ -4716,7 +4716,7 @@ SwapchainSupportDetails support = QuerySwapchainSupport(m_physicalDevice);
 
 ### Image Count
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L375) (line 375)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L383) (line 383)
 
 We request minImageCount + 1 to ensure the CPU can keep encoding while
 the GPU is presenting the previous frame (pipelining).  Clamp to
@@ -4731,7 +4731,7 @@ imageCount = support.capabilities.maxImageCount;
 
 ### Queue Sharing Mode
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L398) (line 398)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L406) (line 406)
 
 If graphics and present queues are from different families, images
 must be shared (VK_SHARING_MODE_CONCURRENT).  If they are the same
@@ -4745,7 +4745,7 @@ indices.presentFamily
 
 ### VkImageView
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L447) (line 447)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L455) (line 455)
 
 A VkImage is raw GPU memory.  A VkImageView describes HOW to interpret
 that memory — which mip-levels, array layers, and format to use.  You
@@ -4757,7 +4757,7 @@ m_swapchainImageViews.resize(m_swapchainImages.size());
 
 ### Component Swizzle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L464) (line 464)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L472) (line 472)
 
 We use IDENTITY so R→R, G→G, B→B, A→A.  You could remap channels
 here (e.g. monochrome by routing R into all channels).
@@ -4768,7 +4768,7 @@ viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 
 ### Render Pass
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L495) (line 495)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L503) (line 503)
 
 A render pass describes the "shape" of a rendering operation:
   • What attachments are written to (colour, depth, stencil)?
@@ -4786,7 +4786,7 @@ bool VulkanRenderer::CreateRenderPass()
 
 ### VkAttachmentDescription
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L509) (line 509)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L517) (line 517)
 
 format       — must match the swapchain image format.
 samples      — MSAA sample count; 1 = no anti-aliasing.
@@ -4808,7 +4808,7 @@ colorAttachment.finalLayout    = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 ### Subpass
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L529) (line 529)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L537) (line 537)
 
 A render pass can have multiple "subpasses" (e.g. G-buffer fill, then
 lighting), allowing the GPU driver to optimise data flow between them
@@ -4820,7 +4820,7 @@ colorRef.layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 ### Subpass Dependency
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L544) (line 544)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L552) (line 552)
 
 Subpass dependencies declare memory and execution ordering between
 subpasses (or between the render pass and external commands).
@@ -4839,7 +4839,7 @@ dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 ### Framebuffer
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L576) (line 576)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L584) (line 584)
 
 A framebuffer is the collection of image views that the render pass writes
 to.  We create one framebuffer per swapchain image view so the GPU knows
@@ -4851,7 +4851,7 @@ m_framebuffers.resize(m_swapchainImageViews.size());
 
 ### Command Pool
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L611) (line 611)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L619) (line 619)
 
 Commands are recorded into VkCommandBuffers, which are allocated from a
 VkCommandPool.  The pool manages a chunk of GPU memory for command storage.
@@ -4867,7 +4867,7 @@ QueueFamilyIndices indices = FindQueueFamilies(m_physicalDevice);
 
 ### Command Buffers
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L636) (line 636)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L644) (line 644)
 
 We allocate one command buffer per swapchain image.  In DrawFrame we will
 pick the command buffer that corresponds to the acquired image index,
@@ -4883,7 +4883,7 @@ m_commandBuffers.resize(m_swapchainImages.size());
 
 ### Synchronisation Overview
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L662) (line 662)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L670) (line 670)
 
 Vulkan gives you explicit, fine-grained synchronisation.  We use:
 
@@ -4900,7 +4900,7 @@ Vulkan gives you explicit, fine-grained synchronisation.  We use:
 
 ### Frames in Flight vs Swapchain Image Index
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L676) (line 676)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L684) (line 684)
 
 m_currentFrame cycles through 0 … kMaxFramesInFlight-1 (the "slot").
 imageIndex is the index returned by vkAcquireNextImageKHR (may be
@@ -4914,7 +4914,7 @@ m_imagesInFlight.assign(m_swapchainImages.size(), VK_NULL_HANDLE);
 
 ### VK_FENCE_CREATE_SIGNALED_BIT
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L690) (line 690)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L698) (line 698)
 
 Fences start unsignalled by default.  If we wait on an unsignalled fence
 before the first DrawFrame(), we deadlock.  Creating them pre-signalled
@@ -4925,7 +4925,7 @@ fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 ### Per-Frame Rendering
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L741) (line 741)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L749) (line 749)
 
 Every frame follows the same six steps (see DrawFrame() in VulkanRenderer.hpp).
 ===========================================================================
@@ -4935,7 +4935,7 @@ if (!m_initialised) return;
 
 ### vkWaitForFences
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L751) (line 751)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L759) (line 759)
 
 We wait with a 1-second timeout.  In practice the GPU should finish
 well within a single display refresh period.
@@ -4945,7 +4945,7 @@ VK_TRUE, UINT64_MAX);
 
 ### vkAcquireNextImageKHR
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L761) (line 761)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L769) (line 769)
 
 This asks the swapchain "which image can I write to next?"
 m_imageAvailableSemaphores is signalled when the image is truly ready
@@ -4961,7 +4961,7 @@ VK_NULL_HANDLE,
 
 ### vkQueueSubmit
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L810) (line 810)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L818) (line 818)
 
 We tell the GPU:
   "Wait on imageAvailableSemaphore (stage COLOR_ATTACHMENT_OUTPUT)
@@ -4976,7 +4976,7 @@ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
 
 ### vkQueuePresentKHR
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L844) (line 844)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L852) (line 852)
 
 Wait for renderFinishedSemaphore (i.e. the GPU finished drawing), then
 flip the swapchain image to the screen (or hand it back to the
@@ -4992,7 +4992,7 @@ presentInfo.pImageIndices      = &imageIndex;
 
 ### Extracted Recording
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L872) (line 872)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L880) (line 880)
 
 We moved command buffer recording into its own helper so:
   1. DrawFrame() is shorter and easier to follow.
@@ -5019,7 +5019,7 @@ vkBeginCommandBuffer(cmdBuf, &beginInfo);
 
 ### VkClearValue
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L897) (line 897)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L905) (line 905)
 
 LOAD_OP_CLEAR fills the attachment with this colour before any draw
 commands run.  The animated RGB values produce the rainbow background.
@@ -5032,7 +5032,7 @@ clearValue.color.float32[3] = 1.0f;  // alpha = fully opaque
 
 ### Dynamic Viewport and Scissor
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L923) (line 923)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L931) (line 931)
 
 Because we declared these as dynamic pipeline states, we set them
 here in the command buffer instead of baking them into the PSO.
@@ -5049,7 +5049,7 @@ vkCmdSetViewport(cmdBuf, 0, 1, &viewport);
 
 ### Scene Dispatch Pattern
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L954) (line 954)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L962) (line 962)
 
 This thin dispatcher will grow as milestones add more scene types.
 Each scene name maps to a private loader that creates the appropriate
@@ -5063,7 +5063,7 @@ return LoadTriangleScene(shaderDir);
 
 ### NDC Coordinates for a Visible Triangle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L990) (line 990)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L998) (line 998)
 
 The triangle is positioned in Vulkan NDC space:
   top vertex    (0,  -0.5) = centre, near top   → red
@@ -5082,7 +5082,7 @@ const std::vector<Vertex> vertices = {
 
 ### Headless Validation
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1022) (line 1022)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1030) (line 1030)
 
 In CI (no display) we cannot present frames, but we CAN validate that:
   • The pipeline was created successfully.
@@ -5101,7 +5101,7 @@ return false;
 
 ### Swapchain Recreation
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1049) (line 1049)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1057) (line 1057)
 
 On window resize or DPI change, the old swapchain is invalidated.  We must:
   1. Wait for the GPU to finish all in-flight work (vkDeviceWaitIdle).
@@ -5116,7 +5116,7 @@ if (newWidth == 0 || newHeight == 0) return;
 
 ### vkDeviceWaitIdle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1104) (line 1104)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1112) (line 1112)
 
 Before destroying ANY Vulkan object, ensure the GPU has finished all
 submitted work.  Destroying a semaphore or fence that the GPU is still
@@ -5125,7 +5125,7 @@ vkDeviceWaitIdle(m_device);
 
 ### Only print ERROR and WARNING (we filtered INFO/VERBOSE
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1191) (line 1191)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1199) (line 1199)
 
 in SetupDebugMessenger, but this is a secondary guard).
 if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
@@ -5135,7 +5135,7 @@ std::cerr << "[VulkanValidation] " << pCallbackData->pMessage << "\n";
 
 ### Surface Format
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1264) (line 1264)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1272) (line 1272)
 
 Prefer BGRA8_SRGB with SRGB colour space because:
   • BGRA8 maps directly to the monitor's 8-bit-per-channel BGRA layout.
@@ -5159,7 +5159,7 @@ return available[0];
 
 ### Present Modes
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1288) (line 1288)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1296) (line 1296)
 
 FIFO           — VSync; images queued; guaranteed to exist on all drivers.
   Mailbox        — Triple buffering; most recently rendered image is always
@@ -5180,7 +5180,7 @@ return VK_PRESENT_MODE_FIFO_KHR;
 
 ### Swap Extent
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1309) (line 1309)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.cpp`](src/engine/rendering/vulkan/VulkanRenderer.cpp#L1317) (line 1317)
 
 On high-DPI (HiDPI / Retina) displays, the framebuffer resolution can
 differ from the window's "logical" size.  We use the capabilities' current
@@ -5305,25 +5305,33 @@ destruction is visible and teachable.
 class VulkanRenderer
 {
 public:
-VulkanRenderer()  = default;
 
-### Destructor Out-of-Line for Incomplete Types
+### Constructor and Destructor Out-of-Line for Incomplete Types
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L127) (line 127)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L126) (line 126)
 
-The destructor must be defined in VulkanRenderer.cpp (not here) because
-m_pipeline and m_triangleMesh are std::unique_ptr<T> where T is only
-forward-declared in this header.  std::unique_ptr<T>::~unique_ptr()
-calls delete on T, which requires the *complete* type of T.  MSVC
-enforces this strictly (errors C2027/C2338); GCC/Clang also warn.
-Declaring the destructor here and defining it in the .cpp (where the
-full headers for VulkanPipeline and VulkanMesh are included) satisfies
-all compilers.
+Both the constructor AND the destructor must be *defined* in
+VulkanRenderer.cpp (not here in the header) because m_pipeline and
+m_triangleMesh are std::unique_ptr<T> where T is only *forward-declared*
+in this header.
+
+Why does this matter?
+  std::unique_ptr<T>::~unique_ptr() calls delete on T, which requires the
+  *complete* definition of T to call its destructor.  MSVC enforces this
+  strictly: if the compiler encounters a `= default` constructor or
+  destructor definition in the header (where T is incomplete), it will
+  immediately try to instantiate unique_ptr<T>::~unique_ptr() → error
+  C2027 (incomplete type) + C2338 (static_assert: can't delete incomplete
+  type).
+
+The fix: declare both here; define both in the .cpp where the full
+vulkan_mesh.hpp and vulkan_pipeline.hpp are already included.
+VulkanRenderer();
 ~VulkanRenderer();
 
 ### Frame Lifecycle
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L171) (line 171)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L179) (line 179)
 
 1. vkWaitForFences        — stall the CPU until the GPU finished
                               the *previous* use of this frame slot.
@@ -5340,7 +5348,7 @@ all compilers.
 
 ### Scene Loading Pattern
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L198) (line 198)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L206) (line 206)
 
 For M1 the "scene" is just a hardcoded triangle.  In later milestones
 LoadScene will parse a scene JSON file from the asset DB and spawn
@@ -5348,7 +5356,7 @@ entities, load meshes, and wire up scripts.
 
 ### Pre-recording vs per-frame recording
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L264) (line 264)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L272) (line 272)
 
 For a fully static scene (triangle with no animated clear colour) we
 could pre-record once.  We keep per-frame recording here for two reasons:
@@ -5358,7 +5366,7 @@ could pre-record once.  We keep per-frame recording here for two reasons:
 
 ### Queue Family Indices
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L278) (line 278)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L286) (line 286)
 
 -----------------------------------------------------------------------
 A "queue" in Vulkan is a submission channel to the GPU.  Different queues
@@ -5374,7 +5382,7 @@ uint32_t presentFamily  = UINT32_MAX;
 
 ### Swapchain Support Details
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L301) (line 301)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L309) (line 309)
 
 -----------------------------------------------------------------------
 Before creating a swapchain we must query three things:
@@ -5391,7 +5399,7 @@ std::vector<VkPresentModeKHR>   presentModes;
 
 ### std::unique_ptr for Optional Subsystems
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L380) (line 380)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L388) (line 388)
 
 The pipeline and mesh may or may not exist (they are created only when
 LoadScene() is called).  Using unique_ptr<T> models "optionally present"
@@ -5402,7 +5410,7 @@ std::unique_ptr<VulkanMesh>     m_triangleMesh; ///< Triangle geometry (null unt
 
 ### Debug vs Release Validation
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L398) (line 398)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L406) (line 406)
 
 kEnableValidationLayers is a compile-time constant so the compiler can
 dead-code-eliminate all validation setup in Release builds.
@@ -5411,7 +5419,7 @@ endif
 
 ### Debug Callback Signature
 
-**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L415) (line 415)
+**Source:** [`src/engine/rendering/vulkan/VulkanRenderer.hpp`](src/engine/rendering/vulkan/VulkanRenderer.hpp#L423) (line 423)
 
 The signature must exactly match PFN_vkDebugUtilsMessengerCallbackEXT.
 We print ERROR and WARNING messages; verbose INFO messages are ignored

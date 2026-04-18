@@ -42,6 +42,14 @@ namespace engine {
 namespace rendering {
 
 // ---------------------------------------------------------------------------
+// Constructor — defined here (not in the header) so that MSVC does not try to
+// instantiate unique_ptr<VulkanMesh>::~unique_ptr() at the point where the
+// class body is parsed (where VulkanMesh is only forward-declared).  Defining
+// = default here, after the full includes above, satisfies the "complete type"
+// requirement.
+VulkanRenderer::VulkanRenderer() = default;
+
+// ---------------------------------------------------------------------------
 // Destructor — defined here (not in the header) because m_pipeline and
 // m_triangleMesh are unique_ptr<T> with T only forward-declared in the
 // header.  The complete types VulkanPipeline and VulkanMesh are included

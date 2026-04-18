@@ -123,16 +123,24 @@ static constexpr uint32_t kMaxFramesInFlight = 2;
 class VulkanRenderer
 {
 public:
-    VulkanRenderer()  = default;
-    // TEACHING NOTE — Destructor Out-of-Line for Incomplete Types
-    // The destructor must be defined in VulkanRenderer.cpp (not here) because
-    // m_pipeline and m_triangleMesh are std::unique_ptr<T> where T is only
-    // forward-declared in this header.  std::unique_ptr<T>::~unique_ptr()
-    // calls delete on T, which requires the *complete* type of T.  MSVC
-    // enforces this strictly (errors C2027/C2338); GCC/Clang also warn.
-    // Declaring the destructor here and defining it in the .cpp (where the
-    // full headers for VulkanPipeline and VulkanMesh are included) satisfies
-    // all compilers.
+    // TEACHING NOTE — Constructor and Destructor Out-of-Line for Incomplete Types
+    // Both the constructor AND the destructor must be *defined* in
+    // VulkanRenderer.cpp (not here in the header) because m_pipeline and
+    // m_triangleMesh are std::unique_ptr<T> where T is only *forward-declared*
+    // in this header.
+    //
+    // Why does this matter?
+    //   std::unique_ptr<T>::~unique_ptr() calls delete on T, which requires the
+    //   *complete* definition of T to call its destructor.  MSVC enforces this
+    //   strictly: if the compiler encounters a `= default` constructor or
+    //   destructor definition in the header (where T is incomplete), it will
+    //   immediately try to instantiate unique_ptr<T>::~unique_ptr() → error
+    //   C2027 (incomplete type) + C2338 (static_assert: can't delete incomplete
+    //   type).
+    //
+    // The fix: declare both here; define both in the .cpp where the full
+    // vulkan_mesh.hpp and vulkan_pipeline.hpp are already included.
+    VulkanRenderer();
     ~VulkanRenderer();
 
     // No copying — Vulkan handles are not reference-counted by default.
