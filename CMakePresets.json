@@ -9,7 +9,7 @@
     {
       "name": "windows-base",
       "hidden": true,
-      "description": "Base settings shared by all Windows presets. Uses the default MSVC toolset for the installed Visual Studio (v143 on VS 2022, used by GitHub Actions windows-latest). No toolset override — CI compatible.",
+      "description": "Base settings shared by all Windows presets. Uses the default MSVC toolset (no override). CI compatible with GitHub Actions windows-latest (VS 2022 / v143).",
       "generator": "Visual Studio 17 2022",
       "architecture": {
         "value": "x64",
@@ -23,7 +23,7 @@
     {
       "name": "windows-base-v180",
       "hidden": true,
-      "description": "Base settings for Visual Studio Insiders 2026 (toolset v180). Inherits windows-base and overrides the toolset to v180. Use these presets locally when you have VS Insiders 2026 installed. Do NOT use in CI — GitHub Actions windows-latest only has v143.",
+      "description": "Overrides toolset to v180 for Visual Studio Insiders 2026. Local use only — incompatible with CI (github Actions windows-latest only has v143). Use the *-v180 presets when you have VS Insiders 2026 installed.",
       "inherits": "windows-base",
       "toolset": {
         "value": "v180",
@@ -179,21 +179,30 @@
       "displayName": "Build Windows Debug (Engine Only — D3D11)",
       "configurePreset": "windows-debug-engine-only",
       "configuration": "Debug",
-      "targets": ["engine_sandbox", "cook"]
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
     },
     {
       "name": "windows-release-engine-only",
       "displayName": "Build Windows Release (Engine Only — D3D11)",
       "configurePreset": "windows-release-engine-only",
       "configuration": "Release",
-      "targets": ["engine_sandbox", "cook"]
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
     },
     {
       "name": "windows-debug-vulkan",
       "displayName": "Build Windows Debug (Vulkan backend)",
       "configurePreset": "windows-debug-vulkan",
       "configuration": "Debug",
-      "targets": ["engine_sandbox", "cook"]
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
     },
     {
       "name": "windows-debug-v180",
@@ -212,21 +221,30 @@
       "displayName": "Build Windows Debug Engine Only — VS Insiders 2026 (v180)",
       "configurePreset": "windows-debug-engine-only-v180",
       "configuration": "Debug",
-      "targets": ["engine_sandbox", "cook"]
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
     },
     {
       "name": "windows-release-engine-only-v180",
       "displayName": "Build Windows Release Engine Only — VS Insiders 2026 (v180)",
       "configurePreset": "windows-release-engine-only-v180",
       "configuration": "Release",
-      "targets": ["engine_sandbox", "cook"]
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
     },
     {
       "name": "windows-debug-vulkan-v180",
       "displayName": "Build Windows Debug Vulkan — VS Insiders 2026 (v180)",
       "configurePreset": "windows-debug-vulkan-v180",
       "configuration": "Debug",
-      "targets": ["engine_sandbox", "cook"]
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
     }
   ]
 }
