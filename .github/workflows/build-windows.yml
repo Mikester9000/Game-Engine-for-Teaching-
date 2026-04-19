@@ -173,6 +173,17 @@ jobs:
         uses: actions/checkout@v4
 
       # -----------------------------------------------------------------------
+      # Enter an MSVC developer environment for Ninja + cl/link.
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Keep toolchain consistent with primary Windows job.
+      # The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
+      # avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # -----------------------------------------------------------------------
       # Install the Vulkan SDK.
       # -----------------------------------------------------------------------
       # TEACHING NOTE — Why cache the Vulkan SDK?
@@ -188,11 +199,11 @@ jobs:
           vulkan-use-cache: true
 
       # Configure with both D3D11 and Vulkan enabled.
-      - name: Configure CMake (D3D11 + Vulkan)
-        run: cmake --preset windows-debug-vulkan
+      - name: Configure CMake (D3D11 + Vulkan, portable Ninja preset)
+        run: cmake --preset windows-ninja-debug-vulkan
 
       - name: Build engine_sandbox (D3D11 + Vulkan)
-        run: cmake --build --preset windows-debug-vulkan --target engine_sandbox
+        run: cmake --build --preset windows-ninja-debug-vulkan --target engine_sandbox
 
       # -----------------------------------------------------------------------
       # Run headless with the Vulkan backend explicitly selected.
@@ -205,6 +216,6 @@ jobs:
       # On a self-hosted GPU runner this step will succeed.
       # -----------------------------------------------------------------------
       - name: Run Vulkan headless validation (optional)
-        run: .\build\windows-debug-vulkan\Debug\engine_sandbox.exe --renderer vulkan --headless
+        run: .\build\windows-ninja-debug-vulkan\engine_sandbox.exe --renderer vulkan --headless
         shell: cmd
         continue-on-error: true

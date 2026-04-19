@@ -174,6 +174,20 @@
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "OFF"
       }
+    },
+    {
+      "name": "windows-ninja-debug-vulkan",
+      "displayName": "Windows Debug — Vulkan backend (Ninja, portable)",
+      "description": "Portable Windows preset using Ninja for D3D11 + Vulkan backend build. Requires Vulkan SDK for full Vulkan path.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "ON",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -265,6 +279,15 @@
       "name": "windows-ninja-debug-engine-only",
       "displayName": "Build Windows Debug Engine Only (Ninja, portable)",
       "configurePreset": "windows-ninja-debug-engine-only",
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
+    },
+    {
+      "name": "windows-ninja-debug-vulkan",
+      "displayName": "Build Windows Debug Vulkan (Ninja, portable)",
+      "configurePreset": "windows-ninja-debug-vulkan",
       "targets": [
         "engine_sandbox",
         "cook"

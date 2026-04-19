@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 864 across 37 subsystems.
+**Total lessons:** 865 across 37 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (36 lessons)
-- [ci/workflows](#ciworkflows) (27 lessons)
+- [ci/workflows](#ciworkflows) (28 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
 - [engine/assets](#engineassets) (27 lessons)
@@ -861,9 +861,21 @@ a compromised action cannot push malicious commits to the repository.
 permissions:
 contents: read
 
-### CMake Presets in CI
+### Ninja on Windows does not automatically pick MSVC.
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L77) (line 77)
+
+Without vcvars, CMake may detect a GNU toolchain (e.g. MinGW), which
+fails to link Windows SDK libraries such as xaudio2.lib.
+This step initialises cl.exe/link.exe + Windows SDK paths explicitly.
+- name: Setup MSVC developer command prompt
+uses: ilammy/msvc-dev-cmd@v1
+with:
+arch: x64
+
+### CMake Presets in CI
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L89) (line 89)
 
 cmake --preset windows-debug-engine-only uses CMakePresets.json:
   • Generator: Visual Studio 17 2022 (MSVC x64)
@@ -874,12 +886,12 @@ cmake --preset windows-debug-engine-only uses CMakePresets.json:
 No Vulkan SDK step is needed: d3d11.lib ships with the Windows SDK
 that is part of every Visual Studio installation on the runner.
 -----------------------------------------------------------------------
-- name: Configure CMake (D3D11 engine-only, no Vulkan SDK required)
-run: cmake --preset windows-debug-engine-only
+- name: Configure CMake (D3D11 engine-only, portable Ninja preset)
+run: cmake --preset windows-ninja-debug-engine-only
 
 ### D3D11 WARP in Headless CI
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L113) (line 113)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L125) (line 125)
 
 D3D11 WARP is Microsoft's CPU software rasteriser bundled with every
 Windows installation.  When --headless is passed, D3D11Renderer uses
@@ -888,12 +900,12 @@ creation.  This makes the headless check reliable on any Windows runner.
 Expected output: "[PASS] D3D11 device initialised..." followed by exit 0.
 -----------------------------------------------------------------------
 - name: Run headless validation (M0 — D3D11 WARP)
-run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless
 shell: cmd
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L141) (line 141)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L153) (line 153)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -911,7 +923,7 @@ continue-on-error: true
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L166) (line 166)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L178) (line 178)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -926,7 +938,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L188) (line 188)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L200) (line 200)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
