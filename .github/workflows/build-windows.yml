@@ -84,27 +84,27 @@ jobs:
       # No Vulkan SDK step is needed: d3d11.lib ships with the Windows SDK
       # that is part of every Visual Studio installation on the runner.
       # -----------------------------------------------------------------------
-      - name: Configure CMake (D3D11 engine-only, no Vulkan SDK required)
-        run: cmake --preset windows-debug-engine-only
+      - name: Configure CMake (D3D11 engine-only, portable Ninja preset)
+        run: cmake --preset windows-ninja-debug-engine-only
 
       # -----------------------------------------------------------------------
       # 3. Build engine_sandbox and cook.
       # -----------------------------------------------------------------------
       - name: Build engine_sandbox
-        run: cmake --build --preset windows-debug-engine-only --target engine_sandbox
+        run: cmake --build --preset windows-ninja-debug-engine-only --target engine_sandbox
 
       - name: Build cook
-        run: cmake --build --preset windows-debug-engine-only --target cook
+        run: cmake --build --preset windows-ninja-debug-engine-only --target cook
 
       # -----------------------------------------------------------------------
       # 4. Verify binaries exist.
       # -----------------------------------------------------------------------
       - name: Verify engine_sandbox.exe exists
-        run: Test-Path "build\windows-debug-engine-only\Debug\engine_sandbox.exe"
+        run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\engine_sandbox.exe")) { throw "engine_sandbox.exe not found" }
         shell: pwsh
 
       - name: Verify cook.exe exists
-        run: Test-Path "build\windows-debug-engine-only\Debug\cook.exe"
+        run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\cook.exe")) { throw "cook.exe not found" }
         shell: pwsh
 
       # -----------------------------------------------------------------------
@@ -118,21 +118,21 @@ jobs:
       # Expected output: "[PASS] D3D11 device initialised..." followed by exit 0.
       # -----------------------------------------------------------------------
       - name: Run headless validation (M0 — D3D11 WARP)
-        run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless
         shell: cmd
 
       # -----------------------------------------------------------------------
       # 6. Cook the vertical slice sample project.
       # -----------------------------------------------------------------------
       - name: Cook vertical slice project
-        run: .\build\windows-debug-engine-only\Debug\cook.exe --project samples\vertical_slice_project --verbose
+        run: .\build\windows-ninja-debug-engine-only\cook.exe --project samples\vertical_slice_project --verbose
         shell: cmd
 
       # -----------------------------------------------------------------------
       # 7. Validate the AssetDB via engine_sandbox.
       # -----------------------------------------------------------------------
       - name: Validate-project (M2 AssetDB)
-        run: .\build\windows-debug-engine-only\Debug\engine_sandbox.exe --validate-project samples\vertical_slice_project
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project samples\vertical_slice_project
         shell: cmd
 
   # --------------------------------------------------------------------------
