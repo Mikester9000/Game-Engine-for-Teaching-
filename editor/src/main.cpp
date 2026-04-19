@@ -41,6 +41,7 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <tchar.h>
+#include <string>
 
 // Dear ImGui headers (provided by vcpkg imgui[docking,dx11-binding,win32-binding])
 #include <imgui.h>
@@ -48,6 +49,7 @@
 #include <imgui_impl_dx11.h>
 
 #include "EditorApp.hpp"
+// SceneEditorPanel included via EditorApp.hpp for headless mode use
 
 // ---------------------------------------------------------------------------
 // Module-level D3D11 objects
@@ -124,9 +126,159 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 // ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
+// TEACHING NOTE -- WinMain vs main()
+// GUI applications use WinMain instead of main().  The difference is:
+//   main()    -- console entry point; stdout/stderr attached by default.
+//   WinMain() -- GUI entry point; no console by default.
+//
+// For headless/batch mode (M6 --headless, --create-scene, --load-scene), we
+// need console output.  We call AllocConsole() + freopen_s to attach stdout
+// so CI scripts can capture pass/fail output.
+// ---------------------------------------------------------------------------
+
+// Helper: attach or create a console for headless output.
+static void AttachConsole_()
+{
+    // Try to attach to the parent process's console (e.g. a cmd.exe or
+    // PowerShell window that launched us).  If that fails, create a new one.
+    if (!AttachConsole(ATTACH_PARENT_PROCESS))
+        AllocConsole();
+
+    FILE* fp = nullptr;
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+}
+
+// Helper: convert a wide string to a UTF-8 std::string.
+static std::string WideToUtf8(const std::wstring& ws)
+{
+    if (ws.empty()) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string s;
+    if (len > 0) { s.resize(static_cast<size_t>(len - 1)); WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, s.data(), len, nullptr, nullptr); }
+    return s;
+}
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
                    LPSTR /*lpCmdLine*/, int nCmdShow)
 {
+    // ---- 0. Parse command-line arguments for headless/batch mode (M6) ------
+    // TEACHING NOTE -- GetCommandLineW + CommandLineToArgvW
+    // WinMain receives a narrow lpCmdLine string.  For Unicode path support
+    // (e.g. --create-scene "C:\Users\Username\路径.scene.json") we use the
+    // wide-char GetCommandLineW() + CommandLineToArgvW() pair instead.
+    // CommandLineToArgvW correctly handles quoted paths with spaces.
+    int argc = 0;
+    LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
+
+    bool    headless        = false;
+    std::wstring createPath;   // --create-scene <path>
+    std::wstring loadPath;     // --load-scene <path>
+    bool    validateLoad    = false;  // --validate (used with --load-scene)
+
+    for (int i = 1; i < argc; ++i)
+    {
+        if      (std::wcscmp(wargv[i], L"--headless") == 0)
+            headless = true;
+        else if (std::wcscmp(wargv[i], L"--create-scene") == 0 && i + 1 < argc)
+            createPath = wargv[++i];
+        else if (std::wcscmp(wargv[i], L"--load-scene") == 0 && i + 1 < argc)
+            loadPath = wargv[++i];
+        else if (std::wcscmp(wargv[i], L"--validate") == 0)
+            validateLoad = true;
+    }
+    LocalFree(wargv);
+
+    // ---- Headless / batch mode -- no window, no GPU, no ImGui loop ---------
+    // TEACHING NOTE -- Headless editor for CI
+    // A headless run is useful for:
+    //   • CI: verify the editor's scene round-trip (create → write → load → validate).
+    //   • Build pipelines: batch-process scenes without launching a GUI.
+    //
+    // Exit code semantics (same convention as engine_sandbox):
+    //   0 = success ([PASS])
+    //   1 = failure ([FAIL])
+    if (headless || !createPath.empty() || (!loadPath.empty() && validateLoad))
+    {
+        AttachConsole_();
+
+        // -- --headless: self-test, no I/O needed --
+        if (headless && createPath.empty() && loadPath.empty())
+        {
+            // Instantiate SceneEditorPanel to verify it initialises cleanly.
+            SceneEditorPanel panel;
+            const bool ok = (panel.GetEntities().empty() &&
+                             panel.GetSelectedIdx() == -1);
+            if (ok)
+                puts("[PASS] Editor initialised. Scene hierarchy empty. Inspector ready.");
+            else
+                puts("[FAIL] Editor initialisation: unexpected state.");
+            return ok ? 0 : 1;
+        }
+
+        // -- --create-scene <path>: write a minimal scene file --
+        if (!createPath.empty())
+        {
+            SceneEditorPanel panel;
+            // Add a test entity so the file has meaningful content.
+            auto& ents = panel.GetEntities();
+            SceneEntity testEnt;
+            testEnt.id   = "00000000-0000-0000-0000-000000000001";
+            testEnt.name = "TestEntity";
+            testEnt.x    = 10.f;
+            testEnt.y    = 20.f;
+            testEnt.z    = 0.f;
+            ents.push_back(testEnt);
+
+            const std::string path = WideToUtf8(createPath);
+            const bool ok = panel.SaveScene(path);
+            if (ok)
+            {
+                printf("[PASS] Scene created at: %s  (%d entities)\n",
+                       path.c_str(), static_cast<int>(ents.size()));
+            }
+            else
+            {
+                printf("[FAIL] Scene create failed: %s\n", path.c_str());
+            }
+            return ok ? 0 : 1;
+        }
+
+        // -- --load-scene <path> --validate: load and check entity count --
+        if (!loadPath.empty() && validateLoad)
+        {
+            SceneEditorPanel panel;
+            const std::string path = WideToUtf8(loadPath);
+            const bool loaded = panel.LoadScene(path);
+            if (!loaded)
+            {
+                printf("[FAIL] Scene load failed (file not found or malformed JSON): %s\n",
+                       path.c_str());
+                return 1;
+            }
+            const int count = static_cast<int>(panel.GetEntities().size());
+            if (count > 0)
+            {
+                printf("[PASS] Scene loaded: %d %s in '%s'\n",
+                       count, count == 1 ? "entity" : "entities", path.c_str());
+                return 0;
+            }
+            else
+            {
+                printf("[FAIL] Scene loaded but has 0 entities: %s\n", path.c_str());
+                return 1;
+            }
+        }
+
+        // If we reach here, no recognised headless command -- treat as failure.
+        puts("[FAIL] Unrecognised headless arguments.");
+        return 1;
+    }
+
+    // =========================================================================
+    // Normal GUI mode below
+    // =========================================================================
+
     // ---- 1. Register and create the Win32 window ---------------------------
     // TEACHING NOTE -- WNDCLASSEXW
     // WNDCLASSEXW describes the properties of a window class (shared template

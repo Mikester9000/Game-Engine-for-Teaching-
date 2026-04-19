@@ -2115,6 +2115,9 @@ public:
     /// Return reference to the EntityManager (advanced use).
     EntityManager& GetEntityManager() { return m_entityManager; }
 
+    /// Return const reference to the EntityManager (advanced use — read-only).
+    const EntityManager& GetEntityManager() const { return m_entityManager; }
+
     // -----------------------------------------------------------------------
     // Utility — create an entity pre-loaded with common components
     // -----------------------------------------------------------------------
