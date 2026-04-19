@@ -32,6 +32,21 @@
 #include <string>
 
 // ---------------------------------------------------------------------------
+// Internal helper
+// ---------------------------------------------------------------------------
+
+// TEACHING NOTE — SafeStrCopy helper
+// std::strncpy does NOT guarantee null-termination when src is >= destSize.
+// This helper always writes a '\0' at the last position so the buffer is
+// always a valid C-string — a common defensive pattern for ImGui text buffers.
+// Extracting it removes the repeated two-line pattern (strncpy + explicit NUL).
+static void SafeStrCopy(char* dest, size_t destSize, const std::string& src)
+{
+    std::strncpy(dest, src.c_str(), destSize - 1);
+    dest[destSize - 1] = '\0';
+}
+
+// ---------------------------------------------------------------------------
 // Render (main entry point)
 // ---------------------------------------------------------------------------
 
@@ -159,9 +174,7 @@ void SceneHierarchyPanel::RenderEntityList()
             {
                 m_renamePopupOpen = true;
                 m_renameTargetIdx = i;
-                std::strncpy(m_renameBuffer, ent.name.c_str(),
-                             sizeof(m_renameBuffer) - 1);
-                m_renameBuffer[sizeof(m_renameBuffer) - 1] = '\0';
+                SafeStrCopy(m_renameBuffer, sizeof(m_renameBuffer), ent.name);
             }
         }
 
@@ -210,10 +223,8 @@ void SceneHierarchyPanel::RenderContextMenu(int idx)
         m_scenePanel->SetSelectedIdx(idx);
         m_renamePopupOpen = true;
         m_renameTargetIdx = idx;
-        std::strncpy(m_renameBuffer,
-                     entities[static_cast<size_t>(idx)].name.c_str(),
-                     sizeof(m_renameBuffer) - 1);
-        m_renameBuffer[sizeof(m_renameBuffer) - 1] = '\0';
+        SafeStrCopy(m_renameBuffer, sizeof(m_renameBuffer),
+                    entities[static_cast<size_t>(idx)].name);
     }
 
     if (ImGui::MenuItem("Duplicate"))

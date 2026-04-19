@@ -72,10 +72,21 @@ struct ComponentDef
 // ---------------------------------------------------------------------------
 // Component definitions table
 // ---------------------------------------------------------------------------
-// TEACHING NOTE — std::vector in a static table
-// Normally we'd use a fixed-size array to avoid dynamic allocation at startup.
-// For a teaching project clarity beats micro-optimisation: std::vector with
-// initialiser-list construction is readable and constructed once at startup.
+// TEACHING NOTE — Table-driven component definitions
+// kComponentDefs is a `static const std::vector` — initialized once at first
+// use (lazy static initialization, guaranteed thread-safe since C++11).
+//
+// Alternatives considered:
+//   1. static constexpr std::array<ComponentDef, 6> — avoids heap allocation
+//      but requires ComponentDef.fields to be a fixed-size array (e.g.
+//      std::array<FieldDef, 9>) which makes the struct harder to read and
+//      requires knowing each component's field count at compile time.
+//   2. Code-generated lookup table — eliminates any allocation but adds a
+//      build step.  Overkill for 6 components in a teaching project.
+//
+// For a shipping editor with hundreds of component types, a constexpr array
+// (or code-generated table) would be the right call.  At 6 components this
+// one-time heap allocation is unmeasurable.
 // ---------------------------------------------------------------------------
 static const std::vector<ComponentDef> kComponentDefs =
 {

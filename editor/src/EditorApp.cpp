@@ -280,6 +280,28 @@ void EditorApp::RenderMenuBar()
 }
 
 // ---------------------------------------------------------------------------
+// Shared helper — wide-char to UTF-8
+// ---------------------------------------------------------------------------
+
+// TEACHING NOTE -- WideCharToMultiByte for UTF-8 conversion
+// Windows internally uses UTF-16 (wide char) for all API strings.
+// Our public API uses std::string (UTF-8), which is the cross-platform norm.
+// WideCharToMultiByte(CP_UTF8, ...) converts UTF-16 → UTF-8.
+// The two-pass pattern (first call returns required buffer size, second fills it)
+// is required because UTF-8 and UTF-16 have variable-length encodings.
+static std::string WideToUtf8(const std::wstring& ws)
+{
+    if (ws.empty()) return {};
+    const int len = WideCharToMultiByte(
+        CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return {};
+    std::string s(static_cast<size_t>(len - 1), '\0');
+    WideCharToMultiByte(
+        CP_UTF8, 0, ws.c_str(), -1, s.data(), len, nullptr, nullptr);
+    return s;
+}
+
+// ---------------------------------------------------------------------------
 // Play in Engine
 // ---------------------------------------------------------------------------
 
@@ -303,21 +325,7 @@ void EditorApp::LaunchPlayInEngine()
     std::wstring tempScene(tempDir);
     tempScene += L"editor_preview.scene.json";
 
-    // Convert to narrow string for SaveScene()
-    std::string tempSceneNarrow;
-    {
-        int len = WideCharToMultiByte(CP_UTF8, 0,
-                                      tempScene.c_str(), -1,
-                                      nullptr, 0, nullptr, nullptr);
-        if (len > 0)
-        {
-            tempSceneNarrow.resize(static_cast<size_t>(len - 1));
-            WideCharToMultiByte(CP_UTF8, 0,
-                                tempScene.c_str(), -1,
-                                tempSceneNarrow.data(), len,
-                                nullptr, nullptr);
-        }
-    }
+    const std::string tempSceneNarrow = WideToUtf8(tempScene);
 
     if (!m_sceneEditor.SaveScene(tempSceneNarrow))
     {

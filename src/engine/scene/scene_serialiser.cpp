@@ -294,8 +294,9 @@ bool SceneSerialiser::SaveScene(const World& world,
                                 const std::string& sceneName)
 {
 #ifndef ENGINE_ENABLE_JSON
-    LOG_ERROR("SceneSerialiser::SaveScene — ENGINE_ENABLE_JSON not defined; "
-              "nlohmann/json not available.");
+    LOG_ERROR("SceneSerialiser::SaveScene — JSON support not compiled in. "
+              "Rebuild with the vcpkg nlohmann-json package and CMAKE_TOOLCHAIN_FILE "
+              "pointing to your vcpkg installation.");
     (void)world; (void)filePath; (void)sceneName;
     return false;
 #else
@@ -349,7 +350,9 @@ bool SceneSerialiser::LoadScene(World& world,
                                 const std::string& filePath)
 {
 #ifndef ENGINE_ENABLE_JSON
-    LOG_ERROR("SceneSerialiser::LoadScene — ENGINE_ENABLE_JSON not defined.");
+    LOG_ERROR("SceneSerialiser::LoadScene — JSON support not compiled in. "
+              "Rebuild with the vcpkg nlohmann-json package and CMAKE_TOOLCHAIN_FILE "
+              "pointing to your vcpkg installation.");
     (void)world; (void)filePath;
     return false;
 #else

@@ -137,7 +137,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 // ---------------------------------------------------------------------------
 
 // Helper: attach or create a console for headless output.
-static void AttachConsole_()
+static void AttachOrAllocConsole()
 {
     // Try to attach to the parent process's console (e.g. a cmd.exe or
     // PowerShell window that launched us).  If that fails, create a new one.
@@ -150,12 +150,19 @@ static void AttachConsole_()
 }
 
 // Helper: convert a wide string to a UTF-8 std::string.
+// TEACHING NOTE -- WideToUtf8 is defined in both main.cpp and EditorApp.cpp
+// because the two translation units are compiled independently.  The function
+// is `static` in both files, so there is no ODR (One Definition Rule) conflict.
+// For a larger codebase you would extract this into a shared header:
+//   shared/runtime/StringHelpers.hpp
+// and include it in both files.
 static std::string WideToUtf8(const std::wstring& ws)
 {
     if (ws.empty()) return {};
-    int len = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    std::string s;
-    if (len > 0) { s.resize(static_cast<size_t>(len - 1)); WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, s.data(), len, nullptr, nullptr); }
+    const int len = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return {};
+    std::string s(static_cast<size_t>(len - 1), '\0');
+    WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, s.data(), len, nullptr, nullptr);
     return s;
 }
 
@@ -200,7 +207,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/,
     //   1 = failure ([FAIL])
     if (headless || !createPath.empty() || (!loadPath.empty() && validateLoad))
     {
-        AttachConsole_();
+        AttachOrAllocConsole();
 
         // -- --headless: self-test, no I/O needed --
         if (headless && createPath.empty() && loadPath.empty())
