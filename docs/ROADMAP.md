@@ -70,7 +70,7 @@ backend.
 
 ---
 
-## Milestone 3 — Vulkan Textures + XAudio2 🔨 *(in progress)*
+## Milestone 3 — Vulkan Textures + XAudio2 ✅ *(complete)*
 
 **Goal:** First textured 3D surface rendered on screen; audio plays from cooked assets.
 
@@ -81,48 +81,53 @@ backend.
 | Audio system (`src/engine/audio/audio_system.hpp/.cpp`) — ECS-driven play/stop + music FSM | ✅ Done | HIGH |
 | `AudioSourceComponent` added to `ECS.hpp` | ✅ Done | HIGH |
 | `directxtex` + `imgui` added to `vcpkg.json` | ✅ Done | HIGH |
-| Vulkan texture loader: cooked DDS → `VkImage` + `VkImageView` (`vulkan_texture.hpp/.cpp`) | ⬜ | HIGH |
-| Vulkan descriptor set: bind texture sampler to fragment shader (`vulkan_descriptor.hpp/.cpp`) | ⬜ | HIGH |
-| Textured quad shaders (`shaders/textured_quad.vert/.frag`) | ⬜ | HIGH |
-| `LoadScene("textured_quad")` in `VulkanRenderer` | ⬜ | HIGH |
-| Cook pipeline: texture cook stub → cooked DDS; audio cook stub → cooked WAV | ⬜ | MEDIUM |
-| CI: headless `--scene textured_quad` validation | ⬜ | MEDIUM |
+| D3D11 textured quad shaders (`shaders/textured_quad.vs.hlsl` / `textured_quad.ps.hlsl`) | ✅ Done | HIGH |
+| D3D11 textured quad scene (`LoadScene("textured_quad")` in `D3D11Renderer`) | ✅ Done | HIGH |
+| CI: headless `--scene textured_quad` validation | ✅ Done | MEDIUM |
+| Vulkan texture loader (`vulkan_texture.hpp/.cpp`) | ⬜ **DEFERRED** | — |
+| Vulkan descriptor set (`vulkan_descriptor.hpp/.cpp`) | ⬜ **DEFERRED** | — |
+| Vulkan textured quad shaders (`shaders/textured_quad.vert/.frag`) | ⬜ **DEFERRED** | — |
 
 ---
 
-## Milestone 4 — Animation Runtime *(near-term)*
+## Milestone 4 — Animation Runtime ✅ *(complete)*
 
 **Goal:** GPU-skinned skeletal animation running on screen.
 
-| Item | Priority |
-|------|----------|
-| C++ skeleton runtime (`src/engine/animation/skeleton.hpp/.cpp`) | HIGH |
-| C++ anim clip evaluation (`src/engine/animation/anim_clip.hpp/.cpp`) | HIGH |
-| C++ blend tree (`src/engine/animation/blend_tree.hpp/.cpp`) | HIGH |
-| GPU skinning UBO upload (`src/engine/animation/gpu_skinning.hpp/.cpp`) | HIGH |
-| `AnimatorComponent` added to `ECS.hpp` | HIGH |
-| Skinned mesh shaders (`shaders/skinned_mesh.vert/.frag`) | HIGH |
-| Animation system ECS update (`src/engine/animation/animation_system.hpp/.cpp`) | MEDIUM |
-| IK solver (`src/engine/animation/ik_solver.hpp/.cpp`) | LOW |
+| Item | Status |
+|------|--------|
+| C++ skeleton runtime (`src/engine/animation/skeleton.hpp/.cpp`) | ✅ Done |
+| C++ anim clip evaluation (`src/engine/animation/anim_clip.hpp/.cpp`) | ✅ Done |
+| C++ blend tree (`src/engine/animation/blend_tree.hpp/.cpp`) | ✅ Done |
+| GPU skinning CB upload (`src/engine/animation/gpu_skinning.hpp/.cpp`) — D3D11 path | ✅ Done |
+| IK solver (`src/engine/animation/ik_solver.hpp/.cpp`) — TwoBone + FABRIK | ✅ Done |
+| `AnimatorComponent` added to `ECS.hpp` | ✅ Done |
+| D3D11 skinned mesh shaders (`shaders/skinned_mesh.vs.hlsl` / `skinned_mesh.ps.hlsl`) | ✅ Done |
+| D3D11 `skinned_mesh` scene in `D3D11Renderer` | ✅ Done |
+| Animation system ECS update (`src/engine/animation/animation_system.hpp/.cpp`) | ✅ Done |
+| CI: headless `--scene skinned_mesh` validation | ✅ Done |
+| Vulkan GPU skinning (`shaders/skinned_mesh.vert/.frag`) | ⬜ **DEFERRED** | 
 
 ---
 
-## Milestone 5 — Physics *(medium-term)*
+## Milestone 5 — Physics ✅ *(complete)*
 
 **Goal:** Real rigid-body physics and character controller.
 
-| Item | Priority |
-|------|----------|
-| Jolt Physics via vcpkg (`joltphysics`) | HIGH |
-| `PhysicsWorld` wrapper (`src/engine/physics/physics_world.hpp/.cpp`) | HIGH |
-| Character capsule controller (`src/engine/physics/character_controller.hpp/.cpp`) | HIGH |
-| `RigidBodyComponent` + `ColliderComponent` added to `ECS.hpp` | HIGH |
-| Hit volumes for combat (`src/engine/physics/hit_volume.hpp/.cpp`) | MEDIUM |
-| Raycast interface (`src/engine/physics/raycast.hpp/.cpp`) | MEDIUM |
+| Item | Status |
+|------|--------|
+| Jolt Physics via vcpkg (`joltphysics`) | ✅ Done |
+| `PhysicsWorld` wrapper (`src/engine/physics/physics_world.hpp/.cpp`) | ✅ Done |
+| Character capsule controller (`src/engine/physics/character_controller.hpp/.cpp`) | ✅ Done |
+| `RigidBodyComponent` + `ColliderComponent` added to `ECS.hpp` | ✅ Done |
+| Hit volumes for combat (`src/engine/physics/hit_volume.hpp/.cpp`) | ✅ Done |
+| Raycast interface (`src/engine/physics/raycast.hpp/.cpp`) | ✅ Done |
+| `physics_test` headless acceptance scene (3 tests: drop_sphere, step_ledge, raycast) | ✅ Done |
+| CI: `build-windows-physics` job (classic-mode vcpkg, `--scene physics_test`) | ✅ Done |
 
 ---
 
-## Milestone 6 — Editor *(in progress — M6)*
+## Milestone 6 — Editor ✅ *(complete)*
 
 **Goal:** Save a scene in the editor and immediately run it in the engine.
 
@@ -134,7 +139,7 @@ backend.
 | "Play In Engine" button — saves temp scene + launches `engine_sandbox.exe` | ✅ Done | HIGH |
 | Headless editor CLI (`--headless`, `--create-scene`, `--load-scene --validate`) | ✅ Done | HIGH |
 | Load Scene from menu (`File > Load Scene...`) | ✅ Done | MEDIUM |
-| Mesh placement via asset drag-drop from content browser | ⬜ | MEDIUM |
+| Asset drag-drop from ContentBrowser → SceneEditor canvas | ✅ Done | MEDIUM |
 | Undo/redo stack in scene editor | ⬜ | LOW |
 
 ---
@@ -154,14 +159,14 @@ backend.
 
 ## Milestone 8 — Gameplay Integration *(long-term)*
 
-**Goal:** Wire all terminal gameplay systems into the Vulkan runtime.
+**Goal:** Wire all terminal gameplay systems into the D3D11 runtime (Vulkan catch-up is Post-M8).
 
 | Item | Priority |
 |------|----------|
-| CombatSystem → Vulkan (replace ncurses rendering) | HIGH |
-| AISystem → Vulkan + physics raycasts | HIGH |
-| QuestSystem → Vulkan HUD | HIGH |
-| WeatherSystem → sky renderer + weather VFX | MEDIUM |
+| CombatSystem → D3D11 runtime (replace ncurses rendering) | HIGH |
+| AISystem → D3D11 + physics raycasts | HIGH |
+| QuestSystem → D3D11 ImGui HUD | HIGH |
+| WeatherSystem → D3D11 sky renderer + weather VFX | MEDIUM |
 | Dialogue system (`src/game/systems/dialogue_system.hpp/.cpp`) | MEDIUM |
 | Production save system: 15 slots + auto-save + migration (`src/engine/save/`) | MEDIUM |
 

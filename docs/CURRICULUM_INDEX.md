@@ -6,16 +6,16 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1128 across 41 subsystems.
+**Total lessons:** 1138 across 41 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (51 lessons)
-- [ci/workflows](#ciworkflows) (34 lessons)
+- [ci/workflows](#ciworkflows) (37 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
-- [editor/src](#editorsrc) (87 lessons)
+- [editor/src](#editorsrc) (94 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
@@ -1084,7 +1084,7 @@ blocking D3D11 CI on Vulkan SDK availability.
 
 ### Least-Privilege Permissions
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L59) (line 59)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L61) (line 61)
 
 GitHub Actions tokens default to write access on the repository.
 Restricting to contents: read follows the principle of least privilege:
@@ -1095,7 +1095,7 @@ contents: read
 
 ### Ninja on Windows does not automatically pick MSVC.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L77) (line 77)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L79) (line 79)
 
 Without vcvars, CMake may detect a GNU toolchain (e.g. MinGW), which
 fails to link Windows SDK libraries such as xaudio2.lib.
@@ -1107,7 +1107,7 @@ arch: x64
 
 ### CMake Presets in CI
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L89) (line 89)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L91) (line 91)
 
 cmake --preset windows-debug-engine-only uses CMakePresets.json:
   • Generator: Visual Studio 17 2022 (MSVC x64)
@@ -1123,7 +1123,7 @@ run: cmake --preset windows-ninja-debug-engine-only
 
 ### D3D11 WARP in Headless CI
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L125) (line 125)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L127) (line 127)
 
 D3D11 WARP is Microsoft's CPU software rasteriser bundled with every
 Windows installation.  When --headless is passed, D3D11Renderer uses
@@ -1137,7 +1137,7 @@ shell: cmd
 
 ### Skinned mesh headless validation.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L146) (line 146)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L148) (line 148)
 
 Loads the "skinned_mesh" scene which compiles skinned_mesh.vs.hlsl and
 skinned_mesh.ps.hlsl, creates the GpuSkinningBuffer constant buffer,
@@ -1151,7 +1151,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L174) (line 174)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L176) (line 176)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1177,7 +1177,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L213) (line 213)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L215) (line 215)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1203,7 +1203,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L247) (line 247)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L249) (line 249)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1224,7 +1224,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L271) (line 271)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L273) (line 273)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1235,9 +1235,67 @@ works on any runner regardless of GPU driver availability.
 run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
 shell: cmd
 
+### M6 Editor CI Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L286) (line 286)
+
+============================================================================
+This job validates the Dear ImGui editor build (M6).  It:
+  1. Installs imgui[docking,dx11-binding,win32-binding] and nlohmann-json
+     via the system vcpkg at C:\vcpkg in classic mode (same approach used
+     by the physics job — avoids manifest-mode conflicts).
+  2. Configures the build with the windows-ninja-debug-editor preset, which
+     sets BUILD_EDITOR=ON so CMake includes editor/CMakeLists.txt.
+  3. Builds creation-suite-editor.exe.
+  4. Runs the headless CLI mode to verify the editor initialises cleanly
+     without a D3D11 device or GPU (pure CPU test — same pattern as
+     engine_sandbox --headless).
+
+Why separate from the main job?  The editor requires vcpkg imgui which
+takes ~2 minutes to compile.  Separating it keeps the main D3D11 build
+fast and avoids extending the critical path for engine PRs that don't
+touch editor code.
+
+Triggers: paths filter includes 'editor/**' so this job only runs when
+editor source files or editor CMakeLists.txt change.
+============================================================================
+build-windows-editor:
+name: Build Windows Editor — creation-suite-editor (M6)
+runs-on: windows-latest
+continue-on-error: false
+
+### Classic-mode vcpkg install (editor job)
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L328) (line 328)
+
+We install imgui and nlohmann-json from the system vcpkg at C:\vcpkg
+in classic mode (running from $env:TEMP so no vcpkg.json is in scope).
+This avoids the manifest-mode joltphysics conflict while still giving
+CMake exactly the packages the editor needs.
+-----------------------------------------------------------------------
+- name: Cache vcpkg packages (editor)
+uses: actions/cache@v4
+with:
+path: C:\vcpkg\installed
+key: vcpkg-editor-${{ runner.os }}-x64
+
+### Headless editor test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L364) (line 364)
+
+creation-suite-editor.exe --headless instantiates SceneEditorPanel and
+verifies it initialises cleanly (empty entity list, selectedIdx == -1).
+No D3D11 device, no GPU, no ImGui loop is created.  This validates that
+the editor's data model (panels, scene state) is correct regardless of
+the graphics backend — exactly the same pattern used by engine_sandbox.
+-----------------------------------------------------------------------
+- name: Verify creation-suite-editor.exe exists
+run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor.exe")) { throw "creation-suite-editor.exe not found" }
+shell: pwsh
+
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L284) (line 284)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L388) (line 388)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1255,7 +1313,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L309) (line 309)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L413) (line 413)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1266,7 +1324,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L320) (line 320)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L424) (line 424)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1281,7 +1339,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L342) (line 342)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L446) (line 446)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -1505,6 +1563,29 @@ ImGuiTreeNodeFlags_Leaf       |
 ImGuiTreeNodeFlags_NoTreePushOnOpen |
 ImGuiTreeNodeFlags_SpanAvailWidth;
 
+### ImGui Drag-Drop Source on a leaf file item
+
+**Source:** [`editor/src/ContentBrowserPanel.cpp`](editor/src/ContentBrowserPanel.cpp#L157) (line 157)
+
+After any rendered item we can call BeginDragDropSource() to make
+that item draggable.  ImGuiDragDropFlags_SourceAllowNullID lets us
+drag items that were rendered with ImGuiTreeNodeFlags_NoTreePushOnOpen
+(they produce a null ImGui ID by default, which would otherwise block
+drag-drop).  We set the payload type to "CONTENT_ASSET" and store the
+absolute file path as a null-terminated C string so the drop target
+can read it without any extra allocation.
+if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+{
+Payload: null-terminated UTF-8 file path (size includes the '\0')
+ImGui::SetDragDropPayload("CONTENT_ASSET",
+filePath.c_str(),
+filePath.size() + 1);
+Drag preview tooltip
+ImGui::TextUnformatted(fileName.c_str());
+ImGui::TextDisabled("Drop onto scene canvas to place entity");
+ImGui::EndDragDropSource();
+}
+
 ### std::filesystem vs QFileSystemModel
 
 **Source:** [`editor/src/ContentBrowserPanel.hpp`](editor/src/ContentBrowserPanel.hpp#L6) (line 6)
@@ -1542,6 +1623,35 @@ ImGui has no "tree widget" -- it builds trees from individual calls:
 
 TreeNodeEx() extends TreeNode() with ImGuiTreeNodeFlags for leaf styling,
 default-open, selected highlight, and more.
+
+=============================================================================
+
+### ImGui Drag-and-Drop Source
+
+**Source:** [`editor/src/ContentBrowserPanel.hpp`](editor/src/ContentBrowserPanel.hpp#L38) (line 38)
+
+=============================================================================
+ImGui supports drag-and-drop between any two widgets in the same ImGui
+context.  The API is split into source and target sides:
+
+SOURCE SIDE (this file — ContentBrowserPanel):
+  After rendering the item that should be draggable, call:
+    if (ImGui::BeginDragDropSource(...)) {
+        ImGui::SetDragDropPayload("TYPE", data, size);
+        ImGui::TextUnformatted("Preview text");
+        ImGui::EndDragDropSource();
+    }
+  "TYPE" is an arbitrary string identifying the payload type so that the
+  target can reject payloads it doesn't understand.  We use "CONTENT_ASSET"
+  and pass the absolute file path as the payload data.
+
+TARGET SIDE (SceneEditorPanel):
+  After rendering the canvas child window, call:
+    if (ImGui::BeginDragDropTarget()) {
+        if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("CONTENT_ASSET"))
+            // cast p->Data to const char* and use it
+        ImGui::EndDragDropTarget();
+    }
 
 =============================================================================
 
@@ -1932,9 +2042,19 @@ Everything drawn inside is clipped to this region.
 ImVec2 canvasSize = ImGui::GetContentRegionAvail();
 canvasSize.y -= 4;  // small margin at the bottom
 
-### ImDrawList
+### Record canvas origin for drag-drop target
 
 **Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L93) (line 93)
+
+We store the origin in member variables so the drag-drop target handler
+(which runs AFTER EndChild()) can convert a screen-space mouse position
+to canvas-local coordinates without needing a separate "origin" local.
+m_canvasOriginX = origin.x;
+m_canvasOriginY = origin.y;
+
+### ImDrawList
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L100) (line 100)
 
 ImGui::GetWindowDrawList() returns the draw list of the current window.
 Commands added to a draw list are rendered in order (painter's algorithm).
@@ -1944,7 +2064,7 @@ ImDrawList* dl = ImGui::GetWindowDrawList();
 
 ### IsWindowHovered + GetMousePos
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L157) (line 157)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L164) (line 164)
 
 IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) returns
 true when the canvas child window is hovered, even if another widget is
@@ -1958,7 +2078,7 @@ const float  my = mousePos.y - origin.y;
 
 ### IsKeyPressed vs IsKeyDown
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L196) (line 196)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L203) (line 203)
 
 IsKeyPressed() returns true ONCE on the frame the key goes down.
 IsKeyDown()    returns true every frame while the key is held.
@@ -1969,9 +2089,54 @@ m_entities.erase(m_entities.begin() + m_selectedIdx);
 m_selectedIdx = -1;
 }
 
+### ImGui Drag-Drop Target on a BeginChild region
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L216) (line 216)
+
+After ImGui::EndChild(), the child window becomes the "last item" in the
+parent window's layout.  Calling ImGui::BeginDragDropTarget() immediately
+after EndChild() attaches a drop target to the entire canvas region.
+
+When the user drops a CONTENT_ASSET payload onto the canvas:
+  1. We read the null-terminated file path from the payload data.
+  2. We compute the drop position in canvas-local coordinates by
+     subtracting the stored canvas origin from the current mouse position.
+  3. We derive an entity name from the asset file stem (e.g. "knight"
+     from "C:/Project/Content/knight.fbx").
+  4. We create a new SceneEntity at the drop position, with an optional
+     RenderComponent pre-populated with the spriteSheet / mesh path.
+
+This pattern is called "content-driven entity creation" — the asset
+hierarchy drives what component data gets pre-filled on the new entity,
+which is the same approach used in Unreal Engine's Content Browser.
+if (ImGui::BeginDragDropTarget())
+{
+if (const ImGuiPayload* payload =
+ImGui::AcceptDragDropPayload("CONTENT_ASSET"))
+{
+Payload is a null-terminated UTF-8 file path.
+const char* assetPath = static_cast<const char*>(payload->Data);
+
+### Auto-populating component data from asset type
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L259) (line 259)
+
+Depending on the file extension we pre-fill a relevant component
+so the designer doesn't have to add it manually.  This is the
+same "component inference from asset type" pattern used by
+Unity (dragging a Mesh creates a MeshRenderer component) and
+Unreal (dragging a StaticMesh creates a StaticMeshActor).
+const bool isMesh    = (ext == ".fbx" || ext == ".obj" ||
+ext == ".gltf" || ext == ".glb");
+const bool isTexture = (ext == ".png" || ext == ".jpg" ||
+ext == ".jpeg" || ext == ".dds" ||
+ext == ".tga"  || ext == ".bmp");
+const bool isAudio   = (ext == ".wav" || ext == ".ogg" ||
+ext == ".mp3"  || ext == ".bank");
+
 ### BeginPopupModal
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L221) (line 221)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L312) (line 312)
 
 BeginPopupModal renders a centered modal dialog.
 ImGui::InputText writes into m_nameBuffer (a C-style char array).
@@ -1985,7 +2150,7 @@ ImGui::SetNextItemWidth(240.f);
 
 ### Guid::New() for UUID generation
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L248) (line 248)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L339) (line 339)
 
 Guid::New() from shared/runtime/Guid.hpp generates an RFC 4122
 v4 UUID -- the same pattern used by the cook pipeline and asset
@@ -2002,7 +2167,7 @@ ImGui::CloseCurrentPopup();
 
 ### nlohmann-json for scene save
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L274) (line 274)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L365) (line 365)
 
 nlohmann/json.hpp provides a single-header JSON library (MIT licence).
 json j = { {"key", value}, ... } builds a JSON object with initialiser lists.
@@ -2018,7 +2183,7 @@ tsStream << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%SZ");
 
 ### Persisting component data
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L308) (line 308)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L399) (line 399)
 
 Only write the "components" key when there is something to write.
 This keeps scenes that only have positional data compact.
@@ -2027,7 +2192,7 @@ je["components"] = ent.components;
 
 ### nlohmann-json for scene load
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L327) (line 327)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L418) (line 418)
 
 json::parse(stream) reads from any std::istream.
 j.value("key", default) safely reads a key with a fallback if missing.
@@ -2040,7 +2205,7 @@ if (!ifs) return false;
 
 ### Loading component data
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L365) (line 365)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L456) (line 456)
 
 If the scene file has a "components" object, load it into
 ent.components as raw JSON.  The InspectorPanel will parse it.
@@ -2102,9 +2267,32 @@ regardless of whether they were saved by the Qt or the ImGui editor.
 
 =============================================================================
 
+### ImGui Drag-Drop Target (canvas region)
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L47) (line 47)
+
+=============================================================================
+The scene canvas acts as a drop target for asset files dragged from the
+ContentBrowserPanel.  When a "CONTENT_ASSET" payload is dropped onto the
+canvas, a new entity is created at the canvas-relative drop position.
+
+The key pattern:
+  1. Call ImGui::BeginChild("##canvas", ...) to create the canvas sub-region.
+  2. After ImGui::EndChild(), the canvas is the "last item" in the parent
+     window.  Calling ImGui::BeginDragDropTarget() immediately after
+     EndChild() attaches the drop target to that last item (the canvas).
+  3. Inside the target block, AcceptDragDropPayload("CONTENT_ASSET") returns
+     a non-null pointer when the user releases the drag over the canvas.
+  4. We read the file path from the payload, compute the drop position
+     relative to the canvas origin, and create a SceneEntity there.
+
+This is the recommended ImGui drag-drop pattern for large "receiver" regions.
+
+=============================================================================
+
 ### Plain data struct (no Qt types)
 
-**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L58) (line 58)
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L77) (line 77)
 
 The Qt version used QString for id and name.  Now we use std::string --
 C++ standard library types require no external framework.
@@ -2119,7 +2307,7 @@ reads and writes this field to provide per-component property editing.
 
 ### JSON component bag
 
-**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L78) (line 78)
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L97) (line 97)
 
 Using nlohmann::json as a "property bag" lets the editor handle arbitrary
 component types without recompiling.  New component types added to
@@ -2130,7 +2318,7 @@ nlohmann::json components = nlohmann::json::object();
 
 ### Accessor pattern for shared panel state
 
-**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L128) (line 128)
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L147) (line 147)
 
 SceneEditorPanel owns the canonical scene data (entity list + selection).
 SceneHierarchyPanel and InspectorPanel are given a pointer to this panel
@@ -2140,6 +2328,17 @@ An alternative design is a shared SceneDocument struct owned by EditorApp.
 The accessor approach is simpler for a teaching project where the number
 of panels is small and well-defined.
 -------------------------------------------------------------------------
+
+### Canvas origin for drag-drop target
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L201) (line 201)
+
+m_canvasOriginX/Y stores the screen-space top-left corner of the canvas
+child window, recorded in RenderCanvas() and read by the drag-drop target
+handler immediately after EndChild().  This lets us convert a screen-space
+mouse position (ImGui::GetMousePos()) into canvas-local coordinates.
+float m_canvasOriginX = 0.f;  ///< Screen-space canvas origin X (updated every frame)
+float m_canvasOriginY = 0.f;  ///< Screen-space canvas origin Y (updated every frame)
 
 ### Immediate-Mode GUI (ImGui) vs Retained-Mode GUI
 

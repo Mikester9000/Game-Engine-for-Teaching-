@@ -190,6 +190,20 @@
       }
     },
     {
+      "name": "windows-ninja-debug-editor",
+      "displayName": "Windows Debug — Editor + Engine (Ninja, portable)",
+      "description": "Portable Windows preset using Ninja. Builds engine_sandbox + cook + creation-suite-editor with D3D11 and Dear ImGui. Requires imgui + nlohmann-json installed via vcpkg.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "ON"
+      }
+    },
+    {
       "name": "windows-ninja-debug-physics",
       "displayName": "Windows Debug — D3D11 + Jolt Physics (Ninja, portable)",
       "description": "Portable Windows preset using Ninja. Builds engine_sandbox with D3D11 and Jolt Physics enabled. Requires joltphysics installed via vcpkg (vcpkg install joltphysics).",
@@ -204,7 +218,6 @@
         "ENGINE_ENABLE_PHYSICS": "ON"
       }
     }
-  ],
   "buildPresets": [
     {
       "name": "windows-debug",
@@ -309,8 +322,17 @@
       ]
     },
     {
+      "name": "windows-ninja-debug-editor",
+      "displayName": "Build Windows Debug Editor (Ninja, portable)",
+      "configurePreset": "windows-ninja-debug-editor",
+      "targets": [
+        "engine_sandbox",
+        "cook",
+        "creation-suite-editor"
+      ]
+    },
+    {
       "name": "windows-ninja-debug-physics",
-      "displayName": "Build Windows Debug Physics (Ninja, portable)",
       "configurePreset": "windows-ninja-debug-physics",
       "targets": [
         "engine_sandbox",

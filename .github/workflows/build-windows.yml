@@ -33,6 +33,7 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'editor/**'
       - 'CMakeLists.txt'
       - 'CMakePresets.json'
       - 'shaders/**'
@@ -41,6 +42,7 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      - 'editor/**'
       - 'CMakeLists.txt'
       - 'CMakePresets.json'
       - 'shaders/**'
@@ -276,6 +278,108 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run physics acceptance tests (M5)
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
+        shell: cmd
+
+  # --------------------------------------------------------------------------
+  # M6 Editor job: Build creation-suite-editor with Dear ImGui via vcpkg
+  # --------------------------------------------------------------------------
+  # TEACHING NOTE — M6 Editor CI Job
+  # ============================================================================
+  # This job validates the Dear ImGui editor build (M6).  It:
+  #   1. Installs imgui[docking,dx11-binding,win32-binding] and nlohmann-json
+  #      via the system vcpkg at C:\vcpkg in classic mode (same approach used
+  #      by the physics job — avoids manifest-mode conflicts).
+  #   2. Configures the build with the windows-ninja-debug-editor preset, which
+  #      sets BUILD_EDITOR=ON so CMake includes editor/CMakeLists.txt.
+  #   3. Builds creation-suite-editor.exe.
+  #   4. Runs the headless CLI mode to verify the editor initialises cleanly
+  #      without a D3D11 device or GPU (pure CPU test — same pattern as
+  #      engine_sandbox --headless).
+  #
+  # Why separate from the main job?  The editor requires vcpkg imgui which
+  # takes ~2 minutes to compile.  Separating it keeps the main D3D11 build
+  # fast and avoids extending the critical path for engine PRs that don't
+  # touch editor code.
+  #
+  # Triggers: paths filter includes 'editor/**' so this job only runs when
+  # editor source files or editor CMakeLists.txt change.
+  # ============================================================================
+  build-windows-editor:
+    name: Build Windows Editor — creation-suite-editor (M6)
+    runs-on: windows-latest
+    continue-on-error: false
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Enter MSVC developer environment (same as all other Windows jobs).
+      # -----------------------------------------------------------------------
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Classic-mode vcpkg install (editor job)
+      # We install imgui and nlohmann-json from the system vcpkg at C:\vcpkg
+      # in classic mode (running from $env:TEMP so no vcpkg.json is in scope).
+      # This avoids the manifest-mode joltphysics conflict while still giving
+      # CMake exactly the packages the editor needs.
+      # -----------------------------------------------------------------------
+      - name: Cache vcpkg packages (editor)
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-editor-${{ runner.os }}-x64
+
+      - name: Install imgui + nlohmann-json via vcpkg (classic mode)
+        run: |
+          Set-Location "$env:TEMP"
+          C:\vcpkg\vcpkg.exe install "imgui[docking,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
+        shell: pwsh
+
+      # -----------------------------------------------------------------------
+      # Configure CMake with the editor preset.
+      # VCPKG_MANIFEST_INSTALL=OFF prevents the toolchain from re-running
+      # manifest-mode install (same reason as the physics job).
+      # -----------------------------------------------------------------------
+      - name: Configure CMake (D3D11 + Editor)
+        run: >
+          cmake --preset windows-ninja-debug-editor
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_INSTALL=OFF
+        shell: pwsh
+
+      - name: Build creation-suite-editor
+        run: cmake --build --preset windows-ninja-debug-editor --target creation-suite-editor
+
+      # -----------------------------------------------------------------------
+      # M6 — Headless editor validation
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Headless editor test
+      # creation-suite-editor.exe --headless instantiates SceneEditorPanel and
+      # verifies it initialises cleanly (empty entity list, selectedIdx == -1).
+      # No D3D11 device, no GPU, no ImGui loop is created.  This validates that
+      # the editor's data model (panels, scene state) is correct regardless of
+      # the graphics backend — exactly the same pattern used by engine_sandbox.
+      # -----------------------------------------------------------------------
+      - name: Verify creation-suite-editor.exe exists
+        run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor.exe")) { throw "creation-suite-editor.exe not found" }
+        shell: pwsh
+
+      - name: Run headless editor validation (M6)
+        run: .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless
+        shell: cmd
+
+      - name: Run headless scene round-trip (M6)
+        run: |
+          .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless --create-scene "%TEMP%\ci_basic.scene.json"
+          .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless --load-scene "%TEMP%\ci_basic.scene.json" --validate
         shell: cmd
 
   # --------------------------------------------------------------------------

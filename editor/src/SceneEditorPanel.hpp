@@ -44,6 +44,25 @@
  * regardless of whether they were saved by the Qt or the ImGui editor.
  *
  * =============================================================================
+ * TEACHING NOTE -- ImGui Drag-Drop Target (canvas region)
+ * =============================================================================
+ * The scene canvas acts as a drop target for asset files dragged from the
+ * ContentBrowserPanel.  When a "CONTENT_ASSET" payload is dropped onto the
+ * canvas, a new entity is created at the canvas-relative drop position.
+ *
+ * The key pattern:
+ *   1. Call ImGui::BeginChild("##canvas", ...) to create the canvas sub-region.
+ *   2. After ImGui::EndChild(), the canvas is the "last item" in the parent
+ *      window.  Calling ImGui::BeginDragDropTarget() immediately after
+ *      EndChild() attaches the drop target to that last item (the canvas).
+ *   3. Inside the target block, AcceptDragDropPayload("CONTENT_ASSET") returns
+ *      a non-null pointer when the user releases the drag over the canvas.
+ *   4. We read the file path from the payload, compute the drop position
+ *      relative to the canvas origin, and create a SceneEntity there.
+ *
+ * This is the recommended ImGui drag-drop pattern for large "receiver" regions.
+ *
+ * =============================================================================
  */
 
 #pragma once
@@ -178,6 +197,14 @@ private:
     // ---- Canvas state -------------------------------------------------------
     static constexpr float kGridSize   = 32.f;   ///< Grid cell size in pixels
     static constexpr float kEntitySize = 16.f;   ///< Half-size of entity box
+
+    // TEACHING NOTE — Canvas origin for drag-drop target
+    // m_canvasOriginX/Y stores the screen-space top-left corner of the canvas
+    // child window, recorded in RenderCanvas() and read by the drag-drop target
+    // handler immediately after EndChild().  This lets us convert a screen-space
+    // mouse position (ImGui::GetMousePos()) into canvas-local coordinates.
+    float m_canvasOriginX = 0.f;  ///< Screen-space canvas origin X (updated every frame)
+    float m_canvasOriginY = 0.f;  ///< Screen-space canvas origin Y (updated every frame)
 
     // ---- New-entity popup state --------------------------------------------
     bool  m_openEntityPopup     = false;  ///< Open the popup next frame

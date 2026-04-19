@@ -151,13 +151,18 @@ Win32 + D3D11 host window
 └─ EditorApp::Run() — ImGui DockSpace, menu bar, status bar
     ├─ ContentBrowserPanel
     │   Uses std::filesystem to browse Content/ tree.
-    │   Signals: double-click opens asset.
+    │   Signals: double-click opens asset; **drag file → CONTENT_ASSET payload**.
     ├─ SceneEditorPanel (ImGui DrawList canvas)
     │   Draws: grid, entity boxes.
     │   Handles: left-click = place entity, Delete = remove.
+    │   **Drop target: CONTENT_ASSET → create entity with pre-filled component.**
     │   saveScene() → JSON via nlohmann/json.
     │   loadScene() ← JSON via nlohmann/json.
-    └─ (planned) InspectorPanel + HierarchyPanel
+    ├─ SceneHierarchyPanel  (M6 ✅)
+    │   Entity list with add/rename/duplicate/delete + context menu.
+    └─ InspectorPanel       (M6 ✅)
+        Table-driven component property editor (DragFloat/DragInt/Checkbox/InputText).
+        Add Component popup lists all known component types.
 ```
 
 **How to add a new editor panel:**
@@ -205,7 +210,7 @@ Cook step:
   animation_engine.io.Exporter.export_clip(clip, "Cooked/Anim/Walk.animc")
   animation_engine.io.Exporter.export_skeleton(skel, "Cooked/Anim/Human.skelc")
 
-Engine loads:  Cooked/Anim/*.skelc + *.animc → AnimationSystem (C++, ⬜ M4)
+Engine loads:  Cooked/Anim/*.skelc + *.animc → AnimationSystem (C++, ✅ M4 complete)
 ```
 
 **Schemas:** `shared/schemas/skeleton.schema.json`, `anim_clip.schema.json`,
@@ -272,8 +277,10 @@ Study files in this order:
 9. `src/game/systems/AISystem.*` — FSM + A*
 10. `src/engine/scripting/LuaEngine.*` — scripting integration
 11. `editor/src/EditorApp.*` — Dear ImGui DockSpace, Win32+D3D11 host
-12. `editor/src/ContentBrowserPanel.*` — std::filesystem tree browser
-13. `editor/src/SceneEditorPanel.*` — ImGui DrawList canvas, JSON I/O
-14. `tools/audio_authoring/audio_engine/engine.py` — Python façade pattern
-15. `tools/anim_authoring/animation_engine/` — animation data model
-16. `samples/vertical_slice_project/cook_assets.py` — scripted pipeline
+12. `editor/src/ContentBrowserPanel.*` — std::filesystem tree browser + drag-drop source
+13. `editor/src/SceneEditorPanel.*` — ImGui DrawList canvas, JSON I/O, drag-drop target
+14. `editor/src/panels/SceneHierarchyPanel.*` — M6: entity list, context menus, rename
+15. `editor/src/panels/InspectorPanel.*` — M6: table-driven property editor, Add Component
+16. `tools/audio_authoring/audio_engine/engine.py` — Python façade pattern
+17. `tools/anim_authoring/animation_engine/` — animation data model
+18. `samples/vertical_slice_project/cook_assets.py` — scripted pipeline

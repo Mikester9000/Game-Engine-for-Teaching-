@@ -90,6 +90,13 @@ void SceneEditorPanel::RenderCanvas()
     const float  canvasW   = canvasSize.x;
     const float  canvasH   = canvasSize.y;
 
+    // TEACHING NOTE — Record canvas origin for drag-drop target
+    // We store the origin in member variables so the drag-drop target handler
+    // (which runs AFTER EndChild()) can convert a screen-space mouse position
+    // to canvas-local coordinates without needing a separate "origin" local.
+    m_canvasOriginX = origin.x;
+    m_canvasOriginY = origin.y;
+
     // TEACHING NOTE -- ImDrawList
     // ImGui::GetWindowDrawList() returns the draw list of the current window.
     // Commands added to a draw list are rendered in order (painter's algorithm).
@@ -204,6 +211,90 @@ void SceneEditorPanel::RenderCanvas()
     }
 
     ImGui::EndChild();  // "##canvas"
+
+    // ---- Drag-drop target: accept CONTENT_ASSET payload --------------------
+    // TEACHING NOTE — ImGui Drag-Drop Target on a BeginChild region
+    // After ImGui::EndChild(), the child window becomes the "last item" in the
+    // parent window's layout.  Calling ImGui::BeginDragDropTarget() immediately
+    // after EndChild() attaches a drop target to the entire canvas region.
+    //
+    // When the user drops a CONTENT_ASSET payload onto the canvas:
+    //   1. We read the null-terminated file path from the payload data.
+    //   2. We compute the drop position in canvas-local coordinates by
+    //      subtracting the stored canvas origin from the current mouse position.
+    //   3. We derive an entity name from the asset file stem (e.g. "knight"
+    //      from "C:/Project/Content/knight.fbx").
+    //   4. We create a new SceneEntity at the drop position, with an optional
+    //      RenderComponent pre-populated with the spriteSheet / mesh path.
+    //
+    // This pattern is called "content-driven entity creation" — the asset
+    // hierarchy drives what component data gets pre-filled on the new entity,
+    // which is the same approach used in Unreal Engine's Content Browser.
+    if (ImGui::BeginDragDropTarget())
+    {
+        if (const ImGuiPayload* payload =
+                ImGui::AcceptDragDropPayload("CONTENT_ASSET"))
+        {
+            // Payload is a null-terminated UTF-8 file path.
+            const char* assetPath = static_cast<const char*>(payload->Data);
+
+            // Convert screen-space mouse position to canvas-local position.
+            const ImVec2 mouse = ImGui::GetMousePos();
+            const float  dropX = mouse.x - m_canvasOriginX;
+            const float  dropY = mouse.y - m_canvasOriginY;
+
+            // Derive entity name from the file stem
+            fs::path p(assetPath);
+            const std::string entityName = p.stem().string();
+            const std::string ext        = p.extension().string();
+
+            // Create the entity
+            SceneEntity ent;
+            ent.id   = Guid::New().ToString();
+            ent.name = entityName.empty() ? "Asset" : entityName;
+            ent.x    = dropX;
+            ent.y    = dropY;
+            ent.z    = 0.f;
+
+            // TEACHING NOTE — Auto-populating component data from asset type
+            // Depending on the file extension we pre-fill a relevant component
+            // so the designer doesn't have to add it manually.  This is the
+            // same "component inference from asset type" pattern used by
+            // Unity (dragging a Mesh creates a MeshRenderer component) and
+            // Unreal (dragging a StaticMesh creates a StaticMeshActor).
+            const bool isMesh    = (ext == ".fbx" || ext == ".obj" ||
+                                    ext == ".gltf" || ext == ".glb");
+            const bool isTexture = (ext == ".png" || ext == ".jpg" ||
+                                    ext == ".jpeg" || ext == ".dds" ||
+                                    ext == ".tga"  || ext == ".bmp");
+            const bool isAudio   = (ext == ".wav" || ext == ".ogg" ||
+                                    ext == ".mp3"  || ext == ".bank");
+
+            if (isMesh || isTexture)
+            {
+                // Pre-populate RenderComponent with the asset path
+                ent.components["RenderComponent"] = {
+                    { "spriteSheet", std::string(assetPath) },
+                    { "zOrder",      0 },
+                    { "isVisible",   true }
+                };
+            }
+            else if (isAudio)
+            {
+                // Pre-populate AudioSourceComponent
+                ent.components["AudioSourceComponent"] = {
+                    { "bankPath",    std::string(assetPath) },
+                    { "autoPlay",    false },
+                    { "loop",        false },
+                    { "volume",      1.0f }
+                };
+            }
+
+            m_entities.push_back(ent);
+            m_selectedIdx = static_cast<int>(m_entities.size()) - 1;
+        }
+        ImGui::EndDragDropTarget();
+    }
 }
 
 // ---------------------------------------------------------------------------
