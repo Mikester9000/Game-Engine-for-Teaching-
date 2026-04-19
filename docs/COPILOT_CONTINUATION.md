@@ -168,7 +168,7 @@ Every milestone produces an **executable or headless-validation pass** before
 the next milestone starts.  This is non-negotiable.  See
 `docs/PROJECT_MILESTONES.md` for the detailed definition of each milestone.
 
-> **Current position:** M0 ✅ and M1 ✅ are complete.  **M2 is the active milestone.**
+> **Current position:** M0 ✅, M1 ✅, M1.5 ✅, M2 ✅ are complete.  **M3 is the active milestone** (D3D11 texture + XAudio2 audio done; Vulkan texture + textured quad still needed).
 
 | Milestone | Name | Status | "Done" means |
 |---|---|---|---|
@@ -176,7 +176,7 @@ the next milestone starts.  This is non-negotiable.  See
 | M0v | **Vulkan sandbox (optional)** | ✅ Complete | `engine_sandbox.exe --renderer vulkan` opens a window; Vulkan clears screen |
 | M1 | **Triangle (Vulkan)** | ✅ Complete | `VulkanPipeline` + `VulkanMesh`; `shaders/triangle.vert/.frag` compiled to SPIR-V; coloured triangle draws; `--renderer vulkan --headless --scene triangle` exits 0 |
 | M2 | **AssetDB + Cooker** | ✅ Complete | `src/tools/cook/cook_main.cpp` (`cook.exe`); `src/engine/assets/asset_db.hpp/.cpp`; `engine_sandbox --headless --validate-project` exits 0; `contract-tests.yml` CI; `build-windows.yml` CI |
-| M3 | **Hello Texture + Audio** | ⬜ | D3D11/Vulkan texture (DDS/BC7); descriptor sets; `src/engine/audio/xaudio2_backend.hpp/.cpp`; textured quad renders; cooked WAV plays |
+| M3 | **Hello Texture + Audio** | 🔨 In Progress | D3D11 texture ✅; XAudio2 backend ✅; AudioSystem ✅; AudioSourceComponent ✅; Vulkan texture ⬜; descriptor sets ⬜; textured quad shaders ⬜ |
 | M4 | **Animation runtime** | ⬜ | `src/engine/animation/skeleton.hpp/.cpp` + `anim_clip` + `blend_tree` + `gpu_skinning`; animated character on screen |
 | M5 | **Physics integration** | ⬜ | Jolt Physics via vcpkg; `src/engine/physics/`; character capsule falls; raycast returns hit; headless physics tests pass |
 | M6 | **Editor improvements** | ⬜ | Entity inspector panel; scene ECS serialisation; Play-in-Engine button |
@@ -301,28 +301,32 @@ engine_sandbox.exe --renderer vulkan REM Vulkan (requires Vulkan ICD)
 
 ### 6.3 vcpkg dependency manifest
 
-When the first third-party C++ dependency is added (M2 = `nlohmann-json`), create
-`vcpkg.json` in the repository root.  **Do not add dependencies to CMakeLists.txt
-without also adding them here.**
+`vcpkg.json` exists at the repository root.  **Do not add C++ dependencies to
+CMakeLists.txt without also adding them here.**
+
+Current state (M3 in progress):
 
 ```json
 {
   "name": "educational-game-engine",
   "version-string": "1.0.0",
   "dependencies": [
-    "nlohmann-json"
+    "nlohmann-json",
+    "directxtex",
+    { "name": "imgui", "features": ["docking", "dx11-binding", "win32-binding"] }
   ]
 }
 ```
 
-Per-milestone dependencies to add as work progresses:
+Per-milestone dependency log:
 
-| Milestone | vcpkg package | Used by |
-|-----------|-------------|---------|
-| M2 | `nlohmann-json` | `cook.exe` — parse/write JSON manifests |
-| M3 | `directxtex` | D3D11/Vulkan texture — DDS/BC7 compress/decompress |
-| M4 | `tinygltf` | Animation — load glTF skeleton + clips |
-| M5 | `joltphysics` | Physics — Jolt `PhysicsSystem` wrapper |
+| Milestone | vcpkg package | Status | Used by |
+|-----------|-------------|--------|---------|
+| M2 | `nlohmann-json` | ✅ | `cook.exe` — parse/write JSON manifests |
+| M3 | `directxtex` | ✅ | Vulkan texture — DDS/BC7 compress/decompress (D3D11 path uses self-contained parser) |
+| Editor | `imgui[docking,dx11-binding,win32-binding]` | ✅ | Dear ImGui editor (EditorApp + panels) |
+| M4 | `tinygltf` | ⬜ | Animation — load glTF skeleton + clips |
+| M5 | `joltphysics` | ⬜ | Physics — Jolt `PhysicsSystem` wrapper |
 
 Integrate with CMake by adding to `CMakePresets.json` `cacheVariables`:
 ```json

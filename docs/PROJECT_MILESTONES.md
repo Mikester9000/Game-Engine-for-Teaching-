@@ -47,7 +47,7 @@ cmake --build . --config Debug --target engine_sandbox
 
 ## Milestone M1 — Triangle
 
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 
 ### Goals
 - Introduce the graphics pipeline: vertex buffer, index buffer, vertex shader,
@@ -85,7 +85,7 @@ cmake --build . --config Debug --target engine_sandbox
 
 ## Milestone M2 — AssetDB + Cooker
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete
 
 ### Goals
 - Introduce the asset pipeline.  Source manifests → cooker → cooked assets →
@@ -128,7 +128,15 @@ ctest --test-dir build -L contract
 
 ## Milestone M3 — Hello Texture + Hello Audio
 
-**Status:** ⬜ Not started
+**Status:** 🔨 In Progress
+
+> **What's done:** D3D11 DDS texture loader (`d3d11_texture.hpp/.cpp`), XAudio2 backend
+> (`xaudio2_backend.hpp/.cpp`), ECS AudioSystem with music FSM (`audio_system.hpp/.cpp`),
+> `AudioSourceComponent` added to ECS, `directxtex` + `imgui` added to `vcpkg.json`.
+>
+> **Still to do:** Vulkan texture (`vulkan_texture.hpp/.cpp`), Vulkan descriptor sets
+> (`vulkan_descriptor.hpp/.cpp`), textured quad shaders (`shaders/textured_quad.vert/.frag`),
+> wire textured quad scene into `VulkanRenderer`, CI headless validation.
 
 ### Goals
 - Extend the cooker with texture and audio support.
@@ -382,9 +390,10 @@ ctest --test-dir build
 | Milestone | Name | Status |
 |---|---|---|
 | M0 | Vulkan sandbox | ✅ Complete |
-| M1 | Triangle | ⬜ |
-| M2 | AssetDB + Cooker | ⬜ |
-| M3 | Hello Texture + Audio | ⬜ |
+| M1 | Triangle | ✅ Complete |
+| M1.5 | D3D11 baseline renderer | ✅ Complete |
+| M2 | AssetDB + Cooker | ✅ Complete |
+| M3 | Hello Texture + Audio | 🔨 In Progress |
 | M4 | Animation runtime | ⬜ |
 | M5 | Physics integration | ⬜ |
 | M6 | Editor shell | ⬜ |

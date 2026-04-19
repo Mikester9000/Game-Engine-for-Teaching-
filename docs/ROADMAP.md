@@ -17,7 +17,7 @@
 | `.github/copilot-instructions.md` | ✅ Done |
 | Shared JSON schemas (7 formats) | ✅ Done |
 | Shared runtime headers (`Guid.hpp`, `VersionedFile.hpp`) | ✅ Done |
-| Qt 6 editor scaffold (project browser + content browser + scene editor) | ✅ Done |
+| Dear ImGui editor scaffold (project browser + content browser + scene editor) — *Qt6 was replaced by Dear ImGui (MIT license, zero extra install)* | ✅ Done |
 | Audio authoring tool vendored under `tools/audio_authoring/` | ✅ Done |
 | Animation authoring tool vendored under `tools/anim_authoring/` | ✅ Done |
 | Vertical slice sample project skeleton + cook script | ✅ Done |
@@ -70,21 +70,23 @@ backend.
 
 ---
 
-## Milestone 3 — Vulkan Textures + XAudio2 *(next — active)*
+## Milestone 3 — Vulkan Textures + XAudio2 🔨 *(in progress)*
 
 **Goal:** First textured 3D surface rendered on screen; audio plays from cooked assets.
 
-| Item | Priority |
-|------|----------|
-| Vulkan texture loader: cooked DDS → `VkImage` + `VkImageView` (DirectXTex via vcpkg) | HIGH |
-| Vulkan descriptor set: bind texture sampler to fragment shader | HIGH |
-| Textured quad shaders (`shaders/textured_quad.vert/.frag`) | HIGH |
-| `LoadScene("textured_quad")` in `VulkanRenderer` | HIGH |
-| XAudio2 backend (`src/engine/audio/xaudio2_backend.hpp/.cpp`) | HIGH |
-| Audio system (`src/engine/audio/audio_system.hpp/.cpp`) — ECS-driven play/stop | HIGH |
-| `AudioSourceComponent` added to `ECS.hpp` | HIGH |
-| Cook pipeline: texture cook stub → cooked DDS; audio cook stub → cooked WAV | MEDIUM |
-| CI: headless `--scene textured_quad` validation | MEDIUM |
+| Item | Status | Priority |
+|------|--------|----------|
+| D3D11 texture loader: DDS → `ID3D11ShaderResourceView` (`d3d11_texture.hpp/.cpp`) | ✅ Done | HIGH |
+| XAudio2 backend (`src/engine/audio/xaudio2_backend.hpp/.cpp`) | ✅ Done | HIGH |
+| Audio system (`src/engine/audio/audio_system.hpp/.cpp`) — ECS-driven play/stop + music FSM | ✅ Done | HIGH |
+| `AudioSourceComponent` added to `ECS.hpp` | ✅ Done | HIGH |
+| `directxtex` + `imgui` added to `vcpkg.json` | ✅ Done | HIGH |
+| Vulkan texture loader: cooked DDS → `VkImage` + `VkImageView` (`vulkan_texture.hpp/.cpp`) | ⬜ | HIGH |
+| Vulkan descriptor set: bind texture sampler to fragment shader (`vulkan_descriptor.hpp/.cpp`) | ⬜ | HIGH |
+| Textured quad shaders (`shaders/textured_quad.vert/.frag`) | ⬜ | HIGH |
+| `LoadScene("textured_quad")` in `VulkanRenderer` | ⬜ | HIGH |
+| Cook pipeline: texture cook stub → cooked DDS; audio cook stub → cooked WAV | ⬜ | MEDIUM |
+| CI: headless `--scene textured_quad` validation | ⬜ | MEDIUM |
 
 ---
 
@@ -195,7 +197,7 @@ backend.
 | **Vulkan as optional high-end backend** | Modern explicit API for students learning low-level GPU programming; kept in codebase alongside D3D11 |
 | **D3D_FEATURE_LEVEL_10_0 as hard minimum** | Covers GPUs from 2006+; GeForce GT 610 supports FL 11_0 |
 | Windows-first | D3D11 + D3D11 WARP + Visual Studio is the primary teaching target |
-| Qt 6 for editor | Mature, cross-platform, rich tooling APIs |
+| **Dear ImGui for editor** (replaced Qt6) | Dear ImGui is MIT-licensed, ships as source, has zero extra install, and is the industry standard for game engine tooling (used by Unity, Unreal, and virtually every AAA engine). Qt6 was originally chosen for its rich widget set but was replaced because it requires a separate SDK installation and its LGPL license adds complexity. |
 | Python for authoring tools | Fast iteration, rich ecosystem (NumPy, SciPy) |
 | JSON for all shared formats | Human-readable, no extra library on Windows |
 | Shared schemas in `shared/` | Single source of truth for all data formats |
