@@ -37,6 +37,7 @@
  */
 
 #include "engine/rendering/d3d11/D3D11Renderer.hpp"
+#include "engine/math/math_types.hpp"
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — pragma comment(lib, ...) vs CMake target_link_libraries
@@ -56,6 +57,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstring>    // std::memset
+#include <cmath>      // std::sin (used in DrawSkinnedMesh animation)
 #include <filesystem> // std::filesystem::path (C++17) — for wide-char path conversion
 
 namespace engine {
@@ -92,6 +94,93 @@ static const QuadVertex kQuadVerts[4] =
 //   Triangle 0: top-left (0), top-right (1), bottom-left (2)
 //   Triangle 1: top-right (1), bottom-right (3), bottom-left (2)
 static const uint16_t kQuadIndices[6] = { 0, 1, 2, 1, 3, 2 };
+
+// ===========================================================================
+// Skinned Mesh geometry constants (M4b GPU Skinning Demo)
+// ===========================================================================
+
+// TEACHING NOTE — SkinnedVertex Layout
+// The skinned mesh vertex format carries:
+//   pos       — bind-pose position in NDC space (z=0, w=1)
+//   normal    — surface normal for lighting
+//   uv        — texture coordinates (V encodes height for the gradient)
+//   boneIndex — up to 4 joint indices into the constant buffer array
+//   boneWeight — corresponding weights (must sum to 1.0 per vertex)
+//
+// We use uint32_t for bone indices and float for weights to keep the
+// CPU code readable.  In production you would use uint8_t (indices 0-255)
+// and UNORM8 weights to halve the vertex size.
+#pragma pack(push, 1)
+struct SkinnedVertex
+{
+    float    x, y, z;            ///< NDC position (z=0 for this flat demo)
+    float    nx, ny, nz;         ///< Surface normal
+    float    u, v;               ///< UV (V = height, 0 = bottom, 1 = top)
+    uint32_t boneIndex[4];       ///< Bone indices (only 2 joints used in demo)
+    float    boneWeight[4];      ///< Bone weights (sum = 1.0 per vertex)
+};
+#pragma pack(pop)
+
+// TEACHING NOTE — Skinned Strip Geometry
+// 5 rows × 2 vertices = 10 vertices forming a vertical strip in NDC.
+//   x = ±0.10 NDC (narrow strip for clarity)
+//   y = -0.8 to +0.8 NDC (tall, covers 80% of screen height)
+//
+// Skeleton (2 joints):
+//   Joint 0 (bone 0): root at NDC origin — identity skin matrix — vertices STATIC.
+//   Joint 1 (bone 1): child — Rotation(Z, θ) skin matrix — vertices ROTATE.
+//
+// Skinning weights interpolate from 100% bone 0 at the bottom to 100% bone 1
+// in the top half, with a smooth 2-row blend zone in the middle.  This
+// demonstrates the blend artefact that linear blend skinning produces at joints.
+//
+// Normals all point toward the camera (0, 0, -1) for consistent lighting.
+// The strip lies in the Z=0 plane.
+static const SkinnedVertex kSkinnedVerts[10] =
+{
+    // Row 0: y = -0.80  — fully weighted to bone 0 (static anchor)
+    { -0.10f, -0.80f, 0.0f,   0,0,-1,   0.0f, 0.00f,   {0,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+    {  0.10f, -0.80f, 0.0f,   0,0,-1,   1.0f, 0.00f,   {0,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+
+    // Row 1: y = -0.40  — blend zone: 75% bone 0, 25% bone 1
+    { -0.10f, -0.40f, 0.0f,   0,0,-1,   0.0f, 0.25f,   {0,1,0,0}, {0.75f,0.25f,0.0f,0.0f} },
+    {  0.10f, -0.40f, 0.0f,   0,0,-1,   1.0f, 0.25f,   {0,1,0,0}, {0.75f,0.25f,0.0f,0.0f} },
+
+    // Row 2: y =  0.00  — blend zone: 25% bone 0, 75% bone 1
+    { -0.10f,  0.00f, 0.0f,   0,0,-1,   0.0f, 0.50f,   {0,1,0,0}, {0.25f,0.75f,0.0f,0.0f} },
+    {  0.10f,  0.00f, 0.0f,   0,0,-1,   1.0f, 0.50f,   {0,1,0,0}, {0.25f,0.75f,0.0f,0.0f} },
+
+    // Row 3: y = +0.40  — fully weighted to bone 1 (animated)
+    { -0.10f,  0.40f, 0.0f,   0,0,-1,   0.0f, 0.75f,   {1,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+    {  0.10f,  0.40f, 0.0f,   0,0,-1,   1.0f, 0.75f,   {1,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+
+    // Row 4: y = +0.80  — fully weighted to bone 1 (tip of animated portion)
+    { -0.10f,  0.80f, 0.0f,   0,0,-1,   0.0f, 1.00f,   {1,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+    {  0.10f,  0.80f, 0.0f,   0,0,-1,   1.0f, 1.00f,   {1,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+};
+
+// TEACHING NOTE — Index Buffer (4 quads = 8 triangles = 24 indices)
+// Each quad is two CW triangles sharing their diagonal.
+// Vertex layout per quad:
+//   [2i  ] [2i+1]     ← top row    (left, right)
+//   [2i+2] [2i+3]     ← bottom row (left, right)
+//
+// CW winding when viewed from -z (camera looks toward +z):
+//   Triangle A: bottom-left, bottom-right, top-left   → (2i+2, 2i+3, 2i  )
+//   No wait — for a strip going UP, rows are:
+//   bottom row (lower y index), top row (higher y index).
+//
+//   Triangle A: (2i, 2i+1, 2i+2) — top-left, top-right, next-bottom-left
+//   Triangle B: (2i+1, 2i+3, 2i+2) — top-right, next-bottom-right, next-bottom-left
+//
+//   This produces CW winding when viewed from camera at z < 0.
+static const uint16_t kSkinnedIndices[24] =
+{
+    0, 1, 2,    1, 3, 2,   // Quad 0: rows 0-1
+    2, 3, 4,    3, 5, 4,   // Quad 1: rows 1-2
+    4, 5, 6,    5, 7, 6,   // Quad 2: rows 2-3
+    6, 7, 8,    7, 9, 8,   // Quad 3: rows 3-4
+};
 
 // ===========================================================================
 // Constructor / Destructor
@@ -447,10 +536,23 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     // -----------------------------------------------------------------------
     // If a scene has been loaded via LoadScene(), draw it on top of the clear
     // colour.  The RTV and viewport are already set from the frame setup above,
-    // so DrawTexturedQuad can issue draw calls directly.
+    // so the draw methods can issue draw calls directly.
+    //
+    // M3: textured_quad — a UV-mapped full-screen quad.
+    // M4b: skinned_mesh — a GPU-skinned animated strip (2-joint skeleton).
     // -----------------------------------------------------------------------
     if (m_quadScene.loaded && m_currentScene == "textured_quad")
         DrawTexturedQuad();
+
+    // TEACHING NOTE — Advancing the demo animation timer.
+    // m_sceneTime accumulates real elapsed time (seconds) and is used by
+    // DrawSkinnedMesh() to compute a sinusoidal joint rotation angle.
+    // We advance it unconditionally so LoadScene("skinned_mesh") can start
+    // animating immediately.
+    m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
+
+    if (m_skinnedScene.loaded && m_currentScene == "skinned_mesh")
+        DrawSkinnedMesh();
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Present interval
@@ -606,6 +708,23 @@ bool D3D11Renderer::RecordHeadlessFrame()
         DrawTexturedQuad();
     }
 
+    // TEACHING NOTE — Headless validation for the GPU skinning scene (M4b).
+    // We bind the off-screen RTV, set a matching 64×64 viewport, and call
+    // DrawSkinnedMesh() once.  This validates that the skinned mesh pipeline
+    // (VS, PS, input layout, joint constant buffer, geometry buffers)
+    // compiles and executes correctly under WARP without a physical GPU.
+    if (m_skinnedScene.loaded && m_currentScene == "skinned_mesh")
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = 64.0f;
+        vp.Height   = 64.0f;
+        vp.MaxDepth = 1.0f;
+        m_context->RSSetViewports(1, &vp);
+
+        m_context->OMSetRenderTargets(1, &offscreenRTV, nullptr);
+        DrawSkinnedMesh();
+    }
+
     // Step 4 — Flush to ensure the GPU (or WARP) processes the work.
     m_context->Flush();
 
@@ -629,8 +748,9 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
     }
 
     // Unknown scene names are accepted silently — they may be handled by
-    // higher-level systems.  Only "textured_quad" has a D3D11 implementation.
-    if (sceneName != "textured_quad")
+    // higher-level systems.  Only "textured_quad" and "skinned_mesh" have
+    // D3D11 implementations.
+    if (sceneName != "textured_quad" && sceneName != "skinned_mesh")
     {
         std::cout << "[D3D11Renderer] LoadScene('" << sceneName
                   << "') — no D3D11 scene handler; accepted as no-op.\n";
@@ -639,6 +759,23 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
 
     // Release any previously loaded scene.
     UnloadScene();
+    m_sceneTime = 0.0f;
+
+    // -----------------------------------------------------------------------
+    // Dispatch to the correct scene builder.
+    // -----------------------------------------------------------------------
+    if (sceneName == "skinned_mesh")
+    {
+        if (!LoadSkinnedMeshScene(m_device, shaderDir, m_skinnedScene))
+        {
+            std::cerr << "[D3D11Renderer] LoadScene('skinned_mesh') failed.\n";
+            return false;
+        }
+        m_currentScene = "skinned_mesh";
+        return true;
+    }
+
+    // Fall through to textured_quad scene builder below.
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Runtime HLSL Compilation with D3DCompileFromFile
@@ -994,6 +1131,235 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
 }
 
 // ===========================================================================
+// LoadScene_SkinnedMesh — build GPU skinning demo pipeline (M4b)
+// ===========================================================================
+// Called from LoadScene() when sceneName == "skinned_mesh".
+// Implements the skinned strip demo:
+//   • HLSL shaders: skinned_mesh.vs.hlsl (SM4.0 GPU skinning) + skinned_mesh.ps.hlsl
+//   • 10-vertex strip with per-vertex bone indices + weights
+//   • GpuSkinningBuffer (64 × Mat4 constant buffer)
+//   • Rasterizer state: cull-none for double-sided visibility
+// ===========================================================================
+
+// TEACHING NOTE — LoadScene_SkinnedMesh (private helper — inlined in LoadScene)
+// We use a local lambda at file scope to keep the main LoadScene() readable.
+// All resource creation follows the same pattern as the textured quad:
+//   compile HLSL → create shaders → create input layout → create buffers.
+
+static bool LoadSkinnedMeshScene(
+    ID3D11Device*         device,
+    const std::string&    shaderDir,
+    D3D11Renderer::SkinnedMeshScene& scene)
+{
+    namespace fs = std::filesystem;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Fallback HLSL for the skinned mesh vertex shader.
+    // -----------------------------------------------------------------------
+    // This is a minimal version of skinned_mesh.vs.hlsl that performs linear
+    // blend skinning for up to 4 bone influences.  It matches the full HLSL
+    // file that ships in the shaders/ directory; the inline copy guarantees
+    // LoadScene never fails even if the .hlsl files were not copied to the
+    // output directory (e.g. on a first clean build before POST_BUILD runs).
+    // -----------------------------------------------------------------------
+    static const char* kSkinnedVsFallback =
+        "cbuffer JointCB:register(b0){float4x4 g_joints[64];};\n"
+        "struct VSIn{float3 p:POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;"
+        "uint4 bi:BLENDINDICES;float4 bw:BLENDWEIGHT;};\n"
+        "struct PSIn{float4 p:SV_POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;};\n"
+        "PSIn main(VSIn i){\n"
+        "  float4 sp=float4(0,0,0,0);float3 sn=float3(0,0,0);\n"
+        "  [unroll]for(int b=0;b<4;++b){\n"
+        "    float w=i.bw[b];uint idx=i.bi[b];\n"
+        "    sp+=w*mul(float4(i.p,1),g_joints[idx]);\n"
+        "    sn+=w*mul(i.n,(float3x3)g_joints[idx]);}\n"
+        "  PSIn o;float wi=(abs(sp.w)>0.0001f)?(1.0f/sp.w):1.0f;\n"
+        "  o.p=float4(sp.xyz*wi,1);o.n=normalize(sn);o.uv=i.uv;return o;}\n";
+
+    static const char* kSkinnedPsFallback =
+        "struct PSIn{float4 p:SV_POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;};\n"
+        "float4 main(PSIn i):SV_TARGET{\n"
+        "  float3 L=normalize(float3(0.5,1,-1));\n"
+        "  float d=saturate(dot(normalize(i.n),L));\n"
+        "  float3 c=lerp(float3(1,0.42,0.08),float3(0.2,0.55,1),saturate(i.uv.y));\n"
+        "  return float4(c*(0.3+d*0.7),1);}\n";
+
+    // Paths to HLSL files.
+    const fs::path vsPath = fs::path(shaderDir) / "skinned_mesh.vs.hlsl";
+    const fs::path psPath = fs::path(shaderDir) / "skinned_mesh.ps.hlsl";
+
+    // -----------------------------------------------------------------------
+    // Compile helper (same pattern used by textured_quad).
+    // -----------------------------------------------------------------------
+    auto compile = [&](const fs::path& path, const char* fallback,
+                       const char* entry, const char* target) -> ID3DBlob*
+    {
+        ID3DBlob* code   = nullptr;
+        ID3DBlob* errors = nullptr;
+        HRESULT   hr     = E_FAIL;
+
+        if (fs::exists(path))
+        {
+            std::wstring wp = path.wstring();
+            hr = D3DCompileFromFile(wp.c_str(), nullptr, nullptr,
+                                    entry, target,
+                                    D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                                    &code, &errors);
+        }
+        if (FAILED(hr))
+        {
+            if (errors) {
+                std::cerr << "[D3D11Renderer] HLSL error ("
+                          << path.filename().string() << "):\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release(); errors = nullptr;
+            }
+            std::cout << "[D3D11Renderer] Using embedded fallback for "
+                      << path.filename().string() << ".\n";
+            hr = D3DCompile(fallback, std::strlen(fallback), nullptr, nullptr, nullptr,
+                            entry, target, D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                            &code, &errors);
+        }
+        if (FAILED(hr)) {
+            if (errors) {
+                std::cerr << "[D3D11Renderer] Fallback HLSL error:\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release();
+            }
+            return nullptr;
+        }
+        if (errors) errors->Release();
+        return code;
+    };
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Compile and create shaders.
+    // -----------------------------------------------------------------------
+    ID3DBlob* vsBlob = compile(vsPath, kSkinnedVsFallback, "main", "vs_4_0");
+    if (!vsBlob) return false;
+
+    ID3DBlob* psBlob = compile(psPath, kSkinnedPsFallback, "main", "ps_4_0");
+    if (!psBlob) { vsBlob->Release(); return false; }
+
+    HRESULT hr = device->CreateVertexShader(
+        vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &scene.vs);
+    if (FAILED(hr)) {
+        vsBlob->Release(); psBlob->Release();
+        std::cerr << "[D3D11Renderer] CreateVertexShader (skinned) failed.\n";
+        return false;
+    }
+
+    hr = device->CreatePixelShader(
+        psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &scene.ps);
+    psBlob->Release();
+    if (FAILED(hr)) {
+        vsBlob->Release();
+        std::cerr << "[D3D11Renderer] CreatePixelShader (skinned) failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — Create the input layout for SkinnedVertex.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — SkinnedVertex Input Layout
+    // The D3D11_INPUT_ELEMENT_DESC array must exactly match the SkinnedVertex
+    // struct defined at the top of this file (field order and byte offsets).
+    //
+    // BLENDINDICES uses DXGI_FORMAT_R32G32B32A32_UINT  (4 × uint32 = 16 bytes).
+    // BLENDWEIGHT  uses DXGI_FORMAT_R32G32B32A32_FLOAT (4 × float  = 16 bytes).
+    //
+    // In production you would use R8G8B8A8_UINT + R8G8B8A8_UNORM (4+4 = 8 bytes
+    // per vertex instead of 32 bytes) to reduce vertex bandwidth.  We use 32-bit
+    // types here for readability.
+    // -----------------------------------------------------------------------
+    D3D11_INPUT_ELEMENT_DESC layout[] =
+    {
+        { "POSITION",      0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "NORMAL",        0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD",      0, DXGI_FORMAT_R32G32_FLOAT,       0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "BLENDINDICES",  0, DXGI_FORMAT_R32G32B32A32_UINT,  0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "BLENDWEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    };
+
+    hr = device->CreateInputLayout(layout, static_cast<UINT>(std::size(layout)),
+                                   vsBlob->GetBufferPointer(),
+                                   vsBlob->GetBufferSize(),
+                                   &scene.inputLayout);
+    vsBlob->Release();
+    if (FAILED(hr)) {
+        std::cerr << "[D3D11Renderer] CreateInputLayout (skinned) failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3 — Create vertex and index buffers.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_BUFFER_DESC bd = {};
+        bd.ByteWidth  = static_cast<UINT>(sizeof(kSkinnedVerts));
+        bd.Usage      = D3D11_USAGE_DEFAULT;
+        bd.BindFlags  = D3D11_BIND_VERTEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA sd = {};
+        sd.pSysMem = kSkinnedVerts;
+        hr = device->CreateBuffer(&bd, &sd, &scene.vertexBuf);
+        if (FAILED(hr)) {
+            std::cerr << "[D3D11Renderer] CreateBuffer (skinned VB) failed.\n";
+            return false;
+        }
+    }
+    {
+        D3D11_BUFFER_DESC bd = {};
+        bd.ByteWidth  = static_cast<UINT>(sizeof(kSkinnedIndices));
+        bd.Usage      = D3D11_USAGE_DEFAULT;
+        bd.BindFlags  = D3D11_BIND_INDEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA sd = {};
+        sd.pSysMem = kSkinnedIndices;
+        hr = device->CreateBuffer(&bd, &sd, &scene.indexBuf);
+        if (FAILED(hr)) {
+            std::cerr << "[D3D11Renderer] CreateBuffer (skinned IB) failed.\n";
+            return false;
+        }
+    }
+    scene.indexCount = static_cast<int>(std::size(kSkinnedIndices));
+
+    // -----------------------------------------------------------------------
+    // Step 4 — Initialise the GPU skinning constant buffer.
+    // -----------------------------------------------------------------------
+    if (!scene.skinningCB.Init(device, engine::animation::kMaxGpuJoints))
+    {
+        std::cerr << "[D3D11Renderer] GpuSkinningBuffer::Init failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 5 — Rasterizer state: cull none (double-sided).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Why cull-none for the skinning demo?
+    // The strip starts facing the camera but rotates 360° as bone 1 oscillates.
+    // With the default back-face culling the strip disappears every 180°.
+    // D3D11_CULL_NONE makes both faces visible — useful for flat 2-sided meshes
+    // like cloth, leaves, and demo strips.  For opaque characters you typically
+    // keep cull-back and ensure mesh normals are consistent.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_RASTERIZER_DESC rd = {};
+        rd.FillMode = D3D11_FILL_SOLID;
+        rd.CullMode = D3D11_CULL_NONE;
+        rd.FrontCounterClockwise = FALSE;
+        rd.DepthClipEnable = TRUE;
+        hr = device->CreateRasterizerState(&rd, &scene.rastState);
+        if (FAILED(hr)) {
+            std::cerr << "[D3D11Renderer] CreateRasterizerState (skinned) failed.\n";
+            return false;
+        }
+    }
+
+    scene.loaded = true;
+    std::cout << "[D3D11Renderer] LoadScene('skinned_mesh') — OK.\n";
+    return true;
+}
+
+// ===========================================================================
 // DrawTexturedQuad — bind quad pipeline state and issue one indexed draw call
 // ===========================================================================
 
@@ -1060,6 +1426,90 @@ void D3D11Renderer::DrawTexturedQuad()
 }
 
 // ===========================================================================
+// DrawSkinnedMesh — bind GPU skinning pipeline and draw the animated strip
+// ===========================================================================
+
+void D3D11Renderer::DrawSkinnedMesh()
+{
+    using namespace engine::math;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Constructing the Skin Matrices for the 2-Joint Demo
+    // -----------------------------------------------------------------------
+    // The demo skeleton has two joints:
+    //
+    //   Joint 0 (bone 0 — root):
+    //     bind-pose world matrix = Identity.
+    //     invBind[0]             = Identity.
+    //     worldAnim[0]           = Identity (root never moves).
+    //     skinMatrix[0]          = Identity * Identity = Identity.
+    //     → Vertices weighted to bone 0 are NOT deformed (static anchor).
+    //
+    //   Joint 1 (bone 1 — child):
+    //     bind-pose world matrix = Identity (joint 1 is co-located at origin).
+    //     invBind[1]             = Identity.
+    //     worldAnim[1]           = Rotation(Z, θ(t)).
+    //     skinMatrix[1]          = Identity * Rotation(Z, θ) = Rotation(Z, θ).
+    //     → Vertices weighted to bone 1 rotate around the world origin.
+    //
+    // The result: the bottom half of the strip (bone 0) is fixed; the top
+    // half (bone 1) sweeps an arc; the blend zone smoothly transitions.
+    // -----------------------------------------------------------------------
+    const float angle = std::sin(m_sceneTime * 1.5f) * (kPi * 0.25f);  // ±45°
+
+    // Build skin matrices: joint 0 = identity, joint 1 = Rotation(Z, angle).
+    Mat4 jointMats[2];
+    jointMats[0] = Mat4::Identity();
+    jointMats[1] = Mat4::Rotation(Quat::FromAxisAngle(Vec3::Fwd(), angle));
+
+    // -----------------------------------------------------------------------
+    // Upload joint matrices to the GPU constant buffer and bind to b0.
+    // -----------------------------------------------------------------------
+    m_skinnedScene.skinningCB.Upload(m_context, jointMats, 2);
+    m_skinnedScene.skinningCB.Bind(m_context, 0);
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Input Assembler (IA) Stage Setup
+    // -----------------------------------------------------------------------
+    // We set the same four IA parameters as any other draw call:
+    //   IASetInputLayout      — tells D3D11 how to decode vertex bytes.
+    //   IASetPrimitiveTopology — triangles for a solid mesh.
+    //   IASetVertexBuffers    — our SkinnedVertex buffer.
+    //   IASetIndexBuffer      — 16-bit index buffer.
+    // -----------------------------------------------------------------------
+    m_context->IASetInputLayout(m_skinnedScene.inputLayout);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    UINT stride = static_cast<UINT>(sizeof(SkinnedVertex));
+    UINT offset = 0;
+    m_context->IASetVertexBuffers(0, 1, &m_skinnedScene.vertexBuf, &stride, &offset);
+    m_context->IASetIndexBuffer(m_skinnedScene.indexBuf, DXGI_FORMAT_R16_UINT, 0);
+
+    // VS and PS stages.
+    m_context->VSSetShader(m_skinnedScene.vs, nullptr, 0);
+    m_context->PSSetShader(m_skinnedScene.ps, nullptr, 0);
+
+    // Rasterizer state (cull-none so back face is visible during rotation).
+    m_context->RSSetState(m_skinnedScene.rastState);
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — DrawIndexed
+    // -----------------------------------------------------------------------
+    // DrawIndexed(indexCount, startIndex, baseVertex):
+    //   • Reads `indexCount` indices starting at `startIndex`.
+    //   • Each index is added to `baseVertex` to get the actual vertex index.
+    // For our strip: 24 indices, 0 start, 0 base offset.
+    // -----------------------------------------------------------------------
+    m_context->DrawIndexed(static_cast<UINT>(m_skinnedScene.indexCount), 0, 0);
+
+    // Unbind constant buffer to avoid debug-layer "resource still bound" warnings.
+    m_skinnedScene.skinningCB.Unbind(m_context, 0);
+
+    // Restore default rasterizer state (cull back-face).
+    m_context->RSSetState(nullptr);
+}
+
+// ===========================================================================
 // UnloadScene — release all scene resources
 // ===========================================================================
 
@@ -1070,6 +1520,8 @@ void D3D11Renderer::UnloadScene()
     // holds a reference to another.  For independent scene objects (shaders,
     // buffers, textures) the order doesn't strictly matter, but releasing in
     // reverse makes intent clear.
+
+    // --- Textured quad scene ---
     if (m_quadScene.fallbackSampler)
     {
         m_quadScene.fallbackSampler->Release();
@@ -1091,6 +1543,21 @@ void D3D11Renderer::UnloadScene()
 
     m_quadScene.loaded        = false;
     m_quadScene.useFallbackTex = false;
+
+    // --- Skinned mesh scene (M4b) ---
+    // TEACHING NOTE — Release order: state objects first (they don't depend on
+    // shaders), then shaders, then geometry buffers, then the CB.
+    if (m_skinnedScene.rastState)   { m_skinnedScene.rastState->Release();   m_skinnedScene.rastState   = nullptr; }
+    if (m_skinnedScene.ps)          { m_skinnedScene.ps->Release();          m_skinnedScene.ps          = nullptr; }
+    if (m_skinnedScene.vs)          { m_skinnedScene.vs->Release();          m_skinnedScene.vs          = nullptr; }
+    if (m_skinnedScene.inputLayout) { m_skinnedScene.inputLayout->Release(); m_skinnedScene.inputLayout = nullptr; }
+    if (m_skinnedScene.indexBuf)    { m_skinnedScene.indexBuf->Release();    m_skinnedScene.indexBuf    = nullptr; }
+    if (m_skinnedScene.vertexBuf)   { m_skinnedScene.vertexBuf->Release();   m_skinnedScene.vertexBuf   = nullptr; }
+
+    m_skinnedScene.skinningCB.Shutdown();
+    m_skinnedScene.indexCount = 0;
+    m_skinnedScene.loaded     = false;
+
     m_currentScene.clear();
 }
 

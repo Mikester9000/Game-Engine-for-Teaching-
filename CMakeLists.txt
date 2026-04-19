@@ -436,6 +436,10 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         src/engine/animation/anim_clip.cpp
         src/engine/animation/blend_tree.cpp
         src/engine/animation/animation_system.cpp
+        # TEACHING NOTE — M4b: IK solver (renderer-agnostic, pure C++17).
+        # Two-Bone analytical IK and FABRIK iterative N-joint IK.
+        # Lives in animation/ alongside the other CPU-side animation systems.
+        src/engine/animation/ik_solver.cpp
     )
 
     # D3D11 backend sources (included when ENGINE_ENABLE_D3D11=ON).
@@ -452,6 +456,10 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             # d3d11_texture.cpp is a self-contained DDS parser that uses only
             # the Windows SDK headers already required by D3D11Renderer.
             src/engine/rendering/d3d11/d3d11_texture.cpp
+            # TEACHING NOTE — M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
+            # buffer that uploads 64 joint matrices (4096 bytes) to the VS
+            # every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
+            src/engine/animation/gpu_skinning.cpp
         )
     endif()
 
@@ -717,6 +725,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         set(HLSL_SHADERS
             "${CMAKE_SOURCE_DIR}/shaders/textured_quad.vs.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/textured_quad.ps.hlsl"
+            # TEACHING NOTE — M4b: GPU skinning HLSL shaders.
+            # skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
+            #   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
+            # skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
+            "${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.ps.hlsl"
         )
 
         add_custom_command(TARGET engine_sandbox POST_BUILD

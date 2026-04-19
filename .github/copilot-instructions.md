@@ -133,7 +133,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** Next: M4b (IK solver + D3D11 GPU skinning) or M5 Physics. Vulkan texture is deferred.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. Next: M5 Physics. Vulkan texture is deferred.
 
 ---
 
@@ -145,12 +145,12 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | Skeleton runtime (C++) | ✅ | `src/engine/animation/skeleton.hpp/.cpp` — joint hierarchy, bind pose, world-transform computation |
 | Anim clip evaluation (C++) | ✅ | `src/engine/animation/anim_clip.hpp/.cpp` — keyframe channels, lerp/slerp evaluation |
 | Blend tree (C++) | ✅ | `src/engine/animation/blend_tree.hpp/.cpp` — clip nodes + linear blend |
-| IK solver (C++) | ⬜ | `src/engine/animation/ik_solver.hpp/.cpp` |
-| D3D11 GPU skinning (C++) | ⬜ | `src/engine/animation/gpu_skinning.hpp/.cpp`; upload joint matrices to D3D11 constant buffer (CB) |
+| IK solver (C++) | ✅ | `src/engine/animation/ik_solver.hpp/.cpp` — Two-Bone analytical IK (law of cosines) + FABRIK iterative N-joint IK |
+| D3D11 GPU skinning (C++) | ✅ | `src/engine/animation/gpu_skinning.hpp/.cpp`; `GpuSkinningBuffer` (64 × Mat4 DYNAMIC CB); `shaders/skinned_mesh.vs.hlsl` + `skinned_mesh.ps.hlsl`; wired into D3D11Renderer `skinned_mesh` scene |
 | **Vulkan GPU skinning (C++)** | **(DEFERRED)** | Upload joint matrices to Vulkan UBO — implement when Vulkan work resumes |
 | Animation system (C++) | ✅ | `src/engine/animation/animation_system.hpp/.cpp` — ECS update, advance time, evaluate, update `AnimatorComponent` |
 
-**M4 animation runtime CPU core is ✅ complete.** Remaining: IK solver + D3D11 GPU skinning constant buffer upload.
+**M4 is ✅ complete.** CPU core (skeleton, anim clip, blend tree, animation system) + IK solver (Two-Bone + FABRIK) + D3D11 GPU skinning (constant buffer upload, skinned_mesh.vs.hlsl, skinned_mesh scene in engine_sandbox) are all done.
 
 ---
 
@@ -255,18 +255,17 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M3 ✅ complete (D3D11 texture, D3D11 textured quad, XAudio2 audio all done). M4 animation runtime ✅ complete (CPU core: skeleton, anim clip, blend tree, animation system). Next: M4 remaining (IK solver + D3D11 GPU skinning CB) or begin M5 Physics.**
+> **Current position: M3 ✅ complete (D3D11 texture, D3D11 textured quad, XAudio2 audio all done). M4 ✅ complete (CPU animation core + IK solver + D3D11 GPU skinning). Next: M5 Physics.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **1 — Now** | **M4 remaining** | IK solver (`ik_solver.hpp/.cpp`); D3D11 GPU skinning HLSL vertex shader + joint matrix CB; `AnimatorComponent` rendering in engine_sandbox |
-| **2** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work; `RigidBodyComponent` + `ColliderComponent` added to ECS |
-| **3** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
-| **4** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
-| **5** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
-| **6+** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
+| **1 — Now** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work; `RigidBodyComponent` + `ColliderComponent` added to ECS |
+| **2** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
+| **3** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
+| **4** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
+| **5+** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
@@ -719,7 +718,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M2 | AssetDB + `cook.exe` + contract CI | ✅ |
 | M3 | D3D11 texture + XAudio2 + D3D11 textured quad | ✅ |
 | M4 | Animation runtime (C++) — CPU core | ✅ |
-| M4b | IK solver + D3D11 GPU skinning CB | ⬜ |
+| M4b | IK solver + D3D11 GPU skinning CB | ✅ |
 | M5 | Jolt Physics | ⬜ |
 | M6 | Editor inspector + Play-in-Engine | ⬜ |
 | M7 | World streaming | ⬜ |

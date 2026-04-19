@@ -60,6 +60,10 @@
  *   engine_sandbox.exe --headless --scene triangle  # M1 validation
  *   engine_sandbox.exe --scene testworld            # M3 full system demo (windowed)
  *   engine_sandbox.exe --headless --scene testworld # M3 full system demo (CI)
+ *   engine_sandbox.exe --scene textured_quad        # M3 D3D11 textured quad (windowed)
+ *   engine_sandbox.exe --headless --scene textured_quad  # M3 D3D11 texture CI
+ *   engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
+ *   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
  *
  * ============================================================================
  *
@@ -314,6 +318,29 @@ int main(int argc, char* argv[])
                     return 1;
                 }
                 std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
+            }
+            else if (scene == "textured_quad" || scene == "skinned_mesh")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Headless Scene Validation (M3 / M4b)
+                // -----------------------------------------------------------
+                // RecordHeadlessFrame() creates a 64×64 off-screen render
+                // target, binds it, draws the scene once, then flushes.
+                // It validates that the full GPU pipeline (VS, PS, buffers,
+                // constant buffers, textures) can be compiled and executed
+                // on the WARP software rasteriser without errors.
+                //
+                // "textured_quad": exercises D3D11 texture + HLSL pipeline.
+                // "skinned_mesh":  exercises GPU skinning CB + HLSL skinning VS.
+                // -----------------------------------------------------------
+                if (!renderer->RecordHeadlessFrame())
+                {
+                    std::cout << "[FAIL] Headless " << scene << " scene recording failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] " << scene << " scene pipeline OK (WARP headless).\n";
             }
             else if (scene == "testworld")
             {
