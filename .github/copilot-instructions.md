@@ -15,6 +15,14 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 > the entry here so the next Copilot session starts with an accurate picture.
 > Status legend: ✅ complete · 🔨 in progress / partial · ⬜ not started
 
+> **⚠️ ACTIVE POLICY — D3D11 Only (until explicitly stated otherwise)**
+> Vulkan work is **DEFERRED**. All new rendering code targets **D3D11 only**.
+> Do **NOT** implement any Vulkan-specific features unless explicitly instructed.
+> The Vulkan backend already compiles and the existing Vulkan files are kept as-is.
+> New rendering features (textures, skinning, PBR, shadow maps, etc.) are implemented
+> on the D3D11 path first. See the **"Vulkan — Deferred Requirements Reference"**
+> section near the bottom for a full list of what Vulkan will eventually require.
+
 ---
 
 ### Infrastructure & Tooling
@@ -38,6 +46,8 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 
 ### Rendering (D3D11 default + Vulkan optional, Windows)
 
+> **Active path: D3D11 only.** Vulkan items are labelled **(DEFERRED)**. See "Vulkan — Deferred Requirements Reference" section.
+
 | Area | Status | Notes |
 |------|--------|-------|
 | `IRenderer` abstract interface | ✅ | `src/engine/rendering/IRenderer.hpp` — backend-agnostic Init/DrawFrame/Shutdown |
@@ -46,20 +56,23 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Win32 window + headless mode | ✅ | `src/engine/platform/win32/Win32Window.hpp/.cpp`; `--headless` arg in `src/sandbox/main.cpp` |
 | Vulkan bootstrap (optional, M0) | ✅ | Instance, device, swapchain, render pass, framebuffers, command buffers, sync primitives |
 | SPIR-V pipeline + colored triangle (M1, Vulkan) | ✅ | `VulkanPipeline`, `VulkanMesh`, `VulkanBuffer`; `shaders/triangle.vert/.frag` |
-| D3D11 depth buffer | ⬜ | Needed for any 3D geometry |
-| Vulkan depth buffer | ⬜ | Needed for any 3D geometry |
+| D3D11 depth buffer | ⬜ | Needed for 3D geometry; add DSV + DepthStencilState in D3D11Renderer |
+| **Vulkan depth buffer** | **(DEFERRED)** | Needed for 3D geometry in the Vulkan path — implement when Vulkan work resumes |
 | D3D11 textures (DDS/BC7) | ✅ | `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` — self-contained DDS loader (RGBA8, BC1, BC3, BC7/DX10); no directxtex needed |
-| Vulkan textures (DDS/BC7) | ⬜ | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` |
-| Vulkan descriptor sets | ⬜ | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` |
-| Textured quad scene | ⬜ | Shaders: `shaders/textured_quad.vert/.frag` |
-| PBR shading (IBL + directional light) | ⬜ | `src/engine/rendering/vulkan/pbr_pipeline.hpp/.cpp` |
-| Directional shadow map | ⬜ | Shadow pass render target + shadow sampling in PBR shader |
-| Post-processing (bloom + tonemap) | ⬜ | Full-screen pass pipeline |
-| Dynamic sky / procedural time-of-day | ⬜ | `src/engine/rendering/sky_renderer.hpp/.cpp` |
-| Weather VFX (rain, fog) | ⬜ | `src/engine/rendering/weather_fx.hpp/.cpp` |
-| GPU skinned mesh pass | ⬜ | `shaders/skinned_mesh.vert/.frag`; joint matrix UBO |
-| Swapchain resize handling | ✅ | `VulkanRenderer::RecreateSwapchain()` |
-| Headless frame recording | ✅ | `VulkanRenderer::RecordHeadlessFrame()` |
+| **Vulkan textures (DDS/BC7)** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` — implement when Vulkan work resumes |
+| **Vulkan descriptor sets** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — implement when Vulkan work resumes |
+| D3D11 textured quad scene | ✅ | HLSL shaders `shaders/textured_quad.vs.hlsl` + `textured_quad.ps.hlsl`; `LoadScene("textured_quad")` + `DrawTexturedQuad()` + `UnloadScene()` in D3D11Renderer; 1×1 white fallback if no DDS |
+| **PBR shading (IBL + directional light)** | **(DEFERRED)** | D3D11: HLSL PBR pixel shader + CB; Vulkan: `pbr_pipeline.hpp/.cpp` — deferred |
+| **Directional shadow map** | **(DEFERRED)** | Shadow pass render target + shadow sampling |
+| **Post-processing (bloom + tonemap)** | **(DEFERRED)** | Full-screen pass pipeline |
+| **Dynamic sky / procedural time-of-day** | **(DEFERRED)** | `src/engine/rendering/sky_renderer.hpp/.cpp` |
+| **Weather VFX (rain, fog)** | **(DEFERRED)** | `src/engine/rendering/weather_fx.hpp/.cpp` |
+| D3D11 GPU skinned mesh pass | ⬜ | HLSL skinning vertex shader; joint matrix constant buffer (CB) |
+| **Vulkan GPU skinned mesh pass** | **(DEFERRED)** | `shaders/skinned_mesh.vert/.frag`; joint matrix UBO |
+| D3D11 swapchain resize handling | ✅ | `D3D11Renderer::RecreateSwapchain()` |
+| D3D11 headless frame recording | ✅ | `D3D11Renderer::RecordHeadlessFrame()` |
+| Vulkan swapchain resize handling | ✅ | `VulkanRenderer::RecreateSwapchain()` — existing, kept as-is |
+| Vulkan headless frame recording | ✅ | `VulkanRenderer::RecordHeadlessFrame()` — existing, kept as-is |
 
 ---
 
@@ -88,7 +101,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 ### Gameplay Systems (Terminal Game)
 
 All systems below run in the Linux ncurses terminal game (`src/game/`).
-They must be re-wired to the Vulkan runtime at **Milestone M8**.
+They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wiring is deferred).
 
 | System | Status | Notes |
 |--------|--------|-------|
@@ -120,7 +133,7 @@ They must be re-wired to the Vulkan runtime at **Milestone M8**.
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete.** Next: Vulkan texture + textured quad (Steps 2–5 of M3 Bootstrap Guide).
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** Next: M4b (IK solver + D3D11 GPU skinning) or M5 Physics. Vulkan texture is deferred.
 
 ---
 
@@ -129,16 +142,15 @@ They must be re-wired to the Vulkan runtime at **Milestone M8**.
 | Area | Status | Notes |
 |------|--------|-------|
 | Python `anim_authoring` tool | ✅ | `tools/anim_authoring/animation_engine/` — skeleton, clips, IK, glTF, blend trees (11 tests passing) |
-| Skeleton runtime (C++) | ⬜ | `src/engine/animation/skeleton.hpp/.cpp` |
-| Anim clip evaluation (C++) | ⬜ | `src/engine/animation/anim_clip.hpp/.cpp` |
-| Blend tree (C++) | ⬜ | `src/engine/animation/blend_tree.hpp/.cpp` |
+| Skeleton runtime (C++) | ✅ | `src/engine/animation/skeleton.hpp/.cpp` — joint hierarchy, bind pose, world-transform computation |
+| Anim clip evaluation (C++) | ✅ | `src/engine/animation/anim_clip.hpp/.cpp` — keyframe channels, lerp/slerp evaluation |
+| Blend tree (C++) | ✅ | `src/engine/animation/blend_tree.hpp/.cpp` — clip nodes + linear blend |
 | IK solver (C++) | ⬜ | `src/engine/animation/ik_solver.hpp/.cpp` |
-| GPU skinning (C++) | ⬜ | `src/engine/animation/gpu_skinning.hpp/.cpp`; upload joint matrices to Vulkan UBO |
-| Animation system (C++) | ⬜ | `src/engine/animation/animation_system.hpp/.cpp` — ECS update, advance time, evaluate, upload |
+| D3D11 GPU skinning (C++) | ⬜ | `src/engine/animation/gpu_skinning.hpp/.cpp`; upload joint matrices to D3D11 constant buffer (CB) |
+| **Vulkan GPU skinning (C++)** | **(DEFERRED)** | Upload joint matrices to Vulkan UBO — implement when Vulkan work resumes |
+| Animation system (C++) | ✅ | `src/engine/animation/animation_system.hpp/.cpp` — ECS update, advance time, evaluate, update `AnimatorComponent` |
 
-**Next step (M4):** Start with `skeleton.hpp/.cpp` (joint hierarchy, bind pose), then `anim_clip.hpp/.cpp`
-(sampled keyframe evaluation). The Python tool's `animation_engine.model.Bone` and
-`animation_engine.animation.Clip` are the reference data model.
+**M4 animation runtime CPU core is ✅ complete.** Remaining: IK solver + D3D11 GPU skinning constant buffer upload.
 
 ---
 
@@ -173,7 +185,7 @@ Add `ENGINE_ENABLE_PHYSICS` CMake option. Create `physics_world.hpp/.cpp` wrappi
 
 **M2 is complete.** `engine_sandbox --validate-project samples/vertical_slice_project` loads AssetDB and all cooked assets, exits 0.
 
-**Next step (M3):** See M3 Bootstrap Guide below.
+**Next step:** See "Next Milestone — What to Work On Now" table above.
 
 ---
 
@@ -206,12 +218,13 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ---
 
-### UI System (Vulkan HUD)
+### UI System (D3D11 ImGui Overlay)
 
 | Area | Status | Notes |
 |------|--------|-------|
 | Terminal UI (ncurses) | ✅ | Part of `TerminalRenderer` + `Game` render methods |
-| Vulkan HUD / menu stack | ⬜ | `src/engine/ui/ui_system.hpp/.cpp`, `hud.hpp/.cpp`, `menu_stack.hpp/.cpp` |
+| D3D11 ImGui HUD / menu stack | ⬜ | `src/engine/ui/ui_system.hpp/.cpp`, `hud.hpp/.cpp`, `menu_stack.hpp/.cpp` — D3D11 path using imgui dx11-binding |
+| **Vulkan HUD / menu stack** | **(DEFERRED)** | Vulkan imgui binding — implement when Vulkan work resumes |
 | Font renderer | ⬜ | `src/engine/ui/font_renderer.hpp/.cpp` — SDF font atlas |
 
 ---
@@ -242,19 +255,19 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M3 in progress (D3D11 texture + XAudio2 audio ✅ done; Vulkan texture + textured quad ⬜ remaining).**
+> **Current position: M3 ✅ complete (D3D11 texture, D3D11 textured quad, XAudio2 audio all done). M4 animation runtime ✅ complete (CPU core: skeleton, anim clip, blend tree, animation system). Next: M4 remaining (IK solver + D3D11 GPU skinning CB) or begin M5 Physics.**
 
-Recommended implementation order to reach project completion:
+Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **1 — Now** | **M3: Vulkan Texture (remaining)** | Vulkan texture (DDS/BC7) via `vulkan_texture.hpp/.cpp`; Vulkan descriptor sets; `shaders/textured_quad.vert/.frag`; `LoadScene("textured_quad")` in VulkanRenderer; `engine_sandbox --headless --scene textured_quad` exits 0. *D3D11 texture + XAudio2 + AudioSystem are already done.* |
-| **2** | **M4: Animation runtime** | C++ skeleton + clip evaluation + blend tree; GPU skinning UBO; `AnimatorComponent` added to ECS; animated character on screen |
-| **3** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work; `RigidBodyComponent` + `ColliderComponent` added to ECS |
-| **4** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
-| **5** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
-| **6** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into Vulkan runtime |
-| **7+** | **Post-M8** | Cinematics, vehicle physics, Vulkan HUD, PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
+| **1 — Now** | **M4 remaining** | IK solver (`ik_solver.hpp/.cpp`); D3D11 GPU skinning HLSL vertex shader + joint matrix CB; `AnimatorComponent` rendering in engine_sandbox |
+| **2** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work; `RigidBodyComponent` + `ColliderComponent` added to ECS |
+| **3** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
+| **4** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
+| **5** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
+| **6+** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
+| **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
 
@@ -267,14 +280,16 @@ Game-Engine-for-Teaching-/
 │   ├── engine/         # Platform-independent engine kernel
 │   │   ├── core/       # Logger, EventBus, Types
 │   │   ├── ecs/        # Entity-Component-System (ECS.hpp — 2 000 lines)
+│   │   ├── animation/  # M4 runtime: skeleton, anim_clip, blend_tree, animation_system
+│   │   ├── math/       # math_types.hpp (Vec3, Quat, Mat4 — row-major D3D11)
 │   │   ├── input/      # Input system (ncurses on Linux)
 │   │   ├── platform/   # Win32 window, message pump
-│   │   ├── rendering/  # ncurses renderer + Vulkan renderer
+│   │   ├── rendering/  # ncurses renderer + D3D11 renderer (+ Vulkan, optional)
 │   │   └── scripting/  # Lua 5.4 embedding
 │   ├── game/           # FFXV-style gameplay systems
 │   │   ├── systems/    # Combat, AI, Camp, Inventory, Magic, Quest, Shop, Weather
 │   │   └── world/      # TileMap, Zone, WorldMap
-│   ├── sandbox/        # Windows Vulkan clear-screen demo
+│   ├── sandbox/        # Windows D3D11 sandbox / test harness
 │   └── main.cpp        # Terminal game entry point
 ├── editor/             # Dear ImGui editor (Creation Suite)
 │   └── src/            # C++ source: EditorApp, ContentBrowserPanel, SceneEditorPanel
@@ -392,8 +407,8 @@ check this table — the component you need may already exist.
 
 | Component | Needed for | Key fields to add |
 |-----------|-----------|-------------------|
-| `AudioSourceComponent` | Audio system (M3) | `clipID` (string), `is3D` (bool), `volume` (float), `isLooping` (bool), `isPlaying` (bool), `maxDistance` (float) |
-| `AnimatorComponent` | Animation system (M4) | `skeletonID` (string), `currentClipID` (string), `blendTreeID` (string), `playbackSpeed` (float), `currentTime` (float), joint matrix array ptr |
+| `AudioSourceComponent` | Audio system (M3) | Already ✅ added |
+| `AnimatorComponent` | Animation system (M4) | Already ✅ added — `skeletonID`, `currentClipID`, `blendTreeID`, `playbackSpeed`, `currentTime`, `jointMatrices[MAX_JOINTS]` |
 | `RigidBodyComponent` | Physics system (M5) | `mass` (float), `isStatic` (bool), `useGravity` (bool), `linearDamping` (float), Jolt body ID (opaque handle) |
 | `ColliderComponent` | Physics system (M5) | `shapeType` (enum: sphere/capsule/box/mesh), `radius/halfExtents`, `isTrigger` (bool), physics layer mask |
 | `VehicleComponent` | Vehicle system (post-M8) | `throttle`, `brake`, `steerAngle`, wheel suspension state (4 wheels), `currentSpeed` |
@@ -407,16 +422,26 @@ When adding a new `.cpp` file to the engine, follow this exact pattern:
 **1. For a new engine subsystem (goes into `engine_sandbox`):**
 
 ```cmake
-# In CMakeLists.txt — inside the if(ENGINE_ENABLE_VULKAN) block,
-# add your file to SANDBOX_SOURCES:
-set(SANDBOX_SOURCES
-    ...existing files...
-    src/engine/audio/xaudio2_backend.cpp   # ← add here
-    src/engine/audio/audio_system.cpp      # ← add here
+# In CMakeLists.txt — inside the if(WIN32 AND ...) block,
+# add your file to SANDBOX_SOURCES (D3D11 block or unconditional):
+list(APPEND SANDBOX_SOURCES
+    src/engine/animation/skeleton.cpp      # ← add here (renderer-agnostic)
+    src/engine/animation/anim_clip.cpp     # ← add here
 )
 ```
 
-**2. For a new gameplay system (goes into the terminal `game` target):**
+**2. For a new D3D11-specific subsystem:**
+
+```cmake
+# Inside if(ENGINE_ENABLE_D3D11) — add to the D3D11 block:
+list(APPEND SANDBOX_SOURCES
+    src/engine/rendering/d3d11/d3d11_texture.cpp   # ← already present
+)
+# Also add d3dcompiler.lib if your file uses D3DCompile:
+target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib d3dcompiler.lib)
+```
+
+**3. For a new gameplay system (goes into the terminal `game` target):**
 
 ```cmake
 # In CMakeLists.txt — inside the if(ENGINE_ENABLE_TERMINAL) block,
@@ -438,15 +463,28 @@ add_executable(cook
 target_include_directories(cook PRIVATE src/)
 ```
 
-**4. For a new shader (GLSL → SPIR-V):**
+**4. For a new D3D11 HLSL shader:**
+
+```cmake
+# In CMakeLists.txt — inside if(ENGINE_ENABLE_D3D11), add a POST_BUILD copy:
+add_custom_command(TARGET engine_sandbox POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/shaders/textured_quad.vs.hlsl"
+        "$<TARGET_FILE_DIR:engine_sandbox>/shaders/textured_quad.vs.hlsl"
+    COMMENT "Copying HLSL shader to output"
+)
+# D3D11Renderer compiles HLSL at runtime via D3DCompileFromFile
+# (requires d3dcompiler.lib which ships with the Windows SDK).
+```
+
+**4b. For a new Vulkan GLSL → SPIR-V shader (DEFERRED — do not add until Vulkan work resumes):**
 
 ```cmake
 # In the GLSL_SHADERS list inside if(ENGINE_ENABLE_VULKAN):
 set(GLSL_SHADERS
     "${SHADER_SOURCE_DIR}/triangle.vert"
     "${SHADER_SOURCE_DIR}/triangle.frag"
-    "${SHADER_SOURCE_DIR}/textured_quad.vert"   # ← add here
-    "${SHADER_SOURCE_DIR}/textured_quad.frag"   # ← add here
+    # Add Vulkan shaders here when Vulkan work resumes
 )
 ```
 
@@ -464,17 +502,19 @@ endif()
 
 ---
 
-## M3 Bootstrap Guide (Active Milestone — Partially Complete)
+## M3 Bootstrap Guide (Active Milestone — D3D11 Only)
 
-M2 is complete. M3 is the D3D11/Vulkan Texture + XAudio2 Audio milestone.
+M2 is complete. M3 is the **D3D11 Texture + XAudio2 Audio** milestone.
+Vulkan texture work is **DEFERRED** — see "Vulkan — Deferred Requirements Reference".
 
 ### ✅ Already Done (do NOT redo these)
 
 - **Step 1 — `directxtex` in vcpkg.json** ✅  
-  `directxtex` and `imgui[docking,dx11-binding,win32-binding]` already present in `vcpkg.json`.
+  `directxtex` and `imgui[docking,dx11-binding,win32-binding]` already present in `vcpkg.json`.  
+  *Note: `directxtex` is in vcpkg.json for the future Vulkan path; D3D11 uses its own self-contained DDS parser.*
 
 - **Step 2 — D3D11 texture loader** ✅  
-  `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` — self-contained DDS parser (RGBA8, BC1, BC3, BC7/DX10 header). No `directxtex` vcpkg dep needed for the D3D11 path. Wired into `CMakeLists.txt`.
+  `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` — self-contained DDS parser (RGBA8, BC1, BC3, BC7/DX10 header). No `directxtex` vcpkg dep needed. Wired into `CMakeLists.txt`.
 
 - **Step 3 — XAudio2 backend** ✅  
   `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot source voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume`. Linked via `xaudio2.lib` + `ole32.lib`.
@@ -482,32 +522,30 @@ M2 is complete. M3 is the D3D11/Vulkan Texture + XAudio2 Audio milestone.
 - **Step 4 — Audio ECS system** ✅  
   `src/engine/audio/audio_system.hpp/.cpp` — ECS system iterating `AudioSourceComponent`, music FSM with real `SetVolume` crossfade. `AudioSourceComponent` added to `ECS.hpp`.
 
-### ⬜ Still To Do (complete these to finish M3)
+- **Step 5 — D3D11 textured quad HLSL shaders** ✅  
+  `shaders/textured_quad.vs.hlsl` + `shaders/textured_quad.ps.hlsl` — SM4.0 HLSL vertex/pixel shaders. Copied to output by CMake POST_BUILD.
 
-### Step 5 — `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp`
-- Load a DDS file (using DirectXTex) into a `VkImage` + `VkImageView`.
-- Support BC7 compressed format (`VK_FORMAT_BC7_UNORM_BLOCK`).
-- Expose `VulkanTexture::Load(device, physicalDevice, commandPool, queue, path)`.
-- Add a `Sampler()` accessor returning a `VkSampler`.
+- **Step 6 — D3D11 textured quad scene** ✅  
+  `D3D11Renderer::LoadScene("textured_quad", shaderDir)` — compiles HLSL at runtime via `D3DCompileFromFile`, creates quad VB/IB, loads DDS texture (or 1×1 white fallback), creates sampler. `DrawFrame` renders the quad; `RecordHeadlessFrame` validates the pipeline in headless CI mode. `d3dcompiler.lib` wired in `CMakeLists.txt`.
 
-### Step 6 — `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp`
-- Wrap `VkDescriptorPool` + `VkDescriptorSetLayout` + `VkDescriptorSet`.
-- Bind the texture sampler to binding 0 (fragment shader).
+### ⬜ Deferred Vulkan Steps (do NOT implement until instructed)
 
-### Step 7 — Textured quad shaders (`shaders/textured_quad.vert/.frag`)
-- `.vert`: pass UV coordinates through to fragment stage.
-- `.frag`: sample from a `sampler2D` at binding 0.
-- Add both to `GLSL_SHADERS` list in `CMakeLists.txt`.
+The following were the original M3 Vulkan steps — they are recorded here for future reference only.
 
-### Step 8 — `LoadScene("textured_quad", ...)` in `VulkanRenderer`
-- Create `VulkanTexture` from a cooked DDS in `Cooked/`.
-- Create `VulkanDescriptor` binding the texture sampler.
-- Use the textured quad pipeline + a quad mesh.
-- Acceptance: `engine_sandbox.exe --headless --scene textured_quad` exits 0.
+- **[DEFERRED] Vulkan texture** — `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp`  
+  Load a DDS file via DirectXTex into `VkImage` + `VkImageView`. Support BC7 (`VK_FORMAT_BC7_UNORM_BLOCK`).
 
-### Step 9 — Wire into CI
-- `build-windows.yml` step: `engine_sandbox.exe --headless --scene textured_quad`
-- Contract test: cook a 1×1 DDS texture stub; verify `AssetDB` resolves it.
+- **[DEFERRED] Vulkan descriptor sets** — `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp`  
+  Wrap `VkDescriptorPool` + `VkDescriptorSetLayout` + `VkDescriptorSet`. Bind texture sampler to binding 0.
+
+- **[DEFERRED] Vulkan textured quad shaders** — `shaders/textured_quad.vert/.frag`  
+  GLSL pass-through UV vertex shader + `sampler2D` fragment shader. Add to `GLSL_SHADERS` in CMakeLists.
+
+- **[DEFERRED] Vulkan `LoadScene("textured_quad")`** in `VulkanRenderer`  
+  Create `VulkanTexture` + `VulkanDescriptor`, use textured quad pipeline.
+
+- **[DEFERRED] Vulkan CI wiring**  
+  `build-windows.yml` Vulkan job: `engine_sandbox.exe --renderer vulkan --headless --scene textured_quad`.
 
 ---
 
@@ -546,13 +584,13 @@ end
 `vcpkg.json` exists in the repository root with all M2 and M3 (audio/D3D11 texture) dependencies already present:
 
 ```json
-// vcpkg.json — current state (M3 in progress)
+// vcpkg.json — current state (M3 complete, D3D11-only focus)
 {
   "name": "educational-game-engine",
   "version-string": "1.0.0",
   "dependencies": [
     "nlohmann-json",          // M2 — cook.exe JSON parsing ✅
-    "directxtex",             // M3 — DDS/BC7 texture compression (Vulkan path) ✅ added
+    "directxtex",             // Reserved for future Vulkan texture path (DEFERRED); D3D11 uses self-contained DDS parser
     {
       "name": "imgui",
       "features": ["docking", "dx11-binding", "win32-binding"]  // Editor ✅
@@ -679,12 +717,14 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M1 | Colored triangle (Vulkan SPIR-V pipeline) | ✅ |
 | M1.5 | D3D11 baseline renderer + IRenderer abstraction + CI fix | ✅ |
 | M2 | AssetDB + `cook.exe` + contract CI | ✅ |
-| M3 | D3D11/Vulkan texture + XAudio2 | 🔨 **active** |
-| M4 | Animation runtime (C++) | ⬜ |
+| M3 | D3D11 texture + XAudio2 + D3D11 textured quad | ✅ |
+| M4 | Animation runtime (C++) — CPU core | ✅ |
+| M4b | IK solver + D3D11 GPU skinning CB | ⬜ |
 | M5 | Jolt Physics | ⬜ |
 | M6 | Editor inspector + Play-in-Engine | ⬜ |
 | M7 | World streaming | ⬜ |
-| M8 | Wire all gameplay into D3D11/Vulkan runtime | ⬜ |
+| M8 | Wire all gameplay into D3D11 runtime | ⬜ |
+| Post-M8 | Vulkan catch-up (resume all DEFERRED Vulkan items) | ⬜ |
 
 ---
 
@@ -719,6 +759,31 @@ A student must be able to:
 > uses — real PBR, real physics, real positional audio, real action combat — so
 > that a student studying this code is studying the same patterns a professional
 > AAA studio uses.  Stubs or toy implementations do not satisfy this bar.
+
+---
+
+## Vulkan — Deferred Requirements Reference
+
+> **Do NOT implement any of these items until explicitly instructed.**
+> This section is a reference list for when Vulkan work resumes (Post-M8).
+> All existing Vulkan code (`VulkanRenderer.cpp`, `vulkan_pipeline.cpp`, etc.) is kept as-is.
+
+| Item | Files needed | Notes |
+|------|-------------|-------|
+| Vulkan texture (DDS/BC7) | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` | Use DirectXTex to load DDS; upload to `VkImage`; BC7 = `VK_FORMAT_BC7_UNORM_BLOCK` |
+| Vulkan descriptor sets | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` | Wrap pool + layout + set; bind texture sampler at binding 0 |
+| Vulkan textured quad shaders | `shaders/textured_quad.vert/.frag` | GLSL pass-through UV vertex + `sampler2D` fragment; add to `GLSL_SHADERS` |
+| Vulkan textured quad scene | `VulkanRenderer::LoadScene("textured_quad", ...)` | Use vulkan_texture + vulkan_descriptor + textured quad pipeline |
+| Vulkan depth buffer | In `VulkanRenderer::Init` | `VK_FORMAT_D32_SFLOAT`, `VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL` |
+| Vulkan PBR pipeline | `src/engine/rendering/vulkan/pbr_pipeline.hpp/.cpp` | IBL + directional light; metallic-roughness workflow |
+| Vulkan shadow map | Shadow render pass + shadow CB | `VK_FORMAT_D32_SFLOAT` offscreen; PCF shadow sampling in PBR shader |
+| Vulkan post-processing | Full-screen pass pipeline | Bloom (extract + blur + composite) + Reinhard/ACES tonemap |
+| Vulkan dynamic sky | `src/engine/rendering/sky_renderer.hpp/.cpp` | Preetham/Bruneton sky; time-of-day CBs |
+| Vulkan weather VFX | `src/engine/rendering/weather_fx.hpp/.cpp` | GPU particle rain + fog pass |
+| Vulkan GPU skinning | `shaders/skinned_mesh.vert/.frag` + UBO | joint matrix UBO; `VulkanRenderer::UploadJointMatrices()` |
+| Vulkan HUD / menu stack | `src/engine/ui/` (Vulkan imgui binding) | imgui Vulkan backend; bind to Vulkan render pass |
+| Vulkan `M8` gameplay wiring | All gameplay systems → `VulkanRenderer` | Wire combat, AI, quests, etc. into Vulkan render loop |
+| Vulkan CI wiring | `.github/workflows/build-windows.yml` | Optional `build-windows-vulkan` job: `--renderer vulkan --headless --scene textured_quad` |
 
 ---
 

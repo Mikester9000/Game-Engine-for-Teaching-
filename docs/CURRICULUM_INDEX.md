@@ -6,23 +6,25 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 859 across 37 subsystems.
+**Total lessons:** 935 across 39 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (36 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (38 lessons)
 - [ci/workflows](#ciworkflows) (29 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
 - [editor/src](#editorsrc) (45 lessons)
+- [engine/animation](#engineanimation) (41 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
 - [engine/core](#enginecore) (50 lessons)
-- [engine/ecs](#engineecs) (32 lessons)
+- [engine/ecs](#engineecs) (33 lessons)
 - [engine/input](#engineinput) (19 lessons)
+- [engine/math](#enginemath) (17 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (186 lessons)
+- [engine/rendering](#enginerendering) (201 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
@@ -345,9 +347,25 @@ Build commands (D3D11, no Vulkan SDK needed):
   cmake --build --preset windows-debug-engine-only --target engine_sandbox
 ---------------------------------------------------------------------------
 
+### Animation Runtime Sources (M4)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L428) (line 428)
+
+-----------------------------------------------------------------------
+The animation runtime is renderer-agnostic: it runs on both D3D11 and
+Vulkan paths.  We add it to SANDBOX_SOURCES unconditionally (still
+inside the WIN32 guard since the sandbox is Windows-only).
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/engine/animation/skeleton.cpp
+src/engine/animation/anim_clip.cpp
+src/engine/animation/blend_tree.cpp
+src/engine/animation/animation_system.cpp
+)
+
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L429) (line 429)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L443) (line 443)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -359,7 +377,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L437) (line 437)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L451) (line 451)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -369,7 +387,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L459) (line 459)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L473) (line 473)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -382,7 +400,7 @@ src/engine/audio/audio_system.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L472) (line 472)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L486) (line 486)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -395,7 +413,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L485) (line 485)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L499) (line 499)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -419,19 +437,19 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L525) (line 525)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L539) (line 539)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
 download.  Any Windows developer machine already has them.
 -----------------------------------------------------------------------
 if(ENGINE_ENABLE_D3D11)
-target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
+target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib d3dcompiler.lib)
 endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L534) (line 534)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L548) (line 548)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -440,7 +458,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L547) (line 547)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L561) (line 561)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -449,7 +467,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L553) (line 553)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L567) (line 567)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -458,7 +476,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L558) (line 558)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L572) (line 572)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -469,7 +487,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L579) (line 579)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L593) (line 593)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -503,7 +521,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L611) (line 611)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L625) (line 625)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -518,7 +536,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L626) (line 626)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L640) (line 640)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -533,7 +551,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L668) (line 668)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L682) (line 682)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -554,9 +572,31 @@ message(WARNING
 endif() # GLSLC_EXECUTABLE
 endif() # ENGINE_ENABLE_VULKAN
 
+### D3D11 HLSL Shaders: Copy to output directory
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L703) (line 703)
+
+-----------------------------------------------------------------------
+D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
+(see D3D11Renderer.cpp :: LoadScene).  The .hlsl source files must
+therefore be present next to the executable at runtime.
+
+We copy them with a POST_BUILD command so that both Debug and Release
+configurations automatically get up-to-date shader files whenever the
+engine is built.
+
+The shaders/ sub-directory mirrors the path returned by GetShaderDir()
+in src/sandbox/main.cpp.
+-----------------------------------------------------------------------
+if(ENGINE_ENABLE_D3D11)
+set(HLSL_SHADERS
+"${CMAKE_SOURCE_DIR}/shaders/textured_quad.vs.hlsl"
+"${CMAKE_SOURCE_DIR}/shaders/textured_quad.ps.hlsl"
+)
+
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L693) (line 693)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L737) (line 737)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -578,7 +618,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L712) (line 712)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -589,7 +629,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L720) (line 720)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L764) (line 764)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -599,7 +639,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L749) (line 749)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L793) (line 793)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -608,7 +648,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L800) (line 800)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1822,6 +1862,633 @@ D3D11_SDK_VERSION, &sd, &g_pSwapChain,
 );
 if (FAILED(res)) return false;
 }
+
+---
+
+## engine/animation
+
+### Handling Edge Cases
+
+**Source:** [`src/engine/animation/anim_clip.cpp`](src/engine/animation/anim_clip.cpp#L44) (line 44)
+
+-----------------------------------------------------------------------
+No keyframes → return the identity/zero keyframe at time t.
+t <= first → clamp to first keyframe.
+t >= last  → clamp to last  keyframe.
+Otherwise  → binary search for the surrounding pair, then interpolate.
+-----------------------------------------------------------------------
+if (m_keyframes.empty())
+{
+Keyframe kf;
+kf.time = t;
+return kf;
+}
+
+### Lerp vs Slerp
+
+**Source:** [`src/engine/animation/anim_clip.cpp`](src/engine/animation/anim_clip.cpp#L76) (line 76)
+
+Translation and scale are interpolated with lerp (straight-line blend).
+Rotation uses slerp (arc on the 4-D unit quaternion sphere) to ensure
+smooth, constant-speed rotation without the "spinning the long way"
+artefact that naive lerp can produce.
+-----------------------------------------------------------------------
+Keyframe result;
+result.time        = t;
+result.translation = math::Vec3::Lerp(kfA.translation, kfB.translation, alpha);
+result.rotation    = math::Quat::Slerp(kfA.rotation,    kfB.rotation,    alpha);
+result.scale       = math::Vec3::Lerp(kfA.scale,       kfB.scale,       alpha);
+return result;
+}
+
+### Wrapping Loopable Clips
+
+**Source:** [`src/engine/animation/anim_clip.cpp`](src/engine/animation/anim_clip.cpp#L105) (line 105)
+
+-----------------------------------------------------------------------
+For loopable clips we wrap the playback time so it stays within
+[0, duration].  fmod() gives the remainder, e.g.:
+  fmod(2.1, 2.0) = 0.1  → clip restarts after it reaches the end.
+
+For non-loopable clips we clamp t to [0, duration].
+-----------------------------------------------------------------------
+float t = time;
+if (m_loopable && m_durationSeconds > math::kEps)
+{
+t = std::fmod(t, m_durationSeconds);
+if (t < 0.0f) t += m_durationSeconds;
+}
+else
+{
+Clamp to [0, duration].
+t = std::max(0.0f, std::min(t, m_durationSeconds));
+}
+
+### Per-Channel Evaluation
+
+**Source:** [`src/engine/animation/anim_clip.cpp`](src/engine/animation/anim_clip.cpp#L129) (line 129)
+
+-----------------------------------------------------------------------
+For each channel in this clip, evaluate the keyframes at time t and
+write the resulting TRS matrix into outLocalTransforms at the joint index.
+-----------------------------------------------------------------------
+for (const auto& channel : m_channels)
+{
+int boneIdx = channel.BoneIndex();
+if (boneIdx < 0 || boneIdx >= static_cast<int>(outLocalTransforms.size()))
+continue;
+
+### TRS matrix order:
+
+**Source:** [`src/engine/animation/anim_clip.cpp`](src/engine/animation/anim_clip.cpp#L143) (line 143)
+
+Row-major D3D11: Scale · Rotation · Translation
+outLocalTransforms[static_cast<size_t>(boneIdx)] =
+math::Mat4::TRS(kf.translation, kf.rotation, kf.scale);
+}
+}
+
+### What is an Animation Clip?
+
+**Source:** [`src/engine/animation/anim_clip.hpp`](src/engine/animation/anim_clip.hpp#L6) (line 6)
+
+============================================================================
+An animation clip stores one continuous motion (e.g. "walk", "attack",
+"idle").  It is divided into *channels*, one per joint that moves during
+the clip.  Each channel holds a list of *keyframes* — sampled points in
+time where the joint's TRS transform is recorded.
+
+At runtime, the AnimationSystem advances a *playback time* t (in seconds)
+and asks each channel to *evaluate* — find the two surrounding keyframes
+and interpolate between them:
+
+  translation: lerp  (straight-line; accurate for position/scale)
+  rotation:    slerp (arc; accurate for orientation, no gimbal lock)
+  scale:       lerp
+
+This file matches the shared schema:  shared/schemas/anim_clip.schema.json
+Reference Python model:              tools/anim_authoring/animation_engine/model/__init__.py
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Sparse Channels
+
+**Source:** [`src/engine/animation/anim_clip.hpp`](src/engine/animation/anim_clip.hpp#L66) (line 66)
+
+Not every joint moves in every animation clip.  We only store channels for
+joints that actually have keyframes in a given clip.  Joints not present in
+the channel list keep their bind-pose transform.
+
+### Binary Search + Lerp/Slerp
+
+**Source:** [`src/engine/animation/anim_clip.hpp`](src/engine/animation/anim_clip.hpp#L93) (line 93)
+
+We binary-search for the two surrounding keyframes in O(log N) time.
+For most clips N ≤ 30 keyframes per channel, so even a linear scan
+would be fast enough, but binary search scales to dense motion-capture
+data (hundreds of keyframes per channel) without modification.
+
+Clamping: t < first keyframe → return first keyframe.
+          t > last  keyframe → return last  keyframe.
+(Looping is handled at the AnimClip level by wrapping t before calling.)
+
+### Clip Evaluation into Local Transforms
+
+**Source:** [`src/engine/animation/anim_clip.hpp`](src/engine/animation/anim_clip.hpp#L123) (line 123)
+
+AnimClip::Evaluate(time, skeleton, outLocalTransforms) fills one Mat4 per
+joint in the skeleton.  Joints that have no channel in this clip are left
+as their bind-pose local matrix — so clips can be "sparse" (only animate
+the joints they care about) and stacked with other clips in a blend tree.
+
+### How Sparse Channels Work
+
+**Source:** [`src/engine/animation/anim_clip.hpp`](src/engine/animation/anim_clip.hpp#L154) (line 154)
+
+For each joint in the skeleton, we look up whether this clip has a
+channel for that joint.  If yes, we evaluate it and build a TRS Mat4.
+If no, we copy the bind-pose matrix.  This "fill from bind pose"
+strategy lets you author a clip that only moves the legs, for example,
+and blend it with a clip that only moves the arms.
+
+### ECS Component Iteration via World::View
+
+**Source:** [`src/engine/animation/animation_system.cpp`](src/engine/animation/animation_system.cpp#L71) (line 71)
+
+-----------------------------------------------------------------------
+World::View<T>(callback) iterates all living entities that have
+component T and invokes the callback with (entityID, component&).
+
+This is the canonical ECS iteration pattern used by CombatSystem,
+AISystem, and all other systems in this codebase.
+-----------------------------------------------------------------------
+world.View<AnimatorComponent>([&](EntityID /*id*/, AnimatorComponent& animator)
+{
+UpdateAnimator(animator, deltaTime);
+});
+}
+
+### Advancing Playback Time
+
+**Source:** [`src/engine/animation/animation_system.cpp`](src/engine/animation/animation_system.cpp#L92) (line 92)
+
+-----------------------------------------------------------------------
+We advance currentTime by deltaTime * playbackSpeed.
+playbackSpeed of 1.0 = real-time; 2.0 = double speed; 0.5 = half speed.
+-----------------------------------------------------------------------
+animator.currentTime += deltaTime * animator.playbackSpeed;
+
+### World and Skin Matrices
+
+**Source:** [`src/engine/animation/animation_system.cpp`](src/engine/animation/animation_system.cpp#L149) (line 149)
+
+-----------------------------------------------------------------------
+Two more passes over the joint array:
+  1. ComputeWorldTransforms: multiply local × parent (forward pass).
+  2. ComputeSkinMatrices:    multiply world × invBind (per-joint).
+
+The resulting skin matrices are stored in animator.jointMatrices.
+A future milestone (M4b) will upload these to a D3D11 constant buffer
+for the skinned mesh vertex shader.
+-----------------------------------------------------------------------
+std::vector<math::Mat4> worldTransforms;
+skeleton->ComputeWorldTransforms(localTransforms, worldTransforms);
+
+### How AnimationSystem Fits in the ECS
+
+**Source:** [`src/engine/animation/animation_system.hpp`](src/engine/animation/animation_system.hpp#L6) (line 6)
+
+============================================================================
+AnimationSystem is an ECS *system*: it iterates over every entity that has
+an AnimatorComponent and advances its animation state.
+
+Per frame the system does:
+  1. Advance currentTime by (deltaTime * playbackSpeed).
+  2. Evaluate the blend tree (or direct clip) at the new currentTime.
+     This fills an array of local-space joint matrices.
+  3. Ask the skeleton to compute world-space joint matrices.
+  4. Compute skin matrices (world × invBind) for GPU skinning.
+  5. Store the skin matrices in AnimatorComponent::jointMatrices.
+     The render system reads these to upload to a D3D11 constant buffer.
+
+### Separation of Animation and Rendering
+
+**Source:** [`src/engine/animation/animation_system.hpp`](src/engine/animation/animation_system.hpp#L20) (line 20)
+
+AnimationSystem only writes to CPU-side arrays.  It does NOT upload
+anything to the GPU.  The D3D11 skinning render pass (M4b) will read
+AnimatorComponent::jointMatrices and upload them to a constant buffer.
+This separation keeps the animation system platform-independent (it runs
+identically on Windows and Linux).
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Asset Registries Inside Systems
+
+**Source:** [`src/engine/animation/animation_system.hpp`](src/engine/animation/animation_system.hpp#L58) (line 58)
+
+The system owns maps from ID strings → Skeleton / AnimClip / BlendTree.
+This matches the pattern in all other game systems (InventorySystem,
+QuestSystem, etc.) where the system owns the "database" of definitions.
+
+At M7 (world streaming) these maps will migrate to the AssetDB.  For M4
+they live here to keep things simple.
+
+### std::move
+
+**Source:** [`src/engine/animation/animation_system.hpp`](src/engine/animation/animation_system.hpp#L85) (line 85)
+
+We take the skeleton by value and move it into the map.  This avoids a
+deep copy of the joint array.  After the call, the caller's skeleton
+object is in a valid-but-unspecified state (effectively empty).
+
+### ECS Update Pattern
+
+**Source:** [`src/engine/animation/animation_system.hpp`](src/engine/animation/animation_system.hpp#L115) (line 115)
+
+We call World::GetComponents<AnimatorComponent>() to obtain every
+entity with an AnimatorComponent, then update each one.  This matches
+the pattern used by CombatSystem, AISystem, etc.
+
+### Extracting Translation from a Row-Major Mat4
+
+**Source:** [`src/engine/animation/blend_tree.cpp`](src/engine/animation/blend_tree.cpp#L27) (line 27)
+
+---------------------------------------------------------------------------
+In row-major order the translation is stored in row 3 (m[3][0..2]).
+(In column-major OpenGL convention it would be in column 3 instead.)
+---------------------------------------------------------------------------
+math::Vec3 ExtractTranslation(const math::Mat4& m)
+{
+return { m.m[3][0], m.m[3][1], m.m[3][2] };
+}
+
+### Extracting Scale from a Row-Major Mat4
+
+**Source:** [`src/engine/animation/blend_tree.cpp`](src/engine/animation/blend_tree.cpp#L38) (line 38)
+
+---------------------------------------------------------------------------
+The scale components are the lengths of each row (column in column-major).
+Row 0 = X axis, row 1 = Y axis, row 2 = Z axis.
+---------------------------------------------------------------------------
+math::Vec3 ExtractScale(const math::Mat4& m)
+{
+auto len = [](float a, float b, float c) { return std::sqrt(a*a + b*b + c*c); };
+return {
+len(m.m[0][0], m.m[0][1], m.m[0][2]),
+len(m.m[1][0], m.m[1][1], m.m[1][2]),
+len(m.m[2][0], m.m[2][1], m.m[2][2])
+};
+}
+
+### Extracting Rotation Quaternion from a Row-Major Mat4
+
+**Source:** [`src/engine/animation/blend_tree.cpp`](src/engine/animation/blend_tree.cpp#L54) (line 54)
+
+---------------------------------------------------------------------------
+We divide out the scale to get the pure rotation matrix, then convert the
+3×3 rotation matrix to a quaternion using Shepperd's method.
+
+Shepperd's method selects the formula that gives the best numerical
+precision based on the largest of the four candidate values
+(w², x², y², z²), avoiding near-zero denominators.
+---------------------------------------------------------------------------
+math::Quat ExtractRotation(const math::Mat4& mat, const math::Vec3& scale)
+{
+Guard against zero scale.
+float sx = (scale.x > math::kEps) ? scale.x : 1.0f;
+float sy = (scale.y > math::kEps) ? scale.y : 1.0f;
+float sz = (scale.z > math::kEps) ? scale.z : 1.0f;
+
+### Per-Joint TRS Blend
+
+**Source:** [`src/engine/animation/blend_tree.cpp`](src/engine/animation/blend_tree.cpp#L167) (line 167)
+
+-----------------------------------------------------------------------
+We cannot directly lerp matrices — that would produce shear / non-
+uniform scale artifacts.  Instead we:
+  1. Extract TRS from each matrix (decompose).
+  2. Lerp translation and scale, slerp rotation.
+  3. Rebuild the TRS matrix (recompose).
+
+This is the standard "decompose-blend-recompose" pattern used in
+every production animation engine.
+-----------------------------------------------------------------------
+for (int i = 0; i < n; ++i)
+{
+const math::Mat4& mA = matA[static_cast<size_t>(i)];
+const math::Mat4& mB = matB[static_cast<size_t>(i)];
+
+### What is a Blend Tree?
+
+**Source:** [`src/engine/animation/blend_tree.hpp`](src/engine/animation/blend_tree.hpp#L6) (line 6)
+
+============================================================================
+A blend tree is a graph of *nodes* that produce arrays of local joint
+transforms.  Leaf nodes sample individual animation clips.  Interior nodes
+blend the outputs of their children with weights.
+
+Example:
+
+        LinearBlend (weight=0.3)
+       /                      \
+  ClipNode("idle")        ClipNode("walk")
+
+If weight = 0.3:
+  output[i] = 0.7 * idle[i] + 0.3 * walk[i]  (for every joint i)
+
+In a production engine the blend tree would include 1D/2D parametric blends,
+additive layers, IK override nodes, and state-machine-driven transitions.
+Here we implement the two essential building blocks: ClipNode and LinearBlend.
+
+### Design Pattern (Composite)
+
+**Source:** [`src/engine/animation/blend_tree.hpp`](src/engine/animation/blend_tree.hpp#L25) (line 25)
+
+The blend tree uses the *Composite* design pattern: BlendNode is an
+abstract base, ClipNode and LinearBlendNode are concrete leaf/branch types.
+AnimationSystem only sees the BlendNode interface, so adding new node types
+(e.g. AdditiveNode, MaskNode) requires no changes to AnimationSystem.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Pure Virtual Interface
+
+**Source:** [`src/engine/animation/blend_tree.hpp`](src/engine/animation/blend_tree.hpp#L60) (line 60)
+
+Declaring Evaluate() as pure virtual forces every subclass to provide an
+implementation.  The caller (AnimationSystem) never needs to know which
+concrete type it is holding.
+
+### Leaf Nodes Hold Pointers, Not Copies
+
+**Source:** [`src/engine/animation/blend_tree.hpp`](src/engine/animation/blend_tree.hpp#L90) (line 90)
+
+ClipNode holds a raw pointer (non-owning) to an AnimClip.  Ownership of
+AnimClip objects stays in the asset manager / AnimationSystem.  This
+avoids expensive copies and keeps the blend tree lightweight.
+
+### Per-Joint Matrix Blending
+
+**Source:** [`src/engine/animation/blend_tree.hpp`](src/engine/animation/blend_tree.hpp#L122) (line 122)
+
+We cannot directly lerp 4×4 matrices — they would not remain valid TRS
+matrices after blending (their rows would no longer be orthonormal).
+
+Correct approach: decompose each joint's matrix back to TRS, blend the
+components individually (lerp translation and scale, slerp rotation), then
+rebuild the matrix.
+
+This decompose-blend-recompose approach is what every AAA engine uses for
+additive blending.  It is slightly more expensive than matrix lerp but
+produces geometrically correct results.
+
+weight = 0.0 → 100% childA
+weight = 1.0 → 100% childB
+weight = 0.5 → 50/50 blend
+
+### Ownership Model
+
+**Source:** [`src/engine/animation/blend_tree.hpp`](src/engine/animation/blend_tree.hpp#L170) (line 170)
+
+BlendTree owns all its nodes via unique_ptr.  The caller builds the tree
+using CreateNode<T>(...), which returns a raw pointer for wiring, while
+BlendTree retains ownership.  The tree is destroyed when BlendTree goes
+out of scope.
+
+### Mat4 Inversion (Fast 4×4 Rigid-Body Inverse)
+
+**Source:** [`src/engine/animation/skeleton.cpp`](src/engine/animation/skeleton.cpp#L6) (line 6)
+
+============================================================================
+A general 4×4 matrix inversion is expensive.  However, TRS (translation +
+rotation + scale) matrices have special structure that allows a cheap
+"pseudo-inverse":
+
+For a pure rotation matrix R (orthogonal): R^{-1} = R^T (transpose).
+For a TRS matrix M = T · R · S:
+  M^{-1} = S^{-1} · R^T · T^{-1}
+
+We compute this analytically here to avoid a full Gaussian elimination.
+(If the scale is non-uniform the formula is slightly more complex but still
+ much cheaper than a generic inversion.)
+
+Reference: Lengyel, "Mathematics for 3D Game Programming", §4.3.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Fast TRS Matrix Inversion
+
+**Source:** [`src/engine/animation/skeleton.cpp`](src/engine/animation/skeleton.cpp#L45) (line 45)
+
+---------------------------------------------------------------------------
+For a TRS matrix built from a unit-quaternion rotation and uniform/non-uniform
+scale, the inverse can be computed without a general LU-decompose.
+
+Method:
+  1. Extract the scale from the column lengths.
+  2. Divide each rotation column by its scale to get the pure rotation matrix.
+  3. Transpose the rotation block (R^{-1} = R^T for orthogonal matrices).
+  4. Compute the inverse translation from the transposed rotation and
+     original translation.
+
+If the matrix has zero scale on any axis (degenerate) we fall back to the
+identity to avoid a divide-by-zero.
+---------------------------------------------------------------------------
+math::Mat4 InvertTRS(const math::Mat4& mat)
+{
+Extract scale from column lengths.
+auto len = [&](int col) {
+float x = mat.m[0][col], y = mat.m[1][col], z = mat.m[2][col];
+return std::sqrt(x*x + y*y + z*z);
+};
+
+### Topological invariant
+
+**Source:** [`src/engine/animation/skeleton.cpp`](src/engine/animation/skeleton.cpp#L110) (line 110)
+
+We require that the parent already exists when a child is added.
+This means joints are added in breadth-first or depth-first order from
+the root — guaranteeing that m_joints is already in topological sort
+order when Build() runs.
+Joint j;
+j.index            = static_cast<int>(m_joints.size());
+j.name             = name;
+j.parentIndex      = parentIndex;
+j.bindTranslation  = translation;
+j.bindRotation     = rotation.Normalized();
+j.bindScale        = scale;
+
+### Building Bind-Pose World Matrices
+
+**Source:** [`src/engine/animation/skeleton.cpp`](src/engine/animation/skeleton.cpp#L130) (line 130)
+
+-----------------------------------------------------------------------
+We compute the bind-pose world-space matrix for each joint in a single
+forward pass, then invert it to get invBindMatrix.
+
+local[i] = TRS(bindTranslation, bindRotation, bindScale) for joint i.
+world[i] = local[i] * world[parent[i]]   (parent == Identity for root)
+
+The bind-pose local matrices are the bind-pose TRS matrices.
+-----------------------------------------------------------------------
+
+### Forward Pass for World Transforms
+
+**Source:** [`src/engine/animation/skeleton.cpp`](src/engine/animation/skeleton.cpp#L172) (line 172)
+
+-----------------------------------------------------------------------
+Precondition: localTransforms[i] is the local-space matrix for joint i
+(already incorporating the animated TRS, not the bind-pose TRS).
+
+We walk in index order (topologically sorted), so parent is always
+computed before child.
+-----------------------------------------------------------------------
+size_t n = m_joints.size();
+worldTransforms.resize(n, math::Mat4::Identity());
+
+### Skin Matrix Computation
+
+**Source:** [`src/engine/animation/skeleton.cpp`](src/engine/animation/skeleton.cpp#L200) (line 200)
+
+-----------------------------------------------------------------------
+In row-major (D3D11) convention, matrix multiplication `A * B` applies
+A first (transforms points out of A's space) then B (into B's space).
+
+So:  invBind[i] * world[i]
+  = (move vertex from bind-pose model space → joint-i local space)
+    then (move from joint-i local space → current world space)
+
+Vertex shader reads this as:
+  vertexWorld = Σ weight[i] * (skinMatrix[i] * vertexBindPose)
+-----------------------------------------------------------------------
+size_t n = m_joints.size();
+skinMatrices.resize(n, math::Mat4::Identity());
+
+### What is a Skeleton?
+
+**Source:** [`src/engine/animation/skeleton.hpp`](src/engine/animation/skeleton.hpp#L6) (line 6)
+
+============================================================================
+A skeleton is a hierarchy of *joints* (also called bones).  Each joint has:
+  1. A parent (except the root joint).
+  2. A *bind-pose* transform: the joint's rest position relative to its parent.
+  3. A *local* transform: the animated pose relative to its parent.
+  4. A *world* transform: the final position / orientation in world space,
+     computed by walking up the hierarchy:
+       world[i] = local[i] × world[parent[i]]
+
+Skinned meshes use the world transform of each joint to deform the mesh:
+  vertex_world = Σ (weight[i] × (worldTransform[i] × bindPoseInverse[i]) × vertex_local)
+
+The term "bind pose inverse" (also called the "inverse bind matrix") cancels
+out the bind pose so that when the skeleton is in the rest position the mesh
+vertices do not move.
+
+This file matches the shared schema:  shared/schemas/skeleton.schema.json
+Reference Python model:              tools/anim_authoring/animation_engine/model/__init__.py
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Local vs World Space
+
+**Source:** [`src/engine/animation/skeleton.hpp`](src/engine/animation/skeleton.hpp#L59) (line 59)
+
+Joints are authored (and stored) in *local space* — relative to their parent.
+At runtime we compute *world-space* transforms by multiplying child × parent
+matrices up the hierarchy (see Skeleton::ComputeWorldTransforms).
+
+bindPose*        — rest-pose local transform (from the authoring tool).
+bindPoseInverse  — the inverse of the bind-pose world transform, pre-computed
+                   once and used every frame to "un-bind" before applying the
+                   current animated pose.  This is the "inverse bind matrix"
+                   used in skinning.
+
+### Inverse Bind Matrix
+
+**Source:** [`src/engine/animation/skeleton.hpp`](src/engine/animation/skeleton.hpp#L86) (line 86)
+
+skinVertex = Σ weight[i] * (jointWorldMatrix[i] * invBindMatrix[i]) * localVertex
+The invBindMatrix[i] transforms a vertex from "bind-pose model space"
+into "joint local space".  Multiplying by jointWorldMatrix[i] then
+brings it into "current world space".
+math::Mat4  invBindMatrix     = math::Mat4::Identity();
+};
+
+### Topology Invariant
+
+**Source:** [`src/engine/animation/skeleton.hpp`](src/engine/animation/skeleton.hpp#L102) (line 102)
+
+Joints are stored in a flat vector sorted such that a parent's index is
+always less than its child's index.  This means we can compute world
+transforms in a single forward pass (no recursion needed):
+
+  for i in 0..N:
+    worldTransform[i] = localTransform[i] * worldTransform[parent[i]]
+
+This "topological sort" of the joint hierarchy is a common optimisation in
+production skeletons.
+
+### Why Pre-compute the Inverse?
+
+**Source:** [`src/engine/animation/skeleton.hpp`](src/engine/animation/skeleton.hpp#L143) (line 143)
+
+The inverse bind matrix only changes if the skeleton's rest pose
+changes (i.e. if you re-export from the DCC tool).  At runtime it is a
+constant that can be baked into the skeleton asset, avoiding a matrix
+inversion per joint per frame.
+
+### Forward Pass
+
+**Source:** [`src/engine/animation/skeleton.hpp`](src/engine/animation/skeleton.hpp#L161) (line 161)
+
+We walk the joints in index order (which is guaranteed topological).
+For the root (parentIndex == -1) the world transform equals the local
+transform.  For every other joint:
+  world[i] = local[i] * world[parent[i]]
+
+Multiplying local × parent (not parent × local) is correct in D3D11
+row-major convention where the child transform is applied FIRST (it is
+in local space) and the parent is applied AFTER (it brings local into
+world space).
+
+### Skin Matrix
+
+**Source:** [`src/engine/animation/skeleton.hpp`](src/engine/animation/skeleton.hpp#L180) (line 180)
+
+The skin matrix combines two operations:
+  invBindMatrix[i]  — moves the vertex from bind-pose model space into
+                      joint-i's local space.
+  worldTransform[i] — moves from joint-i's local space into current
+                      world space.
+
+Together they implement:
+  vertexWorld = Σ weight[i] * skinMatrix[i] * vertexBindPose
 
 ---
 
@@ -3796,7 +4463,7 @@ heap-allocated objects.  ECS exploits this for significant performance gains.
 
 ### Static Type IDs (Compile-time vs Runtime)
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L102) (line 102)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L103) (line 103)
 
 ──────────────────────────────────────────────────────────
 We need a way to map "HealthComponent" → 0, "TransformComponent" → 1, etc.
@@ -3814,7 +4481,7 @@ World::RegisterComponent<T>() in a fixed order at startup).
 
 ### Type Erasure
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L156) (line 156)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L157) (line 157)
 
 ──────────────────────────────
 The World class needs to store pools for ALL component types in a single
@@ -3830,7 +4497,7 @@ pool index corresponds to which type).
 
 ### Dense vs Sparse Storage
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L196) (line 196)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L197) (line 197)
 
 ─────────────────────────────────────────
 A *sparse* approach: std::unordered_map<EntityID, T>
@@ -3870,7 +4537,7 @@ Characteristics:
 
 ### Perfect Forwarding with T&&
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L256) (line 256)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L257) (line 257)
 
 ──────────────────────────────────────────────
 The parameter `T component` accepts both lvalues and rvalues.
@@ -3880,7 +4547,7 @@ parameter here is idiomatic for "sink" functions.
 
 ### Swap-and-Pop
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L290) (line 290)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L291) (line 291)
 
 ──────────────────────────────
 Erasing from the middle of a std::vector shifts all subsequent
@@ -3896,7 +4563,7 @@ of changing the order of elements (order is NOT preserved).
 
 ### assert vs exception
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L346) (line 346)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L347) (line 347)
 
 ──────────────────────────────────────
 `assert()` is a debug-only check (disabled when NDEBUG is defined).
@@ -3907,7 +4574,7 @@ so assert is appropriate here.
 
 ### std::optional
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L368) (line 368)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L369) (line 369)
 
 ───────────────────────────────
 std::optional<T&> cannot be used (references cannot be optional in the
@@ -3919,7 +4586,7 @@ while a raw pointer can be silently used without a null check.
 
 ### Range-based for with raw pointers
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L403) (line 403)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L404) (line 404)
 
 ───────────────────────────────────────────────────
 begin() / end() returning pointers allows range-based for:
@@ -3931,7 +4598,7 @@ data() returns a pointer to the first element.
 
 ### Trade-off: this uses MAX_ENTITIES * sizeof(size_t)
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L446) (line 446)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L447) (line 447)
 
 bytes even if only a few entities have this component.  For 64k
 entities and 8-byte size_t that is 512 KB per component type.
@@ -3940,7 +4607,7 @@ components, but this is clear and educational.
 
 ### Entity Lifecycle
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L466) (line 466)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L467) (line 467)
 
 ─────────────────────────────────
 Entities are just IDs.  The EntityManager is responsible for:
@@ -3963,7 +4630,7 @@ This is an O(MAX_COMPONENTS/64) bitwise AND — extremely fast.
 
 ### Free List
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L512) (line 512)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L513) (line 513)
 
 ──────────────────────────
 A "free list" (here, a std::queue) holds IDs that are available for
@@ -3972,7 +4639,7 @@ destroyed we push to the back.  This is O(1) and avoids fragmentation.
 
 ### Systems in ECS
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L625) (line 625)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L626) (line 626)
 
 ────────────────────────────────
 A System encapsulates behaviour that operates on a specific combination
@@ -3997,7 +4664,7 @@ frame.  The World updates the cache when components change.
 
 ### Why std::unordered_set?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L707) (line 707)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L708) (line 708)
 
 ──────────────────────────────────────────
 We need fast insert, erase, and membership check (O(1) average for all
@@ -4010,7 +4677,7 @@ unordered_set is clearest.
 
 ### Component Design Guidelines
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L730) (line 730)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L731) (line 731)
 
 ─────────────────────────────────────────────
  1. Components are PLAIN DATA — prefer simple structs, no virtual methods.
@@ -4025,13 +4692,13 @@ unordered_set is clearest.
 
 ### Right-hand coordinate system:
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L754) (line 754)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L755) (line 755)
 
 +X = right, +Y = up, +Z = toward viewer (out of screen in top-down).
 
 ### Naming Conventions
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L794) (line 794)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L795) (line 795)
 
 We use short names (`hp`, `mp`) instead of `currentHP`/`currentMP` so
 game-system code stays readable:
@@ -4049,7 +4716,7 @@ float   mpRegenRate = 2.0f; ///< Passive MP regen per second.
 
 ### Simple string `name` is used throughout game systems.
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L880) (line 880)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L881) (line 881)
 
 The `internalID` is a separate, stable machine-readable identifier for
 save files and scripting, so that renaming the display name in the game
@@ -4061,7 +4728,7 @@ std::string title;       ///< Optional title shown in dialogue (e.g. "Crown Prin
 
 ### Dual-Mode Rendering
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L912) (line 912)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L913) (line 913)
 
 The engine supports both a sprite-based renderer and an ncurses terminal
 renderer.  The fields below are used by the terminal renderer only.
@@ -4072,7 +4739,7 @@ int     colorPair = 1;    ///< ncurses color-pair index for terminal rendering.
 
 ### Item IDs vs Item Objects
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L997) (line 997)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L998) (line 998)
 
 ──────────────────────────────────────────
 Storing item *IDs* (integers) rather than full item objects keeps
@@ -4082,7 +4749,7 @@ This is the "flyweight" design pattern.
 
 ### Separation of Currency and Inventory
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1015) (line 1015)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1016) (line 1016)
 
 ──────────────────────────────────────────────────────
 Currency (Gil) is intentionally stored in CurrencyComponent, NOT here.
@@ -4101,7 +4768,7 @@ Authoritative Gil balance: world.GetComponent<CurrencyComponent>(entity).gil
 
 ### Finite State Machine (FSM) in AI
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1120) (line 1120)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1121) (line 1121)
 
 ──────────────────────────────────────────────────
 Even complex enemy AI is typically implemented as a Finite State Machine:
@@ -4118,7 +4785,7 @@ Enemy states:
 
 ### Level-up Design
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1339) (line 1339)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1340) (line 1340)
 
 ────────────────────────────────
 In FF15, characters level up only when resting at camp.  XP is accumulated
@@ -4127,7 +4794,7 @@ We model this with pendingXP (accumulated) vs currentXP (cashed in).
 
 ### Data-Driven Audio via ECS
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1504) (line 1504)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1505) (line 1505)
 
 ============================================================================
 Instead of hard-coding sound triggers in gameplay code, we attach an
@@ -4158,9 +4825,42 @@ Fields mirror the design from docs/FF15_REQUIREMENTS_BLUEPRINT.md §8:
 
 ============================================================================
 
+### Animator Component vs Animation System
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1591) (line 1591)
+
+============================================================================
+The AnimatorComponent is a *data bag*: it holds references to assets
+(skeletonID, currentClipID, blendTreeID) and the current runtime state
+(currentTime, playbackSpeed, jointMatrices).
+
+The AnimationSystem is the *logic*: every frame it iterates entities that
+have this component, evaluates the blend tree (or direct clip), and writes
+the resulting skin matrices into jointMatrices.
+
+This separation of data and logic is the central principle of ECS design.
+It enables:
+  • Multiple systems reading the same component (e.g. AnimationSystem
+    writes matrices; RenderSystem reads them to upload to the GPU).
+  • Easy serialisation (data components trivially map to JSON).
+  • Cache-friendly iteration (all AnimatorComponent data in one block).
+
+─── Usage Example ──────────────────────────────────────────────────────────
+
+  auto& anim           = world.AddComponent<AnimatorComponent>(noctis);
+  anim.skeletonID      = "skel_noctis";   // RegisterSkeleton id
+  anim.currentClipID   = "clip_idle";     // RegisterClip id
+  anim.playbackSpeed   = 1.0f;
+  anim.isPlaying       = true;
+
+  // Each frame, AnimationSystem writes jointMatrices[0..jointCount-1].
+  // The D3D11 skinning pass uploads these to a constant buffer.
+
+============================================================================
+
 ### Facade Pattern
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1587) (line 1587)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1673) (line 1673)
 
 ────────────────────────────────
 The World class is a *facade*: it provides a simple unified API over the
@@ -4179,7 +4879,7 @@ all entities, components, and systems cleanly.
 
 ### Variadic Templates
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1801) (line 1801)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1887) (line 1887)
 
 ────────────────────────────────────
 `template<typename... Components>` accepts any number of type arguments.
@@ -4192,7 +4892,7 @@ Fold expressions were introduced in C++17:
 
 ### Update Order
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1848) (line 1848)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1934) (line 1934)
 
 ──────────────────────────────
 Systems are updated in the order they were registered.  Order matters:
@@ -4205,7 +4905,7 @@ Systems are updated in the order they were registered.  Order matters:
 
 ### View Pattern / Query
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1875) (line 1875)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1961) (line 1961)
 
 ──────────────────────────────────────
 A "view" is an on-demand filter over living entities.  It avoids
@@ -4222,7 +4922,7 @@ Example usage:
 
 ### `if constexpr` and Fold Expressions
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1889) (line 1889)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1975) (line 1975)
 
 ──────────────────────────────────────────────────────
 The implementation uses parameter pack expansion to call HasComponent<C>
@@ -4231,7 +4931,7 @@ a single boolean.
 
 ### Factory Methods
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1942) (line 1942)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2028) (line 2028)
 
 ─────────────────────────────────
 Rather than calling AddComponent 10 times at every call site, a factory
@@ -4243,7 +4943,7 @@ individual components afterwards.
 
 ### static_cast vs dynamic_cast
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2026) (line 2026)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2112) (line 2112)
 
 ─────────────────────────────────────────────
 dynamic_cast performs a runtime type check (RTTI) and returns nullptr
@@ -4259,7 +4959,7 @@ fine; using it on user-supplied pointers would be dangerous.
 
 ### Why a free function?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2103) (line 2103)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2189) (line 2189)
 
 ───────────────────────────────────────
 Putting registration in a free function keeps the World constructor clean
@@ -4642,6 +5342,225 @@ Bind() with the parsed values.
 
 @param rawKey  ncurses key code or ASCII value.
 @param action  The InputAction to trigger when rawKey is pressed.
+
+---
+
+## engine/math
+
+### Why a Custom Math Library?
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L6) (line 6)
+
+============================================================================
+A full engine would link against a battle-tested library like DirectXMath,
+GLM, or Eigen.  For teaching purposes we implement just enough math to run
+the animation system, keeping each type short and fully annotated.
+
+Key types:
+  Vec3   — 3-component float vector (position, scale, translation).
+  Quat   — Unit quaternion (rotation).
+  Mat4   — Row-major 4×4 float matrix (transform; compatible with D3D11).
+
+### Row-Major vs Column-Major
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L17) (line 17)
+
+D3D11 HLSL uses row-major matrices by default: a vertex position is a
+row-vector and is multiplied as  pos * matrix  (row × matrix).
+OpenGL and Vulkan GLSL use column-major: matrix × column-vector.
+This file stores Mat4 in row-major order to match D3D11 convention.
+When uploading to a D3D11 constant buffer, NO transpose is needed.
+(If you later target Vulkan, you will need to transpose the matrices
+ or use the GLSL `layout(row_major)` qualifier.)
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: Windows / Linux (no platform-specific intrinsics)
+
+### Separate from DirectX XMFLOAT3
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L59) (line 59)
+
+DirectXMath (xmfloat3.h) provides SIMD-accelerated variants of this type.
+We use a plain struct here so the animation code is readable without
+knowing the DirectXMath API.  Performance-critical paths (e.g. 5000-bone
+crowds) would switch to XMVECTOR operations.
+
+### Dot product and cross product
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L87) (line 87)
+
+Dot product: measures how "aligned" two vectors are.
+  dot(a, b) = |a||b|cos θ
+  dot > 0: angle < 90°; = 0: perpendicular; < 0: angle > 90°
+
+Cross product: produces a vector perpendicular to both inputs.
+  Useful for computing normals and right-hand-rule rotations.
+-----------------------------------------------------------------------
+float Dot(const Vec3& o)   const { return x*o.x + y*o.y + z*o.z; }
+
+### Lerp is correct for translation and scale.  For
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L114) (line 114)
+
+rotation use Slerp (on Quat) because Lerp on rotation axis-angles
+produces non-constant-speed rotation.
+-----------------------------------------------------------------------
+static Vec3 Lerp(const Vec3& a, const Vec3& b, float t)
+{
+return a + (b - a) * t;
+}
+
+### Why Quaternions Instead of Euler Angles?
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L138) (line 138)
+
+Euler angles (pitch / yaw / roll) suffer from *gimbal lock*: when two
+rotation axes align, one degree of freedom is lost and rotations become
+non-intuitive.
+
+Quaternions represent rotations as q = (x, y, z, w) on the 4-D unit
+hypersphere (|q| = 1).  They:
+  1. Have no gimbal lock.
+  2. Interpolate smoothly via SLERP.
+  3. Compose efficiently with multiplication (no trigonometry at runtime).
+
+Convention: q = (xi, yj, zk, w)  where w is the scalar part.
+Identity (no rotation): q = (0, 0, 0, 1).
+
+### Axis-Angle to Quaternion
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L173) (line 173)
+
+q = (sin(θ/2)·axis, cos(θ/2))
+This is the most intuitive way to construct a rotation quaternion.
+
+### Order matters: (a * b) first applies a, then b.
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L203) (line 203)
+
+This is the opposite of matrix post-multiplication in some conventions.
+-----------------------------------------------------------------------
+Quat operator*(const Quat& o) const
+{
+return {
+w*o.x + x*o.w + y*o.z - z*o.y,
+w*o.y - x*o.z + y*o.w + z*o.x,
+w*o.z + x*o.y - y*o.x + z*o.w,
+w*o.w - x*o.x - y*o.y - z*o.z
+};
+}
+
+### The sandwich product is the standard way to apply a
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L220) (line 220)
+
+quaternion rotation to a vector.  The result is equivalent to building
+a rotation matrix from the quaternion and multiplying — but faster.
+
+### SLERP vs LERP for Rotations
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L241) (line 241)
+
+LERP (linear interpolation) on quaternions gives correct results only
+near t=0 and t=1.  For t in the middle the interpolated rotation can
+move at a non-constant angular speed ("ease in / ease out").
+SLERP (spherical linear interpolation) always produces constant-speed,
+shortest-arc rotation.  It is the standard for animation blending.
+
+When dot(q1, q2) < 0 we negate q2 to ensure the shortest arc (the
+quaternion q and -q represent the same rotation but opposite paths on
+the 4-D sphere).
+
+### Row-Major and D3D11
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L294) (line 294)
+
+D3D11 HLSL matrices are row-major by default.  A transform applied to a
+row-vector looks like:
+
+  float4 pos = mul(float4(v, 1), worldMatrix);
+
+where worldMatrix's rows are the world-space axes of the object.
+This matches how we store Mat4 here: m[row][col].
+
+### Homogeneous Coordinates
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L303) (line 303)
+
+The 4×4 matrix adds a 4th component (w) to every vector, enabling
+translation to be expressed as a linear operation.  Without the w
+component, translation would require an addition separate from the
+matrix multiply.
+
+A position vector has w=1 (so translation applies).
+A direction vector has w=0 (translation does NOT apply).
+
+### Translation in a 4×4 matrix lives in the last column
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L332) (line 332)
+
+(column-major) or last row (row-major).  In row-major (D3D11):
+  1 0 0 0
+  0 1 0 0
+  0 0 1 0
+  tx ty tz 1    ← translation goes in the 4th ROW, columns 0-2
+
+### Quaternion to Rotation Matrix
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L367) (line 367)
+
+The 3×3 rotation block of the 4×4 matrix can be computed from the
+quaternion components without any trigonometric functions:
+
+  R = | 1-2(y²+z²)   2(xy-wz)    2(xz+wy) |
+      | 2(xy+wz)    1-2(x²+z²)   2(yz-wx) |
+      | 2(xz-wy)    2(yz+wx)    1-2(x²+y²)|
+
+Because quaternions encode the rotation directly, this avoids the
+gimbal-lock problem that Euler-angle rotation matrices can suffer from.
+
+### TRS Matrix Order
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L402) (line 402)
+
+In D3D11 row-major convention (row vectors) the transform order is:
+  final = Scale · Rotation · Translation
+which means: first scale, then rotate, then translate.
+(In column-major / OpenGL convention the order is reversed.)
+
+### Matrix multiply: (A * B)[i][j] = Σ_k A[i][k] * B[k][j]
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L415) (line 415)
+
+-----------------------------------------------------------------------
+Mat4 operator*(const Mat4& o) const
+{
+Mat4 res;
+for (int row = 0; row < 4; ++row)
+for (int col = 0; col < 4; ++col)
+{
+float sum = 0.0f;
+for (int k = 0; k < 4; ++k)
+sum += m[row][k] * o.m[k][col];
+res.m[row][col] = sum;
+}
+return res;
+}
+
+### D3D11 expects a contiguous array of 16 floats in
+
+**Source:** [`src/engine/math/math_types.hpp`](src/engine/math/math_types.hpp#L433) (line 433)
+
+row-major order, which is exactly what std::array<std::array<float,4>,4>
+provides (both arrays are contiguous).
+-----------------------------------------------------------------------
+const float* Data() const { return &m[0][0]; }
+};
 
 ---
 
@@ -5761,18 +6680,44 @@ Target: Windows (MSVC)
 ---------------------------------------------------------------------------
 On MSVC we can tell the linker which .lib to pull in directly from source
 using #pragma comment(lib, ...).  For D3D11 this is convenient because
-d3d11.lib and dxgi.lib ship with the Windows SDK (always present on MSVC)
-and we don't need a separate find_package() in CMake.
+d3d11.lib, dxgi.lib, and d3dcompiler.lib ship with the Windows SDK (always
+present on MSVC) and we don't need a separate find_package() in CMake.
 
 We still list them in target_link_libraries in CMakeLists.txt for clarity
 and cross-toolchain compatibility.
 ---------------------------------------------------------------------------
 pragma comment(lib, "d3d11.lib")
 pragma comment(lib, "dxgi.lib")
+pragma comment(lib, "d3dcompiler.lib")
+
+### Quad Vertex Layout
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L68) (line 68)
+
+Each vertex carries a 2-D NDC position (no Z — the VS sets it to 0) and a
+2-D UV coordinate.  D3D11 convention: UV (0,0) = top-left of the texture.
+The quad is centred at the origin and spans ±0.5 in NDC, giving a quad
+that fills half the screen in each dimension.
+pragma pack(push, 1)
+struct QuadVertex
+{
+float x, y;  ///< NDC position ([-1,+1] range; z will be 0, w will be 1)
+float u, v;  ///< Texture UV (0,0 = top-left; 1,1 = bottom-right)
+};
+pragma pack(pop)
+
+### Index Buffer
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L90) (line 90)
+
+Two clockwise triangles (D3D11 default front face) sharing the diagonal edge:
+  Triangle 0: top-left (0), top-right (1), bottom-left (2)
+  Triangle 1: top-right (1), bottom-right (3), bottom-left (2)
+static const uint16_t kQuadIndices[6] = { 0, 1, 2, 1, 3, 2 };
 
 ### Driver Type Selection
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L83) (line 83)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L117) (line 117)
 
 -----------------------------------------------------------------------
 D3D_DRIVER_TYPE_HARDWARE — uses the physical GPU (fastest).
@@ -5788,7 +6733,7 @@ headless ? D3D_DRIVER_TYPE_WARP
 
 ### Feature Levels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L97) (line 97)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L131) (line 131)
 
 -----------------------------------------------------------------------
 We request feature levels in descending order.  D3D11CreateDevice picks
@@ -5811,7 +6756,7 @@ sizeof(featureLevels) / sizeof(featureLevels[0]));
 
 ### Device Creation Flags
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L118) (line 118)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L152) (line 152)
 
 -----------------------------------------------------------------------
 D3D11_CREATE_DEVICE_DEBUG enables the D3D11 debug layer (analogous to
@@ -5825,7 +6770,7 @@ endif
 
 ### D3D11CreateDevice vs D3D11CreateDeviceAndSwapChain
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L132) (line 132)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L166) (line 166)
 
 We separate device creation from swap chain creation so that headless
 mode can skip the swap chain entirely (no HWND needed).
@@ -5845,7 +6790,7 @@ D3D11_SDK_VERSION,
 
 ### Fallback from Debug Layer to No-Debug
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L152) (line 152)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L186) (line 186)
 
 -----------------------------------------------------------------------
 On some Windows installations the optional D3D11 debug layer DLL
@@ -5867,7 +6812,7 @@ D3D11_SDK_VERSION,
 
 ### DXGI Swap Chain Description
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L217) (line 217)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L251) (line 251)
 
 -----------------------------------------------------------------------
 IDXGISwapChain is the bridge between D3D11 and the OS window manager.
@@ -5894,7 +6839,7 @@ scDesc.Windowed                           = TRUE;
 
 ### DXGI_SWAP_EFFECT_DISCARD
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L240) (line 240)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L274) (line 274)
 
 The oldest swap effect; supported on all D3D11 hardware.  The contents
 of the back buffer are undefined after Present — we always clear so it
@@ -5903,7 +6848,7 @@ scDesc.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
 ### Obtaining the IDXGIFactory via the Device's Adapter
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L247) (line 247)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L281) (line 281)
 
 -----------------------------------------------------------------------
 We must create the swap chain through the same DXGI factory that owns
@@ -5916,7 +6861,7 @@ IDXGIFactory* dxgiFactory = nullptr;
 
 ### Render-Target View (RTV)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L290) (line 290)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L324) (line 324)
 
 A RTV is a "view" that tells D3D11 which texture sub-resource to render
 into.  Here we point it at the swap chain's back buffer.
@@ -5931,7 +6876,7 @@ return false;
 
 ### Caching Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L311) (line 311)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L345) (line 345)
 
 -----------------------------------------------------------------------
 Store the back-buffer size so DrawFrame can set the viewport and bind
@@ -5943,7 +6888,7 @@ m_height = height;
 
 ### Flush and Flush-to-Idle before release
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L346) (line 346)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L383) (line 383)
 
 Before releasing any D3D11 objects we flush the immediate context so
 any in-flight GPU commands are drained.  Without this, destroying
@@ -5953,46 +6898,48 @@ m_context->Flush();
 
 ### D3D11 Frame Setup: Bind RTV + Viewport
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L371) (line 371)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L408) (line 408)
 
 -----------------------------------------------------------------------
 Before issuing any draw or clear commands we must:
 
   1. OMSetRenderTargets — tell the Output Merger (OM) stage which
      texture(s) to write into.  The second parameter is the depth-
-     stencil view (nullptr here because we have no depth buffer yet;
-     depth testing is added in M3 D3D11 textures).
+     stencil view (nullptr here because we have no depth buffer yet).
 
   2. RSSetViewports — tell the Rasteriser (RS) stage the region of the
      render target to use.  TopLeftX/Y = 0 means "use the full texture".
      Without an explicit viewport call, the rasteriser falls back to
      implementation-defined behaviour on some drivers.
-
-Even when there are no draw calls (clear + present only), binding the
-RTV here ensures the pipeline is in a known state before M3 adds real
-geometry passes on top of this frame setup.
 -----------------------------------------------------------------------
 
-### D3D11 Clear + Present
+### D3D11 Clear
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L404) (line 404)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L436) (line 436)
 
 -----------------------------------------------------------------------
-The minimal draw loop for a "clear screen" demo:
-  1. ClearRenderTargetView — fill the back buffer with a solid colour.
-  2. Present               — display the back buffer (flip/blt to screen).
-In a full renderer you would also (note: RTV and viewport are already
-bound above):
-  • Bind shaders, vertex buffers, constant buffers.
-  • Issue draw calls.
-  • Then present.
+ClearRenderTargetView fills the back buffer with a solid colour.
+The clear happens *before* draw calls so geometry is composited on top
+of the clear colour, not underneath it.
 -----------------------------------------------------------------------
 const float clearColor[4] = { clearR, clearG, clearB, 1.0f };
 m_context->ClearRenderTargetView(m_renderTarget, clearColor);
 
+### Scene Draw Pass (M3+)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L446) (line 446)
+
+-----------------------------------------------------------------------
+If a scene has been loaded via LoadScene(), draw it on top of the clear
+colour.  The RTV and viewport are already set from the frame setup above,
+so DrawTexturedQuad can issue draw calls directly.
+-----------------------------------------------------------------------
+if (m_quadScene.loaded && m_currentScene == "textured_quad")
+DrawTexturedQuad();
+
 ### Present interval
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L419) (line 419)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L456) (line 456)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -6004,34 +6951,16 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L437) (line 437)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L474) (line 474)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
 3. Re-acquire the back buffer and create a new RTV.
 Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
-### LoadScene Stub (M0 baseline)
-
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L487) (line 487)
-
------------------------------------------------------------------------
-The D3D11 renderer currently supports the M0 baseline (device creation +
-clear colour loop).  Scene loading (triangle, textured quad, etc.) will
-be implemented in future milestones (M3 D3D11 textures, M4 skinned mesh).
-
-Returning true here allows --headless --scene <name> to exit 0 in CI
-without crashing.  A more complete implementation would load HLSL shaders
-(.cso compiled shader object files) and create D3D11 pipeline state.
------------------------------------------------------------------------
-std::cout << "[D3D11Renderer] LoadScene('" << sceneName
-<< "') — stub; scene support arrives in M3.\n";
-return true;   // Non-fatal stub
-}
-
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L509) (line 509)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L523) (line 523)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -6056,7 +6985,7 @@ return false;
 
 ### COM Reference Counting
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L558) (line 558)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L572) (line 572)
 
 COM objects are reference-counted.  CreateRenderTargetView internally
 calls AddRef on the texture, so the texture stays alive even after we
@@ -6067,6 +6996,217 @@ if (FAILED(hr))
 {
 std::cerr << "[D3D11Renderer] RecordHeadlessFrame: CreateRenderTargetView failed.\n";
 return false;
+}
+
+### Validating the Scene Pipeline in Headless Mode (M3+)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L589) (line 589)
+
+-----------------------------------------------------------------------
+If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
+RTV and run one draw call to confirm the full shader + geometry +
+texture pipeline is functional under WARP.
+We set a small viewport matching the 64×64 offscreen texture so the
+rasteriser clips correctly.
+-----------------------------------------------------------------------
+if (m_quadScene.loaded && m_currentScene == "textured_quad")
+{
+D3D11_VIEWPORT vp = {};
+vp.Width    = 64.0f;
+vp.Height   = 64.0f;
+vp.MaxDepth = 1.0f;
+m_context->RSSetViewports(1, &vp);
+
+### Runtime HLSL Compilation with D3DCompileFromFile
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L644) (line 644)
+
+-----------------------------------------------------------------------
+D3D11 shaders are written in HLSL and can be compiled either:
+  a) At build time with fxc.exe or dxc.exe → .cso (compiled shader object)
+  b) At runtime with D3DCompileFromFile() → ID3DBlob of bytecode
+
+We use runtime compilation here for two reasons:
+  1. Students can edit the .hlsl files and immediately see the effect
+     by restarting the engine — no separate build step.
+  2. It avoids adding a fxc.exe pre-build step to CMake which would
+     require a special Windows SDK tool search.
+
+In a production engine you would always use pre-compiled .cso files
+for shipping because runtime compilation is slower and exposes shader
+source to end-users.
+
+D3DCompileFromFile takes a WIDE character path (LPCWSTR) because the
+Windows filesystem API uses UTF-16 internally.
+-----------------------------------------------------------------------
+
+### Embedded Fallback HLSL
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L670) (line 670)
+
+-----------------------------------------------------------------------
+If the .hlsl files are not present on disk (e.g. a minimal CI run that
+didn't copy shaders) we compile from inline string literals.  This
+guarantees LoadScene always succeeds in any environment.
+
+The fallback shaders are identical to the .hlsl files; keeping them in
+sync is the developer's responsibility.  An alternative design would use
+a resource file (.rc) to embed the HLSL at link time.
+-----------------------------------------------------------------------
+static const char* kVsFallback =
+"struct VSInput { float2 pos:POSITION; float2 uv:TEXCOORD0; };\n"
+"struct PSInput { float4 pos:SV_POSITION; float2 uv:TEXCOORD0; };\n"
+"PSInput main(VSInput i) { PSInput o; o.pos=float4(i.pos,0,1); o.uv=i.uv; return o; }\n";
+
+### std::wstring for Win32 wide-char path
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L704) (line 704)
+
+D3DCompileFromFile requires a LPCWSTR (wide string) path.
+std::filesystem::path::wstring() gives us that on MSVC.
+std::wstring wpath = path.wstring();
+hr = D3DCompileFromFile(
+wpath.c_str(),
+nullptr,          // no macro definitions
+nullptr,          // no include handler
+entryPoint,
+target,
+D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
+0,                              // no effect compile flags
+&code,
+&errors
+);
+}
+
+### Creating Shader Objects
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L784) (line 784)
+
+-----------------------------------------------------------------------
+D3D11 separates shader compilation (→ bytecode blob) from shader object
+creation (→ ID3D11VertexShader / ID3D11PixelShader).  The bytecode is
+needed once for object creation + input-layout creation, then can be
+discarded.  We Release() the blobs after we are done with them.
+-----------------------------------------------------------------------
+HRESULT hr = m_device->CreateVertexShader(
+vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
+nullptr, &m_quadScene.vs);
+
+### Input Layout
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L816) (line 816)
+
+-----------------------------------------------------------------------
+The Input Assembler (IA) stage needs to know how the raw bytes in the
+vertex buffer map to shader input semantics.  D3D11_INPUT_ELEMENT_DESC
+describes each field:
+
+  SemanticName   — matches the HLSL attribute name ("POSITION", "TEXCOORD")
+  SemanticIndex  — for arrays (e.g. TEXCOORD0 vs TEXCOORD1)
+  Format         — DXGI_FORMAT_R32G32_FLOAT = two 32-bit floats
+  InputSlot      — which vertex buffer slot (we only have slot 0)
+  AlignedByteOffset — byte offset within the vertex struct
+-----------------------------------------------------------------------
+D3D11_INPUT_ELEMENT_DESC layoutDesc[] =
+{
+{ "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0,
+D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8,
+D3D11_INPUT_PER_VERTEX_DATA, 0 },
+};
+
+### Vertex and Index Buffers
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L852) (line 852)
+
+-----------------------------------------------------------------------
+D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
+
+  Usage = DEFAULT  — GPU reads and writes; CPU cannot map.
+                     Fastest for geometry that never changes.
+  BindFlags = VERTEX_BUFFER / INDEX_BUFFER — usage in the IA stage.
+
+D3D11_SUBRESOURCE_DATA carries the initial CPU data that is uploaded
+to VRAM when CreateBuffer() is called.  After the call the CPU buffer
+is no longer referenced by D3D11.
+-----------------------------------------------------------------------
+{
+D3D11_BUFFER_DESC bd  = {};
+bd.ByteWidth          = static_cast<UINT>(sizeof(kQuadVerts));
+bd.Usage              = D3D11_USAGE_DEFAULT;
+bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
+
+### Texture Loading vs Fallback
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L901) (line 901)
+
+-----------------------------------------------------------------------
+We look for a test DDS texture in the shaderDir's parent (project root)
+under "samples/vertical_slice_project/Cooked/textures/".  If not found
+we create a 1×1 white RGBA8 texture inline so LoadScene never fails due
+to a missing asset.
+
+This pattern — "try to load asset, fall back to procedural placeholder" —
+is common in AAA engines.  It lets the pipeline validate even when
+content hasn't been cooked yet.
+-----------------------------------------------------------------------
+fs::path ddsPath = fs::path(shaderDir) / ".." / ".." / ".." / ".."
+/ "samples" / "vertical_slice_project"
+/ "Cooked" / "textures" / "test_texture.dds";
+ddsPath = ddsPath.lexically_normal();
+
+### Procedural 1×1 White Fallback Texture
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L927) (line 927)
+
+-----------------------------------------------------------------------
+When no DDS file is present we create a 1×1 RGBA8 white texture
+directly without going through the DDS loader.  This exercises the
+same texture-binding code path so the quad renders in white.
+-----------------------------------------------------------------------
+std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n";
+
+### The D3D11 Draw Call Sequence
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1003) (line 1003)
+
+-----------------------------------------------------------------------
+Every draw call in D3D11 requires the full pipeline state to be set:
+
+  IA — Input Assembler: topology, vertex buffer, index buffer, layout.
+  VS — Vertex Shader: program + constant buffers.
+  PS — Pixel Shader: program + textures + samplers.
+  OM — Output Merger: render targets + blend state.
+
+The OM is already configured by the caller (DrawFrame or RecordHeadlessFrame).
+We set IA, VS, and PS here for the quad draw call.
+
+### PSSetShaderResources / PSSetSamplers
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1015) (line 1015)
+
+These calls bind texture resources and sampler states to HLSL registers.
+register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
+register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
+-----------------------------------------------------------------------
+
+### Release Order (LIFO vs Creation Order)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1068) (line 1068)
+
+COM objects must be released in reverse-creation order when one object
+holds a reference to another.  For independent scene objects (shaders,
+buffers, textures) the order doesn't strictly matter, but releasing in
+reverse makes intent clear.
+if (m_quadScene.fallbackSampler)
+{
+m_quadScene.fallbackSampler->Release();
+m_quadScene.fallbackSampler = nullptr;
+}
+if (m_quadScene.fallbackSRV)
+{
+m_quadScene.fallbackSRV->Release();
+m_quadScene.fallbackSRV = nullptr;
 }
 
 ### Why Direct3D 11?
@@ -6137,20 +7277,21 @@ Requires: d3d11.lib, dxgi.lib, d3dcompiler.lib (Windows SDK — always present)
 
 ### D3D11 / DXGI Headers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L67) (line 67)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L68) (line 68)
 
 ---------------------------------------------------------------------------
 These headers ship with the Windows SDK — no separate download needed.
 d3d11.h     — D3D11 device, context, resource types.
 dxgi.h      — DXGI swap chain, adapter, factory types.
-d3dcompiler.h — runtime HLSL compilation (used in headless validation).
+d3dcompiler.h — runtime HLSL compilation via D3DCompileFromFile.
 ---------------------------------------------------------------------------
 include <d3d11.h>
 include <dxgi.h>
+include <d3dcompiler.h>
 
 ### Object Lifecycle
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L88) (line 88)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L90) (line 90)
 
 All COM objects (ID3D11Device, etc.) are managed via raw COM pointers.
 We call Release() manually in Shutdown() in reverse-creation order.
@@ -6165,14 +7306,14 @@ D3D11Renderer();
 
 ### COM pointer naming convention
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L153) (line 153)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L161) (line 161)
 
 We prefix all COM interface pointers with m_ (member) and use the
 interface name as the type hint.  e.g. m_device is an ID3D11Device*.
 
 ### Storing Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L165) (line 165)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L173) (line 173)
 
 -----------------------------------------------------------------------
 We cache the current back-buffer size so that DrawFrame can set the
@@ -6183,6 +7324,35 @@ across hardware and WARP.
 -----------------------------------------------------------------------
 uint32_t                m_width         = 0;
 uint32_t                m_height        = 0;
+
+### Scene State (M3 Textured Quad)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L188) (line 188)
+
+-----------------------------------------------------------------------
+Rather than one flat list of members for every scene we will ever have,
+we group the per-scene resources into a small inner struct.  Each call
+to LoadScene() tears down the previous scene (UnloadScene) and builds
+the new one.
+
+TexturedQuadScene holds everything the GPU needs to render a single
+textured unit quad:
+  vs / ps           — compiled HLSL vertex and pixel shaders.
+  inputLayout       — describes the vertex buffer format to the IA stage.
+  vertexBuf / indexBuf — quad geometry (4 verts, 2 triangles).
+  texture           — DDS texture loaded via D3D11Texture.
+  fallbackSRV /
+  fallbackSampler   — 1×1 white texture used when no DDS file exists
+                      (CI / headless mode).
+  loaded            — true once all resources are created successfully.
+-----------------------------------------------------------------------
+struct TexturedQuadScene
+{
+ID3D11VertexShader*       vs             = nullptr;
+ID3D11PixelShader*        ps             = nullptr;
+ID3D11InputLayout*        inputLayout    = nullptr;
+ID3D11Buffer*             vertexBuf      = nullptr;
+ID3D11Buffer*             indexBuf       = nullptr;
 
 ### DDS Parsing without a Third-Party Library
 

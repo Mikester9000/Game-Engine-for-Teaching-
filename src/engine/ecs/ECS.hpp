@@ -74,6 +74,7 @@
 // ---------------------------------------------------------------------------
 #include "../core/Types.hpp"     // EntityID, ComponentID, NULL_ENTITY, etc.
 #include "../core/Logger.hpp"    // LOG_DEBUG / LOG_WARN
+#include "../math/math_types.hpp" // Vec3, Quat, Mat4 — used by AnimatorComponent (M4)
 
 #include <array>           // std::array — fixed-size storage.
 #include <vector>          // std::vector — dynamic arrays.
@@ -1571,6 +1572,91 @@ struct AudioSourceComponent {
 
     /// Index of the source voice in XAudio2Backend's pool (-1 = not playing).
     int   voiceIndex  = -1;
+};
+
+// ---------------------------------------------------------------------------
+// AnimatorComponent — per-entity animation state (M4)
+// ---------------------------------------------------------------------------
+
+/// Maximum joints per skeleton — must match the joint CB slot count in HLSL.
+/// (Defined here so AnimatorComponent can dimension its array without
+/// pulling in skeleton.hpp which would create a circular include chain.)
+static constexpr int kMaxJoints = 64;
+
+/**
+ * @struct AnimatorComponent
+ * @brief Drives skeletal animation for an entity.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Animator Component vs Animation System
+ * ============================================================================
+ * The AnimatorComponent is a *data bag*: it holds references to assets
+ * (skeletonID, currentClipID, blendTreeID) and the current runtime state
+ * (currentTime, playbackSpeed, jointMatrices).
+ *
+ * The AnimationSystem is the *logic*: every frame it iterates entities that
+ * have this component, evaluates the blend tree (or direct clip), and writes
+ * the resulting skin matrices into jointMatrices.
+ *
+ * This separation of data and logic is the central principle of ECS design.
+ * It enables:
+ *   • Multiple systems reading the same component (e.g. AnimationSystem
+ *     writes matrices; RenderSystem reads them to upload to the GPU).
+ *   • Easy serialisation (data components trivially map to JSON).
+ *   • Cache-friendly iteration (all AnimatorComponent data in one block).
+ *
+ * ─── Usage Example ──────────────────────────────────────────────────────────
+ *
+ *   auto& anim           = world.AddComponent<AnimatorComponent>(noctis);
+ *   anim.skeletonID      = "skel_noctis";   // RegisterSkeleton id
+ *   anim.currentClipID   = "clip_idle";     // RegisterClip id
+ *   anim.playbackSpeed   = 1.0f;
+ *   anim.isPlaying       = true;
+ *
+ *   // Each frame, AnimationSystem writes jointMatrices[0..jointCount-1].
+ *   // The D3D11 skinning pass uploads these to a constant buffer.
+ *
+ * ============================================================================
+ */
+struct AnimatorComponent
+{
+    // -----------------------------------------------------------------------
+    // Asset references (IDs must be pre-registered with AnimationSystem)
+    // -----------------------------------------------------------------------
+
+    /// ID of the skeleton asset (registered via AnimationSystem::RegisterSkeleton).
+    std::string skeletonID;
+
+    /// ID of the current animation clip to play.
+    /// If blendTreeID is non-empty, the blend tree overrides this.
+    std::string currentClipID;
+
+    /// ID of the blend tree to evaluate.  When set, overrides currentClipID.
+    std::string blendTreeID;
+
+    // -----------------------------------------------------------------------
+    // Playback state
+    // -----------------------------------------------------------------------
+
+    float playbackSpeed = 1.0f;    ///< 1.0 = real-time; 0.5 = half speed; 2.0 = double speed
+    float currentTime   = 0.0f;    ///< Current playback position in seconds
+    bool  isPlaying     = true;    ///< False = animation paused (time does not advance)
+
+    // -----------------------------------------------------------------------
+    // Output (written by AnimationSystem — read by render system)
+    // -----------------------------------------------------------------------
+
+    /// Skin matrices for GPU skinning: skinMatrix[i] = worldJoint[i] × invBind[i].
+    /// Stored row-major for direct upload to a D3D11 constant buffer.
+    ///
+    /// TEACHING NOTE — Constant Buffer Layout
+    /// The D3D11 skinned mesh vertex shader declares a constant buffer:
+    ///   cbuffer JointCB : register(b0)  { float4x4 g_joints[64]; }
+    /// Each g_joints[i] corresponds to jointMatrices[i].Data() — 16 floats.
+    /// The CPU uploads this with Map/Unmap on a DYNAMIC usage buffer.
+    engine::math::Mat4 jointMatrices[kMaxJoints];
+
+    int jointCount = 0;  ///< Number of valid entries in jointMatrices
 };
 
 /** @} */ // end of Components
