@@ -62,6 +62,7 @@
 #pragma once
 
 #include "engine/rendering/IRenderer.hpp"
+#include "engine/rendering/d3d11/d3d11_texture.hpp"
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — D3D11 / DXGI Headers
@@ -69,10 +70,11 @@
 // These headers ship with the Windows SDK — no separate download needed.
 // d3d11.h     — D3D11 device, context, resource types.
 // dxgi.h      — DXGI swap chain, adapter, factory types.
-// d3dcompiler.h — runtime HLSL compilation (used in headless validation).
+// d3dcompiler.h — runtime HLSL compilation via D3DCompileFromFile.
 // ---------------------------------------------------------------------------
 #include <d3d11.h>
 #include <dxgi.h>
+#include <d3dcompiler.h>
 
 #include <cstdint>
 #include <string>
@@ -146,6 +148,12 @@ private:
     /** Release swap-chain-size-dependent objects (before a resize). */
     void ReleaseSwapChainResources();
 
+    /** Draw the textured quad scene to the currently bound render target. */
+    void DrawTexturedQuad();
+
+    /** Release all scene resources (called from Shutdown and before LoadScene). */
+    void UnloadScene();
+
     // -----------------------------------------------------------------------
     // D3D11 / DXGI objects
     // -----------------------------------------------------------------------
@@ -175,7 +183,51 @@ private:
 
     bool                    m_headless      = false;
     bool                    m_initialised   = false;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Scene State (M3 Textured Quad)
+    // -----------------------------------------------------------------------
+    // Rather than one flat list of members for every scene we will ever have,
+    // we group the per-scene resources into a small inner struct.  Each call
+    // to LoadScene() tears down the previous scene (UnloadScene) and builds
+    // the new one.
+    //
+    // TexturedQuadScene holds everything the GPU needs to render a single
+    // textured unit quad:
+    //   vs / ps           — compiled HLSL vertex and pixel shaders.
+    //   inputLayout       — describes the vertex buffer format to the IA stage.
+    //   vertexBuf / indexBuf — quad geometry (4 verts, 2 triangles).
+    //   texture           — DDS texture loaded via D3D11Texture.
+    //   fallbackSRV /
+    //   fallbackSampler   — 1×1 white texture used when no DDS file exists
+    //                       (CI / headless mode).
+    //   loaded            — true once all resources are created successfully.
+    // -----------------------------------------------------------------------
+    struct TexturedQuadScene
+    {
+        ID3D11VertexShader*       vs             = nullptr;
+        ID3D11PixelShader*        ps             = nullptr;
+        ID3D11InputLayout*        inputLayout    = nullptr;
+        ID3D11Buffer*             vertexBuf      = nullptr;
+        ID3D11Buffer*             indexBuf       = nullptr;
+
+        // Texture loaded from a DDS file via D3D11Texture.
+        D3D11Texture              texture;
+
+        // 1×1 white fallback texture (created inline when no DDS is present).
+        ID3D11ShaderResourceView* fallbackSRV     = nullptr;
+        ID3D11SamplerState*       fallbackSampler  = nullptr;
+
+        bool                      useFallbackTex   = false;
+        bool                      loaded           = false;
+    };
+
+    TexturedQuadScene   m_quadScene;
+    std::string         m_currentScene;   ///< Name of the active scene, or "".
 };
+
+} // namespace rendering
+} // namespace engine
 
 } // namespace rendering
 } // namespace engine

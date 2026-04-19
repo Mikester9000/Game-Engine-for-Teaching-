@@ -424,6 +424,20 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     )
 
     # -----------------------------------------------------------------------
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Animation Runtime Sources (M4)
+    # -----------------------------------------------------------------------
+    # The animation runtime is renderer-agnostic: it runs on both D3D11 and
+    # Vulkan paths.  We add it to SANDBOX_SOURCES unconditionally (still
+    # inside the WIN32 guard since the sandbox is Windows-only).
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/engine/animation/skeleton.cpp
+        src/engine/animation/anim_clip.cpp
+        src/engine/animation/blend_tree.cpp
+        src/engine/animation/animation_system.cpp
+    )
+
     # D3D11 backend sources (included when ENGINE_ENABLE_D3D11=ON).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Conditional Source Files
@@ -528,7 +542,7 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     # download.  Any Windows developer machine already has them.
     # -----------------------------------------------------------------------
     if(ENGINE_ENABLE_D3D11)
-        target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib)
+        target_link_libraries(engine_sandbox PRIVATE d3d11.lib dxgi.lib d3dcompiler.lib)
     endif()
 
     # TEACHING NOTE — xaudio2.lib and ole32.lib
@@ -685,7 +699,37 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         endif() # GLSLC_EXECUTABLE
     endif() # ENGINE_ENABLE_VULKAN
 
-endif() # WIN32 AND (D3D11 OR Vulkan)
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — D3D11 HLSL Shaders: Copy to output directory
+    # -----------------------------------------------------------------------
+    # D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
+    # (see D3D11Renderer.cpp :: LoadScene).  The .hlsl source files must
+    # therefore be present next to the executable at runtime.
+    #
+    # We copy them with a POST_BUILD command so that both Debug and Release
+    # configurations automatically get up-to-date shader files whenever the
+    # engine is built.
+    #
+    # The shaders/ sub-directory mirrors the path returned by GetShaderDir()
+    # in src/sandbox/main.cpp.
+    # -----------------------------------------------------------------------
+    if(ENGINE_ENABLE_D3D11)
+        set(HLSL_SHADERS
+            "${CMAKE_SOURCE_DIR}/shaders/textured_quad.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/textured_quad.ps.hlsl"
+        )
+
+        add_custom_command(TARGET engine_sandbox POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_FILE_DIR:engine_sandbox>/shaders"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${HLSL_SHADERS}
+                "$<TARGET_FILE_DIR:engine_sandbox>/shaders/"
+            COMMENT "Copying D3D11 HLSL shaders to output directory"
+        )
+    endif() # ENGINE_ENABLE_D3D11
+
+endif() # WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN)
 
 # ---------------------------------------------------------------------------
 # cook target — standalone C++ asset cooker (Milestone M2)

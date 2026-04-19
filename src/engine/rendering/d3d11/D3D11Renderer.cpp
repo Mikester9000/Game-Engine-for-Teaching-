@@ -43,21 +43,55 @@
 // ---------------------------------------------------------------------------
 // On MSVC we can tell the linker which .lib to pull in directly from source
 // using #pragma comment(lib, ...).  For D3D11 this is convenient because
-// d3d11.lib and dxgi.lib ship with the Windows SDK (always present on MSVC)
-// and we don't need a separate find_package() in CMake.
+// d3d11.lib, dxgi.lib, and d3dcompiler.lib ship with the Windows SDK (always
+// present on MSVC) and we don't need a separate find_package() in CMake.
 //
 // We still list them in target_link_libraries in CMakeLists.txt for clarity
 // and cross-toolchain compatibility.
 // ---------------------------------------------------------------------------
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 #include <iostream>
 #include <cassert>
-#include <cstring>   // std::memset
+#include <cstring>    // std::memset
+#include <filesystem> // std::filesystem::path (C++17) — for wide-char path conversion
 
 namespace engine {
 namespace rendering {
+
+// ===========================================================================
+// Quad geometry constants
+// ===========================================================================
+
+// TEACHING NOTE — Quad Vertex Layout
+// Each vertex carries a 2-D NDC position (no Z — the VS sets it to 0) and a
+// 2-D UV coordinate.  D3D11 convention: UV (0,0) = top-left of the texture.
+// The quad is centred at the origin and spans ±0.5 in NDC, giving a quad
+// that fills half the screen in each dimension.
+#pragma pack(push, 1)
+struct QuadVertex
+{
+    float x, y;  ///< NDC position ([-1,+1] range; z will be 0, w will be 1)
+    float u, v;  ///< Texture UV (0,0 = top-left; 1,1 = bottom-right)
+};
+#pragma pack(pop)
+
+// Vertices: top-left, top-right, bottom-left, bottom-right.
+static const QuadVertex kQuadVerts[4] =
+{
+    { -0.5f,  0.5f,  0.0f, 0.0f },  // top-left
+    {  0.5f,  0.5f,  1.0f, 0.0f },  // top-right
+    { -0.5f, -0.5f,  0.0f, 1.0f },  // bottom-left
+    {  0.5f, -0.5f,  1.0f, 1.0f },  // bottom-right
+};
+
+// TEACHING NOTE — Index Buffer
+// Two clockwise triangles (D3D11 default front face) sharing the diagonal edge:
+//   Triangle 0: top-left (0), top-right (1), bottom-left (2)
+//   Triangle 1: top-right (1), bottom-right (3), bottom-left (2)
+static const uint16_t kQuadIndices[6] = { 0, 1, 2, 1, 3, 2 };
 
 // ===========================================================================
 // Constructor / Destructor
@@ -343,6 +377,9 @@ void D3D11Renderer::Shutdown()
     if (!m_initialised)
         return;
 
+    // Unload any active scene first to release scene resources cleanly.
+    UnloadScene();
+
     // TEACHING NOTE — Flush and Flush-to-Idle before release
     // Before releasing any D3D11 objects we flush the immediate context so
     // any in-flight GPU commands are drained.  Without this, destroying
@@ -359,7 +396,7 @@ void D3D11Renderer::Shutdown()
 }
 
 // ===========================================================================
-// DrawFrame — clear the back buffer and present
+// DrawFrame — clear the back buffer, optionally draw scene, then present
 // ===========================================================================
 
 void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
@@ -374,20 +411,15 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     //
     //   1. OMSetRenderTargets — tell the Output Merger (OM) stage which
     //      texture(s) to write into.  The second parameter is the depth-
-    //      stencil view (nullptr here because we have no depth buffer yet;
-    //      depth testing is added in M3 D3D11 textures).
+    //      stencil view (nullptr here because we have no depth buffer yet).
     //
     //   2. RSSetViewports — tell the Rasteriser (RS) stage the region of the
     //      render target to use.  TopLeftX/Y = 0 means "use the full texture".
     //      Without an explicit viewport call, the rasteriser falls back to
     //      implementation-defined behaviour on some drivers.
-    //
-    // Even when there are no draw calls (clear + present only), binding the
-    // RTV here ensures the pipeline is in a known state before M3 adds real
-    // geometry passes on top of this frame setup.
     // -----------------------------------------------------------------------
 
-    // 1 — Bind render target (no depth buffer yet; added in M3 D3D11 textures).
+    // 1 — Bind render target (no depth buffer yet).
     m_context->OMSetRenderTargets(1, &m_renderTarget, nullptr);
 
     // 2 — Set the viewport to match the back-buffer dimensions.
@@ -401,19 +433,24 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     m_context->RSSetViewports(1, &vp);
 
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — D3D11 Clear + Present
+    // TEACHING NOTE — D3D11 Clear
     // -----------------------------------------------------------------------
-    // The minimal draw loop for a "clear screen" demo:
-    //   1. ClearRenderTargetView — fill the back buffer with a solid colour.
-    //   2. Present               — display the back buffer (flip/blt to screen).
-    // In a full renderer you would also (note: RTV and viewport are already
-    // bound above):
-    //   • Bind shaders, vertex buffers, constant buffers.
-    //   • Issue draw calls.
-    //   • Then present.
+    // ClearRenderTargetView fills the back buffer with a solid colour.
+    // The clear happens *before* draw calls so geometry is composited on top
+    // of the clear colour, not underneath it.
     // -----------------------------------------------------------------------
     const float clearColor[4] = { clearR, clearG, clearB, 1.0f };
     m_context->ClearRenderTargetView(m_renderTarget, clearColor);
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Scene Draw Pass (M3+)
+    // -----------------------------------------------------------------------
+    // If a scene has been loaded via LoadScene(), draw it on top of the clear
+    // colour.  The RTV and viewport are already set from the frame setup above,
+    // so DrawTexturedQuad can issue draw calls directly.
+    // -----------------------------------------------------------------------
+    if (m_quadScene.loaded && m_currentScene == "textured_quad")
+        DrawTexturedQuad();
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Present interval
@@ -571,13 +608,513 @@ bool D3D11Renderer::RecordHeadlessFrame()
     const float clearColor[4] = { 0.392f, 0.584f, 0.929f, 1.0f };
     m_context->ClearRenderTargetView(offscreenRTV, clearColor);
 
-    // Step 4 — Flush to ensure the GPU (or WARP) processes the clear.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Validating the Scene Pipeline in Headless Mode (M3+)
+    // -----------------------------------------------------------------------
+    // If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
+    // RTV and run one draw call to confirm the full shader + geometry +
+    // texture pipeline is functional under WARP.
+    // We set a small viewport matching the 64×64 offscreen texture so the
+    // rasteriser clips correctly.
+    // -----------------------------------------------------------------------
+    if (m_quadScene.loaded && m_currentScene == "textured_quad")
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = 64.0f;
+        vp.Height   = 64.0f;
+        vp.MaxDepth = 1.0f;
+        m_context->RSSetViewports(1, &vp);
+
+        m_context->OMSetRenderTargets(1, &offscreenRTV, nullptr);
+        DrawTexturedQuad();
+    }
+
+    // Step 4 — Flush to ensure the GPU (or WARP) processes the work.
     m_context->Flush();
 
     // Step 5 — Release temporary resources.
     offscreenRTV->Release();
 
     return true;
+}
+
+// ===========================================================================
+// LoadScene — load scene resources (M3+)
+// ===========================================================================
+
+bool D3D11Renderer::LoadScene(const std::string& sceneName,
+                               const std::string& shaderDir)
+{
+    if (!m_initialised)
+    {
+        std::cerr << "[D3D11Renderer] LoadScene called before Init().\n";
+        return false;
+    }
+
+    // Unknown scene names are accepted silently — they may be handled by
+    // higher-level systems.  Only "textured_quad" has a D3D11 implementation.
+    if (sceneName != "textured_quad")
+    {
+        std::cout << "[D3D11Renderer] LoadScene('" << sceneName
+                  << "') — no D3D11 scene handler; accepted as no-op.\n";
+        return true;
+    }
+
+    // Release any previously loaded scene.
+    UnloadScene();
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Runtime HLSL Compilation with D3DCompileFromFile
+    // -----------------------------------------------------------------------
+    // D3D11 shaders are written in HLSL and can be compiled either:
+    //   a) At build time with fxc.exe or dxc.exe → .cso (compiled shader object)
+    //   b) At runtime with D3DCompileFromFile() → ID3DBlob of bytecode
+    //
+    // We use runtime compilation here for two reasons:
+    //   1. Students can edit the .hlsl files and immediately see the effect
+    //      by restarting the engine — no separate build step.
+    //   2. It avoids adding a fxc.exe pre-build step to CMake which would
+    //      require a special Windows SDK tool search.
+    //
+    // In a production engine you would always use pre-compiled .cso files
+    // for shipping because runtime compilation is slower and exposes shader
+    // source to end-users.
+    //
+    // D3DCompileFromFile takes a WIDE character path (LPCWSTR) because the
+    // Windows filesystem API uses UTF-16 internally.
+    // -----------------------------------------------------------------------
+
+    // Construct paths to the HLSL files.
+    namespace fs = std::filesystem;
+    const fs::path vsPath = fs::path(shaderDir) / "textured_quad.vs.hlsl";
+    const fs::path psPath = fs::path(shaderDir) / "textured_quad.ps.hlsl";
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Embedded Fallback HLSL
+    // -----------------------------------------------------------------------
+    // If the .hlsl files are not present on disk (e.g. a minimal CI run that
+    // didn't copy shaders) we compile from inline string literals.  This
+    // guarantees LoadScene always succeeds in any environment.
+    //
+    // The fallback shaders are identical to the .hlsl files; keeping them in
+    // sync is the developer's responsibility.  An alternative design would use
+    // a resource file (.rc) to embed the HLSL at link time.
+    // -----------------------------------------------------------------------
+    static const char* kVsFallback =
+        "struct VSInput { float2 pos:POSITION; float2 uv:TEXCOORD0; };\n"
+        "struct PSInput { float4 pos:SV_POSITION; float2 uv:TEXCOORD0; };\n"
+        "PSInput main(VSInput i) { PSInput o; o.pos=float4(i.pos,0,1); o.uv=i.uv; return o; }\n";
+
+    static const char* kPsFallback =
+        "Texture2D g_tex:register(t0); SamplerState g_smp:register(s0);\n"
+        "struct PSInput { float4 pos:SV_POSITION; float2 uv:TEXCOORD0; };\n"
+        "float4 main(PSInput i):SV_TARGET { return g_tex.Sample(g_smp,i.uv); }\n";
+
+    // -----------------------------------------------------------------------
+    // Helper lambda: compile a shader from file, or fall back to string.
+    // -----------------------------------------------------------------------
+    auto compileShader = [&](const fs::path& path,
+                              const char*     fallbackSrc,
+                              const char*     entryPoint,
+                              const char*     target) -> ID3DBlob*
+    {
+        ID3DBlob* code    = nullptr;
+        ID3DBlob* errors  = nullptr;
+        HRESULT   hr      = E_FAIL;
+
+        if (fs::exists(path))
+        {
+            // TEACHING NOTE — std::wstring for Win32 wide-char path
+            // D3DCompileFromFile requires a LPCWSTR (wide string) path.
+            // std::filesystem::path::wstring() gives us that on MSVC.
+            std::wstring wpath = path.wstring();
+            hr = D3DCompileFromFile(
+                wpath.c_str(),
+                nullptr,          // no macro definitions
+                nullptr,          // no include handler
+                entryPoint,
+                target,
+                D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
+                0,                              // no effect compile flags
+                &code,
+                &errors
+            );
+        }
+
+        if (FAILED(hr))
+        {
+            if (errors)
+            {
+                // Print any HLSL compilation diagnostics so the developer can fix them.
+                std::cerr << "[D3D11Renderer] HLSL compile error ("
+                          << path.filename().string() << "):\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release();
+                errors = nullptr;
+            }
+
+            // Fall back to inline HLSL.
+            std::cout << "[D3D11Renderer] Using embedded fallback for "
+                      << path.filename().string() << ".\n";
+            hr = D3DCompile(
+                fallbackSrc,
+                std::strlen(fallbackSrc),
+                nullptr,          // no source name
+                nullptr,          // no macros
+                nullptr,          // no includes
+                entryPoint,
+                target,
+                D3DCOMPILE_ENABLE_STRICTNESS,
+                0,
+                &code,
+                &errors
+            );
+        }
+
+        if (FAILED(hr))
+        {
+            if (errors)
+            {
+                std::cerr << "[D3D11Renderer] Fallback HLSL error:\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release();
+            }
+            return nullptr;
+        }
+
+        if (errors) errors->Release();
+        return code;
+    };
+
+    // Compile the vertex shader (SM4.0 — compatible with Feature Level 10_0).
+    ID3DBlob* vsBlob = compileShader(vsPath, kVsFallback, "main", "vs_4_0");
+    if (!vsBlob)
+    {
+        std::cerr << "[D3D11Renderer] LoadScene: vertex shader compilation failed.\n";
+        return false;
+    }
+
+    // Compile the pixel shader.
+    ID3DBlob* psBlob = compileShader(psPath, kPsFallback, "main", "ps_4_0");
+    if (!psBlob)
+    {
+        vsBlob->Release();
+        std::cerr << "[D3D11Renderer] LoadScene: pixel shader compilation failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Creating Shader Objects
+    // -----------------------------------------------------------------------
+    // D3D11 separates shader compilation (→ bytecode blob) from shader object
+    // creation (→ ID3D11VertexShader / ID3D11PixelShader).  The bytecode is
+    // needed once for object creation + input-layout creation, then can be
+    // discarded.  We Release() the blobs after we are done with them.
+    // -----------------------------------------------------------------------
+    HRESULT hr = m_device->CreateVertexShader(
+        vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(),
+        nullptr, &m_quadScene.vs);
+
+    if (FAILED(hr))
+    {
+        vsBlob->Release(); psBlob->Release();
+        std::cerr << "[D3D11Renderer] CreateVertexShader failed.\n";
+        return false;
+    }
+
+    hr = m_device->CreatePixelShader(
+        psBlob->GetBufferPointer(), psBlob->GetBufferSize(),
+        nullptr, &m_quadScene.ps);
+    psBlob->Release();   // pixel shader blob is no longer needed.
+
+    if (FAILED(hr))
+    {
+        vsBlob->Release();
+        std::cerr << "[D3D11Renderer] CreatePixelShader failed.\n";
+        UnloadScene();
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Input Layout
+    // -----------------------------------------------------------------------
+    // The Input Assembler (IA) stage needs to know how the raw bytes in the
+    // vertex buffer map to shader input semantics.  D3D11_INPUT_ELEMENT_DESC
+    // describes each field:
+    //
+    //   SemanticName   — matches the HLSL attribute name ("POSITION", "TEXCOORD")
+    //   SemanticIndex  — for arrays (e.g. TEXCOORD0 vs TEXCOORD1)
+    //   Format         — DXGI_FORMAT_R32G32_FLOAT = two 32-bit floats
+    //   InputSlot      — which vertex buffer slot (we only have slot 0)
+    //   AlignedByteOffset — byte offset within the vertex struct
+    // -----------------------------------------------------------------------
+    D3D11_INPUT_ELEMENT_DESC layoutDesc[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0,
+          D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8,
+          D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    };
+
+    hr = m_device->CreateInputLayout(
+        layoutDesc,
+        static_cast<UINT>(std::size(layoutDesc)),
+        vsBlob->GetBufferPointer(),   // must match the VS bytecode semantics
+        vsBlob->GetBufferSize(),
+        &m_quadScene.inputLayout);
+    vsBlob->Release();   // vertex shader blob is no longer needed.
+
+    if (FAILED(hr))
+    {
+        std::cerr << "[D3D11Renderer] CreateInputLayout failed.\n";
+        UnloadScene();
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Vertex and Index Buffers
+    // -----------------------------------------------------------------------
+    // D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
+    //
+    //   Usage = DEFAULT  — GPU reads and writes; CPU cannot map.
+    //                      Fastest for geometry that never changes.
+    //   BindFlags = VERTEX_BUFFER / INDEX_BUFFER — usage in the IA stage.
+    //
+    // D3D11_SUBRESOURCE_DATA carries the initial CPU data that is uploaded
+    // to VRAM when CreateBuffer() is called.  After the call the CPU buffer
+    // is no longer referenced by D3D11.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_BUFFER_DESC bd  = {};
+        bd.ByteWidth          = static_cast<UINT>(sizeof(kQuadVerts));
+        bd.Usage              = D3D11_USAGE_DEFAULT;
+        bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA sd = {};
+        sd.pSysMem             = kQuadVerts;
+
+        hr = m_device->CreateBuffer(&bd, &sd, &m_quadScene.vertexBuf);
+        if (FAILED(hr))
+        {
+            std::cerr << "[D3D11Renderer] CreateBuffer (vertex) failed.\n";
+            UnloadScene();
+            return false;
+        }
+    }
+
+    {
+        D3D11_BUFFER_DESC bd  = {};
+        bd.ByteWidth          = static_cast<UINT>(sizeof(kQuadIndices));
+        bd.Usage              = D3D11_USAGE_DEFAULT;
+        bd.BindFlags          = D3D11_BIND_INDEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA sd = {};
+        sd.pSysMem             = kQuadIndices;
+
+        hr = m_device->CreateBuffer(&bd, &sd, &m_quadScene.indexBuf);
+        if (FAILED(hr))
+        {
+            std::cerr << "[D3D11Renderer] CreateBuffer (index) failed.\n";
+            UnloadScene();
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Texture Loading vs Fallback
+    // -----------------------------------------------------------------------
+    // We look for a test DDS texture in the shaderDir's parent (project root)
+    // under "samples/vertical_slice_project/Cooked/textures/".  If not found
+    // we create a 1×1 white RGBA8 texture inline so LoadScene never fails due
+    // to a missing asset.
+    //
+    // This pattern — "try to load asset, fall back to procedural placeholder" —
+    // is common in AAA engines.  It lets the pipeline validate even when
+    // content hasn't been cooked yet.
+    // -----------------------------------------------------------------------
+    fs::path ddsPath = fs::path(shaderDir) / ".." / ".." / ".." / ".."
+                       / "samples" / "vertical_slice_project"
+                       / "Cooked" / "textures" / "test_texture.dds";
+    ddsPath = ddsPath.lexically_normal();
+
+    bool texLoaded = m_quadScene.texture.LoadFromFile(m_device, m_context,
+                                                      ddsPath.string());
+    if (texLoaded)
+    {
+        m_quadScene.useFallbackTex = false;
+        std::cout << "[D3D11Renderer] Loaded texture: " << ddsPath.string() << "\n";
+    }
+    else
+    {
+        // -----------------------------------------------------------------------
+        // TEACHING NOTE — Procedural 1×1 White Fallback Texture
+        // -----------------------------------------------------------------------
+        // When no DDS file is present we create a 1×1 RGBA8 white texture
+        // directly without going through the DDS loader.  This exercises the
+        // same texture-binding code path so the quad renders in white.
+        // -----------------------------------------------------------------------
+        std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n";
+
+        uint8_t white[4] = { 255, 255, 255, 255 };
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width            = 1;
+        td.Height           = 1;
+        td.MipLevels        = 1;
+        td.ArraySize        = 1;
+        td.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+        td.SampleDesc.Count = 1;
+        td.Usage            = D3D11_USAGE_IMMUTABLE;
+        td.BindFlags        = D3D11_BIND_SHADER_RESOURCE;
+
+        D3D11_SUBRESOURCE_DATA sd = {};
+        sd.pSysMem    = white;
+        sd.SysMemPitch = 4;
+
+        ID3D11Texture2D* fallbackTex = nullptr;
+        hr = m_device->CreateTexture2D(&td, &sd, &fallbackTex);
+        if (FAILED(hr))
+        {
+            std::cerr << "[D3D11Renderer] CreateTexture2D (fallback) failed.\n";
+            UnloadScene();
+            return false;
+        }
+
+        hr = m_device->CreateShaderResourceView(fallbackTex, nullptr,
+                                                 &m_quadScene.fallbackSRV);
+        fallbackTex->Release();   // SRV holds a ref; our raw ptr is no longer needed.
+        if (FAILED(hr))
+        {
+            std::cerr << "[D3D11Renderer] CreateShaderResourceView (fallback) failed.\n";
+            UnloadScene();
+            return false;
+        }
+
+        // Create a simple bilinear sampler for the fallback texture.
+        D3D11_SAMPLER_DESC smpDesc = {};
+        smpDesc.Filter         = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        smpDesc.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        smpDesc.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        smpDesc.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        smpDesc.MaxAnisotropy  = 1;
+        smpDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+        smpDesc.MaxLOD         = D3D11_FLOAT32_MAX;
+
+        hr = m_device->CreateSamplerState(&smpDesc, &m_quadScene.fallbackSampler);
+        if (FAILED(hr))
+        {
+            std::cerr << "[D3D11Renderer] CreateSamplerState (fallback) failed.\n";
+            UnloadScene();
+            return false;
+        }
+
+        m_quadScene.useFallbackTex = true;
+    }
+
+    m_quadScene.loaded = true;
+    m_currentScene     = "textured_quad";
+    std::cout << "[D3D11Renderer] LoadScene('textured_quad') — OK.\n";
+    return true;
+}
+
+// ===========================================================================
+// DrawTexturedQuad — bind quad pipeline state and issue one indexed draw call
+// ===========================================================================
+
+void D3D11Renderer::DrawTexturedQuad()
+{
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — The D3D11 Draw Call Sequence
+    // -----------------------------------------------------------------------
+    // Every draw call in D3D11 requires the full pipeline state to be set:
+    //
+    //   IA — Input Assembler: topology, vertex buffer, index buffer, layout.
+    //   VS — Vertex Shader: program + constant buffers.
+    //   PS — Pixel Shader: program + textures + samplers.
+    //   OM — Output Merger: render targets + blend state.
+    //
+    // The OM is already configured by the caller (DrawFrame or RecordHeadlessFrame).
+    // We set IA, VS, and PS here for the quad draw call.
+    //
+    // TEACHING NOTE — PSSetShaderResources / PSSetSamplers
+    // These calls bind texture resources and sampler states to HLSL registers.
+    // register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
+    // register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
+    // -----------------------------------------------------------------------
+
+    // IA stage.
+    m_context->IASetInputLayout(m_quadScene.inputLayout);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    UINT stride = sizeof(QuadVertex);
+    UINT offset = 0;
+    m_context->IASetVertexBuffers(0, 1, &m_quadScene.vertexBuf, &stride, &offset);
+    m_context->IASetIndexBuffer(m_quadScene.indexBuf, DXGI_FORMAT_R16_UINT, 0);
+
+    // VS stage.
+    m_context->VSSetShader(m_quadScene.vs, nullptr, 0);
+
+    // PS stage — select texture SRV and sampler.
+    ID3D11ShaderResourceView* srv     = nullptr;
+    ID3D11SamplerState*       sampler = nullptr;
+
+    if (m_quadScene.useFallbackTex)
+    {
+        srv     = m_quadScene.fallbackSRV;
+        sampler = m_quadScene.fallbackSampler;
+    }
+    else
+    {
+        srv     = m_quadScene.texture.GetSRV();
+        sampler = m_quadScene.texture.GetSampler();
+    }
+
+    m_context->PSSetShader(m_quadScene.ps, nullptr, 0);
+    m_context->PSSetShaderResources(0, 1, &srv);
+    m_context->PSSetSamplers(0, 1, &sampler);
+
+    // Draw 6 indices = 2 triangles = 1 quad.
+    m_context->DrawIndexed(static_cast<UINT>(std::size(kQuadIndices)), 0, 0);
+
+    // Unbind the SRV to avoid "resource still bound" debug warnings on the
+    // next frame when the SRV is used as a render target (not an issue for
+    // our basic quad, but good practice to always clean up after a draw).
+    ID3D11ShaderResourceView* nullSRV = nullptr;
+    m_context->PSSetShaderResources(0, 1, &nullSRV);
+}
+
+// ===========================================================================
+// UnloadScene — release all scene resources
+// ===========================================================================
+
+void D3D11Renderer::UnloadScene()
+{
+    // TEACHING NOTE — Release Order (LIFO vs Creation Order)
+    // COM objects must be released in reverse-creation order when one object
+    // holds a reference to another.  For independent scene objects (shaders,
+    // buffers, textures) the order doesn't strictly matter, but releasing in
+    // reverse makes intent clear.
+    if (m_quadScene.fallbackSampler)
+    {
+        m_quadScene.fallbackSampler->Release();
+        m_quadScene.fallbackSampler = nullptr;
+    }
+    if (m_quadScene.fallbackSRV)
+    {
+        m_quadScene.fallbackSRV->Release();
+        m_quadScene.fallbackSRV = nullptr;
+    }
+
+    m_quadScene.texture.Release();
+
+    if (m_quadScene.indexBuf)    { m_quadScene.indexBuf->Release();    m_quadScene.indexBuf    = nullptr; }
+    if (m_quadScene.vertexBuf)   { m_quadScene.vertexBuf->Release();   m_quadScene.vertexBuf   = nullptr; }
+    if (m_quadScene.inputLayout) { m_quadScene.inputLayout->Release(); m_quadScene.inputLayout = nullptr; }
+    if (m_quadScene.ps)          { m_quadScene.ps->Release();          m_quadScene.ps          = nullptr; }
+    if (m_quadScene.vs)          { m_quadScene.vs->Release();          m_quadScene.vs          = nullptr; }
+
+    m_quadScene.loaded        = false;
+    m_quadScene.useFallbackTex = false;
+    m_currentScene.clear();
 }
 
 } // namespace rendering
