@@ -514,29 +514,6 @@ void D3D11Renderer::RecreateSwapchain(uint32_t width, uint32_t height)
 }
 
 // ===========================================================================
-// LoadScene — (M3+ stub for D3D11 scene loading)
-// ===========================================================================
-
-bool D3D11Renderer::LoadScene(const std::string& sceneName,
-                              const std::string& /*shaderDir*/)
-{
-    // -----------------------------------------------------------------------
-    // TEACHING NOTE — LoadScene Stub (M0 baseline)
-    // -----------------------------------------------------------------------
-    // The D3D11 renderer currently supports the M0 baseline (device creation +
-    // clear colour loop).  Scene loading (triangle, textured quad, etc.) will
-    // be implemented in future milestones (M3 D3D11 textures, M4 skinned mesh).
-    //
-    // Returning true here allows --headless --scene <name> to exit 0 in CI
-    // without crashing.  A more complete implementation would load HLSL shaders
-    // (.cso compiled shader object files) and create D3D11 pipeline state.
-    // -----------------------------------------------------------------------
-    std::cout << "[D3D11Renderer] LoadScene('" << sceneName
-              << "') — stub; scene support arrives in M3.\n";
-    return true;   // Non-fatal stub
-}
-
-// ===========================================================================
 // RecordHeadlessFrame — validate device creation for CI
 // ===========================================================================
 

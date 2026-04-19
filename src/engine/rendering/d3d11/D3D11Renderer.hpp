@@ -228,6 +228,3 @@ private:
 
 } // namespace rendering
 } // namespace engine
-
-} // namespace rendering
-} // namespace engine
