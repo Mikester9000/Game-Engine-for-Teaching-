@@ -175,15 +175,18 @@ endif()
 option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration (M5)" ON)
 
 if(ENGINE_ENABLE_PHYSICS)
-    # TEACHING NOTE — find_package(JoltPhysics CONFIG)
-    # The vcpkg port for joltphysics provides a CMake config that registers
-    # the imported target JoltPhysics::Jolt.  QUIET suppresses the "not found"
-    # message when Jolt is not installed (we handle it ourselves below).
-    find_package(JoltPhysics CONFIG QUIET)
-    if(JoltPhysics_FOUND)
-        message(STATUS "JoltPhysics found: physics subsystem ENABLED.")
+    # TEACHING NOTE — find_package(Jolt CONFIG)
+    # The vcpkg port for joltphysics (v5+) provides a CMake config that
+    # registers the imported target Jolt::Jolt.  The CMake package name is
+    # "Jolt" (not "JoltPhysics") — confirmed by the vcpkg install message:
+    #   "find_package(Jolt CONFIG REQUIRED)"
+    # QUIET suppresses the "not found" message when Jolt is not installed
+    # (we handle it ourselves below).
+    find_package(Jolt CONFIG QUIET)
+    if(Jolt_FOUND)
+        message(STATUS "Jolt (JoltPhysics) found: physics subsystem ENABLED.")
     else()
-        message(STATUS "JoltPhysics NOT found — ENGINE_ENABLE_PHYSICS will be OFF. "
+        message(STATUS "Jolt (JoltPhysics) NOT found — ENGINE_ENABLE_PHYSICS will be OFF. "
                        "Install via: vcpkg install joltphysics")
         set(ENGINE_ENABLE_PHYSICS OFF CACHE BOOL "" FORCE)
     endif()
@@ -547,7 +550,7 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     # Jolt is present.  Including rigid_body.cpp without physics_world.cpp
     # would produce unresolved external linker errors (LNK2019 on MSVC).
     # -----------------------------------------------------------------------
-    if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
+    if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
         list(APPEND SANDBOX_SOURCES
             src/engine/physics/physics_world.cpp
             src/engine/physics/rigid_body.cpp
@@ -635,13 +638,13 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         target_link_libraries(engine_sandbox PRIVATE Vulkan::Vulkan)
     endif()
 
-    # TEACHING NOTE — JoltPhysics::Jolt
-    # The vcpkg JoltPhysics package provides an imported CMake target that
-    # carries all include directories and link libraries automatically.
-    # Linking with target_link_libraries() is all that is needed — no manual
-    # include_directories() or add_library() calls required.
-    if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
-        target_link_libraries(engine_sandbox PRIVATE JoltPhysics::Jolt)
+    # TEACHING NOTE — Jolt::Jolt
+    # The vcpkg joltphysics package (v5+) provides an imported CMake target
+    # "Jolt::Jolt" that carries all include directories and link libraries
+    # automatically.  Linking with target_link_libraries() is all that is
+    # needed — no manual include_directories() or add_library() calls required.
+    if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
+        target_link_libraries(engine_sandbox PRIVATE Jolt::Jolt)
     endif()
 
     # -----------------------------------------------------------------------
@@ -678,7 +681,7 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     # Defined when Jolt Physics is available.  Physics .cpp files use
     # #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
     # main.cpp uses it to gate the --scene physics_test acceptance tests.
-    if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
+    if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
         list(APPEND SANDBOX_DEFS ENGINE_ENABLE_PHYSICS)
     endif()
 

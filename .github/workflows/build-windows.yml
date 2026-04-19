@@ -243,11 +243,23 @@ jobs:
       # Configure CMake with the physics-enabled preset.
       # Pass the system vcpkg toolchain file (C:\vcpkg) so CMake finds the
       # joltphysics package installed in the step above.
+      #
+      # TEACHING NOTE — VCPKG_MANIFEST_INSTALL=OFF
+      # The vcpkg CMake toolchain detects vcpkg.json in the project root and
+      # would automatically re-run `vcpkg install` in manifest mode during
+      # cmake configure.  This fails because imgui@1.92.7 on the CI runner
+      # does not carry the "docking" feature required by vcpkg.json, even
+      # though this build doesn't use imgui at all.
+      #
+      # Setting VCPKG_MANIFEST_INSTALL=OFF tells the toolchain to skip the
+      # auto-install.  CMake then uses the packages already installed in the
+      # previous classic-mode step (C:\vcpkg\installed\x64-windows\).
       # -----------------------------------------------------------------------
       - name: Configure CMake (D3D11 + Jolt Physics)
         run: >
           cmake --preset windows-ninja-debug-physics
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_INSTALL=OFF
         shell: pwsh
 
       - name: Build engine_sandbox (with Physics)

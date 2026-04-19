@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1067 across 40 subsystems.
+**Total lessons:** 1068 across 40 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (47 lessons)
-- [ci/workflows](#ciworkflows) (33 lessons)
+- [ci/workflows](#ciworkflows) (34 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
 - [editor/src](#editorsrc) (45 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
@@ -224,18 +224,21 @@ Expected output: "[PASS] physics_test: all 3 acceptance tests passed."
 ---------------------------------------------------------------------------
 option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration (M5)" ON)
 
-### find_package(JoltPhysics CONFIG)
+### find_package(Jolt CONFIG)
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L178) (line 178)
 
-The vcpkg port for joltphysics provides a CMake config that registers
-the imported target JoltPhysics::Jolt.  QUIET suppresses the "not found"
-message when Jolt is not installed (we handle it ourselves below).
-find_package(JoltPhysics CONFIG QUIET)
-if(JoltPhysics_FOUND)
-message(STATUS "JoltPhysics found: physics subsystem ENABLED.")
+The vcpkg port for joltphysics (v5+) provides a CMake config that
+registers the imported target Jolt::Jolt.  The CMake package name is
+"Jolt" (not "JoltPhysics") — confirmed by the vcpkg install message:
+  "find_package(Jolt CONFIG REQUIRED)"
+QUIET suppresses the "not found" message when Jolt is not installed
+(we handle it ourselves below).
+find_package(Jolt CONFIG QUIET)
+if(Jolt_FOUND)
+message(STATUS "Jolt (JoltPhysics) found: physics subsystem ENABLED.")
 else()
-message(STATUS "JoltPhysics NOT found — ENGINE_ENABLE_PHYSICS will be OFF. "
+message(STATUS "Jolt (JoltPhysics) NOT found — ENGINE_ENABLE_PHYSICS will be OFF. "
 "Install via: vcpkg install joltphysics")
 set(ENGINE_ENABLE_PHYSICS OFF CACHE BOOL "" FORCE)
 endif()
@@ -243,7 +246,7 @@ endif()
 
 ### find_package(Curses) sets:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L197) (line 197)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L200) (line 200)
 
 CURSES_LIBRARIES    — ncurses link flags
   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
@@ -257,7 +260,7 @@ endif()
 
 ### Build Lua from source (preferred)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L209) (line 209)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L212) (line 212)
 
 ──────────────────────────────────────────────────
 Lua is a small, self-contained library (~30 .c files).  Building it from the
@@ -279,7 +282,7 @@ Detection order:
 
 ### Building a static library from C source in CMake
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L236) (line 236)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L239) (line 239)
 
 -----------------------------------------------------------------------
 add_library(target STATIC files…) compiles the listed .c files and
@@ -291,7 +294,7 @@ include_directories() needed at the call-site.
 
 ### Platform compile flags for Lua
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L262) (line 262)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L265) (line 265)
 
 On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
 popen().  On Windows MSVC we disable several noisy warnings that come from
@@ -313,7 +316,7 @@ endif()
 
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L318) (line 318)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L321) (line 321)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -344,7 +347,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L360) (line 360)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L363) (line 363)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -354,7 +357,7 @@ if(ENGINE_ENABLE_TERMINAL)
 
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L405) (line 405)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L408) (line 408)
 
 The terminal game links against Lua 5.5 (built from bundled source or
 found as a system package).  ENGINE_ENABLE_LUA activates the Lua
@@ -366,7 +369,7 @@ endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L427) (line 427)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L430) (line 430)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -391,7 +394,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Animation Runtime Sources (M4)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L465) (line 465)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L468) (line 468)
 
 -----------------------------------------------------------------------
 The animation runtime is renderer-agnostic: it runs on both D3D11 and
@@ -406,7 +409,7 @@ src/engine/animation/animation_system.cpp
 
 ### M4b: IK solver (renderer-agnostic, pure C++17).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L476) (line 476)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L479) (line 479)
 
 Two-Bone analytical IK and FABRIK iterative N-joint IK.
 Lives in animation/ alongside the other CPU-side animation systems.
@@ -415,7 +418,7 @@ src/engine/animation/ik_solver.cpp
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L484) (line 484)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L487) (line 487)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -427,7 +430,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L492) (line 492)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L495) (line 495)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -435,7 +438,7 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 
 ### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L496) (line 496)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L499) (line 499)
 
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
@@ -445,7 +448,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L518) (line 518)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L521) (line 521)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -458,13 +461,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L531) (line 531)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L534) (line 534)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L533) (line 533)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L536) (line 536)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -482,7 +485,7 @@ methods are defined in physics_world.cpp — which is only compiled when
 Jolt is present.  Including rigid_body.cpp without physics_world.cpp
 would produce unresolved external linker errors (LNK2019 on MSVC).
 -----------------------------------------------------------------------
-if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
+if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
 list(APPEND SANDBOX_SOURCES
 src/engine/physics/physics_world.cpp
 src/engine/physics/rigid_body.cpp
@@ -497,7 +500,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L566) (line 566)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L569) (line 569)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -510,7 +513,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L579) (line 579)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L582) (line 582)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -534,7 +537,7 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L619) (line 619)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L622) (line 622)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -546,28 +549,28 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L628) (line 628)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L631) (line 631)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
 required by XAudio2.  Both are always present on any MSVC installation.
 target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
-### JoltPhysics::Jolt
+### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L638) (line 638)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L641) (line 641)
 
-The vcpkg JoltPhysics package provides an imported CMake target that
-carries all include directories and link libraries automatically.
-Linking with target_link_libraries() is all that is needed — no manual
-include_directories() or add_library() calls required.
-if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
-target_link_libraries(engine_sandbox PRIVATE JoltPhysics::Jolt)
+The vcpkg joltphysics package (v5+) provides an imported CMake target
+"Jolt::Jolt" that carries all include directories and link libraries
+automatically.  Linking with target_link_libraries() is all that is
+needed — no manual include_directories() or add_library() calls required.
+if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
+target_link_libraries(engine_sandbox PRIVATE Jolt::Jolt)
 endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L650) (line 650)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L653) (line 653)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -576,7 +579,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L656) (line 656)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L659) (line 659)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -585,7 +588,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L661) (line 661)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L664) (line 664)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -596,18 +599,18 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L677) (line 677)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L680) (line 680)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
 main.cpp uses it to gate the --scene physics_test acceptance tests.
-if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
+if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
 list(APPEND SANDBOX_DEFS ENGINE_ENABLE_PHYSICS)
 endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L690) (line 690)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L693) (line 693)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -641,7 +644,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L722) (line 722)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L725) (line 725)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -656,7 +659,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L737) (line 737)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L740) (line 740)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -671,7 +674,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L779) (line 779)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L782) (line 782)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -694,7 +697,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L800) (line 800)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L803) (line 803)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -715,7 +718,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L817) (line 817)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L820) (line 820)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -726,7 +729,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L840) (line 840)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L843) (line 843)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -748,7 +751,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L859) (line 859)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L862) (line 862)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -759,7 +762,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L867) (line 867)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L870) (line 870)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -769,7 +772,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L897) (line 897)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L900) (line 900)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -778,7 +781,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L904) (line 904)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L907) (line 907)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1142,9 +1145,30 @@ with:
 path: C:\vcpkg\installed
 key: vcpkg-joltphysics-${{ runner.os }}-x64
 
+### VCPKG_MANIFEST_INSTALL=OFF
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L247) (line 247)
+
+The vcpkg CMake toolchain detects vcpkg.json in the project root and
+would automatically re-run `vcpkg install` in manifest mode during
+cmake configure.  This fails because imgui@1.92.7 on the CI runner
+does not carry the "docking" feature required by vcpkg.json, even
+though this build doesn't use imgui at all.
+
+Setting VCPKG_MANIFEST_INSTALL=OFF tells the toolchain to skip the
+auto-install.  CMake then uses the packages already installed in the
+previous classic-mode step (C:\vcpkg\installed\x64-windows\).
+-----------------------------------------------------------------------
+- name: Configure CMake (D3D11 + Jolt Physics)
+run: >
+cmake --preset windows-ninja-debug-physics
+-DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+-DVCPKG_MANIFEST_INSTALL=OFF
+shell: pwsh
+
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L259) (line 259)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L271) (line 271)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1157,7 +1181,7 @@ shell: cmd
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L272) (line 272)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L284) (line 284)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1175,7 +1199,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L297) (line 297)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L309) (line 309)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1186,7 +1210,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L308) (line 308)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L320) (line 320)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1201,7 +1225,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L330) (line 330)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L342) (line 342)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
