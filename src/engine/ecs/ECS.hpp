@@ -1756,9 +1756,9 @@ struct ColliderComponent
     ShapeType  shapeType    = ShapeType::Box;
 
     // Shape dimensions:
-    math::Vec3 halfExtents  { 0.5f, 0.5f, 0.5f };  ///< Box: half-size per axis (m).
-    float      radius       = 0.5f;                 ///< Sphere / capsule radius (m).
-    float      halfHeight   = 0.85f;                ///< Capsule cylinder half-height (m).
+    engine::math::Vec3 halfExtents  { 0.5f, 0.5f, 0.5f };  ///< Box: half-size per axis (m).
+    float              radius       = 0.5f;                  ///< Sphere / capsule radius (m).
+    float              halfHeight   = 0.85f;                 ///< Capsule cylinder half-height (m).
 
     bool       isTrigger    = false;                ///< True = overlap events, no response.
     uint32_t   layerMask    = 0xFFFFFFFFu;          ///< Bitmask of layers this collider tests.

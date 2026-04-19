@@ -50,7 +50,6 @@
 #include <Jolt/Physics/Character/CharacterVirtual.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
-#include <Jolt/Physics/Collision/ObjectLayerPairFilterMask.h>
 
 #include "engine/physics/character_controller.hpp"
 #include "engine/physics/physics_world.hpp"
@@ -247,17 +246,20 @@ void CharacterController::Update(PhysicsWorld&    world,
     // -----------------------------------------------------------------------
     auto& impl = *world.GetImpl();
 
-    // TEACHING NOTE — BroadPhaseLayerFilter and ObjectLayerFilter
-    // We want the character to collide with everything, so we use the
-    // default "allow all" filters provided by Jolt.
-    JPH::DefaultBroadPhaseLayerFilter bpFilter(
-        impl.objectVsBroadPhaseFilter,
-        static_cast<JPH::ObjectLayer>(PhysicsWorld::kLayerMoving)
-    );
-    JPH::DefaultObjectLayerFilter objFilter(
-        impl.objectLayerPairFilter,
-        static_cast<JPH::ObjectLayer>(PhysicsWorld::kLayerMoving)
-    );
+    // TEACHING NOTE — Pass-through Collision Filters
+    // We want the character to collide with all static and dynamic bodies.
+    // Providing simple "allow all" implementations of the BroadPhaseLayerFilter
+    // and ObjectLayerFilter abstract base classes achieves this cleanly and
+    // works across all Jolt Physics versions without requiring helper utilities.
+    struct AllBroadPhase final : public JPH::BroadPhaseLayerFilter {
+        bool ShouldCollide(JPH::BroadPhaseLayer) const override { return true; }
+    };
+    struct AllObjectLayer final : public JPH::ObjectLayerFilter {
+        bool ShouldCollide(JPH::ObjectLayer) const override { return true; }
+    };
+
+    AllBroadPhase bpFilter;
+    AllObjectLayer objFilter;
 
     m_impl->character->SetLinearVelocity(desiredVelocity);
 
@@ -266,8 +268,8 @@ void CharacterController::Update(PhysicsWorld&    world,
         impl.physicsSystem->GetGravity(),
         bpFilter,
         objFilter,
-        JPH::BodyFilter{},         // collide with all bodies
-        JPH::ShapeFilter{},        // collide with all shapes
+        JPH::BodyFilter{},
+        JPH::ShapeFilter{},
         *impl.tempAllocator
     );
 

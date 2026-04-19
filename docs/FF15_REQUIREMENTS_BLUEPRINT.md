@@ -337,7 +337,7 @@ teaching slice but must follow the same pipeline shape.
 | 7 | Weather & time-of-day | 🔨 | ⬜ | ⬜ | WeatherSystem done (terminal); sky renderer ⬜ |
 | 8 | Audio pipeline | ⬜ | ✅ | 🔨 | Python tool + 32 tests ✅; XAudio2 C++ runtime ⬜ |
 | 9 | Animation pipeline | ⬜ | ✅ | 🔨 | Python tool + 11 tests ✅; C++ runtime ⬜ |
-| 10 | Physics | ⬜ | ⬜ | ⬜ | No `src/engine/physics/`; Jolt not integrated |
+| 10 | Physics | 🔨 | ⬜ | 🔨 | M5: Jolt PhysicsWorld, CharacterController, Raycast, HitVolume, ECS components (RigidBodyComponent + ColliderComponent); 3 headless acceptance tests in CI |
 | 11 | UI | 🔨 | ⬜ | ⬜ | ncurses terminal UI ✅; Vulkan HUD ⬜ |
 | 12 | Save system | ⬜ | ⬜ | ⬜ | `SaveGame()`/`LoadGame()` declared; no `src/engine/save/` |
 | 13 | Build / release pipeline | 🔨 | ✅ | ⬜ | Python tools + validate CI ✅; `cook.exe`, `pak.exe`, contract tests ⬜ |
