@@ -381,6 +381,17 @@ jobs:
       # VCPKG_MANIFEST_INSTALL=OFF prevents the toolchain from re-running
       # manifest-mode install during cmake configure (avoids re-downloading
       # joltphysics and other vcpkg.json deps that this build doesn't need).
+      #
+      # TEACHING NOTE — VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
+      # The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
+      # root and auto-switches to "manifest mode", where it expects packages
+      # in ${CMAKE_BINARY_DIR}/vcpkg_installed/<triplet>/.  But our classic-
+      # mode install (run from $env:TEMP) wrote packages to
+      # <workspace>/vcpkg/installed/<triplet>/ instead.  Without this override
+      # CMake silently fails to find imgui and nlohmann-json.
+      #
+      # Fix: explicitly set VCPKG_INSTALLED_DIR to the classic-mode install
+      # root so the toolchain appends the correct path to CMAKE_PREFIX_PATH.
       # -----------------------------------------------------------------------
       - name: Configure CMake (D3D11 + Editor)
         shell: pwsh
@@ -388,6 +399,7 @@ jobs:
           cmake --preset windows-ninja-debug-editor
           -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
           -DVCPKG_MANIFEST_INSTALL=OFF
+          "-DVCPKG_INSTALLED_DIR=${{ github.workspace }}/vcpkg/installed"
 
       - name: Build creation-suite-editor
         run: cmake --build --preset windows-ninja-debug-editor --target creation-suite-editor
