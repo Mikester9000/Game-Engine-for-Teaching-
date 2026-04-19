@@ -205,11 +205,18 @@ public:
      * @brief Advance the simulation by dt seconds.
      *
      * Must be called every game frame with the elapsed time since the
-     * previous frame.  Internally Jolt may split dt into multiple sub-steps
-     * (up to kMaxSubSteps) for numerical stability.
+     * previous frame.
+     *
+     * TEACHING NOTE — Explicit Sub-Steps
+     * This wrapper exposes sub-stepping as an explicit caller-controlled
+     * parameter.  The default is a single simulation step per frame
+     * (`substeps = 1`).  Callers that need extra stability for a larger `dt`
+     * can request more sub-steps explicitly (e.g. `substeps = 2` when
+     * `dt > 1/30 s`).  The sub-step count is passed directly to
+     * `PhysicsSystem::Update()` without further clamping.
      *
      * @param dt        Elapsed seconds (typically 1/60 for a 60 FPS game).
-     * @param substeps  Override the number of sub-steps (0 = auto).
+     * @param substeps  Number of simulation sub-steps to execute. Default: 1.
      */
     void Step(float dt, int substeps = 1);
 

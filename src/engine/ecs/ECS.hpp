@@ -1704,7 +1704,7 @@ struct RigidBodyComponent
     float    linearDamping  = 0.05f;        ///< Velocity damping per second [0, 1].
 
     /// Opaque Jolt body identifier (uint32_t wrapping JPH::BodyID).
-    /// Use PhysicsWorld::kInvalidBodyID (0xFFFFFFFF) as "not registered" sentinel.
+    /// Uses 0xFFFFFFFFu as the "not registered" sentinel value.
     uint32_t bodyID = 0xFFFFFFFFu;
 };
 

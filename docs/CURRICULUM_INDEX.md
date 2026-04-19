@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1065 across 40 subsystems.
+**Total lessons:** 1067 across 40 subsystems.
 
 ---
 
@@ -23,7 +23,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/ecs](#engineecs) (35 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
-- [engine/physics](#enginephysics) (52 lessons)
+- [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
 - [engine/rendering](#enginerendering) (215 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -1096,54 +1096,55 @@ shell: cmd
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
-  1. Bootstraps vcpkg (already installed on windows-latest runners at
-     $env:VCPKG_INSTALLATION_ROOT) and installs joltphysics:x64-windows.
+  1. Installs joltphysics via the system vcpkg at C:\vcpkg (classic mode).
   2. Configures engine_sandbox with the windows-ninja-debug-physics preset
      (ENGINE_ENABLE_PHYSICS=ON, D3D11 only, no Vulkan SDK needed).
   3. Builds engine_sandbox.
   4. Runs the M5 headless physics acceptance test:
         engine_sandbox.exe --headless --scene physics_test
-     Three CPU-only tests are run (no GPU/WARP needed):
+     Three CPU-only tests are run:
        Test 1 — Drop sphere: gravity simulation accuracy.
        Test 2 — Character step-up: CharacterController ledge traverse.
        Test 3 — Raycast: terrain query distance accuracy.
 
-continue-on-error: false — Physics is a hard M5 requirement.
-If joltphysics cannot be installed from vcpkg the job is allowed to fail
-gracefully via the vcpkg install step (it sets continue-on-error: true).
+continue-on-error: false — Physics acceptance tests are a hard M5 CI gate.
+The vcpkg install uses classic mode (see below) to avoid manifest-mode
+failures on other dependencies such as imgui[docking].
 ============================================================================
 build-windows-physics:
 name: Build Windows + Jolt Physics (M5)
 runs-on: windows-latest
-continue-on-error: true   # Until Jolt vcpkg install is stable on runners
+continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
-### Installing vcpkg dependencies in Manifest Mode
+### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L214) (line 214)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L213) (line 213)
 
 -----------------------------------------------------------------------
-GitHub Actions windows-latest runners ship with vcpkg at
-$env:VCPKG_INSTALLATION_ROOT.  When a vcpkg.json manifest exists in the
-repository root, vcpkg operates in "manifest mode": you run
-`vcpkg install` WITHOUT specifying individual package names.  vcpkg reads
-vcpkg.json and installs all listed dependencies (including joltphysics).
+The project's vcpkg.json lists ALL engine dependencies, including
+imgui[docking,dx11-binding,win32-binding] for the editor.  Running
+`vcpkg install` from the workspace in "manifest mode" would try to
+install every entry — and a specific imgui snapshot on the CI runner
+may not carry the docking feature, causing the install to fail even
+though this build doesn't need imgui at all.
 
-Classic-mode syntax (`vcpkg install joltphysics:x64-windows`) is
-rejected in manifest mode with:
-  "In manifest mode, vcpkg install does not support individual package args."
+Fix: run the install from a neutral temp directory (no vcpkg.json)
+so vcpkg falls back to "classic mode", where individual packages are
+accepted.  We use the system-wide vcpkg at C:\vcpkg (always present
+on windows-latest runners).  Packages land in C:\vcpkg\installed\ and
+are found by CMake via the C:\vcpkg toolchain file below.
 
-The --triplet flag sets the default target platform for the install.
-Cache key: hash of vcpkg.json so the cache is invalidated when deps change.
+Cache key: package name + OS (joltphysics version rarely changes).
 -----------------------------------------------------------------------
 - name: Cache vcpkg packages
 uses: actions/cache@v4
 with:
-path: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
-key: vcpkg-manifest-${{ runner.os }}-x64-${{ hashFiles('vcpkg.json') }}
+path: C:\vcpkg\installed
+key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L258) (line 258)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L259) (line 259)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1156,7 +1157,7 @@ shell: cmd
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L271) (line 271)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L272) (line 272)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1174,7 +1175,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L296) (line 296)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L297) (line 297)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1185,7 +1186,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L307) (line 307)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L308) (line 308)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1200,7 +1201,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L329) (line 329)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L330) (line 330)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -7188,9 +7189,24 @@ Every Jolt body is created in three steps:
   2. Build BodyCreationSettings — position, rotation, layer, motion type.
   3. Call BodyInterface::CreateAndAddBody().
 
+### Explicit Mass Override
+
+**Source:** [`src/engine/physics/physics_world.cpp`](src/engine/physics/physics_world.cpp#L303) (line 303)
+
+By default Jolt derives mass from the shape's density (uniform 1000 kg/m³).
+To match the caller-supplied mass we set CalculateInertia so Jolt still
+computes a physically correct inertia tensor for this shape, but uses our
+mass value instead of a density estimate.  Static bodies ignore mass.
+if (!isStatic && mass > 0.0f)
+{
+settings.mOverrideMassProperties =
+JPH::EOverrideMassProperties::CalculateInertia;
+settings.mMassPropertiesOverride.mMass = mass;
+}
+
 ### Jolt RayCast
 
-**Source:** [`src/engine/physics/physics_world.cpp`](src/engine/physics/physics_world.cpp#L431) (line 431)
+**Source:** [`src/engine/physics/physics_world.cpp`](src/engine/physics/physics_world.cpp#L457) (line 457)
 
 JPH::RRayCast direction vector length = the maximum ray distance.
 const JPH::RVec3 joltOrigin(origin.x, origin.y, origin.z);
@@ -7313,9 +7329,23 @@ update is multi-threaded via its JobSystem; external calls are single-thread.
 
 ============================================================================
 
+### Explicit Sub-Steps
+
+**Source:** [`src/engine/physics/physics_world.hpp`](src/engine/physics/physics_world.hpp#L210) (line 210)
+
+This wrapper exposes sub-stepping as an explicit caller-controlled
+parameter.  The default is a single simulation step per frame
+(`substeps = 1`).  Callers that need extra stability for a larger `dt`
+can request more sub-steps explicitly (e.g. `substeps = 2` when
+`dt > 1/30 s`).  The sub-step count is passed directly to
+`PhysicsSystem::Update()` without further clamping.
+
+@param dt        Elapsed seconds (typically 1/60 for a 60 FPS game).
+@param substeps  Number of simulation sub-steps to execute. Default: 1.
+
 ### Box Shape
 
-**Source:** [`src/engine/physics/physics_world.hpp`](src/engine/physics/physics_world.hpp#L228) (line 228)
+**Source:** [`src/engine/physics/physics_world.hpp`](src/engine/physics/physics_world.hpp#L235) (line 235)
 
 halfExtents is the half-size along each axis, so a 1×1×1 cube has
 halfExtents = (0.5, 0.5, 0.5).  This is the convention used by most
@@ -7329,7 +7359,7 @@ physics engines (Jolt, Bullet, PhysX).
 
 ### Capsule Shape for Characters
 
-**Source:** [`src/engine/physics/physics_world.hpp`](src/engine/physics/physics_world.hpp#L257) (line 257)
+**Source:** [`src/engine/physics/physics_world.hpp`](src/engine/physics/physics_world.hpp#L264) (line 264)
 
 A capsule is a cylinder with hemispherical caps.  It is the standard
 shape for character controllers because:
@@ -7349,7 +7379,7 @@ The total height = 2 * (halfHeight + radius).
 
 ### Why Expose Internals?
 
-**Source:** [`src/engine/physics/physics_world.hpp`](src/engine/physics/physics_world.hpp#L325) (line 325)
+**Source:** [`src/engine/physics/physics_world.hpp`](src/engine/physics/physics_world.hpp#L332) (line 332)
 
 CharacterController and HitVolumeManager need access to Jolt's
 BodyInterface and NarrowPhaseQuery.  Rather than duplicating every

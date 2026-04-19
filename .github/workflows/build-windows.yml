@@ -174,26 +174,25 @@ jobs:
   # TEACHING NOTE — M5 Physics CI Job
   # ============================================================================
   # This job validates the Jolt Physics integration (M5).  It:
-  #   1. Bootstraps vcpkg (already installed on windows-latest runners at
-  #      $env:VCPKG_INSTALLATION_ROOT) and installs joltphysics:x64-windows.
+  #   1. Installs joltphysics via the system vcpkg at C:\vcpkg (classic mode).
   #   2. Configures engine_sandbox with the windows-ninja-debug-physics preset
   #      (ENGINE_ENABLE_PHYSICS=ON, D3D11 only, no Vulkan SDK needed).
   #   3. Builds engine_sandbox.
   #   4. Runs the M5 headless physics acceptance test:
   #         engine_sandbox.exe --headless --scene physics_test
-  #      Three CPU-only tests are run (no GPU/WARP needed):
+  #      Three CPU-only tests are run:
   #        Test 1 — Drop sphere: gravity simulation accuracy.
   #        Test 2 — Character step-up: CharacterController ledge traverse.
   #        Test 3 — Raycast: terrain query distance accuracy.
   #
-  # continue-on-error: false — Physics is a hard M5 requirement.
-  # If joltphysics cannot be installed from vcpkg the job is allowed to fail
-  # gracefully via the vcpkg install step (it sets continue-on-error: true).
+  # continue-on-error: false — Physics acceptance tests are a hard M5 CI gate.
+  # The vcpkg install uses classic mode (see below) to avoid manifest-mode
+  # failures on other dependencies such as imgui[docking].
   # ============================================================================
   build-windows-physics:
     name: Build Windows + Jolt Physics (M5)
     runs-on: windows-latest
-    continue-on-error: true   # Until Jolt vcpkg install is stable on runners
+    continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
     permissions:
       contents: read
@@ -211,42 +210,44 @@ jobs:
           arch: x64
 
       # -----------------------------------------------------------------------
-      # TEACHING NOTE — Installing vcpkg dependencies in Manifest Mode
+      # TEACHING NOTE — Classic-mode vcpkg install (physics job only)
       # -----------------------------------------------------------------------
-      # GitHub Actions windows-latest runners ship with vcpkg at
-      # $env:VCPKG_INSTALLATION_ROOT.  When a vcpkg.json manifest exists in the
-      # repository root, vcpkg operates in "manifest mode": you run
-      # `vcpkg install` WITHOUT specifying individual package names.  vcpkg reads
-      # vcpkg.json and installs all listed dependencies (including joltphysics).
+      # The project's vcpkg.json lists ALL engine dependencies, including
+      # imgui[docking,dx11-binding,win32-binding] for the editor.  Running
+      # `vcpkg install` from the workspace in "manifest mode" would try to
+      # install every entry — and a specific imgui snapshot on the CI runner
+      # may not carry the docking feature, causing the install to fail even
+      # though this build doesn't need imgui at all.
       #
-      # Classic-mode syntax (`vcpkg install joltphysics:x64-windows`) is
-      # rejected in manifest mode with:
-      #   "In manifest mode, vcpkg install does not support individual package args."
+      # Fix: run the install from a neutral temp directory (no vcpkg.json)
+      # so vcpkg falls back to "classic mode", where individual packages are
+      # accepted.  We use the system-wide vcpkg at C:\vcpkg (always present
+      # on windows-latest runners).  Packages land in C:\vcpkg\installed\ and
+      # are found by CMake via the C:\vcpkg toolchain file below.
       #
-      # The --triplet flag sets the default target platform for the install.
-      # Cache key: hash of vcpkg.json so the cache is invalidated when deps change.
+      # Cache key: package name + OS (joltphysics version rarely changes).
       # -----------------------------------------------------------------------
       - name: Cache vcpkg packages
         uses: actions/cache@v4
         with:
-          path: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
-          key: vcpkg-manifest-${{ runner.os }}-x64-${{ hashFiles('vcpkg.json') }}
+          path: C:\vcpkg\installed
+          key: vcpkg-joltphysics-${{ runner.os }}-x64
 
-      - name: Install vcpkg dependencies (includes joltphysics)
+      - name: Install joltphysics via vcpkg (classic mode)
         run: |
-          $vcpkg = "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe"
-          & $vcpkg install --triplet x64-windows
+          Set-Location "$env:TEMP"
+          C:\vcpkg\vcpkg.exe install joltphysics:x64-windows
         shell: pwsh
-        working-directory: ${{ github.workspace }}
 
       # -----------------------------------------------------------------------
       # Configure CMake with the physics-enabled preset.
-      # Pass the vcpkg toolchain file so CMake can find joltphysics.
+      # Pass the system vcpkg toolchain file (C:\vcpkg) so CMake finds the
+      # joltphysics package installed in the step above.
       # -----------------------------------------------------------------------
       - name: Configure CMake (D3D11 + Jolt Physics)
         run: >
           cmake --preset windows-ninja-debug-physics
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
         shell: pwsh
 
       - name: Build engine_sandbox (with Physics)

@@ -279,7 +279,7 @@ void PhysicsWorld::Shutdown()
 //   3. Call BodyInterface::CreateAndAddBody().
 
 uint32_t PhysicsWorld::CreateBox(math::Vec3 pos, math::Vec3 halfExtents,
-                                  float /*mass*/, bool isStatic)
+                                  float mass, bool isStatic)
 {
     if (!m_impl->initialised) return kInvalidBodyID;
 
@@ -300,6 +300,18 @@ uint32_t PhysicsWorld::CreateBox(math::Vec3 pos, math::Vec3 halfExtents,
         layer
     );
 
+    // TEACHING NOTE — Explicit Mass Override
+    // By default Jolt derives mass from the shape's density (uniform 1000 kg/m³).
+    // To match the caller-supplied mass we set CalculateInertia so Jolt still
+    // computes a physically correct inertia tensor for this shape, but uses our
+    // mass value instead of a density estimate.  Static bodies ignore mass.
+    if (!isStatic && mass > 0.0f)
+    {
+        settings.mOverrideMassProperties =
+            JPH::EOverrideMassProperties::CalculateInertia;
+        settings.mMassPropertiesOverride.mMass = mass;
+    }
+
     JPH::BodyID bodyID = m_impl->BodyInterface().CreateAndAddBody(
         settings, JPH::EActivation::Activate);
 
@@ -307,7 +319,7 @@ uint32_t PhysicsWorld::CreateBox(math::Vec3 pos, math::Vec3 halfExtents,
 }
 
 uint32_t PhysicsWorld::CreateSphere(math::Vec3 pos, float radius,
-                                     float /*mass*/, bool isStatic)
+                                     float mass, bool isStatic)
 {
     if (!m_impl->initialised) return kInvalidBodyID;
 
@@ -327,6 +339,13 @@ uint32_t PhysicsWorld::CreateSphere(math::Vec3 pos, float radius,
         layer
     );
 
+    if (!isStatic && mass > 0.0f)
+    {
+        settings.mOverrideMassProperties =
+            JPH::EOverrideMassProperties::CalculateInertia;
+        settings.mMassPropertiesOverride.mMass = mass;
+    }
+
     JPH::BodyID bodyID = m_impl->BodyInterface().CreateAndAddBody(
         settings, JPH::EActivation::Activate);
 
@@ -334,7 +353,7 @@ uint32_t PhysicsWorld::CreateSphere(math::Vec3 pos, float radius,
 }
 
 uint32_t PhysicsWorld::CreateCapsule(math::Vec3 pos, float halfHeight,
-                                      float radius, float /*mass*/, bool isStatic)
+                                      float radius, float mass, bool isStatic)
 {
     if (!m_impl->initialised) return kInvalidBodyID;
 
@@ -353,6 +372,13 @@ uint32_t PhysicsWorld::CreateCapsule(math::Vec3 pos, float halfHeight,
         isStatic ? JPH::EMotionType::Static : JPH::EMotionType::Dynamic,
         layer
     );
+
+    if (!isStatic && mass > 0.0f)
+    {
+        settings.mOverrideMassProperties =
+            JPH::EOverrideMassProperties::CalculateInertia;
+        settings.mMassPropertiesOverride.mMass = mass;
+    }
 
     JPH::BodyID bodyID = m_impl->BodyInterface().CreateAndAddBody(
         settings, JPH::EActivation::Activate);
