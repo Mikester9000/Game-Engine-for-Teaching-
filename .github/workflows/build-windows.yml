@@ -72,6 +72,18 @@ jobs:
         uses: actions/checkout@v4
 
       # -----------------------------------------------------------------------
+      # 1b. Enter an MSVC developer environment for Ninja + cl/link.
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Ninja on Windows does not automatically pick MSVC.
+      # Without vcvars, CMake may detect a GNU toolchain (e.g. MinGW), which
+      # fails to link Windows SDK libraries such as xaudio2.lib.
+      # This step initialises cl.exe/link.exe + Windows SDK paths explicitly.
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # -----------------------------------------------------------------------
       # 2. Configure CMake — D3D11 only, no Vulkan SDK required.
       # -----------------------------------------------------------------------
       # TEACHING NOTE — CMake Presets in CI
