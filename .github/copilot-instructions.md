@@ -227,13 +227,13 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ---
 
-### Editor (Qt 6)
+### Editor (Dear ImGui)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `MainWindow` (menus, toolbar, docks, status bar) | ✅ | `editor/src/MainWindow.hpp/.cpp` |
-| `ContentBrowser` panel | ✅ | `editor/src/ContentBrowser.hpp/.cpp` — file tree |
-| `SceneEditor` canvas | ✅ | `editor/src/SceneEditor.hpp/.cpp` — placeholder canvas |
+| `EditorApp` (DockSpace, menu bar, status bar) | ✅ | `editor/src/EditorApp.hpp/.cpp` |
+| `ContentBrowserPanel` | ✅ | `editor/src/ContentBrowserPanel.hpp/.cpp` — file tree via std::filesystem |
+| `SceneEditorPanel` canvas | ✅ | `editor/src/SceneEditorPanel.hpp/.cpp` — ImGui DrawList canvas + JSON I/O |
 | Entity inspector / property editor | ⬜ | `editor/src/panels/inspector.hpp/.cpp` |
 | Scene hierarchy panel | ⬜ | `editor/src/panels/scene_hierarchy.hpp/.cpp` |
 | Scene ECS serialization | ⬜ | `src/engine/scene/scene_serialiser.hpp/.cpp` — JSON ↔ ECS snapshot |
@@ -278,8 +278,8 @@ Game-Engine-for-Teaching-/
 │   │   └── world/      # TileMap, Zone, WorldMap
 │   ├── sandbox/        # Windows Vulkan clear-screen demo
 │   └── main.cpp        # Terminal game entry point
-├── editor/             # Qt 6 Widgets editor (Creation Suite)
-│   └── src/            # C++ Qt source code
+├── editor/             # Dear ImGui editor (Creation Suite)
+│   └── src/            # C++ source: EditorApp, ContentBrowserPanel, SceneEditorPanel
 ├── tools/
 │   ├── audio_authoring/    # Python audio authoring tool (from Audio-Engine)
 │   └── anim_authoring/     # Python animation authoring tool (from Animation-Engine)
@@ -717,7 +717,7 @@ A student must be able to:
 | **Physics** | Rigid-body simulation (Jolt Physics); character capsule controller with step-up and slopes; vehicle wheel-ray physics; physics-based hit volumes for combat |
 | **Sound** | XAudio2 backend; positional 3D audio with distance attenuation; layered music system (battle / exploration / idle blend); event-driven SFX triggers |
 | **Gameplay** | Real-time action combat (warp-strike, link-strike, combo chains, ATB); open-world zone streaming without loading screens; party AI (behaviour tree + formation); quest system with dialogue; save/load (15 slots + auto-save at camp) |
-| **Tools** | Asset cooker (`cook.exe`); texture / mesh / audio / animation import pipeline; Qt 6 scene editor with Play-in-Engine; Python authoring tools for audio and animation |
+| **Tools** | Asset cooker (`cook.exe`); texture / mesh / audio / animation import pipeline; Dear ImGui scene editor with Play-in-Engine; Python authoring tools for audio and animation |
 | **Teaching** | Every non-trivial pattern has a `// TEACHING NOTE` block; subsystem docs in `docs/`; `samples/vertical_slice_project/` demonstrates each subsystem end-to-end |
 
 > **Note on content vs. quality:** The goal is not a content-complete copy of

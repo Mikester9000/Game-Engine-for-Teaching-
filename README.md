@@ -169,25 +169,25 @@ have a usable Vulkan ICD.  Use D3D11 on those machines.
 ## Monorepo Layout
 
 This repository is a **Windows-first monorepo** that brings together the engine,
-a Qt-based editor, Python authoring tools, shared schemas, and a sample project.
+a Dear ImGui editor, Python authoring tools, shared schemas, and a sample project.
 
 ```
 Game-Engine-for-Teaching-/         ← Monorepo root
-├── CMakeLists.txt              # Superbuild: engine + optional Qt editor
+├── CMakeLists.txt              # Superbuild: engine + optional Dear ImGui editor
 ├── CMakePresets.json           # Windows presets (VS 2022, Debug/Release)
 ├── README.md                   # This file
 │
 ├── engine/                     # Engine documentation & CMake anchor
 │   └── README.md               # Engine architecture guide
 │
-├── editor/                     # Qt 6 Widgets Creation Suite editor
-│   ├── CMakeLists.txt          # Qt editor build (requires Qt 6 + BUILD_EDITOR=ON)
+├── editor/                     # Dear ImGui Creation Suite editor
+│   ├── CMakeLists.txt          # ImGui editor build (BUILD_EDITOR=ON, vcpkg imgui)
 │   ├── README.md               # Editor build & usage guide
 │   └── src/
-│       ├── main.cpp            # QApplication entry point
-│       ├── MainWindow.hpp/.cpp # Top-level window (menus, toolbar, docks)
-│       ├── ContentBrowser.hpp/.cpp  # QFileSystemModel + QTreeView panel
-│       └── SceneEditor.hpp/.cpp     # 2D canvas with JSON save/load
+│       ├── main.cpp            # Win32 + D3D11 + ImGui entry point
+│       ├── EditorApp.hpp/.cpp  # DockSpace + menu bar + project state
+│       ├── ContentBrowserPanel.hpp/.cpp  # File tree via std::filesystem
+│       └── SceneEditorPanel.hpp/.cpp     # 2D canvas with JSON save/load
 │
 ├── tools/
 │   ├── audio_authoring/        # Python audio synthesis + bank cooking
@@ -249,9 +249,9 @@ Game-Engine-for-Teaching-/         ← Monorepo root
 | Visual Studio 2022 | 17.x | Desktop development with C++ workload |
 | CMake | ≥ 3.16 | Add to PATH during install |
 | Vulkan SDK | ≥ 1.3 | Sets `VULKAN_SDK` env var |
-| Qt 6 *(optional)* | 6.5+ | Required only for `BUILD_EDITOR=ON` |
+| vcpkg (for editor) | latest | Required only for `BUILD_EDITOR=ON`; installs Dear ImGui (MIT) |
 
-### Engine sandbox only (no Qt required)
+### Engine sandbox only (no editor required)
 
 ```bat
 git clone https://github.com/Mikester9000/Game-Engine-for-Teaching-.git
@@ -267,13 +267,11 @@ cmake .. -G "Visual Studio 17 2022" -A x64
 cmake --build . --config Debug --target engine_sandbox
 ```
 
-### Engine + Qt Editor
+### Engine + Dear ImGui Editor
 
 ```bat
-:: Set your Qt install path:
-set QT_PATH=C:\Qt\6.6.0\msvc2019_64
-
-cmake --preset windows-debug -DCMAKE_PREFIX_PATH="%QT_PATH%"
+:: Requires vcpkg with imgui installed (see vcpkg.json at repo root):
+cmake --preset windows-debug -DBUILD_EDITOR=ON -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake"
 cmake --build --preset windows-debug
 ```
 

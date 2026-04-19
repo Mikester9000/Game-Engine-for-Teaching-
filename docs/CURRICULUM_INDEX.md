@@ -6,16 +6,16 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 865 across 37 subsystems.
+**Total lessons:** 859 across 37 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (36 lessons)
-- [ci/workflows](#ciworkflows) (28 lessons)
-- [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
-- [editor/src](#editorsrc) (50 lessons)
+- [ci/workflows](#ciworkflows) (29 lessons)
+- [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
+- [editor/src](#editorsrc) (45 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
 - [engine/core](#enginecore) (50 lessons)
@@ -106,16 +106,18 @@ Or the manual workflow:
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L51) (line 51)
 
-The editor requires Qt 6 to be installed.  On a machine without Qt the
-engine still builds and runs.  Set BUILD_EDITOR=ON to include the editor.
+The editor uses Dear ImGui (MIT, zero install) rendered via D3D11.
+It requires vcpkg to install the imgui[docking,dx11-binding,win32-binding]
+package (listed in vcpkg.json).  The engine builds and runs without it.
+Set BUILD_EDITOR=ON to include the editor:
 
-  cmake .. -DBUILD_EDITOR=ON -DCMAKE_PREFIX_PATH="C:/Qt/6.x.x/msvc2019_64"
+  cmake --preset windows-debug -DBUILD_EDITOR=ON
 
-option(BUILD_EDITOR "Build the Qt-based Creation Suite editor" OFF)
+option(BUILD_EDITOR "Build the Dear ImGui Creation Suite editor" OFF)
 
 ### C++17 is required for:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L62) (line 62)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L64) (line 64)
 
 • if constexpr             (used in LuaEngine::SetGlobal<T>)
   • std::optional            (future use)
@@ -127,7 +129,7 @@ set(CMAKE_CXX_EXTENSIONS        OFF)
 
 ### CMake Options
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L93) (line 93)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L95) (line 95)
 
 option() declares a boolean flag the user can set on the cmake command line:
   cmake .. -DENGINE_ENABLE_TERMINAL=OFF
@@ -141,7 +143,7 @@ We gate the terminal (ncurses) renderer to non-Windows platforms because:
 
 ### ENGINE_ENABLE_TERMINAL
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L104) (line 104)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L106) (line 106)
 
 Defaults to ON everywhere EXCEPT Windows (where ncurses is unavailable).
 if(WIN32)
@@ -152,7 +154,7 @@ endif()
 
 ### ENGINE_ENABLE_D3D11 (default ON on Windows)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L113) (line 113)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L115) (line 115)
 
 ---------------------------------------------------------------------------
 Direct3D 11 is the *default* Windows renderer.  It ships with Windows 7+
@@ -173,7 +175,7 @@ endif()
 
 ### ENGINE_ENABLE_VULKAN (optional, high-end path)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L132) (line 132)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L134) (line 134)
 
 ---------------------------------------------------------------------------
 Vulkan is the *high-end / modern* renderer backend.  It is built when ON
@@ -197,7 +199,7 @@ endif()
 
 ### find_package(Curses) sets:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L158) (line 158)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L160) (line 160)
 
 CURSES_LIBRARIES    — ncurses link flags
   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
@@ -211,7 +213,7 @@ endif()
 
 ### Build Lua from source (preferred)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L170) (line 170)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L172) (line 172)
 
 ──────────────────────────────────────────────────
 Lua is a small, self-contained library (~30 .c files).  Building it from the
@@ -233,7 +235,7 @@ Detection order:
 
 ### Building a static library from C source in CMake
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L197) (line 197)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L199) (line 199)
 
 -----------------------------------------------------------------------
 add_library(target STATIC files…) compiles the listed .c files and
@@ -245,7 +247,7 @@ include_directories() needed at the call-site.
 
 ### Platform compile flags for Lua
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L223) (line 223)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L225) (line 225)
 
 On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
 popen().  On Windows MSVC we disable several noisy warnings that come from
@@ -267,7 +269,7 @@ endif()
 
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L279) (line 279)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L281) (line 281)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -298,7 +300,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L321) (line 321)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L323) (line 323)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -308,7 +310,7 @@ if(ENGINE_ENABLE_TERMINAL)
 
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L366) (line 366)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L368) (line 368)
 
 The terminal game links against Lua 5.5 (built from bundled source or
 found as a system package).  ENGINE_ENABLE_LUA activates the Lua
@@ -320,7 +322,7 @@ endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L388) (line 388)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L390) (line 390)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -345,7 +347,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L427) (line 427)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L429) (line 429)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -357,7 +359,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L435) (line 435)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L437) (line 437)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -367,7 +369,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L457) (line 457)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L459) (line 459)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -380,7 +382,7 @@ src/engine/audio/audio_system.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L470) (line 470)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L472) (line 472)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -393,7 +395,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L483) (line 483)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L485) (line 485)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -417,7 +419,7 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L523) (line 523)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L525) (line 525)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -429,7 +431,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L532) (line 532)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L534) (line 534)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -438,7 +440,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L545) (line 545)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L547) (line 547)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -447,7 +449,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L551) (line 551)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L553) (line 553)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -456,7 +458,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L556) (line 556)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L558) (line 558)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -467,7 +469,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L577) (line 577)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L579) (line 579)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -501,7 +503,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L609) (line 609)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L611) (line 611)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -516,7 +518,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L624) (line 624)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L626) (line 626)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -531,7 +533,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L666) (line 666)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L668) (line 668)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -554,7 +556,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L691) (line 691)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L693) (line 693)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -576,7 +578,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L710) (line 710)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L712) (line 712)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -587,7 +589,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L720) (line 720)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -597,23 +599,24 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L747) (line 747)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L749) (line 749)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
 build rules, but they can share variables set by the parent (e.g., the
 C++ standard already set above).
 
-### Qt Editor Subproject
+### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L754) (line 754)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
 
-The editor is a Qt 6 Widgets application that provides:
-  • Project browser  — open a project folder, see its Content/ files
-  • Content browser  — list assets by type
-  • Scene editor     — place entities, save a scene/map JSON file
-Qt must be installed and CMAKE_PREFIX_PATH must point to the Qt install.
-message(STATUS "BUILD_EDITOR=ON: including editor/ subproject")
+The editor is a Dear ImGui (MIT) application that provides:
+  * Content browser  -- file tree via std::filesystem
+  * Scene editor     -- 2D entity canvas with JSON save/load (nlohmann-json)
+  * Menu bar         -- open project, save scene, cook assets
+Requires vcpkg with imgui[docking,dx11-binding,win32-binding] installed.
+No Qt installation needed.
+message(STATUS "BUILD_EDITOR=ON: including editor/ subproject (Dear ImGui)")
 add_subdirectory(editor)
 else()
 message(STATUS "BUILD_EDITOR=OFF: skipping editor/ (pass -DBUILD_EDITOR=ON to include)")
@@ -921,9 +924,20 @@ name: Build Windows Vulkan (optional, MSVC x64)
 runs-on: windows-latest
 continue-on-error: true
 
-### Why cache the Vulkan SDK?
+### Keep toolchain consistent with primary Windows job.
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L178) (line 178)
+
+The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
+avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
+- name: Setup MSVC developer command prompt
+uses: ilammy/msvc-dev-cmd@v1
+with:
+arch: x64
+
+### Why cache the Vulkan SDK?
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L189) (line 189)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -938,7 +952,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L200) (line 200)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L211) (line 211)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -947,7 +961,7 @@ This is expected and why this job has continue-on-error: true.
 On a self-hosted GPU runner this step will succeed.
 -----------------------------------------------------------------------
 - name: Run Vulkan headless validation (optional)
-run: .\build\windows-debug-vulkan\Debug\engine_sandbox.exe --renderer vulkan --headless
+run: .\build\windows-ninja-debug-vulkan\engine_sandbox.exe --renderer vulkan --headless
 shell: cmd
 continue-on-error: true
 
@@ -1023,96 +1037,86 @@ contents: read
 
 ## editor/CMakeLists.txt
 
-### Qt + CMake Integration
+### Dear ImGui vs Qt Widgets
 
 **Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L5) (line 5)
 
-──────────────────────────────────────
-Qt 6 provides first-class CMake support via find_package(Qt6 ...).
-The key concepts:
+------------------------------------------
+Qt Widgets uses a RETAINED-MODE UI model:
+  * Widget objects (QMainWindow, QTreeView ...) persist between frames.
+  * They are updated via method calls (setText, setModel ...).
+  * Qt requires a multi-hundred-MB installation and LGPL/commercial licence.
 
-  find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
-      Locates the Qt6 installation.  CMake searches CMAKE_PREFIX_PATH,
-      the QTDIR environment variable, and common install locations.
-      On Windows you typically need to set CMAKE_PREFIX_PATH:
-        cmake .. -DCMAKE_PREFIX_PATH="C:/Qt/6.6.0/msvc2019_64"
+Dear ImGui uses an IMMEDIATE-MODE UI model:
+  * Every frame you call ImGui:: functions that BOTH define the UI AND
+    query input in one step.  There are no persistent widget objects.
+  * ImGui::Button("Save") returns true the frame it was clicked.
+  * Licence: MIT -- zero cost, no LGPL viral clauses, no install required.
+  * Industry usage: Unreal Engine tools, many AAA engine editors,
+    Valve/Epic internal tools.
 
-  set(CMAKE_AUTOUIC ON)  — Qt User Interface Compiler (auto-processes .ui files)
-  set(CMAKE_AUTOMOC ON)  — Qt Meta-Object Compiler  (auto-processes Q_OBJECT classes)
-  set(CMAKE_AUTORCC ON)  — Qt Resource Compiler     (auto-processes .qrc files)
+This migration means:
+  Before: find_package(Qt6 ...) -- requires Qt 6 installed + CMAKE_PREFIX_PATH
+  After:  find_package(imgui ...) -- provided by vcpkg, zero extra install
 
-The three AUTO* properties make Qt development with CMake nearly seamless:
-you don't need to manually run moc/uic/rcc; CMake does it automatically.
+### vcpkg Feature Flags
 
-### Qt Widgets Architecture
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L24) (line 24)
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L23) (line 23)
+--------------------------------------
+vcpkg supports "features" -- optional compile-time variants of a package.
+For imgui we enable three features in vcpkg.json:
+  docking        -- enables the dockable-window API (ImGui::DockSpace etc.)
+  dx11-binding   -- adds imgui_impl_dx11.h/.cpp for D3D11 rendering
+  win32-binding  -- adds imgui_impl_win32.h/.cpp for Win32 window input
+vcpkg packages these as additional headers/sources exposed via the same
+imgui::imgui imported target.
 
-─────────────────────────────────────────
-Qt Widgets is the classic Qt UI framework (not QML / Qt Quick).
-It uses a C++ widget hierarchy with signal/slot connections for events.
-Good for desktop tools like level editors, asset browsers, and property panels.
-The architecture here follows the Model-View-Controller (MVC) pattern:
-  • MainWindow     — top-level window; hosts menus, toolbar, dock widgets
-  • ContentBrowser — tree/list view of Content/ folder (the "View")
-  • SceneEditor    — 2D canvas for entity placement (the "View")
-  • SceneModel     — data model for scene entities (the "Model")
-
-### Why these three lines matter
+### find_package with vcpkg-installed libraries
 
 **Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L47) (line 47)
 
-Without AUTOMOC, every class that uses Q_OBJECT must be manually listed for
-the moc (Meta-Object Compiler) tool.  AUTOMOC scans source files for
-Q_OBJECT, Q_GADGET, etc. and runs moc automatically. AUTOUIC and AUTORCC do
-the same for .ui files and .qrc resource files respectively.
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
+When CMake is configured with the vcpkg toolchain file
+(-DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake),
+find_package() automatically finds packages installed by vcpkg.
+Each package exposes CMake "imported targets" that carry include paths
+and linker flags automatically.
+  imgui::imgui               -- Dear ImGui core + D3D11 + Win32 backends
+  nlohmann_json::nlohmann_json -- header-only JSON library (already in vcpkg.json)
+find_package(imgui         CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
-### find_package and imported targets
+### Linking D3D11 + DXGI
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L59) (line 59)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L92) (line 92)
 
-find_package(Qt6 REQUIRED COMPONENTS ...) creates imported targets like
-Qt6::Widgets that carry all required include paths and link flags.
-Using imported targets is strongly preferred over the older variable-based
-approach (Qt5_INCLUDE_DIRS, Qt5_LIBRARIES) because they are self-describing
-and work correctly in both Debug and Release.
-find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
-
-### Imported target vs. variable
-
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L101) (line 101)
-
-Qt6::Widgets transitively brings in Qt6::Core, Qt6::Gui, and all their
-include directories and link libraries, so we only need to list the
-top-level component(s) we directly use.
+d3d11.lib  -- Direct3D 11 device, context, swapchain.  Ships with the
+              Windows SDK; no extra SDK install beyond Visual Studio.
+dxgi.lib   -- DirectX Graphics Infrastructure: swap chain, adapters.
+Both are OS components (no DLL to ship alongside the editor).
+ImGui's D3D11 backend calls into these via device/context pointers
+we create in main.cpp.
 target_link_libraries(creation-suite-editor PRIVATE
-Qt6::Widgets
-Qt6::Core
+imgui::imgui
+nlohmann_json::nlohmann_json
+d3d11
+dxgi
 )
 
-### WIN32 keyword in add_executable
+### UNICODE, WIN32_LEAN_AND_MEAN, NOMINMAX
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L114) (line 114)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L110) (line 110)
 
-The WIN32 keyword in add_executable changes the subsystem to WINDOWS
-(GUI mode), which hides the console window — correct for a GUI editor.
-(We added WIN32 directly in the add_executable call above.)
-
-### windeployqt
-
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L119) (line 119)
-
-On Windows, Qt DLLs must be next to the executable.  The windeployqt
-tool copies all required Qt DLLs, plugins, and QML files.
-We run it automatically after building:
-add_custom_command(TARGET creation-suite-editor POST_BUILD
-COMMAND "${Qt6_DIR}/../../../bin/windeployqt.exe"
-"$<TARGET_FILE:creation-suite-editor>"
-COMMENT "Running windeployqt to copy Qt DLLs..."
-VERBATIM
+UNICODE/_UNICODE  : Win32 API calls default to wide-char (wchar_t) variants.
+WIN32_LEAN_AND_MEAN : excludes rarely-used headers from <windows.h>,
+  dramatically reducing compile time.
+NOMINMAX : prevents windows.h from defining min/max macros that clash
+  with std::min / std::max.
+target_compile_definitions(creation-suite-editor PRIVATE
+UNICODE
+_UNICODE
+WIN32_LEAN_AND_MEAN
+NOMINMAX
 )
 endif()
 
@@ -1120,564 +1124,703 @@ endif()
 
 ## editor/src
 
-### QVBoxLayout
+### ImGui::Begin with a persistent panel name
 
-**Source:** [`editor/src/ContentBrowser.cpp`](editor/src/ContentBrowser.cpp#L23) (line 23)
+**Source:** [`editor/src/ContentBrowserPanel.cpp`](editor/src/ContentBrowserPanel.cpp#L49) (line 49)
 
-Layouts manage the position and size of child widgets automatically.
-QVBoxLayout stacks children vertically from top to bottom.
-QHBoxLayout stacks them horizontally.
-Layouts resize children when the parent is resized — no manual geometry.
----------------------------------------------------------------------------
-auto* layout = new QVBoxLayout(this);
-layout->setContentsMargins(0, 0, 0, 0);   // No padding; full width for the tree
-layout->setSpacing(2);
+ImGui identifies windows by their string label.  Using the same label
+every frame re-opens the same window rather than creating a new one.
+ImGuiWindowFlags_NoCollapse prevents the user from collapsing the panel
+(which would hide the file tree entirely with no way to open it again
+ without the ini file).
+ImGui::Begin("Content Browser", nullptr, ImGuiWindowFlags_NoCollapse);
 
-### QFileSystemModel
+### TextDisabled
 
-**Source:** [`editor/src/ContentBrowser.cpp`](editor/src/ContentBrowser.cpp#L39) (line 39)
+**Source:** [`editor/src/ContentBrowserPanel.cpp`](editor/src/ContentBrowserPanel.cpp#L59) (line 59)
 
-QFileSystemModel reads the file system asynchronously and populates a
-tree model.  Key points:
-  • setRootPath() tells the model where to start watching.
-  • setNameFilters() restricts which files are shown.
-  • setNameFilterDisables(false) hides (not greys out) filtered files.
-The model column layout is: Name | Size | Type | Date Modified
-We hide all columns except Name to keep the browser compact.
----------------------------------------------------------------------------
-m_model = new QFileSystemModel(this);
-m_model->setRootPath(QDir::homePath());   // start at home; changed by setRootPath()
-
-### QTreeView
-
-**Source:** [`editor/src/ContentBrowser.cpp`](editor/src/ContentBrowser.cpp#L64) (line 64)
-
-QTreeView is the generic tree display widget.  We set the model on it and
-set the root index to the directory we want to show.
-sortByColumn(0, Qt::AscendingOrder) sorts alphabetically by name.
----------------------------------------------------------------------------
-m_tree = new QTreeView(this);
-m_tree->setModel(m_model);
-m_tree->setRootIndex(m_model->index(QDir::homePath()));
-
-### connect() — item double-click → slot
-
-**Source:** [`editor/src/ContentBrowser.cpp`](editor/src/ContentBrowser.cpp#L84) (line 84)
-
-QTreeView::doubleClicked(QModelIndex) is emitted when the user double-
-clicks an item.  We connect it to our custom slot.
-connect(m_tree, &QTreeView::doubleClicked, this, &ContentBrowser::onItemDoubleClicked);
-
-### QFileSystemModel::isDir() and filePath()
-
-**Source:** [`editor/src/ContentBrowser.cpp`](editor/src/ContentBrowser.cpp#L121) (line 121)
-
-isDir() returns true if the index points to a directory.
-filePath() returns the absolute path string for any index.
-if (m_model->isDir(index))
-return;   // Ignore folder double-clicks (they toggle expand/collapse)
-
-### emit keyword
-
-**Source:** [`editor/src/ContentBrowser.cpp`](editor/src/ContentBrowser.cpp#L129) (line 129)
-
-'emit' is a Qt macro that calls the signal function generated by moc.
-All slots connected to fileSelected() will be called synchronously
-(by default in a single-threaded Qt application).
-emit fileSelected(absolutePath);
-}
-
-### Model/View Architecture in Qt
-
-**Source:** [`editor/src/ContentBrowser.hpp`](editor/src/ContentBrowser.hpp#L6) (line 6)
-
-=============================================================================
-Qt uses a Model-View separation for all list/tree/table displays:
-
-  Model  — owns and provides data (QAbstractItemModel or subclass)
-  View   — displays data without owning it (QTreeView, QListView, etc.)
-  Delegate — controls how individual items are drawn / edited
-
-For file-system trees, Qt provides QFileSystemModel — a ready-made model
-that reflects the real file system.  We pair it with a QTreeView (the view)
-to get a live-updating file browser with almost no custom code.
-
-This is fundamentally different from maintaining a list manually:
-  • The model emits signals (dataChanged, rowsInserted…) when data changes.
-  • The view redraws automatically — no polling required.
-  • Multiple views can share the same model (e.g., list view + tree view).
-
-=============================================================================
-
-### Custom Signals
-
-**Source:** [`editor/src/ContentBrowser.hpp`](editor/src/ContentBrowser.hpp#L62) (line 62)
-
-Signals are declared in the signals: section.  They have no body — Qt's
-moc (Meta-Object Compiler) generates the implementation automatically.
-To emit a signal, call: emit fileSelected(someString);
-Any slot connected to this signal receives the path string.
----------------------------------------------------------------------------
-
-### Separation of Declaration and Definition
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L6) (line 6)
-
-=============================================================================
-Header (.hpp) declares *what* the class looks like (interface).
-Implementation (.cpp) defines *how* each method works.
-This separation keeps compile times fast: only files that include the
-header need recompiling when the interface changes; implementation changes
-only recompile this one .cpp.
-
-=============================================================================
-
-### setWindowTitle
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L42) (line 42)
-
-setWindowTitle sets the text shown in the OS title bar.
-It also appears in the Windows taskbar and Alt-Tab switcher.
-setWindowTitle("Creation Suite Editor — Game Engine for Teaching");
-
-### Qt Widget Hierarchy
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L51) (line 51)
-
-We create the scene editor first because QMainWindow::setCentralWidget()
-requires a widget.  The central widget gets all the space not occupied by
-menus, toolbars, status bar, and dock widgets.
----------------------------------------------------------------------------
-m_sceneEditor = new SceneEditor(this);   // 'this' = parent → Qt owns it
-setCentralWidget(m_sceneEditor);
-
-### QMenuBar / QMenu / QAction
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L77) (line 77)
-
-Qt menus follow a three-level hierarchy:
-  QMenuBar → QMenu → QAction
-A QAction represents a command (with an optional keyboard shortcut,
-icon, and tooltip).  The same QAction can appear in a menu AND a toolbar.
-When triggered, it emits the triggered() signal, which we connect to a slot.
-
-### connect() wires a signal to a slot.
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L90) (line 90)
-
-Syntax: connect(sender, &SenderClass::signal, receiver, &ReceiverClass::slot);
-Lambda form: connect(sender, &Signal, [=]{ ... });
-connect(openAction, &QAction::triggered, this, &MainWindow::onOpenProject);
-
-### QToolBar
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L130) (line 130)
-
-Toolbars give quick access to frequently used actions.
-QToolBar::addAction() adds the same QAction that lives in the menu —
-the same object, not a copy — so triggering the menu or the toolbar
-button both fire the same signal.
-QToolBar* toolbar = addToolBar("Main Toolbar");
-toolbar->setObjectName("mainToolbar");   // needed for restoreState()
-
-### QDockWidget
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L154) (line 154)
-
-Dock widgets are floating/dockable panels that can be:
-  • Docked to any edge of the main window (left, right, top, bottom).
-  • Floated as separate windows.
-  • Tabbed together.
-This makes the editor layout configurable — users can arrange panels
-to match their workflow, just like Unreal or Unity.
-
-### ContentBrowser → MainWindow connection
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L167) (line 167)
-
-The content browser emits fileSelected(path) when the user double-clicks
-a file.  We connect it to a MainWindow slot to react to the selection.
-connect(m_contentBrowser, &ContentBrowser::fileSelected,
-this,              &MainWindow::onContentFileSelected);
-
-### Status Bar
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L181) (line 181)
-
-The status bar shows transient messages (hover hints) and permanent info
-(current project, zoom level, etc.).  QMainWindow already creates one;
-we just add a permanent label to the right side.
-m_statusLabel = new QLabel("No project open");
-statusBar()->addPermanentWidget(m_statusLabel);
-statusBar()->showMessage("Ready", 3000);  // disappears after 3 s
-}
-
-### QFileDialog
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L196) (line 196)
-
-Qt provides platform-native file dialogs via QFileDialog.
-getExistingDirectory() opens a directory picker — perfect for project folders.
-QString dir = QFileDialog::getExistingDirectory(
-this,
-"Open Project Folder",
-QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
-);
-
-### QFileDialog::getSaveFileName
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L235) (line 235)
-
-getSaveFileName() opens a standard "Save As" dialog.
-The filter string "Scene Files (*.scene.json)" constrains the file
-extension shown in the dialog, but the user can override it.
-QString defaultDir = m_projectPath.isEmpty()
-? QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)
-: m_projectPath + "/Content/Maps";
-
-### closeEvent vs. quit()
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L264) (line 264)
-
-QApplication::quit() posts a QEvent::Quit and returns from exec().
-close() on the main window calls closeEvent() first, which lets us
-ask "save unsaved changes?" before exiting.
-close();
-}
-
-### QProcess
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L279) (line 279)
-
-QProcess lets us launch external programs from Qt.
-Here we invoke the Python cook script that lives inside the project folder.
-For production you'd want to show a progress bar and capture stdout/stderr.
-QString cookScript = m_projectPath + "/cook_assets.py";
-if (!QDir().exists(cookScript)) {
-Fall back to the samples vertical slice cook script
-statusBar()->showMessage("No cook_assets.py found in project folder.", 5000);
+ImGui::TextDisabled renders text in the theme's disabled colour
+(grey in the dark theme).  Good for placeholder / hint text.
+ImGui::TextDisabled("No project open.");
+ImGui::TextDisabled("Use File > Open Project to select a folder.");
+ImGui::End();
 return;
 }
 
-### reacting to signals from child widgets
+### Recursive ImGui tree with std::filesystem
 
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L309) (line 309)
+**Source:** [`editor/src/ContentBrowserPanel.cpp`](editor/src/ContentBrowserPanel.cpp#L92) (line 92)
 
-When the user selects a file in the content browser we receive its path.
-In a full editor you would open the appropriate sub-editor here:
-  • .scene.json   → load and display in SceneEditor
-  • .png / .jpg   → open in a texture viewer
-  • .wav / .ogg   → open in an audio preview widget
-For now we just show the path in the status bar as a teaching stub.
-statusBar()->showMessage(QString("Selected: %1").arg(path), 5000);
+RenderDirectory() walks one level of a directory.  For each sub-directory
+it calls itself recursively (creates a nested TreeNode).
+For each file it creates a leaf node with ImGuiTreeNodeFlags_Leaf.
 
-### closeEvent
-
-**Source:** [`editor/src/MainWindow.cpp`](editor/src/MainWindow.cpp#L328) (line 328)
-
-Overriding closeEvent() lets us intercept the window-close action (×
-button, Alt+F4, File → Exit).  We save the window layout before exiting.
-If we had unsaved changes, we would ask the user here.
-(closeEvent is declared in QWidget, so no forward declaration is needed
- in MainWindow.hpp — it is already virtual in the base class.)
-
-### QMainWindow
-
-**Source:** [`editor/src/MainWindow.hpp`](editor/src/MainWindow.hpp#L6) (line 6)
-
-=============================================================================
-QMainWindow provides a standard "application window" layout with:
-  • Menu bar       — File, Edit, View, Build menus
-  • Toolbar        — Quick-access tool buttons
-  • Central widget — The primary editing area (scene editor canvas)
-  • Dock widgets   — Panels that can be docked/undocked (content browser,
-                     inspector, console)
-  • Status bar     — Bottom bar for messages and progress indicators
-
-By deriving from QMainWindow (rather than QWidget), we get all of this
-layout infrastructure for free and can focus on tool-specific logic.
-
-### Q_OBJECT macro
-
-**Source:** [`editor/src/MainWindow.hpp`](editor/src/MainWindow.hpp#L19) (line 19)
-
-Any class that uses Qt signals, slots, or properties MUST declare
-Q_OBJECT in its private section.  This tells AUTOMOC to generate the
-moc_*.cpp file that implements the meta-object protocol (reflection,
-runtime type info, signal/slot wiring).
-
-=============================================================================
-
-### Qt Slots
-
-**Source:** [`editor/src/MainWindow.hpp`](editor/src/MainWindow.hpp#L71) (line 71)
-
-Slots are ordinary member functions that can be connected to signals.
-When a signal is emitted, all connected slots are called automatically.
-The 'slots' keyword (here in the 'private slots:' section) is a Qt macro
-that marks these methods for the meta-object system.
----------------------------------------------------------------------------
-
-### Raw pointer vs. smart pointer in Qt
-
-**Source:** [`editor/src/MainWindow.hpp`](editor/src/MainWindow.hpp#L103) (line 103)
-
-Qt uses a parent-child ownership model: when a parent widget is destroyed,
-all its children are destroyed automatically.  This is why Qt code often
-uses raw pointers for child widgets — the parent owns them.
-For non-Qt resources, prefer std::unique_ptr / std::shared_ptr.
----------------------------------------------------------------------------
-
-### What this file teaches
-
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L6) (line 6)
-
-=============================================================================
- 1. Custom Qt widget painting (paintEvent + QPainter)
- 2. Mouse interaction (mousePressEvent)
- 3. JSON file I/O using Qt's built-in QJsonDocument classes
- 4. The shared scene schema format (see shared/schemas/scene.schema.json)
-
-### Qt JSON API
-
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L13) (line 13)
-
-Qt 5/6 includes a built-in JSON API (no external library needed):
-  QJsonDocument — top-level container (array or object)
-  QJsonObject   — key/value dictionary
-  QJsonArray    — ordered list of values
-  QJsonValue    — a single JSON value (string, number, bool, null, obj, arr)
-
-Round-trip:
-  QJsonDocument → QByteArray (toJson)  → write to file
-  QByteArray    → QJsonDocument (fromJson) → navigate
-
-=============================================================================
-
-### setFocusPolicy
-
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L52) (line 52)
-
-By default, most widgets don't accept keyboard focus.
-Qt::StrongFocus means this widget gets focus when clicked, or when
-Tab is pressed.  Required for keyPressEvent to fire.
-setFocusPolicy(Qt::StrongFocus);
-
-### setBackground
-
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L58) (line 58)
-
-The background is set via the palette, not by drawing in paintEvent.
-This lets Qt handle clearing the background efficiently before calling
-our paintEvent.
-setAutoFillBackground(true);
-QPalette pal = palette();
-pal.setColor(QPalette::Window, QColor(40, 40, 40));   // Dark editor background
-setPalette(pal);
-
-### QPainter
-
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L76) (line 76)
-
-QPainter must be constructed on the stack inside paintEvent.
-DO NOT cache or store it across calls — it is only valid during the
-paint event.  Creating it on the stack also ensures its destructor
-is called before the event handler returns (which flushes the paint).
-QPainter painter(this);
-painter.setRenderHint(QPainter::Antialiasing, true);
-
-### QPen
-
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L85) (line 85)
-
-QPen controls line drawing: colour, width, style (solid/dashed/dotted).
-QBrush controls fill: colour, pattern (solid/hatched/gradient).
-const QColor gridColor(60, 60, 60);
-painter.setPen(QPen(gridColor, 1));
-
-### Drawing with loops
-
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L103) (line 103)
-
-We iterate over all entities and draw each one.  For each entity we:
-  1. Choose a fill colour (different for selected vs. normal).
-  2. Draw a rectangle representing the entity.
-  3. Draw the entity name above the rectangle.
-for (int i = 0; i < static_cast<int>(m_entities.size()); ++i)
+std::filesystem::directory_iterator gives one entry per file/dir.
+We sort entries so directories come before files and both sets are
+sorted alphabetically -- matching the behaviour of Qt's QFileSystemModel
+with sorting enabled.
+void ContentBrowserPanel::RenderDirectory(const fs::path& dir, bool forceExpand)
 {
-const SceneEntity& ent = m_entities[static_cast<size_t>(i)];
+std::error_code ec;
 
-### Mouse Picking
+### Leaf nodes and selection highlight
 
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L152) (line 152)
+**Source:** [`editor/src/ContentBrowserPanel.cpp`](editor/src/ContentBrowserPanel.cpp#L145) (line 145)
 
-"Picking" means figuring out what the user clicked on in the scene.
-We test each entity's bounding rectangle against the click position.
-In a 3D editor this becomes a ray-cast against geometry.
+ImGuiTreeNodeFlags_Leaf creates a node with no expand arrow.
+ImGuiTreeNodeFlags_SpanAvailWidth makes the clickable area fill the
+full panel width (not just the text width) -- better UX.
+When the user double-clicks, we call the registered callback.
+ImGuiTreeNodeFlags leafFlags =
+ImGuiTreeNodeFlags_Leaf       |
+ImGuiTreeNodeFlags_NoTreePushOnOpen |
+ImGuiTreeNodeFlags_SpanAvailWidth;
 
-### Key handling
+### std::filesystem vs QFileSystemModel
 
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L204) (line 204)
+**Source:** [`editor/src/ContentBrowserPanel.hpp`](editor/src/ContentBrowserPanel.hpp#L6) (line 6)
 
-We only handle the Delete key here.  In a full editor you would also
-handle Ctrl+Z (undo), Ctrl+C/V (copy/paste), etc.
+=============================================================================
+The Qt version used QFileSystemModel paired with a QTreeView widget.
+QFileSystemModel:
+  - Monitors the directory asynchronously (background thread).
+  - Emits dataChanged/rowsInserted signals when the file system changes.
+  - Qt owns the model; the view subscribes to it.
 
-### Qt JSON Write
+Without Qt we use C++17 std::filesystem:
+  - std::filesystem::directory_iterator walks directory entries.
+  - We build our own tree every frame (or on demand) and render it with
+    ImGui::TreeNode / ImGui::TreePop.
 
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L227) (line 227)
+Trade-off: QFileSystemModel provides live background updates; our approach
+refreshes manually (press R or call Refresh()).  For a teaching editor this
+is simpler and has no hidden threads.
 
-We build a QJsonObject (dictionary) and populate it with the scene data.
-QJsonDocument wraps the root object and writes it to bytes (toJson).
+=============================================================================
 
-### Nested JSON objects
+### ImGui Tree Nodes
 
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L252) (line 252)
+**Source:** [`editor/src/ContentBrowserPanel.hpp`](editor/src/ContentBrowserPanel.hpp#L24) (line 24)
 
-We put the position inside a "transform" sub-object so that
-the engine can easily find and parse the Transform component.
-QJsonObject transform;
-transform["x"] = ent.x;
-transform["y"] = ent.y;
-transform["z"] = 0.0;
-entObj["transform"] = transform;
+=============================================================================
+ImGui has no "tree widget" -- it builds trees from individual calls:
 
-### QJsonDocument::toJson()
+  if (ImGui::TreeNode("Folder"))        // draws an expandable node
+  {
+      ImGui::TreeNode("child file");    // leaf inside the folder
+      ImGui::TreePop();                 // MUST be called if TreeNode() returned true
+  }
 
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L265) (line 265)
+TreeNodeEx() extends TreeNode() with ImGuiTreeNodeFlags for leaf styling,
+default-open, selected highlight, and more.
 
-toJson(QJsonDocument::Indented) writes human-readable JSON with indentation.
-Use QJsonDocument::Compact for smaller files (e.g., cooked/shipped data).
-QJsonDocument doc(root);
-QByteArray jsonBytes = doc.toJson(QJsonDocument::Indented);
+=============================================================================
 
-### Qt JSON Read
+### DockSpaceOverViewport
 
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L286) (line 286)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L35) (line 35)
 
-We read the file to bytes, parse with QJsonDocument::fromJson(), then
-navigate the resulting QJsonObject / QJsonArray.
+ImGui::DockSpaceOverViewport() creates a DockSpace that fills the entire
+main viewport.  All other ImGui windows can be docked into this space.
 
-### QUuid
+ImGuiDockNodeFlags_PassthruCentralNode lets the game/editor background
+(the D3D11 clear colour) show through the undocked central area.
+Without this flag the dockspace paints an opaque background over the
+central region even when no window is docked there.
+ImGui::DockSpaceOverViewport(
+ImGui::GetMainViewport(),
+ImGuiDockNodeFlags_PassthruCentralNode
+);
 
-**Source:** [`editor/src/SceneEditor.cpp`](editor/src/SceneEditor.cpp#L344) (line 344)
+### ImGui Modal Popups
 
-QUuid generates RFC 4122 compliant UUIDs (128-bit unique identifiers).
-createUuid() uses platform random source (CryptGenRandom on Windows).
-toString(QUuid::WithoutBraces) returns "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx".
-return QUuid::createUuid().toString(QUuid::WithoutBraces);
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L59) (line 59)
+
+OpenPopup() marks a popup as "open"; BeginPopupModal() renders it.
+The popup blocks interaction with windows behind it (modal behaviour).
+EndPopup() must always be called if BeginPopupModal returned true.
+if (ImGui::BeginPopupModal("About##popup", &m_showAbout,
+ImGuiWindowFlags_AlwaysAutoResize))
+{
+ImGui::TextUnformatted("Creation Suite Editor  v1.0");
+ImGui::Separator();
+ImGui::TextUnformatted("Part of the Game Engine for Teaching monorepo.");
+ImGui::TextUnformatted("Dear ImGui (MIT) for UI.");
+ImGui::TextUnformatted("D3D11 (Windows SDK) for rendering.");
+ImGui::TextUnformatted("nlohmann-json (MIT) for scene files.");
+ImGui::Spacing();
+if (ImGui::Button("Close", ImVec2(120, 0)))
+{
+m_showAbout = false;
+ImGui::CloseCurrentPopup();
+}
+ImGui::EndPopup();
 }
 
-### Custom Painting with QWidget
+### ImGui Menu Bar
 
-**Source:** [`editor/src/SceneEditor.hpp`](editor/src/SceneEditor.hpp#L6) (line 6)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L98) (line 98)
+
+ImGui::BeginMainMenuBar() / EndMainMenuBar() create a menu bar anchored to
+the top of the main viewport (not inside any ImGui window).
+ImGui::BeginMenu("Label") opens a submenu; it returns true only while the
+menu is open, so the code inside the if() block runs only that frame.
+ImGui::MenuItem("Label", "Shortcut", &checked) handles checkboxes too.
+void EditorApp::RenderMenuBar()
+{
+if (!ImGui::BeginMainMenuBar())
+return;
+
+### Posting WM_QUIT from within ImGui
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L164) (line 164)
+
+PostQuitMessage(0) posts a WM_QUIT to the Win32 message queue.
+The main loop detects this and sets done = true, triggering cleanup.
+PostQuitMessage(0);
+}
+
+### ShellExecuteW to run the cook script
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L185) (line 185)
+
+ShellExecuteW launches an external process using the Windows
+shell.  "open" + a .py file invokes the system Python interpreter.
+For production you would use CreateProcessW to capture stdout/stderr.
+std::wstring wScript(m_projectPath.begin(), m_projectPath.end());
+wScript += L"\\cook_assets.py";
+ShellExecuteW(nullptr, L"open", L"python",
+(L"\"" + wScript + L"\"").c_str(),
+nullptr, SW_SHOWNORMAL);
+m_statusMessage = "Cook started...";
+m_statusTimer   = 4.f;
+}
+}
+ImGui::EndMenu();
+}
+
+### Simulating a Status Bar with ImGui
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L216) (line 216)
+
+ImGui has no built-in "status bar" widget.  We simulate one by creating
+a small window pinned to the bottom of the viewport with no decorations.
+ImGuiWindowFlags_NoDecoration removes title bar, scrollbar, resize grip.
+ImGuiWindowFlags_NoMove prevents the user from dragging it away.
+void EditorApp::RenderStatusBar()
+{
+const ImGuiViewport* viewport = ImGui::GetMainViewport();
+constexpr float barHeight     = 22.f;
+
+### IFileOpenDialog (modern Windows folder picker)
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L258) (line 258)
+
+The classic SHBrowseForFolderW dialog is old (Windows 3.1 era).
+The modern alternative is IFileOpenDialog with FOS_PICKFOLDERS set --
+it uses the Vista-style folder picker with favourites, breadcrumb nav, etc.
+This is the same approach used in modern Win32 applications.
+std::string EditorApp::PickFolder(const char* /*title*/)
+{
+std::string result;
+IFileOpenDialog* pFolderDialog = nullptr;
+
+### GetSaveFileName (classic Win32 save dialog)
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L307) (line 307)
+
+GetSaveFileNameW shows the standard "Save As" dialog. The filter string
+uses pairs of "Description\0*.ext\0" terminated by an extra \0.
+lpstrDefExt specifies the extension appended if the user omits it.
+std::string EditorApp::PickSaveFile(const char* /*title*/, const char* filter,
+const char* defaultExt)
+{
+Convert narrow filter to wide
+Count filter length including all embedded NULs
+size_t filterLen = 0;
+const char* p    = filter;
+while (*p || *(p + 1)) { ++filterLen; ++p; }
+filterLen += 2;  // trailing double-NUL
+
+### ImGui DockSpace Architecture
+
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L6) (line 6)
 
 =============================================================================
-Qt lets you draw anything inside a QWidget by overriding paintEvent().
-Inside paintEvent() you create a QPainter and call drawing commands:
-  painter.drawRect(), painter.drawLine(), painter.drawText(), etc.
-This is how game editors render their 2D viewports (before switching to
-OpenGL / Vulkan for 3D).
+Dear ImGui's docking system lets you create a layout of dockable panels,
+exactly like Unreal Editor, Unity Editor, or any professional tool.
 
-The painting model:
-  1. Qt calls paintEvent() when the widget needs to be redrawn.
-  2. You call update() to schedule a repaint (never call paintEvent directly).
-  3. QPainter works in logical coordinates; Qt maps them to device pixels.
+The central concept is a DockSpace:
+  ImGuiID dockId = ImGui::DockSpaceOverViewport();
 
-### Scene / Map Data Format
+A DockSpace is a region of the window into which ImGui "windows" can be
+docked (pinned) or float freely.  The first time the editor runs, panels
+start floating.  The user drags them to dock positions; ImGui saves the
+layout to creation-suite-editor.ini automatically.
 
-**Source:** [`editor/src/SceneEditor.hpp`](editor/src/SceneEditor.hpp#L19) (line 19)
+Compare to the Qt retained-mode approach where dock widgets were explicit
+QDockWidget objects added to a QMainWindow via addDockWidget().
+With ImGui there is no "dock widget" object -- any ImGui::Begin("Name")
+window can be docked just by dragging it.
 
-The scene is saved as a JSON file following shared/schemas/scene.schema.json.
-The format is intentionally simple for teaching:
+=============================================================================
+
+### Application State in Immediate-Mode UI
+
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L25) (line 25)
+
+=============================================================================
+In Qt, application state (current project path, status message ...) was
+stored as member variables of QMainWindow and updated via signals/slots.
+
+In ImGui the same state lives as member variables of EditorApp.
+There are no signals or slots -- each frame EditorApp::Render() reads the
+state and decides what to draw.  When the user clicks a button, the state
+is updated immediately (same frame, same call stack).
+
+This makes control flow much easier to follow for students:
+  if (ImGui::MenuItem("Open Project..."))
   {
-    "$schema": "../../shared/schemas/scene.schema.json",
-    "version": "1.0.0",
-    "name": "MyScene",
-    "entities": [
-      { "id": "<uuid>", "name": "Player", "x": 100, "y": 200,
-        "components": { "Transform": {...}, "Sprite": {...} } }
-    ]
+      // open file dialog -- happens RIGHT HERE, no callback needed
+      ...
+      m_projectPath = result;
   }
 
 =============================================================================
 
-### Simple Data Structures
+### Native file dialogs without Qt
 
-**Source:** [`editor/src/SceneEditor.hpp`](editor/src/SceneEditor.hpp#L45) (line 45)
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L81) (line 81)
 
-We use a plain struct (no encapsulation) for teaching clarity.
-In a production editor, each entity would have a full component list
-and a GUID-based identity.
+Qt provides QFileDialog::getExistingDirectory() etc.
+Without Qt we use the Win32 SHBrowseForFolderW API (folder picker) or
+IFileOpenDialog COM interface (modern Windows file dialog).
+These helpers wrap those calls and return UTF-8 std::string results.
+std::string PickFolder(const char* title);
+std::string PickSaveFile(const char* title, const char* filter,
+const char* defaultExt);
 
-### Qt Event Handlers (virtual overrides)
+### What this file teaches
 
-**Source:** [`editor/src/SceneEditor.hpp`](editor/src/SceneEditor.hpp#L97) (line 97)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L6) (line 6)
 
-QWidget declares many virtual methods that you override to handle events:
-  paintEvent     — draw the widget
-  mousePressEvent — mouse button down
-  mouseReleaseEvent — mouse button up
-  keyPressEvent  — key down
-  resizeEvent    — widget resized
-Overriding these is safe; Qt calls them automatically.
----------------------------------------------------------------------------
+=============================================================================
+ 1. ImGui child windows + DrawList for custom 2D rendering
+ 2. Immediate-mode mouse picking (click → entity selection)
+ 3. Immediate-mode popup input (replacing QInputDialog)
+ 4. JSON scene I/O with nlohmann-json (replacing Qt's QJsonDocument)
+ 5. Guid.hpp for UUID generation (replacing QUuid)
 
-### Qt Application Entry Point
+=============================================================================
+
+### ImGui window with no close button
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L40) (line 40)
+
+Passing nullptr as p_open means there is no close (X) button.
+ImGuiWindowFlags_NoCollapse keeps the panel always expanded.
+ImGui::Begin("Scene Editor", nullptr, ImGuiWindowFlags_NoCollapse);
+
+### ImGui::Columns (simple 2-column layout)
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L57) (line 57)
+
+Columns() divides the current window into N columns separated by a
+draggable divider.  Column 0 gets the canvas; column 1 the entity list.
+ImGui::Columns(2, "scene_columns", true);
+ImGui::SetColumnWidth(0, ImGui::GetContentRegionAvail().x * 0.75f);
+
+### ImGui::BeginChild for a scrollable/bordered sub-region
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L82) (line 82)
+
+BeginChild("id", size, border, flags) creates a clipped sub-region.
+  size = (0,0) means "fill remaining content area".
+  ImGuiChildFlags_Border draws a 1-pixel border around the canvas.
+Everything drawn inside is clipped to this region.
+ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+canvasSize.y -= 4;  // small margin at the bottom
+
+### ImDrawList
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L98) (line 98)
+
+ImGui::GetWindowDrawList() returns the draw list of the current window.
+Commands added to a draw list are rendered in order (painter's algorithm).
+All coordinates are in *screen* space (pixels from top-left of the OS window),
+so we offset by 'origin' to convert from canvas-local to screen coordinates.
+ImDrawList* dl = ImGui::GetWindowDrawList();
+
+### IsWindowHovered + GetMousePos
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L162) (line 162)
+
+IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) returns
+true when the canvas child window is hovered, even if another widget is
+active (e.g., a drag is in progress).
+GetMousePos() returns screen-space coordinates; subtract origin to get
+canvas-local coordinates.
+const bool hovered = ImGui::IsWindowHovered();
+const ImVec2 mousePos = ImGui::GetMousePos();
+const float  mx = mousePos.x - origin.x;
+const float  my = mousePos.y - origin.y;
+
+### IsKeyPressed vs IsKeyDown
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L201) (line 201)
+
+IsKeyPressed() returns true ONCE on the frame the key goes down.
+IsKeyDown()    returns true every frame while the key is held.
+For a destructive action like Delete we want IsKeyPressed().
+if (hovered && ImGui::IsKeyPressed(ImGuiKey_Delete) && m_selectedIdx >= 0)
+{
+m_entities.erase(m_entities.begin() + m_selectedIdx);
+m_selectedIdx = -1;
+}
+
+### Selectable
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L230) (line 230)
+
+ImGui::Selectable renders a clickable row that highlights on hover
+and can show as "selected" when the second argument is true.
+It returns true the frame it is clicked.
+if (ImGui::Selectable(ent.name.c_str(), selected))
+m_selectedIdx = i;
+
+### BeginPopupModal
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L260) (line 260)
+
+BeginPopupModal renders a centered modal dialog.
+ImGui::InputText writes into m_nameBuffer (a C-style char array).
+ImGuiInputTextFlags_EnterReturnsTrue makes Enter commit the input.
+bool popupOpen = true;
+if (ImGui::BeginPopupModal("New Entity##popup", &popupOpen,
+ImGuiWindowFlags_AlwaysAutoResize))
+{
+ImGui::TextUnformatted("Entity name:");
+ImGui::SetNextItemWidth(240.f);
+
+### Guid::New() for UUID generation
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L287) (line 287)
+
+Guid::New() from shared/runtime/Guid.hpp generates an RFC 4122
+v4 UUID -- the same pattern used by the cook pipeline and asset
+registry.  This replaces QUuid::createUuid() from the Qt version.
+ent.id   = Guid::New().ToString();
+ent.name = name;
+ent.x    = m_pendingClickX;
+ent.y    = m_pendingClickY;
+m_entities.push_back(ent);
+m_selectedIdx = static_cast<int>(m_entities.size()) - 1;
+}
+ImGui::CloseCurrentPopup();
+}
+
+### nlohmann-json for scene save
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L313) (line 313)
+
+nlohmann/json.hpp provides a single-header JSON library (MIT licence).
+json j = { {"key", value}, ... } builds a JSON object with initialiser lists.
+j.dump(4) returns a pretty-printed string with 4-space indentation.
+This replaces Qt's QJsonObject / QJsonDocument API.
+bool SceneEditorPanel::SaveScene(const std::string& filePath) const
+{
+Build ISO-8601 timestamp (replaces QDateTime::currentDateTimeUtc())
+auto now = std::chrono::system_clock::now();
+std::time_t t = std::chrono::system_clock::to_time_t(now);
+std::ostringstream tsStream;
+tsStream << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%SZ");
+
+### nlohmann-json for scene load
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L360) (line 360)
+
+json::parse(stream) reads from any std::istream.
+j.value("key", default) safely reads a key with a fallback if missing.
+j.contains("key") tests whether a key exists before accessing it.
+This replaces QJsonDocument::fromJson() + QJsonObject::value().
+bool SceneEditorPanel::LoadScene(const std::string& filePath)
+{
+std::ifstream ifs(filePath);
+if (!ifs) return false;
+
+### ImGui Custom Drawing with DrawList
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L6) (line 6)
+
+=============================================================================
+The Qt version painted the scene by overriding QWidget::paintEvent() and
+using QPainter:
+  painter.drawRect(...)
+  painter.drawText(...)
+
+In Dear ImGui there is no paintEvent -- instead, every panel gets access to
+an ImDrawList (a list of draw commands) via:
+  ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+You call AddRect(), AddLine(), AddText() etc. on the draw list directly.
+Draw commands are batched and executed by the D3D11 backend at Render() time.
+
+The canvas is created with ImGui::BeginChild() -- a scrollable sub-region
+within a parent ImGui window.  This is the standard pattern for any
+custom-rendered viewport (scene editor, animation timeline, node graph ...).
+
+=============================================================================
+
+### ImGui Popup for Text Input
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L25) (line 25)
+
+=============================================================================
+The Qt version used QInputDialog::getText() which blocks the event loop
+until the user clicks OK or Cancel.
+
+ImGui is single-threaded and non-blocking.  To get text input:
+  1. Set a flag when input is needed (m_pendingEntityName = true).
+  2. On the NEXT frame, call ImGui::OpenPopup() + ImGui::BeginPopup().
+  3. Inside the popup, call ImGui::InputText() and wait for the user.
+  4. On confirmation, use the entered text and close the popup.
+
+This is the immediate-mode equivalent of a blocking dialog.
+
+=============================================================================
+
+### JSON Scene Format
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L39) (line 39)
+
+=============================================================================
+The scene is saved as a JSON file following shared/schemas/scene.schema.json.
+We use nlohmann-json (already in vcpkg.json) instead of Qt's QJsonDocument.
+The format is identical -- the engine reads the same .scene.json files
+regardless of whether they were saved by the Qt or the ImGui editor.
+
+=============================================================================
+
+### Plain data struct (no Qt types)
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L57) (line 57)
+
+The Qt version used QString for id and name.  Now we use std::string --
+C++ standard library types require no external framework.
+
+### Immediate-Mode GUI (ImGui) vs Retained-Mode GUI
 
 **Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L6) (line 6)
 
 =============================================================================
-Every Qt Widgets application starts with a QApplication object.
-QApplication owns the event loop and manages global application state
-(command-line arguments, default font, palette, etc.).
+RETAINED-MODE (Qt, WinForms, GTK ...):
+  - Widget objects persist between frames.
+  - You PUSH data into them (setText, setModel ...) and register callbacks.
+  - The framework decides when to redraw.
+  - Typically requires a large external framework installation.
 
-The pattern is always:
-  1. Create QApplication (parses argc/argv, initialises platform plugin).
-  2. Create and show the main window.
-  3. Call app.exec() — enters the event loop.  Returns when the last
-     window is closed (or QApplication::quit() is called).
-
-### WIN32 subsystem vs. console subsystem
-
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L18) (line 18)
-
-On Windows, CMakeLists.txt adds the WIN32 keyword to add_executable so that
-the linker uses the /SUBSYSTEM:WINDOWS entry point (no console window).
-Qt expects this for GUI applications.  If you want a console for debug
-output while the window is open, remove WIN32 from CMakeLists.txt.
+IMMEDIATE-MODE (Dear ImGui):
+  - No persistent widget objects -- you RE-DECLARE the entire UI every frame.
+  - ImGui::Button("Save") returns true the frame it was clicked.
+    That single call handles layout, rendering, AND input query.
+  - The same model is used in Unreal Engine's Slate debug overlays,
+    Unity's IMGUI system, Valve's in-engine tools, and many AAA studios.
+  - Licence: MIT -- zero cost, no LGPL, no install required.
 
 =============================================================================
 
-### QApplication
+### Win32 + D3D11 Editor Bootstrap
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L33) (line 33)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L23) (line 23)
 
-QApplication must be constructed before any Qt object.
-It reads argc/argv for Qt-specific options like -style, -platform, etc.
----------------------------------------------------------------------------
-QApplication app(argc, argv);
+=============================================================================
+The editor is a standalone Win32 + D3D11 executable -- the same low-level
+APIs used by the engine itself.  Steps:
 
-### MainWindow
+  1. RegisterClassExW + CreateWindowExW  -> HWND
+  2. D3D11CreateDeviceAndSwapChain       -> ID3D11Device + IDXGISwapChain
+  3. ImGui_ImplWin32_Init + ImGui_ImplDX11_Init
+  4. Main message/render loop (see below)
+  5. Reverse-order cleanup
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L45) (line 45)
+D3D11 is chosen because it ships with Windows and requires no extra SDK
+install (same reason D3D11 is the engine's default renderer).
 
-The MainWindow is the top-level widget.  Everything else (content browser,
-scene editor, inspector) lives inside it as dock widgets or sub-widgets.
----------------------------------------------------------------------------
-MainWindow window;
-window.show();  // Qt widgets start hidden; show() makes them visible.
+=============================================================================
 
-### Event Loop
+### Module-level (global) objects for D3D11
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L53) (line 53)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L55) (line 55)
 
-app.exec() blocks until the application exits.  Inside exec() Qt:
-  1. Waits for OS events (mouse, keyboard, timers, network, etc.)
-  2. Dispatches events to the appropriate widget via the virtual
-     QWidget::event() → specific handler (mousePressEvent, keyPressEvent…)
-  3. Processes any queued signals/slots (Qt's async connection mechanism).
----------------------------------------------------------------------------
-return app.exec();
+We store D3D11 objects at module scope so both the WndProc and the main
+loop can access them without threading overhead.  In a larger engine these
+would live inside a Renderer class; for a single-file bootstrap, module
+scope is clear and self-documenting.
+static ID3D11Device*            g_pd3dDevice         = nullptr;
+static ID3D11DeviceContext*     g_pd3dDeviceContext   = nullptr;
+static IDXGISwapChain*          g_pSwapChain          = nullptr;
+static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
+
+### Window Procedure (WndProc)
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L80) (line 80)
+
+Every Win32 window requires a "window procedure" callback that processes
+messages sent by the OS (WM_SIZE, WM_DESTROY, mouse events, key events ...).
+Messages are dispatched by DispatchMessageW in the main loop.
+
+The ImGui Win32 backend provides ImGui_ImplWin32_WndProcHandler -- we call
+it first so ImGui can intercept mouse/keyboard input before we handle it.
+LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+return true;  // ImGui consumed the message
+
+### Swap-chain resize on WM_SIZE
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L95) (line 95)
+
+When the window is resized the swap chain buffers become stale.
+We must release the old render target view, resize the swap chain,
+then re-create the render target view with the new dimensions.
+if (g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED)
+{
+CleanupRenderTarget();
+g_pSwapChain->ResizeBuffers(
+0, LOWORD(lParam), HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
+CreateRenderTarget();
+}
+return 0;
+
+### WNDCLASSEXW
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L131) (line 131)
+
+WNDCLASSEXW describes the properties of a window class (shared template
+from which individual windows are created).
+  hCursor  -- the mouse cursor shown over this window.
+  hbrBackground -- background brush; NULL_BRUSH = we clear manually (D3D11).
+  lpfnWndProc -- pointer to our WndProc message handler.
+WNDCLASSEXW wc = {};
+wc.cbSize        = sizeof(WNDCLASSEXW);
+wc.style         = CS_CLASSDC;
+wc.lpfnWndProc   = WndProc;
+wc.hInstance     = hInstance;
+wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+wc.hbrBackground = nullptr;  // D3D11 clears the background each frame
+wc.lpszClassName = L"CreationSuiteEditor";
+RegisterClassExW(&wc);
+
+### ImGui Context
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L169) (line 169)
+
+IMGUI_CHECKVERSION() verifies the ImGui headers and library are the same
+version (catches mismatched ABI at runtime, not just compile time).
+CreateContext() allocates the global ImGuiContext -- ONE per application.
+IO flags: NavEnableKeyboard lets keyboard navigate menus/widgets.
+ConfigFlags |= ImGuiConfigFlags_DockingEnable enables the docking API.
+IMGUI_CHECKVERSION();
+ImGui::CreateContext();
+ImGuiIO& io = ImGui::GetIO();
+io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // enables dockable panels
+Persist the UI layout (dock positions, window sizes) between sessions.
+ImGui writes an .ini file next to the executable:
+io.IniFilename = "creation-suite-editor.ini";
+
+### ImGui Backends
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L186) (line 186)
+
+ImGui itself is platform-agnostic -- it only produces draw calls.
+"Backends" translate those draw calls to a specific platform/renderer:
+  imgui_impl_win32 -- translates Win32 messages to ImGui input events.
+  imgui_impl_dx11  -- renders ImGui draw data via D3D11 draw calls.
+Init order: Win32 backend first (it sets up fonts), then D3D11.
+ImGui_ImplWin32_Init(hwnd);
+ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+### The Game/Editor Loop
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L199) (line 199)
+
+An editor loop mirrors a game loop:
+  1. Poll OS messages   -- keyboard, mouse, resize, close.
+  2. Begin frame        -- tell ImGui a new frame starts.
+  3. Build UI           -- call ImGui:: functions to define all panels.
+  4. Render             -- ImGui compiles draw lists; D3D11 executes them.
+  5. Present            -- swap chain shows the rendered frame.
+
+This is the same structure as engine_sandbox's main loop --
+editors and games share the same fundamental architecture.
+bool done = false;
+while (!done)
+{
+-- Poll messages ---------------------------------------------------
+MSG msg = {};
+while (PeekMessageW(&msg, nullptr, 0U, 0U, PM_REMOVE))
+{
+TranslateMessage(&msg);
+DispatchMessageW(&msg);
+if (msg.message == WM_QUIT)
+done = true;
+}
+if (done) break;
+
+### DXGI Present
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L243) (line 243)
+
+Present(1, 0) = vsync ON (swap every 1 monitor refresh).
+Present(0, 0) = vsync OFF (swap immediately, may tear).
+For an editor vsync ON is correct: no need to run faster than 60fps.
+g_pSwapChain->Present(1, 0);
+}
+
+### CreateDeviceAndSwapChain
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L264) (line 264)
+
+D3D11CreateDeviceAndSwapChain is a single-call way to:
+  a) Create an ID3D11Device (the GPU abstraction -- create resources).
+  b) Create an ID3D11DeviceContext (issue draw/compute commands).
+  c) Create an IDXGISwapChain (manage front/back buffers).
+DXGI_SWAP_EFFECT_DISCARD is the classic single-buffered swap mode.
+For the editor we use D3D_FEATURE_LEVEL_10_0 minimum (same as engine).
+static bool CreateDeviceD3D(HWND hWnd)
+{
+DXGI_SWAP_CHAIN_DESC sd = {};
+sd.BufferCount                        = 2;
+sd.BufferDesc.Width                   = 0;   // 0 = match window width
+sd.BufferDesc.Height                  = 0;   // 0 = match window height
+sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
+sd.BufferDesc.RefreshRate.Numerator   = 60;
+sd.BufferDesc.RefreshRate.Denominator = 1;
+sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+sd.OutputWindow                       = hWnd;
+sd.SampleDesc.Count                   = 1;   // no MSAA for the editor UI
+sd.SampleDesc.Quality                 = 0;
+sd.Windowed                           = TRUE;
+sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
+
+### WARP software fallback
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L309) (line 309)
+
+If hardware creation fails (e.g. in CI or on a machine without D3D11 GPU),
+fall back to D3D_DRIVER_TYPE_WARP -- Microsoft's software rasteriser.
+WARP is slow but correct -- perfect for automated testing.
+if (FAILED(res))
+{
+res = D3D11CreateDeviceAndSwapChain(
+nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0,
+featureLevelArray, static_cast<UINT>(std::size(featureLevelArray)),
+D3D11_SDK_VERSION, &sd, &g_pSwapChain,
+&g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext
+);
+if (FAILED(res)) return false;
 }
 
 ---

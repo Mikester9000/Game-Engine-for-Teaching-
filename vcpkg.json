@@ -6,6 +6,10 @@
 
   "dependencies": [
     "nlohmann-json",
-    "directxtex"
+    "directxtex",
+    {
+      "name": "imgui",
+      "features": ["docking", "dx11-binding", "win32-binding"]
+    }
   ]
 }
