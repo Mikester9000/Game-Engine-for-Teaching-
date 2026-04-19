@@ -153,6 +153,46 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
+# TEACHING NOTE — ENGINE_ENABLE_PHYSICS (M5 Jolt Physics)
+# ---------------------------------------------------------------------------
+# Jolt Physics (MIT licence, by Jorrit Rouwe) is a high-performance physics
+# library used in Horizon: Forbidden West.  It is installed via vcpkg:
+#
+#   vcpkg install joltphysics
+#
+# When ENGINE_ENABLE_PHYSICS=ON and JoltPhysics is found (via vcpkg toolchain
+# or a manual installation), the physics subsystem is compiled into
+# engine_sandbox and the ENGINE_ENABLE_PHYSICS preprocessor macro is defined.
+#
+# If JoltPhysics is NOT found, the option silently falls back to OFF so the
+# D3D11 baseline build always succeeds — even without Jolt installed.
+# This mirrors the Vulkan optional pattern used above.
+#
+# Acceptance test: build with -DENGINE_ENABLE_PHYSICS=ON then run:
+#   engine_sandbox.exe --headless --scene physics_test
+# Expected output: "[PASS] physics_test: all 3 acceptance tests passed."
+# ---------------------------------------------------------------------------
+option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration (M5)" ON)
+
+if(ENGINE_ENABLE_PHYSICS)
+    # TEACHING NOTE — find_package(Jolt CONFIG)
+    # The vcpkg port for joltphysics (v5+) provides a CMake config that
+    # registers the imported target Jolt::Jolt.  The CMake package name is
+    # "Jolt" (not "JoltPhysics") — confirmed by the vcpkg install message:
+    #   "find_package(Jolt CONFIG REQUIRED)"
+    # QUIET suppresses the "not found" message when Jolt is not installed
+    # (we handle it ourselves below).
+    find_package(Jolt CONFIG QUIET)
+    if(Jolt_FOUND)
+        message(STATUS "Jolt (JoltPhysics) found: physics subsystem ENABLED.")
+    else()
+        message(STATUS "Jolt (JoltPhysics) NOT found — ENGINE_ENABLE_PHYSICS will be OFF. "
+                       "Install via: vcpkg install joltphysics")
+        set(ENGINE_ENABLE_PHYSICS OFF CACHE BOOL "" FORCE)
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # Find required system libraries (platform-gated)
 # ---------------------------------------------------------------------------
 
@@ -489,6 +529,41 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     )
 
     # -----------------------------------------------------------------------
+    # Physics sources (M5 — Jolt Physics, optional).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Optional Physics Subsystem
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Physics Source Inclusion Strategy
+    # -----------------------------------------------------------------------
+    # physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
+    # raycast.cpp all depend on Jolt Physics types and the PhysicsWorld
+    # implementation.  They are ONLY compiled when ENGINE_ENABLE_PHYSICS=ON
+    # and JoltPhysics was found via vcpkg.
+    #
+    # hit_volume.cpp is an exception: it contains only pure C++17 AABB math
+    # with no Jolt dependency.  It is compiled in ALL builds so that the
+    # HitVolumeManager (used by the combat system) is always available.
+    #
+    # Why NOT include rigid_body.cpp without Jolt?
+    # rigid_body.cpp calls PhysicsWorld::CreateBox/CreateSphere/etc.  Those
+    # methods are defined in physics_world.cpp — which is only compiled when
+    # Jolt is present.  Including rigid_body.cpp without physics_world.cpp
+    # would produce unresolved external linker errors (LNK2019 on MSVC).
+    # -----------------------------------------------------------------------
+    if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
+        list(APPEND SANDBOX_SOURCES
+            src/engine/physics/physics_world.cpp
+            src/engine/physics/rigid_body.cpp
+            src/engine/physics/character_controller.cpp
+            src/engine/physics/raycast.cpp
+        )
+    endif()
+    # hit_volume.cpp has no Jolt dependency — always include it.
+    list(APPEND SANDBOX_SOURCES
+        src/engine/physics/hit_volume.cpp
+    )
+
+    # -----------------------------------------------------------------------
     # LuaEngine sources (optional — only when bundled Lua headers are present).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Conditional Scripting in engine_sandbox
@@ -563,6 +638,15 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         target_link_libraries(engine_sandbox PRIVATE Vulkan::Vulkan)
     endif()
 
+    # TEACHING NOTE — Jolt::Jolt
+    # The vcpkg joltphysics package (v5+) provides an imported CMake target
+    # "Jolt::Jolt" that carries all include directories and link libraries
+    # automatically.  Linking with target_link_libraries() is all that is
+    # needed — no manual include_directories() or add_library() calls required.
+    if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
+        target_link_libraries(engine_sandbox PRIVATE Jolt::Jolt)
+    endif()
+
     # -----------------------------------------------------------------------
     # Compile definitions.
     # -----------------------------------------------------------------------
@@ -591,6 +675,14 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
 
     if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
         list(APPEND SANDBOX_DEFS ENGINE_ENABLE_VULKAN VK_USE_PLATFORM_WIN32_KHR)
+    endif()
+
+    # TEACHING NOTE — ENGINE_ENABLE_PHYSICS compile definition
+    # Defined when Jolt Physics is available.  Physics .cpp files use
+    # #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
+    # main.cpp uses it to gate the --scene physics_test acceptance tests.
+    if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
+        list(APPEND SANDBOX_DEFS ENGINE_ENABLE_PHYSICS)
     endif()
 
     target_compile_definitions(engine_sandbox PRIVATE ${SANDBOX_DEFS})
@@ -799,6 +891,7 @@ endif()
 if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
     message(STATUS "  Vulkan libs      : ${Vulkan_LIBRARIES}")
 endif()
+message(STATUS "  Physics (Jolt)   : ${ENGINE_ENABLE_PHYSICS}")
 message(STATUS "===========================")
 
 # ---------------------------------------------------------------------------

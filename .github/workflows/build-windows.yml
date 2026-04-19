@@ -169,6 +169,116 @@ jobs:
         shell: cmd
 
   # --------------------------------------------------------------------------
+  # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
+  # --------------------------------------------------------------------------
+  # TEACHING NOTE — M5 Physics CI Job
+  # ============================================================================
+  # This job validates the Jolt Physics integration (M5).  It:
+  #   1. Installs joltphysics via the system vcpkg at C:\vcpkg (classic mode).
+  #   2. Configures engine_sandbox with the windows-ninja-debug-physics preset
+  #      (ENGINE_ENABLE_PHYSICS=ON, D3D11 only, no Vulkan SDK needed).
+  #   3. Builds engine_sandbox.
+  #   4. Runs the M5 headless physics acceptance test:
+  #         engine_sandbox.exe --headless --scene physics_test
+  #      Three CPU-only tests are run:
+  #        Test 1 — Drop sphere: gravity simulation accuracy.
+  #        Test 2 — Character step-up: CharacterController ledge traverse.
+  #        Test 3 — Raycast: terrain query distance accuracy.
+  #
+  # continue-on-error: false — Physics acceptance tests are a hard M5 CI gate.
+  # The vcpkg install uses classic mode (see below) to avoid manifest-mode
+  # failures on other dependencies such as imgui[docking].
+  # ============================================================================
+  build-windows-physics:
+    name: Build Windows + Jolt Physics (M5)
+    runs-on: windows-latest
+    continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Enter MSVC developer environment (same as primary job).
+      # -----------------------------------------------------------------------
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Classic-mode vcpkg install (physics job only)
+      # -----------------------------------------------------------------------
+      # The project's vcpkg.json lists ALL engine dependencies, including
+      # imgui[docking,dx11-binding,win32-binding] for the editor.  Running
+      # `vcpkg install` from the workspace in "manifest mode" would try to
+      # install every entry — and a specific imgui snapshot on the CI runner
+      # may not carry the docking feature, causing the install to fail even
+      # though this build doesn't need imgui at all.
+      #
+      # Fix: run the install from a neutral temp directory (no vcpkg.json)
+      # so vcpkg falls back to "classic mode", where individual packages are
+      # accepted.  We use the system-wide vcpkg at C:\vcpkg (always present
+      # on windows-latest runners).  Packages land in C:\vcpkg\installed\ and
+      # are found by CMake via the C:\vcpkg toolchain file below.
+      #
+      # Cache key: package name + OS (joltphysics version rarely changes).
+      # -----------------------------------------------------------------------
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-joltphysics-${{ runner.os }}-x64
+
+      - name: Install joltphysics via vcpkg (classic mode)
+        run: |
+          Set-Location "$env:TEMP"
+          C:\vcpkg\vcpkg.exe install joltphysics:x64-windows
+        shell: pwsh
+
+      # -----------------------------------------------------------------------
+      # Configure CMake with the physics-enabled preset.
+      # Pass the system vcpkg toolchain file (C:\vcpkg) so CMake finds the
+      # joltphysics package installed in the step above.
+      #
+      # TEACHING NOTE — VCPKG_MANIFEST_INSTALL=OFF
+      # The vcpkg CMake toolchain detects vcpkg.json in the project root and
+      # would automatically re-run `vcpkg install` in manifest mode during
+      # cmake configure.  This fails because imgui@1.92.7 on the CI runner
+      # does not carry the "docking" feature required by vcpkg.json, even
+      # though this build doesn't use imgui at all.
+      #
+      # Setting VCPKG_MANIFEST_INSTALL=OFF tells the toolchain to skip the
+      # auto-install.  CMake then uses the packages already installed in the
+      # previous classic-mode step (C:\vcpkg\installed\x64-windows\).
+      # -----------------------------------------------------------------------
+      - name: Configure CMake (D3D11 + Jolt Physics)
+        run: >
+          cmake --preset windows-ninja-debug-physics
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_INSTALL=OFF
+        shell: pwsh
+
+      - name: Build engine_sandbox (with Physics)
+        run: cmake --build --preset windows-ninja-debug-physics --target engine_sandbox
+
+      # -----------------------------------------------------------------------
+      # M5 — Physics acceptance tests (CPU-only, no WARP/GPU needed).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Physics is CPU-only
+      # Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
+      # scene does not touch the D3D11 renderer at all.  It initialises
+      # Jolt Physics, runs three simulations, and exits.  This means it
+      # works on any runner regardless of GPU driver availability.
+      # -----------------------------------------------------------------------
+      - name: Run physics acceptance tests (M5)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
+        shell: cmd
+
+  # --------------------------------------------------------------------------
   # Optional job: Build + validate Vulkan backend (requires Vulkan SDK)
   # --------------------------------------------------------------------------
   # TEACHING NOTE — Optional Vulkan CI Job
