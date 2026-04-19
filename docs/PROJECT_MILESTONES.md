@@ -128,15 +128,16 @@ ctest --test-dir build -L contract
 
 ## Milestone M3 — Hello Texture + Hello Audio
 
-**Status:** 🔨 In Progress
+**Status:** ✅ Complete
 
-> **What's done:** D3D11 DDS texture loader (`d3d11_texture.hpp/.cpp`), XAudio2 backend
-> (`xaudio2_backend.hpp/.cpp`), ECS AudioSystem with music FSM (`audio_system.hpp/.cpp`),
-> `AudioSourceComponent` added to ECS, `directxtex` + `imgui` added to `vcpkg.json`.
+> **What's done:** D3D11 DDS texture loader (`d3d11_texture.hpp/.cpp`), D3D11 textured quad shaders
+> (`textured_quad.vs.hlsl` / `textured_quad.ps.hlsl`), D3D11 `LoadScene("textured_quad")` in
+> `D3D11Renderer`, XAudio2 backend (`xaudio2_backend.hpp/.cpp`), ECS AudioSystem with music FSM
+> (`audio_system.hpp/.cpp`), `AudioSourceComponent` added to ECS, `directxtex` + `imgui` added
+> to `vcpkg.json`, CI headless `--scene textured_quad` validation.
 >
-> **Still to do:** Vulkan texture (`vulkan_texture.hpp/.cpp`), Vulkan descriptor sets
-> (`vulkan_descriptor.hpp/.cpp`), textured quad shaders (`shaders/textured_quad.vert/.frag`),
-> wire textured quad scene into `VulkanRenderer`, CI headless validation.
+> **Deferred (Vulkan path):** `vulkan_texture.hpp/.cpp`, `vulkan_descriptor.hpp/.cpp`,
+> `shaders/textured_quad.vert/.frag` — implement when Vulkan work resumes (Post-M8).
 
 ### Goals
 - Extend the cooker with texture and audio support.
@@ -176,7 +177,15 @@ python tools\validate-assets.py /tmp/cooked/assetdb.json
 
 ## Milestone M4 — Animation Runtime
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete
+
+> **What's done:** C++ skeleton runtime, anim clip evaluation, blend tree, animation system ECS
+> update (`AnimatorComponent` in ECS), Two-Bone + FABRIK IK solver, D3D11 GPU skinning constant
+> buffer upload, `skinned_mesh.vs.hlsl` + `skinned_mesh.ps.hlsl`, D3D11Renderer `skinned_mesh`
+> scene, CI headless `--scene skinned_mesh` validation.
+>
+> **Deferred (Vulkan path):** `shaders/skinned_mesh.vert/.frag` + Vulkan UBO — implement when
+> Vulkan work resumes (Post-M8).
 
 ### Goals
 - Skeleton, clip evaluation, simple blend tree.
@@ -220,7 +229,13 @@ ctest --test-dir build -L contract -R anim
 
 ## Milestone M5 — Physics Integration
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete
+
+> **What's done:** Jolt Physics via vcpkg (`joltphysics`), `PhysicsWorld` wrapper (pImpl façade),
+> `CharacterController` (`JPH::CharacterVirtual`, gravity/step-up/slope/jump), `Raycast` +
+> `CastRayDown` + `CastSphere` helpers, `HitVolumeManager` (AABB Attack/Hurt volumes),
+> `RigidBodyCreator` + `RigidBodyComponent` (component 22) + `ColliderComponent` (component 23)
+> in ECS.hpp, `physics_test` headless acceptance scene (3 tests), CI `build-windows-physics` job.
 
 ### Goals
 - Jolt Physics integrated as a CMake dependency (via vcpkg or submodule).
@@ -257,7 +272,7 @@ ctest --test-dir build -L contract -R anim
 
 ## Milestone M6 — Editor Shell
 
-**Status:** 🔨 In Progress
+**Status:** ✅ Complete
 
 ### Goals
 - A `creation-suite-editor.exe` with a scene hierarchy panel, inspector panel,
@@ -270,8 +285,8 @@ ctest --test-dir build -L contract -R anim
 |---|---|
 | `editor/src/main.cpp` | Win32 + D3D11 + ImGui entry point; headless mode (`--headless`, `--create-scene`, `--load-scene --validate`) |
 | `editor/src/EditorApp.hpp/.cpp` | Editor app: DockSpace, menu bar, Play-in-Engine, Open/Save scene dialogs |
-| `editor/src/ContentBrowserPanel.hpp/.cpp` | Content/ file tree via std::filesystem |
-| `editor/src/SceneEditorPanel.hpp/.cpp` | 2D entity canvas with JSON save/load; shared-state accessors |
+| `editor/src/ContentBrowserPanel.hpp/.cpp` | Content/ file tree via std::filesystem; **ImGui drag-drop source** for CONTENT_ASSET payloads |
+| `editor/src/SceneEditorPanel.hpp/.cpp` | 2D entity canvas with JSON save/load; shared-state accessors; **ImGui drag-drop target** (creates entity at drop position) |
 | `editor/src/panels/SceneHierarchyPanel.hpp/.cpp` | Entity list: add/delete/rename/duplicate + context menu |
 | `editor/src/panels/InspectorPanel.hpp/.cpp` | Table-driven component property editor (DragFloat/DragInt/Checkbox/InputText); Add Component popup |
 | `src/engine/scene/scene_serialiser.hpp/.cpp` | `SceneSerialiser::SaveScene/LoadScene/CountEntities` — JSON ↔ ECS World round-trip |
@@ -343,14 +358,14 @@ ctest --test-dir build -L contract -R anim
 
 ### Goals
 - All existing gameplay systems (combat, quests, AI, camp, inventory, magic,
-  shop, weather) wired into the Vulkan runtime instead of the ncurses terminal.
+  shop, weather) wired into the **D3D11** runtime instead of the ncurses terminal.
 - Lua scripting still works via `LuaEngine`.
 - Sample FF15 slice project: one zone, one enemy, one quest, one party member.
 
 ### Deliverables
 | File | Description |
 |---|---|
-| `src/game/Game.hpp/.cpp` | Updated `Game::Init` and `Game::Run` to use Vulkan + audio + physics |
+| `src/game/Game.hpp/.cpp` | Updated `Game::Init` and `Game::Run` to use D3D11 + audio + physics |
 | `src/game/systems/combat_system.hpp/.cpp` | Renamed from `CombatSystem`; uses physics raycasts |
 | `src/game/systems/quest_system.hpp/.cpp` | Renamed; triggers dialogue + camera events |
 | `src/game/systems/ai_system.hpp/.cpp` | Renamed; uses behaviour tree + nav-mesh |
@@ -399,9 +414,9 @@ ctest --test-dir build
 | M1 | Triangle | ✅ Complete |
 | M1.5 | D3D11 baseline renderer | ✅ Complete |
 | M2 | AssetDB + Cooker | ✅ Complete |
-| M3 | Hello Texture + Audio | 🔨 In Progress |
-| M4 | Animation runtime | ⬜ |
-| M5 | Physics integration | ⬜ |
-| M6 | Editor shell | ⬜ |
+| M3 | Hello Texture + Audio | ✅ Complete |
+| M4 | Animation runtime | ✅ Complete |
+| M5 | Physics integration | ✅ Complete |
+| M6 | Editor shell | ✅ Complete |
 | M7 | World streaming | ⬜ |
 | M8 | Gameplay integration | ⬜ |

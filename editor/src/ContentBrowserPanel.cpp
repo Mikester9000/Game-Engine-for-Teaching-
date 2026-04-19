@@ -154,6 +154,26 @@ void ContentBrowserPanel::RenderDirectory(const fs::path& dir, bool forceExpand)
 
         ImGui::TreeNodeEx(fileName.c_str(), leafFlags);
 
+        // TEACHING NOTE -- ImGui Drag-Drop Source on a leaf file item
+        // After any rendered item we can call BeginDragDropSource() to make
+        // that item draggable.  ImGuiDragDropFlags_SourceAllowNullID lets us
+        // drag items that were rendered with ImGuiTreeNodeFlags_NoTreePushOnOpen
+        // (they produce a null ImGui ID by default, which would otherwise block
+        // drag-drop).  We set the payload type to "CONTENT_ASSET" and store the
+        // absolute file path as a null-terminated C string so the drop target
+        // can read it without any extra allocation.
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
+        {
+            // Payload: null-terminated UTF-8 file path (size includes the '\0')
+            ImGui::SetDragDropPayload("CONTENT_ASSET",
+                                      filePath.c_str(),
+                                      filePath.size() + 1);
+            // Drag preview tooltip
+            ImGui::TextUnformatted(fileName.c_str());
+            ImGui::TextDisabled("Drop onto scene canvas to place entity");
+            ImGui::EndDragDropSource();
+        }
+
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
         {
             if (m_fileSelectedCallback)

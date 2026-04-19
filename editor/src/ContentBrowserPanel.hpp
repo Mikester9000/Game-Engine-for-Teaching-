@@ -35,6 +35,31 @@
  * default-open, selected highlight, and more.
  *
  * =============================================================================
+ * TEACHING NOTE -- ImGui Drag-and-Drop Source
+ * =============================================================================
+ * ImGui supports drag-and-drop between any two widgets in the same ImGui
+ * context.  The API is split into source and target sides:
+ *
+ * SOURCE SIDE (this file — ContentBrowserPanel):
+ *   After rendering the item that should be draggable, call:
+ *     if (ImGui::BeginDragDropSource(...)) {
+ *         ImGui::SetDragDropPayload("TYPE", data, size);
+ *         ImGui::TextUnformatted("Preview text");
+ *         ImGui::EndDragDropSource();
+ *     }
+ *   "TYPE" is an arbitrary string identifying the payload type so that the
+ *   target can reject payloads it doesn't understand.  We use "CONTENT_ASSET"
+ *   and pass the absolute file path as the payload data.
+ *
+ * TARGET SIDE (SceneEditorPanel):
+ *   After rendering the canvas child window, call:
+ *     if (ImGui::BeginDragDropTarget()) {
+ *         if (const ImGuiPayload* p = ImGui::AcceptDragDropPayload("CONTENT_ASSET"))
+ *             // cast p->Data to const char* and use it
+ *         ImGui::EndDragDropTarget();
+ *     }
+ *
+ * =============================================================================
  */
 
 #pragma once
