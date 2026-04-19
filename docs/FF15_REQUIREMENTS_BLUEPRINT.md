@@ -27,7 +27,7 @@ The project is considered **finished** when:
   - **Gameplay** — Real-time action combat (warp-strike, link-strike, ATB),
     open-world streaming, party AI with behaviour tree + formation, quest +
     dialogue, save/load with 15 slots and auto-save.
-  - **Tools** — Full cook pipeline (texture, mesh, audio, animation), Qt 6
+  - **Tools** — Full cook pipeline (texture, mesh, audio, animation), Dear ImGui
     editor with Play-in-Engine, Python audio + animation authoring tools.
   - **Teaching** — Every non-trivial pattern has a `// TEACHING NOTE` block and
     is demonstrated in `samples/vertical_slice_project/`.

@@ -46,7 +46,7 @@ The project is considered **complete** when all of the following are true:
    | **Physics** | Rigid-body simulation (Jolt Physics); character capsule with step-up / slopes; vehicle wheel-ray physics; physics-based hit volumes for combat |
    | **Sound** | XAudio2 backend; positional 3D audio with distance attenuation; layered music system (battle / exploration / idle blend); event-driven SFX triggers |
    | **Gameplay** | Real-time action combat (warp-strike, link-strike, combo chains, ATB); open-world zone streaming without loading screens; party AI (behaviour tree + formation); quest + dialogue system; save/load (15 slots + auto-save at camp) |
-   | **Tools** | Asset cooker (`cook.exe`); texture / mesh / audio / animation import pipeline; Qt 6 scene editor with Play-in-Engine; Python authoring tools for audio and animation |
+   | **Tools** | Asset cooker (`cook.exe`); texture / mesh / audio / animation import pipeline; Dear ImGui scene editor with Play-in-Engine; Python authoring tools for audio and animation |
    | **Teaching** | Every non-trivial pattern has a `// TEACHING NOTE` block; docs in `docs/`; `samples/vertical_slice_project/` demonstrates each subsystem end-to-end |
 
 3. **A student can fully teach themselves** modern game engine development by
@@ -334,7 +334,7 @@ Integrate with CMake by adding to `CMakePresets.json` `cacheVariables`:
 ## 7. Toolchain Integration Points
 
 The three authoring tools (`tools/audio_authoring` (Audio Engine),
-`tools/anim_authoring` (Animation Engine), and the Qt editor `editor/`)
+`tools/anim_authoring` (Animation Engine), and the Dear ImGui editor `editor/`)
 communicate with the runtime engine via the **shared asset
 manifest contract**.  The schema lives in
 `assets/schema/asset-manifest.schema.json`.

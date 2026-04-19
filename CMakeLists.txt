@@ -46,15 +46,17 @@ cmake_minimum_required(VERSION 3.16)
 project(EducationalGameEngine VERSION 1.0 LANGUAGES CXX C)
 
 # ---------------------------------------------------------------------------
-# Monorepo top-level option: Build the Qt editor
+# Monorepo top-level option: Build the Dear ImGui editor
 # ---------------------------------------------------------------------------
-# TEACHING NOTE — Optional Subprojects
-# The editor requires Qt 6 to be installed.  On a machine without Qt the
-# engine still builds and runs.  Set BUILD_EDITOR=ON to include the editor.
+# TEACHING NOTE -- Optional Subprojects
+# The editor uses Dear ImGui (MIT, zero install) rendered via D3D11.
+# It requires vcpkg to install the imgui[docking,dx11-binding,win32-binding]
+# package (listed in vcpkg.json).  The engine builds and runs without it.
+# Set BUILD_EDITOR=ON to include the editor:
 #
-#   cmake .. -DBUILD_EDITOR=ON -DCMAKE_PREFIX_PATH="C:/Qt/6.x.x/msvc2019_64"
+#   cmake --preset windows-debug -DBUILD_EDITOR=ON
 #
-option(BUILD_EDITOR "Build the Qt-based Creation Suite editor" OFF)
+option(BUILD_EDITOR "Build the Dear ImGui Creation Suite editor" OFF)
 
 # ---------------------------------------------------------------------------
 # C++ standard
@@ -751,13 +753,14 @@ message(STATUS "===========================")
 # C++ standard already set above).
 
 if(BUILD_EDITOR)
-    # TEACHING NOTE — Qt Editor Subproject
-    # The editor is a Qt 6 Widgets application that provides:
-    #   • Project browser  — open a project folder, see its Content/ files
-    #   • Content browser  — list assets by type
-    #   • Scene editor     — place entities, save a scene/map JSON file
-    # Qt must be installed and CMAKE_PREFIX_PATH must point to the Qt install.
-    message(STATUS "BUILD_EDITOR=ON: including editor/ subproject")
+    # TEACHING NOTE -- Dear ImGui Editor Subproject
+    # The editor is a Dear ImGui (MIT) application that provides:
+    #   * Content browser  -- file tree via std::filesystem
+    #   * Scene editor     -- 2D entity canvas with JSON save/load (nlohmann-json)
+    #   * Menu bar         -- open project, save scene, cook assets
+    # Requires vcpkg with imgui[docking,dx11-binding,win32-binding] installed.
+    # No Qt installation needed.
+    message(STATUS "BUILD_EDITOR=ON: including editor/ subproject (Dear ImGui)")
     add_subdirectory(editor)
 else()
     message(STATUS "BUILD_EDITOR=OFF: skipping editor/ (pass -DBUILD_EDITOR=ON to include)")
