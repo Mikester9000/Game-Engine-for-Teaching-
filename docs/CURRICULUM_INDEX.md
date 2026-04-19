@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 865 across 37 subsystems.
+**Total lessons:** 866 across 37 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (36 lessons)
-- [ci/workflows](#ciworkflows) (28 lessons)
+- [ci/workflows](#ciworkflows) (29 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (7 lessons)
 - [editor/src](#editorsrc) (50 lessons)
 - [engine/assets](#engineassets) (27 lessons)
@@ -921,9 +921,20 @@ name: Build Windows Vulkan (optional, MSVC x64)
 runs-on: windows-latest
 continue-on-error: true
 
-### Why cache the Vulkan SDK?
+### Keep toolchain consistent with primary Windows job.
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L178) (line 178)
+
+The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
+avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
+- name: Setup MSVC developer command prompt
+uses: ilammy/msvc-dev-cmd@v1
+with:
+arch: x64
+
+### Why cache the Vulkan SDK?
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L189) (line 189)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -938,7 +949,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L200) (line 200)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L211) (line 211)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -947,7 +958,7 @@ This is expected and why this job has continue-on-error: true.
 On a self-hosted GPU runner this step will succeed.
 -----------------------------------------------------------------------
 - name: Run Vulkan headless validation (optional)
-run: .\build\windows-debug-vulkan\Debug\engine_sandbox.exe --renderer vulkan --headless
+run: .\build\windows-ninja-debug-vulkan\engine_sandbox.exe --renderer vulkan --headless
 shell: cmd
 continue-on-error: true
 
