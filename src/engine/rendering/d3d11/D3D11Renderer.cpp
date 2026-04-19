@@ -160,20 +160,26 @@ static const SkinnedVertex kSkinnedVerts[10] =
 };
 
 // TEACHING NOTE — Index Buffer (4 quads = 8 triangles = 24 indices)
-// Each quad is two CW triangles sharing their diagonal.
-// Vertex layout per quad:
-//   [2i  ] [2i+1]     ← top row    (left, right)
-//   [2i+2] [2i+3]     ← bottom row (left, right)
 //
-// CW winding when viewed from -z (camera looks toward +z):
-//   Triangle A: bottom-left, bottom-right, top-left   → (2i+2, 2i+3, 2i  )
-//   No wait — for a strip going UP, rows are:
-//   bottom row (lower y index), top row (higher y index).
+// Vertex layout (strip, left = x=-0.1, right = x=+0.1, y increases upward):
+//   Row 0 (y=-0.8):  v0 (left)   v1 (right)
+//   Row 1 (y=-0.4):  v2 (left)   v3 (right)
+//   Row 2 (y= 0.0):  v4 (left)   v5 (right)
+//   Row 3 (y=+0.4):  v6 (left)   v7 (right)
+//   Row 4 (y=+0.8):  v8 (left)   v9 (right)
 //
-//   Triangle A: (2i, 2i+1, 2i+2) — top-left, top-right, next-bottom-left
-//   Triangle B: (2i+1, 2i+3, 2i+2) — top-right, next-bottom-right, next-bottom-left
+// D3D11 default: front face = CLOCKWISE when viewed from the camera.
+// The camera is conceptually at z<0, looking toward +z.
+// Screen-space X is right, Y is up.
 //
-//   This produces CW winding when viewed from camera at z < 0.
+// For each quad (rows i and i+1), the two triangles are:
+//   Triangle A: v[2i], v[2i+1], v[2i+2]  →  (left-bottom, right-bottom, left-top)
+//   Triangle B: v[2i+1], v[2i+3], v[2i+2] →  (right-bottom, right-top, left-top)
+//
+// Screen-space CW verification for Triangle A (using row 0):
+//   v0=(-0.1,-0.8), v1=(+0.1,-0.8), v2=(-0.1,-0.4)
+//   Cross product (v1-v0) × (v2-v0):
+//     (0.2, 0, 0) × (0, 0.4, 0) = (0, 0, 0.08)  — positive z = CW in screen space ✓
 static const uint16_t kSkinnedIndices[24] =
 {
     0, 1, 2,    1, 3, 2,   // Quad 0: rows 0-1

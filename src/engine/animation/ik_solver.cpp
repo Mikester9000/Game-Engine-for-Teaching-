@@ -248,7 +248,7 @@ math::Quat TwoBoneIK::AlignRotation(const math::Vec3& srcDir,
         if (perp.Length() < kEps)
             perp = sn.Cross(Vec3::Right());
         return Quat::FromAxisAngle(perp.Normalized(),
-                                   3.14159265358979323846f);
+                                   math::kPi);
     }
 
     // General case: axis = cross(src, dst), angle = acos(dot).
