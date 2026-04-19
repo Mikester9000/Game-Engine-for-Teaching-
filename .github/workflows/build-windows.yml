@@ -33,6 +33,7 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'editor/**'
       - 'CMakeLists.txt'
       - 'CMakePresets.json'
       - 'shaders/**'
@@ -41,6 +42,7 @@ on:
   pull_request:
     paths:
       - 'src/**'
+      - 'editor/**'
       - 'CMakeLists.txt'
       - 'CMakePresets.json'
       - 'shaders/**'
@@ -277,6 +279,136 @@ jobs:
       - name: Run physics acceptance tests (M5)
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
         shell: cmd
+
+  # --------------------------------------------------------------------------
+  # M6 Editor job: Build creation-suite-editor with Dear ImGui via vcpkg
+  # --------------------------------------------------------------------------
+  # TEACHING NOTE — M6 Editor CI Job
+  # ============================================================================
+  # This job validates the Dear ImGui editor build (M6).  It:
+  #   1. Clones vcpkg into the workspace and pins it to a known-good release tag
+  #      (2024.12.16) where imgui carries the "docking" feature.  This avoids
+  #      depending on the C:\vcpkg snapshot baked into the windows-latest runner
+  #      image, which may be too old and fail with "imgui has no feature named
+  #      docking".
+  #   2. Installs imgui[docking,dx11-binding,win32-binding] and nlohmann-json
+  #      via the workspace vcpkg in classic mode (from $env:TEMP so no
+  #      vcpkg.json is in scope).
+  #   3. Configures the build with the windows-ninja-debug-editor preset, which
+  #      sets BUILD_EDITOR=ON so CMake includes editor/CMakeLists.txt.
+  #   4. Builds creation-suite-editor.exe.
+  #   5. Runs the headless CLI mode to verify the editor initialises cleanly.
+  #
+  # Why separate from the main job?  The editor requires vcpkg imgui which
+  # takes ~2 minutes to compile.  Separating it keeps the main D3D11 build
+  # fast and avoids extending the critical path for engine PRs that don't
+  # touch editor code.
+  #
+  # Triggers: paths filter includes 'editor/**' so this job only runs when
+  # editor source files or editor CMakeLists.txt change.
+  # ============================================================================
+  build-windows-editor:
+    name: Build Windows Editor — creation-suite-editor (M6)
+    runs-on: windows-latest
+    continue-on-error: false
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Enter MSVC developer environment (same as all other Windows jobs).
+      # -----------------------------------------------------------------------
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Pinned workspace vcpkg (editor job)
+      # -----------------------------------------------------------------------
+      # We clone a specific vcpkg release tag into the workspace instead of
+      # relying on the system C:\vcpkg snapshot baked into the runner image.
+      # The system snapshot may be months old and may not include the "docking"
+      # feature for imgui, causing vcpkg install to fail with:
+      #   "imgui has no feature named docking."
+      #
+      # By pinning to tag 2024.12.16 we guarantee:
+      #   • imgui portfile defines the docking, dx11-binding and win32-binding
+      #     features that the editor depends on.
+      #   • The build is reproducible regardless of which runner image version
+      #     GitHub rolls out.
+      #
+      # The installed/ tree is cached keyed on editor/CMakeLists.txt so that
+      # a rebuild of imgui is only triggered when the editor's dependencies
+      # actually change.
+      # -----------------------------------------------------------------------
+      - name: Clone and bootstrap vcpkg (pinned to 2024.12.16)
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" --depth 1 --branch 2024.12.16
+          & "$env:GITHUB_WORKSPACE\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+
+      - name: Cache vcpkg packages (editor)
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}\vcpkg\installed
+          key: vcpkg-editor-${{ runner.os }}-x64-2024.12.16-${{ hashFiles('editor/CMakeLists.txt') }}
+          restore-keys: vcpkg-editor-${{ runner.os }}-x64-2024.12.16
+
+      - name: Install imgui + nlohmann-json via vcpkg (classic mode)
+        shell: pwsh
+        run: |
+          # TEACHING NOTE — Classic-mode install
+          # Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
+          # vcpkg uses classic mode and only installs the packages we request.
+          Set-Location "$env:TEMP"
+          & "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install "imgui[docking,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
+
+      # -----------------------------------------------------------------------
+      # Configure CMake with the editor preset.
+      # Point CMAKE_TOOLCHAIN_FILE at the workspace vcpkg so CMake finds the
+      # imgui and nlohmann-json packages installed above.
+      # VCPKG_MANIFEST_INSTALL=OFF prevents the toolchain from re-running
+      # manifest-mode install during cmake configure (avoids re-downloading
+      # joltphysics and other vcpkg.json deps that this build doesn't need).
+      # -----------------------------------------------------------------------
+      - name: Configure CMake (D3D11 + Editor)
+        shell: pwsh
+        run: >
+          cmake --preset windows-ninja-debug-editor
+          -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_INSTALL=OFF
+
+      - name: Build creation-suite-editor
+        run: cmake --build --preset windows-ninja-debug-editor --target creation-suite-editor
+
+      # -----------------------------------------------------------------------
+      # M6 — Headless editor validation
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Headless editor test
+      # creation-suite-editor.exe --headless instantiates SceneEditorPanel and
+      # verifies it initialises cleanly (empty entity list, selectedIdx == -1).
+      # No D3D11 device, no GPU, no ImGui loop is created.  This validates that
+      # the editor's data model (panels, scene state) is correct regardless of
+      # the graphics backend — exactly the same pattern used by engine_sandbox.
+      # -----------------------------------------------------------------------
+      - name: Verify creation-suite-editor.exe exists
+        shell: pwsh
+        run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor.exe")) { throw "creation-suite-editor.exe not found" }
+
+      - name: Run headless editor validation (M6)
+        shell: cmd
+        run: .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless
+
+      - name: Run headless scene round-trip (M6)
+        shell: cmd
+        run: |
+          .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless --create-scene "%TEMP%\ci_basic.scene.json"
+          .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless --load-scene "%TEMP%\ci_basic.scene.json" --validate
 
   # --------------------------------------------------------------------------
   # Optional job: Build + validate Vulkan backend (requires Vulkan SDK)
