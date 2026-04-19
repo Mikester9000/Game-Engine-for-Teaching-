@@ -740,6 +740,16 @@ bool D3D11Renderer::RecordHeadlessFrame()
     return true;
 }
 
+// Forward declaration — defined after LoadScene (below line 1000).
+// TEACHING NOTE — C++ requires functions to be declared before use.
+// LoadSkinnedMeshScene is a file-scope static helper defined later in this
+// translation unit.  Rather than move the entire 300-line function above
+// LoadScene (which would hurt reading order), we use a forward declaration.
+static bool LoadSkinnedMeshScene(
+    ID3D11Device*                    device,
+    const std::string&               shaderDir,
+    D3D11Renderer::SkinnedMeshScene& scene);
+
 // ===========================================================================
 // LoadScene — load scene resources (M3+)
 // ===========================================================================
