@@ -312,6 +312,12 @@ jobs:
     runs-on: windows-latest
     continue-on-error: false
 
+    # TEACHING NOTE — Job-level env for pinned vcpkg version.
+    # Declaring the tag once here keeps the clone step, cache key, and restore
+    # key in sync automatically.  Update this single value when upgrading vcpkg.
+    env:
+      VCPKG_TAG: "2024.12.16"
+
     permissions:
       contents: read
 
@@ -346,18 +352,18 @@ jobs:
       # a rebuild of imgui is only triggered when the editor's dependencies
       # actually change.
       # -----------------------------------------------------------------------
-      - name: Clone and bootstrap vcpkg (pinned to 2024.12.16)
+      - name: Clone and bootstrap vcpkg (pinned to ${{ env.VCPKG_TAG }})
         shell: pwsh
         run: |
-          git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" --depth 1 --branch 2024.12.16
+          git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" --depth 1 --branch $env:VCPKG_TAG
           & "$env:GITHUB_WORKSPACE\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
 
       - name: Cache vcpkg packages (editor)
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}\vcpkg\installed
-          key: vcpkg-editor-${{ runner.os }}-x64-2024.12.16-${{ hashFiles('editor/CMakeLists.txt') }}
-          restore-keys: vcpkg-editor-${{ runner.os }}-x64-2024.12.16
+          key: vcpkg-editor-${{ runner.os }}-x64-${{ env.VCPKG_TAG }}-${{ hashFiles('editor/CMakeLists.txt') }}
+          restore-keys: vcpkg-editor-${{ runner.os }}-x64-${{ env.VCPKG_TAG }}
 
       - name: Install imgui + nlohmann-json via vcpkg (classic mode)
         shell: pwsh
