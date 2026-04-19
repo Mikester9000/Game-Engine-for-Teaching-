@@ -6,13 +6,55 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1068 across 40 subsystems.
+**Total lessons:** 1108 across 44 subsystems.  *(Updated for M6: +40 lessons across 4 new subsystems.)*
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (47 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (51 lessons) *(+4 M6: nlohmann_json, ENGINE_ENABLE_JSON, scene_serialiser CMake pattern)*
+- [ci/workflows](#ciworkflows) (34 lessons)
+- [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
+- [editor/src](#editorsrc) (54 lessons) *(+9 M6: headless mode, WinMain headless, PickOpenFile, panel wiring, DockSpace M6 layout)*
+- [editor/src/panels/SceneHierarchyPanel](#editorsrcpanelsscenehierarchypanel) (9 lessons) *(NEW — M6)*
+- [editor/src/panels/InspectorPanel](#editorsrcpanelsinspectorpanel) (11 lessons) *(NEW — M6)*
+- [engine/animation](#engineanimation) (85 lessons)
+- [engine/assets](#engineassets) (27 lessons)
+- [engine/audio](#engineaudio) (32 lessons)
+- [engine/core](#enginecore) (50 lessons)
+- [engine/ecs](#engineecs) (35 lessons)
+- [engine/input](#engineinput) (19 lessons)
+- [engine/math](#enginemath) (17 lessons)
+- [engine/physics](#enginephysics) (54 lessons)
+- [engine/platform](#engineplatform) (28 lessons)
+- [engine/rendering](#enginerendering) (215 lessons)
+- [engine/scene/scene_serialiser](#enginescenescene_serialiser) (7 lessons) *(NEW — M6)*
+- [engine/scripting](#enginescripting) (29 lessons)
+- [game/Game.cpp](#gamegame.cpp) (6 lessons)
+- [game/Game.hpp](#gamegame.hpp) (1 lesson)
+- [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
+- [game/systems](#gamesystems) (85 lessons)
+- [game/world](#gameworld) (70 lessons)
+- [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (24 lessons)
+- [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
+- [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
+- [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
+- [scripts/enemies.lua](#scriptsenemies.lua) (1 lesson)
+- [scripts/extract_teaching_notes.py](#scriptsextract_teaching_notes.py) (2 lessons)
+- [scripts/main.lua](#scriptsmain.lua) (2 lessons)
+- [scripts/quests.lua](#scriptsquests.lua) (1 lesson)
+- [shared/runtime](#sharedruntime) (12 lessons)
+- [src/main.cpp](#srcmain.cpp) (1 lesson)
+- [tests/cook](#testscook) (5 lessons)
+- [tools/anim_authoring](#toolsanim_authoring) (20 lessons)
+- [tools/audio_authoring](#toolsaudio_authoring) (28 lessons)
+- [tools/audio_engine.py](#toolsaudio_engine.py) (6 lessons)
+- [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
+- [tools/cook](#toolscook) (12 lessons)
+- [tools/creation_engine.py](#toolscreation_engine.py) (5 lessons)
+- [tools/tests](#toolstests) (3 lessons)
+- [tools/validate-assets.py](#toolsvalidate-assets.py) (2 lessons)
 - [ci/workflows](#ciworkflows) (34 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
 - [editor/src](#editorsrc) (45 lessons)
@@ -17443,5 +17485,146 @@ if loop_end <= loop_start:
 errors.append(
 f"{prefix}.audio: loopEnd ({loop_end}) must be > loopStart ({loop_start})"
 )
+
+---
+
+
+---
+
+## editor/src/panels/SceneHierarchyPanel
+
+*(New in M6)*
+
+### Scene Hierarchy Panel
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.hpp`](../editor/src/panels/SceneHierarchyPanel.hpp#L1)
+
+Scene Hierarchy Panel — dockable entity tree mirroring Unity Hierarchy / Unreal Outliner.
+
+### Immediate-mode entity list
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](../editor/src/panels/SceneHierarchyPanel.cpp#L1)
+
+In immediate mode the list is rebuilt every frame from the current entity vector — no widget objects, no signals.
+
+### Shared State via Pointer
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.hpp`](../editor/src/panels/SceneHierarchyPanel.hpp#L1)
+
+Non-owning pointer to SceneEditorPanel for shared entity list + selection state.
+
+### ImGui::Selectable + context menus
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](../editor/src/panels/SceneHierarchyPanel.cpp#L1)
+
+BeginPopupContextItem() anchors a right-click popup to the last rendered item — the standard pattern for context menus in ImGui.
+
+### PushID / PopID for stable ImGui IDs
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](../editor/src/panels/SceneHierarchyPanel.cpp#L1)
+
+When rendering the same widget type in a loop, PushID(i) prefixes the ID stack so each row gets a distinct internal ID.
+
+### UTF-8 icons in ImGui
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](../editor/src/panels/SceneHierarchyPanel.cpp#L1)
+
+ImGui renders UTF-8 text natively. Any glyph in the font atlas can be used as an entity type icon.
+
+---
+
+## editor/src/panels/InspectorPanel
+
+*(New in M6)*
+
+### Inspector / Property Editor Pattern
+
+**Source:** [`editor/src/panels/InspectorPanel.hpp`](../editor/src/panels/InspectorPanel.hpp#L1)
+
+Inspector panel mirrors Unity Inspector / Unreal Details — shows component properties for the selected entity.
+
+### Reflection-free property editing
+
+**Source:** [`editor/src/panels/InspectorPanel.hpp`](../editor/src/panels/InspectorPanel.hpp#L1)
+
+Table-driven approach: kComponentDefs static table maps component type → fields. Add a new component type by adding one entry.
+
+### Table-driven component definitions
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](../editor/src/panels/InspectorPanel.cpp#L1)
+
+FieldDef + ComponentDef structs define what the inspector knows about each component type without C++ reflection.
+
+### ImGui DragFloat / DragInt
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](../editor/src/panels/InspectorPanel.cpp#L1)
+
+DragFloat renders a field the user can drag or double-click to type — the same interaction as Unreal Details / Unity Inspector.
+
+### BeginDisabled / EndDisabled
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](../editor/src/panels/InspectorPanel.cpp#L1)
+
+Wrapping items in BeginDisabled/EndDisabled dims them and prevents interaction without removing them from the layout.
+
+### CollapsingHeader
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](../editor/src/panels/InspectorPanel.cpp#L1)
+
+ImGuiTreeNodeFlags_DefaultOpen keeps the section open on first render. State is persisted to imgui.ini automatically.
+
+### JSON component bag
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](../editor/src/SceneEditorPanel.hpp#L1)
+
+SceneEntity::components stores arbitrary component data as a JSON object so the editor handles new component types without recompiling.
+
+---
+
+## engine/scene/scene_serialiser
+
+*(New in M6)*
+
+### Scene Serialisation Pattern
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](../src/engine/scene/scene_serialiser.hpp#L1)
+
+Serialisation converts ECS World → JSON text (save). Deserialisation reverses (load). Used by Unity (YAML), Unreal (.umap), Godot (.tscn).
+
+### Separating Interface from Implementation
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](../src/engine/scene/scene_serialiser.cpp#L1)
+
+scene_serialiser.hpp declares the public API; the .cpp includes ECS.hpp (~2000 lines of templates). This keeps compile times low.
+
+### Per-component serialisation
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](../src/engine/scene/scene_serialiser.cpp#L1)
+
+HasComponent<T>() + GetComponent<T>() const — only components the entity owns are written. Sparse storage; typically 3–5 of 24.
+
+### Separate "transform" vs "components" layout
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](../src/engine/scene/scene_serialiser.cpp#L1)
+
+Transform is promoted to a top-level "transform" field (not nested under "components") — matches Unity and Unreal convention.
+
+### Incremental vs Replace Load
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](../src/engine/scene/scene_serialiser.hpp#L1)
+
+LoadScene does NOT clear the world first — allows additive scene loading (spawning enemies into an existing world). This is how Unreal sublevel streaming works.
+
+### Forward Declarations to limit ECS.hpp propagation
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](../src/engine/scene/scene_serialiser.hpp#L1)
+
+`class World;` forward declaration keeps the 2000-line ECS.hpp out of every translation unit that only calls SaveScene/LoadScene.
+
+### ENGINE_ENABLE_JSON conditional compile
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](../src/engine/scene/scene_serialiser.cpp#L1)
+
+#ifdef ENGINE_ENABLE_JSON gates all nlohmann/json code. Without vcpkg, functions return false gracefully — no unresolved symbols, no crash.
 
 ---

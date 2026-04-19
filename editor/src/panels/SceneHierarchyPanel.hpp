@@ -37,7 +37,7 @@
 
 #pragma once
 
-#include "SceneEditorPanel.hpp"
+#include "../SceneEditorPanel.hpp"
 
 /**
  * @class SceneHierarchyPanel
