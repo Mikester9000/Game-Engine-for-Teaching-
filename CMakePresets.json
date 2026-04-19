@@ -9,16 +9,8 @@
     {
       "name": "windows-base",
       "hidden": true,
-      "description": "Base settings shared by all Windows presets. Uses the default MSVC toolset (no override). CI compatible with GitHub Actions windows-latest (VS 2022 / v143).",
-      "generator": "Visual Studio 17 2022",
-      "toolset": {
-        "value": "v180",
-        "strategy": "set"
-      },
-      "architecture": {
-        "value": "x64",
-        "strategy": "set"
-      },
+      "description": "Base settings shared by all Windows presets. Uses Ninja Multi-Config for portability across local VS installs and GitHub Actions.",
+      "generator": "Ninja Multi-Config",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_CONFIGURATION_TYPES": "Debug;Release"
@@ -27,8 +19,13 @@
     {
       "name": "windows-base-v180",
       "hidden": true,
-      "description": "Overrides toolset to v180 for Visual Studio Insiders 2026. Local use only — incompatible with CI (github Actions windows-latest only has v143). Use the *-v180 presets when you have VS Insiders 2026 installed.",
+      "description": "Overrides generator/toolset for Visual Studio Insiders 2026 (v180). Local use only — incompatible with CI (GitHub Actions windows-latest only has v143). Use the *-v180 presets when you have VS Insiders 2026 with v180 tools installed.",
       "inherits": "windows-base",
+      "generator": "Visual Studio 18 2026",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
       "toolset": {
         "value": "v180",
         "strategy": "set"
@@ -163,6 +160,20 @@
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "OFF"
       }
+    },
+    {
+      "name": "windows-ninja-debug-engine-only",
+      "displayName": "Windows Debug — Engine Only (Ninja, portable)",
+      "description": "Portable Windows preset using Ninja (no MSBuild toolset hard requirement). Builds engine_sandbox with D3D11 backend.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -245,6 +256,15 @@
       "displayName": "Build Windows Debug Vulkan — VS Insiders 2026 (v180)",
       "configurePreset": "windows-debug-vulkan-v180",
       "configuration": "Debug",
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
+    },
+    {
+      "name": "windows-ninja-debug-engine-only",
+      "displayName": "Build Windows Debug Engine Only (Ninja, portable)",
+      "configurePreset": "windows-ninja-debug-engine-only",
       "targets": [
         "engine_sandbox",
         "cook"
