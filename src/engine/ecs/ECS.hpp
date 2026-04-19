@@ -74,6 +74,7 @@
 // ---------------------------------------------------------------------------
 #include "../core/Types.hpp"     // EntityID, ComponentID, NULL_ENTITY, etc.
 #include "../core/Logger.hpp"    // LOG_DEBUG / LOG_WARN
+#include "../math/math_types.hpp" // Vec3, Quat, Mat4 — used by AnimatorComponent (M4)
 
 #include <array>           // std::array — fixed-size storage.
 #include <vector>          // std::vector — dynamic arrays.
@@ -1577,6 +1578,11 @@ struct AudioSourceComponent {
 // AnimatorComponent — per-entity animation state (M4)
 // ---------------------------------------------------------------------------
 
+/// Maximum joints per skeleton — must match the joint CB slot count in HLSL.
+/// (Defined here so AnimatorComponent can dimension its array without
+/// pulling in skeleton.hpp which would create a circular include chain.)
+static constexpr int kMaxJoints = 64;
+
 /**
  * @struct AnimatorComponent
  * @brief Drives skeletal animation for an entity.
@@ -1612,14 +1618,6 @@ struct AudioSourceComponent {
  *
  * ============================================================================
  */
-
-// Forward-declare math types to avoid a heavy include in ECS.hpp.
-// AnimatorComponent stores Mat4 by value; the actual definition is in
-// engine/math/math_types.hpp (included by animation_system.hpp at use sites).
-#include "engine/math/math_types.hpp"
-
-static constexpr int kMaxJoints = 64;  ///< Max joints per skeleton (matches CB slot count)
-
 struct AnimatorComponent
 {
     // -----------------------------------------------------------------------

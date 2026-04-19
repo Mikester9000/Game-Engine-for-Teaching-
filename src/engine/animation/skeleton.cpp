@@ -199,12 +199,15 @@ void Skeleton::ComputeSkinMatrices(
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Skin Matrix Computation
     // -----------------------------------------------------------------------
-    // skinMatrix[i] = worldTransform[i] * invBindMatrix[i]
+    // In row-major (D3D11) convention, matrix multiplication `A * B` applies
+    // A first (transforms points out of A's space) then B (into B's space).
     //
-    // In row-major (D3D11) convention: we apply invBind first (right-hand side),
-    // then world (left-hand side).  The multiplication below is:
-    //   invBind[i] × world[i]
-    // which reads: "move from bind-model-space to joint-local, then to world".
+    // So:  invBind[i] * world[i]
+    //   = (move vertex from bind-pose model space → joint-i local space)
+    //     then (move from joint-i local space → current world space)
+    //
+    // Vertex shader reads this as:
+    //   vertexWorld = Σ weight[i] * (skinMatrix[i] * vertexBindPose)
     // -----------------------------------------------------------------------
     size_t n = m_joints.size();
     skinMatrices.resize(n, math::Mat4::Identity());

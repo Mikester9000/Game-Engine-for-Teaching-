@@ -61,7 +61,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | D3D11 textures (DDS/BC7) | ✅ | `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` — self-contained DDS loader (RGBA8, BC1, BC3, BC7/DX10); no directxtex needed |
 | **Vulkan textures (DDS/BC7)** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` — implement when Vulkan work resumes |
 | **Vulkan descriptor sets** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — implement when Vulkan work resumes |
-| D3D11 textured quad scene | 🔨 | HLSL shaders `shaders/textured_quad.vs.hlsl` + `textured_quad.ps.hlsl`; `LoadScene("textured_quad")` in D3D11Renderer |
+| D3D11 textured quad scene | ✅ | HLSL shaders `shaders/textured_quad.vs.hlsl` + `textured_quad.ps.hlsl`; `LoadScene("textured_quad")` + `DrawTexturedQuad()` + `UnloadScene()` in D3D11Renderer; 1×1 white fallback if no DDS |
 | **PBR shading (IBL + directional light)** | **(DEFERRED)** | D3D11: HLSL PBR pixel shader + CB; Vulkan: `pbr_pipeline.hpp/.cpp` — deferred |
 | **Directional shadow map** | **(DEFERRED)** | Shadow pass render target + shadow sampling |
 | **Post-processing (bloom + tonemap)** | **(DEFERRED)** | Full-screen pass pipeline |
@@ -133,7 +133,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete.** Next: D3D11 textured quad (HLSL shaders + D3D11 pipeline). Vulkan texture is deferred.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** Next: M4b (IK solver + D3D11 GPU skinning) or M5 Physics. Vulkan texture is deferred.
 
 ---
 
@@ -185,7 +185,7 @@ Add `ENGINE_ENABLE_PHYSICS` CMake option. Create `physics_world.hpp/.cpp` wrappi
 
 **M2 is complete.** `engine_sandbox --validate-project samples/vertical_slice_project` loads AssetDB and all cooked assets, exits 0.
 
-**Next step (M3):** See M3 Bootstrap Guide below.
+**Next step:** See "Next Milestone — What to Work On Now" table above.
 
 ---
 
@@ -280,14 +280,16 @@ Game-Engine-for-Teaching-/
 │   ├── engine/         # Platform-independent engine kernel
 │   │   ├── core/       # Logger, EventBus, Types
 │   │   ├── ecs/        # Entity-Component-System (ECS.hpp — 2 000 lines)
+│   │   ├── animation/  # M4 runtime: skeleton, anim_clip, blend_tree, animation_system
+│   │   ├── math/       # math_types.hpp (Vec3, Quat, Mat4 — row-major D3D11)
 │   │   ├── input/      # Input system (ncurses on Linux)
 │   │   ├── platform/   # Win32 window, message pump
-│   │   ├── rendering/  # ncurses renderer + Vulkan renderer
+│   │   ├── rendering/  # ncurses renderer + D3D11 renderer (+ Vulkan, optional)
 │   │   └── scripting/  # Lua 5.4 embedding
 │   ├── game/           # FFXV-style gameplay systems
 │   │   ├── systems/    # Combat, AI, Camp, Inventory, Magic, Quest, Shop, Weather
 │   │   └── world/      # TileMap, Zone, WorldMap
-│   ├── sandbox/        # Windows Vulkan clear-screen demo
+│   ├── sandbox/        # Windows D3D11 sandbox / test harness
 │   └── main.cpp        # Terminal game entry point
 ├── editor/             # Dear ImGui editor (Creation Suite)
 │   └── src/            # C++ source: EditorApp, ContentBrowserPanel, SceneEditorPanel

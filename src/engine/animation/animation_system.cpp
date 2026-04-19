@@ -68,18 +68,18 @@ const BlendTree* AnimationSystem::GetBlendTree(const std::string& id) const
 void AnimationSystem::Update(World& world, float deltaTime)
 {
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — ECS Component Iteration
+    // TEACHING NOTE — ECS Component Iteration via World::View
     // -----------------------------------------------------------------------
-    // World::GetComponentsOfType<T>() returns a range over all components of
-    // type T.  We call UpdateAnimator for each AnimatorComponent found.
+    // World::View<T>(callback) iterates all living entities that have
+    // component T and invokes the callback with (entityID, component&).
     //
-    // The ECS stores components in dense arrays (ComponentStorage<T>), so
-    // this iteration has good cache locality — all AnimatorComponent data is
-    // in one contiguous block of memory, minimising cache misses.
+    // This is the canonical ECS iteration pattern used by CombatSystem,
+    // AISystem, and all other systems in this codebase.
     // -----------------------------------------------------------------------
-    auto& storage = world.GetComponentStorage<AnimatorComponent>();
-    for (auto& animator : storage)
+    world.View<AnimatorComponent>([&](EntityID /*id*/, AnimatorComponent& animator)
+    {
         UpdateAnimator(animator, deltaTime);
+    });
 }
 
 void AnimationSystem::UpdateAnimator(AnimatorComponent& animator, float deltaTime)
