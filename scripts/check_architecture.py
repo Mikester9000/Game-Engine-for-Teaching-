@@ -155,6 +155,20 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     # scripted demo, and maps game state to D3D11 clear colour for visual feedback.
     "src/sandbox/test_world.cpp":
         "TestWorld integration scene — M3 system verification; exercises CombatSystem, AISystem, WeatherSystem, QuestSystem, InventorySystem, ShopSystem, CampSystem, and AudioSystem together",
+    # main.cpp: engine_sandbox entry point — wires all startup paths (headless,
+    # windowed, scenes, validate-project, physics_test).  Size is justified by the
+    # number of distinct modes and the TEACHING NOTE comments on each path.
+    "src/sandbox/main.cpp":
+        "engine_sandbox entry point — integrates headless, windowed, validate-project, and M5 physics_test; each path has TEACHING NOTEs",
+    # physics_world.cpp: M5 Jolt Physics wrapper — teaching notes cover Jolt init
+    # sequence (allocator, factory, types, job system, physics system), object layer
+    # setup, body factory helpers, raycast, and shutdown order.
+    "src/engine/physics/physics_world.cpp":
+        "PhysicsWorld Jolt wrapper — M5 physics milestone; TEACHING NOTEs cover Jolt init sequence, layer setup, body factory, raycast, and shutdown order",
+    # character_controller.cpp: M5 CharacterVirtual wrapper — teaching notes cover
+    # step-up, slope handling, gravity integration, and pImpl pattern with Jolt.
+    "src/engine/physics/character_controller.cpp":
+        "CharacterController Jolt wrapper — M5 physics milestone; TEACHING NOTEs cover CharacterVirtual update, gravity, step-up, and pImpl with Jolt types",
 }
 
 # ---------------------------------------------------------------------------

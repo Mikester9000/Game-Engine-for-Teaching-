@@ -1659,6 +1659,111 @@ struct AnimatorComponent
     int jointCount = 0;  ///< Number of valid entries in jointMatrices
 };
 
+// ===========================================================================
+// Component 22 — RigidBodyComponent (M5 Physics)
+// ===========================================================================
+
+/**
+ * @struct RigidBodyComponent
+ * @brief Physics body properties for an entity.
+ *
+ * ============================================================================
+ * TEACHING NOTE — ECS + Physics Linkage
+ * ============================================================================
+ * This component links an ECS entity to a Jolt Physics body.  The field
+ * `bodyID` stores the opaque uint32_t returned by PhysicsWorld::Create*().
+ *
+ * Design principle: ECS components store DATA; physics systems contain LOGIC.
+ *
+ * The PhysicsSystem (not yet created, M5 physics wiring) will each frame:
+ *   1. Iterate all entities with RigidBodyComponent.
+ *   2. If bodyID == kInvalidBodyID, call PhysicsWorld::Create*() to register
+ *      the body for the first time, writing the returned ID back here.
+ *   3. Call PhysicsWorld::Step(dt) to advance the simulation.
+ *   4. After the step, copy GetPosition(bodyID) back into TransformComponent.
+ *
+ * Note: `bodyID` == 0xFFFFFFFF (kInvalidBodyID) means "not yet created".
+ *       You can also use this to disable physics for an entity temporarily.
+ *
+ * ─── Static vs Dynamic ──────────────────────────────────────────────────────
+ *   isStatic = true   — immovable body (floors, walls). Zero solver cost.
+ *   isStatic = false  — dynamic body (debris, enemies). Costs solver work.
+ *
+ * ─── useGravity ─────────────────────────────────────────────────────────────
+ *   true  — body accelerates downward under gravity (normal behaviour).
+ *   false — kinematic: moves only when explicitly set; useful for platforms,
+ *            projectiles with custom trajectory, or flying enemies.
+ *
+ * ============================================================================
+ */
+struct RigidBodyComponent
+{
+    float    mass           = 1.0f;         ///< Mass in kg; ignored when isStatic=true.
+    bool     isStatic       = false;        ///< True = infinite mass; never moves.
+    bool     useGravity     = true;         ///< True = falls under gravity.
+    float    linearDamping  = 0.05f;        ///< Velocity damping per second [0, 1].
+
+    /// Opaque Jolt body identifier (uint32_t wrapping JPH::BodyID).
+    /// Use PhysicsWorld::kInvalidBodyID (0xFFFFFFFF) as "not registered" sentinel.
+    uint32_t bodyID = 0xFFFFFFFFu;
+};
+
+// ===========================================================================
+// Component 23 — ColliderComponent (M5 Physics)
+// ===========================================================================
+
+/**
+ * @struct ColliderComponent
+ * @brief Collision shape descriptor for an entity.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Collider Component
+ * ============================================================================
+ * ColliderComponent stores the *shape* of the physics body:
+ *   • What type of shape (box, sphere, capsule)?
+ *   • What are its dimensions?
+ *   • Is it a trigger (overlap-only, no collision response)?
+ *
+ * It is paired with RigidBodyComponent: RigidBody provides mass/layer
+ * properties; Collider provides shape geometry.  Separating them allows
+ * entities that are physical but have no collision (e.g. a kinematic camera
+ * target) or entities that are purely a trigger zone (no rigid body needed).
+ *
+ * ─── ShapeType ──────────────────────────────────────────────────────────────
+ *   Box     — axis-aligned box; best for crates, terrain patches, pillars.
+ *   Sphere  — perfect sphere; best for projectiles, orbs, rolling objects.
+ *   Capsule — cylinder + rounded ends; best for characters, bipeds, NPCs.
+ *   Mesh    — arbitrary concave mesh (static only); best for terrain.
+ *
+ * ─── isTrigger ──────────────────────────────────────────────────────────────
+ *   false — generates contact events + collision response (normal behaviour).
+ *   true  — generates overlap events only; no collision response.
+ *           Use for: pickup zones, area triggers, damage fields.
+ *
+ * ============================================================================
+ */
+struct ColliderComponent
+{
+    /// Collision shape types matching PhysicsWorld::Create* factory methods.
+    enum class ShapeType : uint8_t
+    {
+        Box     = 0,   ///< Axis-aligned box.
+        Sphere  = 1,   ///< Sphere.
+        Capsule = 2,   ///< Upright capsule (cylinder + two hemispheres).
+        Mesh    = 3,   ///< Static concave mesh (not yet implemented in M5).
+    };
+
+    ShapeType  shapeType    = ShapeType::Box;
+
+    // Shape dimensions:
+    math::Vec3 halfExtents  { 0.5f, 0.5f, 0.5f };  ///< Box: half-size per axis (m).
+    float      radius       = 0.5f;                 ///< Sphere / capsule radius (m).
+    float      halfHeight   = 0.85f;                ///< Capsule cylinder half-height (m).
+
+    bool       isTrigger    = false;                ///< True = overlap events, no response.
+    uint32_t   layerMask    = 0xFFFFFFFFu;          ///< Bitmask of layers this collider tests.
+};
+
 /** @} */ // end of Components
 
 

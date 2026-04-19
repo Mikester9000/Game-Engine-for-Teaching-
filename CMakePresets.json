@@ -188,6 +188,21 @@
         "ENGINE_ENABLE_TERMINAL": "OFF",
         "BUILD_EDITOR": "OFF"
       }
+    },
+    {
+      "name": "windows-ninja-debug-physics",
+      "displayName": "Windows Debug — D3D11 + Jolt Physics (Ninja, portable)",
+      "description": "Portable Windows preset using Ninja. Builds engine_sandbox with D3D11 and Jolt Physics enabled. Requires joltphysics installed via vcpkg (vcpkg install joltphysics).",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF",
+        "ENGINE_ENABLE_PHYSICS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -288,6 +303,15 @@
       "name": "windows-ninja-debug-vulkan",
       "displayName": "Build Windows Debug Vulkan (Ninja, portable)",
       "configurePreset": "windows-ninja-debug-vulkan",
+      "targets": [
+        "engine_sandbox",
+        "cook"
+      ]
+    },
+    {
+      "name": "windows-ninja-debug-physics",
+      "displayName": "Build Windows Debug Physics (Ninja, portable)",
+      "configurePreset": "windows-ninja-debug-physics",
       "targets": [
         "engine_sandbox",
         "cook"

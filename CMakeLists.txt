@@ -153,6 +153,43 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
+# TEACHING NOTE — ENGINE_ENABLE_PHYSICS (M5 Jolt Physics)
+# ---------------------------------------------------------------------------
+# Jolt Physics (MIT licence, by Jorrit Rouwe) is a high-performance physics
+# library used in Horizon: Forbidden West.  It is installed via vcpkg:
+#
+#   vcpkg install joltphysics
+#
+# When ENGINE_ENABLE_PHYSICS=ON and JoltPhysics is found (via vcpkg toolchain
+# or a manual installation), the physics subsystem is compiled into
+# engine_sandbox and the ENGINE_ENABLE_PHYSICS preprocessor macro is defined.
+#
+# If JoltPhysics is NOT found, the option silently falls back to OFF so the
+# D3D11 baseline build always succeeds — even without Jolt installed.
+# This mirrors the Vulkan optional pattern used above.
+#
+# Acceptance test: build with -DENGINE_ENABLE_PHYSICS=ON then run:
+#   engine_sandbox.exe --headless --scene physics_test
+# Expected output: "[PASS] physics_test: all 3 acceptance tests passed."
+# ---------------------------------------------------------------------------
+option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration (M5)" ON)
+
+if(ENGINE_ENABLE_PHYSICS)
+    # TEACHING NOTE — find_package(JoltPhysics CONFIG)
+    # The vcpkg port for joltphysics provides a CMake config that registers
+    # the imported target JoltPhysics::Jolt.  QUIET suppresses the "not found"
+    # message when Jolt is not installed (we handle it ourselves below).
+    find_package(JoltPhysics CONFIG QUIET)
+    if(JoltPhysics_FOUND)
+        message(STATUS "JoltPhysics found: physics subsystem ENABLED.")
+    else()
+        message(STATUS "JoltPhysics NOT found — ENGINE_ENABLE_PHYSICS will be OFF. "
+                       "Install via: vcpkg install joltphysics")
+        set(ENGINE_ENABLE_PHYSICS OFF CACHE BOOL "" FORCE)
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # Find required system libraries (platform-gated)
 # ---------------------------------------------------------------------------
 
@@ -489,6 +526,36 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     )
 
     # -----------------------------------------------------------------------
+    # Physics sources (M5 — Jolt Physics, optional).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Optional Physics Subsystem
+    # The physics/ sources are included only when ENGINE_ENABLE_PHYSICS=ON
+    # and JoltPhysics was found via vcpkg (see the find_package block above).
+    #
+    # hit_volume.cpp and rigid_body.cpp compile even without Jolt because
+    # they contain only pure C++17 math (AABB overlap, descriptor helpers).
+    # physics_world.cpp and character_controller.cpp are wrapped in
+    # #ifdef ENGINE_ENABLE_PHYSICS guards, so they compile to empty translation
+    # units if the macro is not defined — but we only add them when it IS.
+    # -----------------------------------------------------------------------
+    if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
+        list(APPEND SANDBOX_SOURCES
+            src/engine/physics/physics_world.cpp
+            src/engine/physics/rigid_body.cpp
+            src/engine/physics/character_controller.cpp
+            src/engine/physics/raycast.cpp
+            src/engine/physics/hit_volume.cpp
+        )
+    else()
+        # Even without Jolt, compile the pure-C++ physics helpers so the
+        # HitVolumeManager and RigidBodyCreator types are always available.
+        list(APPEND SANDBOX_SOURCES
+            src/engine/physics/rigid_body.cpp
+            src/engine/physics/hit_volume.cpp
+        )
+    endif()
+
+    # -----------------------------------------------------------------------
     # LuaEngine sources (optional — only when bundled Lua headers are present).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Conditional Scripting in engine_sandbox
@@ -563,6 +630,15 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         target_link_libraries(engine_sandbox PRIVATE Vulkan::Vulkan)
     endif()
 
+    # TEACHING NOTE — JoltPhysics::Jolt
+    # The vcpkg JoltPhysics package provides an imported CMake target that
+    # carries all include directories and link libraries automatically.
+    # Linking with target_link_libraries() is all that is needed — no manual
+    # include_directories() or add_library() calls required.
+    if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
+        target_link_libraries(engine_sandbox PRIVATE JoltPhysics::Jolt)
+    endif()
+
     # -----------------------------------------------------------------------
     # Compile definitions.
     # -----------------------------------------------------------------------
@@ -591,6 +667,14 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
 
     if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
         list(APPEND SANDBOX_DEFS ENGINE_ENABLE_VULKAN VK_USE_PLATFORM_WIN32_KHR)
+    endif()
+
+    # TEACHING NOTE — ENGINE_ENABLE_PHYSICS compile definition
+    # Defined when Jolt Physics is available.  Physics .cpp files use
+    # #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
+    # main.cpp uses it to gate the --scene physics_test acceptance tests.
+    if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
+        list(APPEND SANDBOX_DEFS ENGINE_ENABLE_PHYSICS)
     endif()
 
     target_compile_definitions(engine_sandbox PRIVATE ${SANDBOX_DEFS})
@@ -799,6 +883,7 @@ endif()
 if(ENGINE_ENABLE_VULKAN AND Vulkan_FOUND)
     message(STATUS "  Vulkan libs      : ${Vulkan_LIBRARIES}")
 endif()
+message(STATUS "  Physics (Jolt)   : ${ENGINE_ENABLE_PHYSICS}")
 message(STATUS "===========================")
 
 # ---------------------------------------------------------------------------
