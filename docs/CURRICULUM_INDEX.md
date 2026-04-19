@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1141 across 41 subsystems.
+**Total lessons:** 1143 across 41 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (51 lessons)
-- [ci/workflows](#ciworkflows) (37 lessons)
+- [ci/workflows](#ciworkflows) (39 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
 - [editor/src](#editorsrc) (97 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
@@ -1241,15 +1241,18 @@ shell: cmd
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
-  1. Installs imgui[docking,dx11-binding,win32-binding] and nlohmann-json
-     via the system vcpkg at C:\vcpkg in classic mode (same approach used
-     by the physics job — avoids manifest-mode conflicts).
-  2. Configures the build with the windows-ninja-debug-editor preset, which
+  1. Clones vcpkg into the workspace and pins it to a known-good release tag
+     (2024.12.16) where imgui carries the "docking" feature.  This avoids
+     depending on the C:\vcpkg snapshot baked into the windows-latest runner
+     image, which may be too old and fail with "imgui has no feature named
+     docking".
+  2. Installs imgui[docking,dx11-binding,win32-binding] and nlohmann-json
+     via the workspace vcpkg in classic mode (from $env:TEMP so no
+     vcpkg.json is in scope).
+  3. Configures the build with the windows-ninja-debug-editor preset, which
      sets BUILD_EDITOR=ON so CMake includes editor/CMakeLists.txt.
-  3. Builds creation-suite-editor.exe.
-  4. Runs the headless CLI mode to verify the editor initialises cleanly
-     without a D3D11 device or GPU (pure CPU test — same pattern as
-     engine_sandbox --headless).
+  4. Builds creation-suite-editor.exe.
+  5. Runs the headless CLI mode to verify the editor initialises cleanly.
 
 Why separate from the main job?  The editor requires vcpkg imgui which
 takes ~2 minutes to compile.  Separating it keeps the main D3D11 build
@@ -1264,40 +1267,54 @@ name: Build Windows Editor — creation-suite-editor (M6)
 runs-on: windows-latest
 continue-on-error: false
 
-### Classic-mode vcpkg install (editor job)
+### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L328) (line 328)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L315) (line 315)
 
-We install imgui and nlohmann-json from the system vcpkg at C:\vcpkg
-in classic mode (running from $env:TEMP so no vcpkg.json is in scope).
-This avoids the manifest-mode joltphysics conflict while still giving
-CMake exactly the packages the editor needs.
+Declaring the tag once here keeps the clone step, cache key, and restore
+key in sync automatically.  Update this single value when upgrading vcpkg.
+env:
+VCPKG_TAG: "2024.12.16"
 
-The system vcpkg at C:\vcpkg on GitHub-hosted windows-latest runners
-is pinned to a specific baseline that may lag behind the upstream port
-registry.  Older imgui portfiles may not define the "docking" feature,
-causing vcpkg install to fail with "imgui has no feature named docking".
+### Pinned workspace vcpkg (editor job)
 
-A simple "git pull --ff-only" fails silently because C:\vcpkg's local
-branch has diverged from origin (the binary artifacts were modified by
-the runner bootstrap).  Instead we use "git fetch + checkout" to
-surgically replace only the ports/imgui portfiles from origin/master
-without touching the rest of the local state.  If that also fails
-(network issue), the fallback is the actions/cache hit from a prior run.
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L337) (line 337)
+
 -----------------------------------------------------------------------
-- name: Refresh vcpkg imgui portfiles from origin
+We clone a specific vcpkg release tag into the workspace instead of
+relying on the system C:\vcpkg snapshot baked into the runner image.
+The system snapshot may be months old and may not include the "docking"
+feature for imgui, causing vcpkg install to fail with:
+  "imgui has no feature named docking."
+
+By pinning to tag 2024.12.16 we guarantee:
+  • imgui portfile defines the docking, dx11-binding and win32-binding
+    features that the editor depends on.
+  • The build is reproducible regardless of which runner image version
+    GitHub rolls out.
+
+The installed/ tree is cached keyed on editor/CMakeLists.txt so that
+a rebuild of imgui is only triggered when the editor's dependencies
+actually change.
+-----------------------------------------------------------------------
+- name: Clone and bootstrap vcpkg (pinned to ${{ env.VCPKG_TAG }})
 shell: pwsh
-continue-on-error: true
 run: |
-Fetch the latest commit metadata from the vcpkg upstream, then
-check out only ports/imgui from FETCH_HEAD to avoid merge conflicts.
-git -C C:\vcpkg fetch origin master --depth=1 --no-tags --quiet
-git -C C:\vcpkg checkout FETCH_HEAD -- ports/imgui
-Write-Host "imgui portfiles refreshed."
+git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" --depth 1 --branch $env:VCPKG_TAG
+& "$env:GITHUB_WORKSPACE\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+
+### Classic-mode install
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L371) (line 371)
+
+Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
+vcpkg uses classic mode and only installs the packages we request.
+Set-Location "$env:TEMP"
+& "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install "imgui[docking,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L387) (line 387)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L398) (line 398)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1306,12 +1323,12 @@ the editor's data model (panels, scene state) is correct regardless of
 the graphics backend — exactly the same pattern used by engine_sandbox.
 -----------------------------------------------------------------------
 - name: Verify creation-suite-editor.exe exists
-run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor.exe")) { throw "creation-suite-editor.exe not found" }
 shell: pwsh
+run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor.exe")) { throw "creation-suite-editor.exe not found" }
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L411) (line 411)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L422) (line 422)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1329,7 +1346,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1340,7 +1357,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L458) (line 458)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1355,7 +1372,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L469) (line 469)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L480) (line 480)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
