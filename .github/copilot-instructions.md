@@ -31,7 +31,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; optional Vulkan job |
 | CI — contract / golden-file tests | ✅ | `.github/workflows/contract-tests.yml`: runs `cook`, diffs against `tests/golden/assetdb_expected.json`; pytest cook pipeline (13 tests); TEACHING NOTE audit |
 | CI — Architecture Lint | ✅ | `.github/workflows/architecture-lint.yml`: runs `check_architecture.py` (file-size + layer rules) and `extract_teaching_notes.py`; fails if `CURRICULUM_INDEX.md` is stale |
-| `vcpkg.json` | ✅ | Repo root; `nlohmann-json` dependency added for M2 cook pipeline |
+| `vcpkg.json` | ✅ | Repo root; `nlohmann-json` (M2), `directxtex` (M3 texture), `imgui[docking,dx11-binding,win32-binding]` (editor) |
 | Vertical slice sample skeleton | ✅ | `samples/vertical_slice_project/`: `cook_assets.py` (stubs), `Project.json`, `AssetRegistry.json`, `Content/`, `Cooked/` |
 
 ---
@@ -48,7 +48,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | SPIR-V pipeline + colored triangle (M1, Vulkan) | ✅ | `VulkanPipeline`, `VulkanMesh`, `VulkanBuffer`; `shaders/triangle.vert/.frag` |
 | D3D11 depth buffer | ⬜ | Needed for any 3D geometry |
 | Vulkan depth buffer | ⬜ | Needed for any 3D geometry |
-| D3D11 textures (DDS/BC7) | ⬜ | `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` |
+| D3D11 textures (DDS/BC7) | ✅ | `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` — self-contained DDS loader (RGBA8, BC1, BC3, BC7/DX10); no directxtex needed |
 | Vulkan textures (DDS/BC7) | ⬜ | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` |
 | Vulkan descriptor sets | ⬜ | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` |
 | Textured quad scene | ⬜ | Shaders: `shaders/textured_quad.vert/.frag` |
@@ -117,12 +117,10 @@ They must be re-wired to the Vulkan runtime at **Milestone M8**.
 |------|--------|-------|
 | Python `audio_authoring` tool | ✅ | `tools/audio_authoring/audio_engine/` — AI generation, DSP, OGG/WAV export (32 tests passing) |
 | `audio_engine.py` CLI | ✅ | `tools/audio_engine.py` — register/emit/consume/list |
-| XAudio2 backend (C++) | ⬜ | `src/engine/audio/xaudio2_backend.hpp/.cpp` |
-| Audio system (C++) | ⬜ | `src/engine/audio/audio_system.hpp/.cpp` — event-driven play/stop, music layer FSM, 3D emitters |
+| XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
+| Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**Next step:** Create `src/engine/audio/xaudio2_backend.hpp/.cpp` using Windows SDK XAudio2.
-Device init → master voice → source voice pool → `Play(clipId)` / `Stop()`.
-Follow the design in `docs/FF15_REQUIREMENTS_BLUEPRINT.md §8`.
+**M3 audio is ✅ complete.** Next: Vulkan texture + textured quad (Steps 2–5 of M3 Bootstrap Guide).
 
 ---
 
@@ -244,13 +242,13 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M2 complete (AssetDB + cook.exe + contract CI), M3 is next.**
+> **Current position: M3 in progress (D3D11 texture + XAudio2 audio ✅ done; Vulkan texture + textured quad ⬜ remaining).**
 
 Recommended implementation order to reach project completion:
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **1 — Now** | **M3: Texture + Audio** | Vulkan texture (DDS/BC7) via `directxtex`; `vulkan_texture.hpp/.cpp`; XAudio2 backend; `audio_system.hpp/.cpp`; textured quad renders; cooked audio plays; `AudioSourceComponent` added to ECS |
+| **1 — Now** | **M3: Vulkan Texture (remaining)** | Vulkan texture (DDS/BC7) via `vulkan_texture.hpp/.cpp`; Vulkan descriptor sets; `shaders/textured_quad.vert/.frag`; `LoadScene("textured_quad")` in VulkanRenderer; `engine_sandbox --headless --scene textured_quad` exits 0. *D3D11 texture + XAudio2 + AudioSystem are already done.* |
 | **2** | **M4: Animation runtime** | C++ skeleton + clip evaluation + blend tree; GPU skinning UBO; `AnimatorComponent` added to ECS; animated character on screen |
 | **3** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work; `RigidBodyComponent` + `ColliderComponent` added to ECS |
 | **4** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
@@ -466,56 +464,48 @@ endif()
 
 ---
 
-## M3 Bootstrap Guide (Active Milestone)
+## M3 Bootstrap Guide (Active Milestone — Partially Complete)
 
-M2 is complete. M3 is the Vulkan Texture + XAudio2 Audio milestone. Build in this order:
+M2 is complete. M3 is the D3D11/Vulkan Texture + XAudio2 Audio milestone.
 
-### Step 1 — Add `directxtex` to vcpkg.json
-```json
-{
-  "dependencies": [
-    "nlohmann-json",
-    "directxtex"
-  ]
-}
-```
-This provides `DirectXTex` for DDS/BC7 texture compression on Windows.
+### ✅ Already Done (do NOT redo these)
 
-### Step 2 — `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp`
+- **Step 1 — `directxtex` in vcpkg.json** ✅  
+  `directxtex` and `imgui[docking,dx11-binding,win32-binding]` already present in `vcpkg.json`.
+
+- **Step 2 — D3D11 texture loader** ✅  
+  `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` — self-contained DDS parser (RGBA8, BC1, BC3, BC7/DX10 header). No `directxtex` vcpkg dep needed for the D3D11 path. Wired into `CMakeLists.txt`.
+
+- **Step 3 — XAudio2 backend** ✅  
+  `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot source voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume`. Linked via `xaudio2.lib` + `ole32.lib`.
+
+- **Step 4 — Audio ECS system** ✅  
+  `src/engine/audio/audio_system.hpp/.cpp` — ECS system iterating `AudioSourceComponent`, music FSM with real `SetVolume` crossfade. `AudioSourceComponent` added to `ECS.hpp`.
+
+### ⬜ Still To Do (complete these to finish M3)
+
+### Step 5 — `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp`
 - Load a DDS file (using DirectXTex) into a `VkImage` + `VkImageView`.
 - Support BC7 compressed format (`VK_FORMAT_BC7_UNORM_BLOCK`).
 - Expose `VulkanTexture::Load(device, physicalDevice, commandPool, queue, path)`.
 - Add a `Sampler()` accessor returning a `VkSampler`.
 
-### Step 3 — `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp`
+### Step 6 — `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp`
 - Wrap `VkDescriptorPool` + `VkDescriptorSetLayout` + `VkDescriptorSet`.
 - Bind the texture sampler to binding 0 (fragment shader).
 
-### Step 4 — Textured quad shaders (`shaders/textured_quad.vert/.frag`)
+### Step 7 — Textured quad shaders (`shaders/textured_quad.vert/.frag`)
 - `.vert`: pass UV coordinates through to fragment stage.
 - `.frag`: sample from a `sampler2D` at binding 0.
 - Add both to `GLSL_SHADERS` list in `CMakeLists.txt`.
 
-### Step 5 — `LoadScene("textured_quad", ...)` in `VulkanRenderer`
+### Step 8 — `LoadScene("textured_quad", ...)` in `VulkanRenderer`
 - Create `VulkanTexture` from a cooked DDS in `Cooked/`.
 - Create `VulkanDescriptor` binding the texture sampler.
 - Use the textured quad pipeline + a quad mesh.
 - Acceptance: `engine_sandbox.exe --headless --scene textured_quad` exits 0.
 
-### Step 6 — `src/engine/audio/xaudio2_backend.hpp/.cpp`
-- XAudio2 device init → `IXAudio2MasteringVoice`.
-- Source voice pool: pre-allocate N `IXAudio2SourceVoice` instances.
-- `Play(clipId)` → resolve cooked `.wav` via `AssetDB`, submit to source voice.
-- `Stop(clipId)` → stop the matching source voice.
-- Add `AudioSourceComponent` to `ECS.hpp`.
-- Add `CMakeLists.txt` entry: link `xaudio2.lib` on Windows only.
-
-### Step 7 — `src/engine/audio/audio_system.hpp/.cpp`
-- ECS system: each frame, iterate `AudioSourceComponent`; call `Play`/`Stop` on backend.
-- Music layer FSM: EXPLORATION / BATTLE / VICTORY / MENU states, crossfade on transition.
-- Event-driven triggers via `EventBus`.
-
-### Step 8 — Wire into CI
+### Step 9 — Wire into CI
 - `build-windows.yml` step: `engine_sandbox.exe --headless --scene textured_quad`
 - Contract test: cook a 1×1 DDS texture stub; verify `AssetDB` resolves it.
 
@@ -553,17 +543,20 @@ end
 
 ## vcpkg Setup
 
-`vcpkg.json` already exists in the repository root with `nlohmann-json` (added for M2).
-Add new dependencies as milestones progress by editing `vcpkg.json`:
+`vcpkg.json` exists in the repository root with all M2 and M3 (audio/D3D11 texture) dependencies already present:
 
 ```json
-// vcpkg.json — current state (M2 complete)
+// vcpkg.json — current state (M3 in progress)
 {
   "name": "educational-game-engine",
   "version-string": "1.0.0",
   "dependencies": [
     "nlohmann-json",          // M2 — cook.exe JSON parsing ✅
-    "directxtex"              // M3 — DDS/BC7 texture compression (add now)
+    "directxtex",             // M3 — DDS/BC7 texture compression (Vulkan path) ✅ added
+    {
+      "name": "imgui",
+      "features": ["docking", "dx11-binding", "win32-binding"]  // Editor ✅
+    }
   ]
 }
 ```
@@ -665,7 +658,7 @@ When adding any new feature, Copilot MUST:
 cmake --preset windows-debug
 cmake --build --preset windows-debug
 
-# Build engine only (no Qt required):
+# Build engine only (no Qt/external SDK required beyond Windows SDK):
 cmake --preset windows-debug-engine-only
 cmake --build --preset windows-debug-engine-only
 
@@ -686,7 +679,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M1 | Colored triangle (Vulkan SPIR-V pipeline) | ✅ |
 | M1.5 | D3D11 baseline renderer + IRenderer abstraction + CI fix | ✅ |
 | M2 | AssetDB + `cook.exe` + contract CI | ✅ |
-| M3 | D3D11/Vulkan texture + XAudio2 | ⬜ **active** |
+| M3 | D3D11/Vulkan texture + XAudio2 | 🔨 **active** |
 | M4 | Animation runtime (C++) | ⬜ |
 | M5 | Jolt Physics | ⬜ |
 | M6 | Editor inspector + Play-in-Engine | ⬜ |

@@ -12,10 +12,10 @@
 ┌─────────────────────────────────────────────────────────┐
 │                  AUTHORING (tools)                       │
 │                                                          │
-│  Creation Suite Editor (Qt)                              │
-│  ├─ Project Browser    ← opens project folder            │
-│  ├─ Content Browser    ← shows Content/ raw assets       │
-│  └─ Scene Editor       ← places entities, saves JSON     │
+│  Creation Suite Editor (Dear ImGui + D3D11)              │
+│  ├─ EditorApp      ← DockSpace, menu bar, status bar     │
+│  ├─ ContentBrowser ← shows Content/ raw assets           │
+│  └─ SceneEditor    ← places entities, saves JSON         │
 │                                                          │
 │  tools/audio_authoring/ (Python)                         │
 │  ├─ AudioEngine.generate_track()                         │
@@ -72,7 +72,7 @@
 |--------|----------|----------------|
 | `src/` | C++17 | Engine runtime + game systems |
 | `engine/` | — | Engine README and documentation |
-| `editor/` | C++17 / Qt 6 | Creation Suite editor app |
+| `editor/` | C++17 / Dear ImGui | Creation Suite editor app |
 | `tools/audio_authoring/` | Python 3.9+ | Audio synthesis + bank cooking |
 | `tools/anim_authoring/` | Python 3.9+ | Skeletal animation authoring + cooking |
 | `shared/schemas/` | JSON Schema | Canonical data format definitions |
@@ -117,9 +117,16 @@ QuestSystem; it just emits a CombatEvent and QuestSystem subscribes.
 
 ### Renderer
 
-- **Windows:** Vulkan (from `src/engine/rendering/vulkan/`).  Win32 window
-  + Vulkan surface + swapchain + per-frame command buffer.
-- **Linux:** ncurses ASCII renderer (from `src/engine/rendering/Renderer.hpp`).
+- **Windows (default):** D3D11 (`src/engine/rendering/d3d11/D3D11Renderer.hpp/.cpp`).
+  Win32 window + D3D11 device + swapchain + per-frame clear.  Runs on GT610-era GPUs.
+  Uses D3D11 WARP (CPU software rasteriser) in headless CI mode — no GPU driver needed.
+- **Windows (optional):** Vulkan (`src/engine/rendering/vulkan/VulkanRenderer.hpp/.cpp`).
+  High-end modern API; requires Vulkan SDK.  Select with `--renderer vulkan`.
+- **Linux:** ncurses ASCII renderer (`src/engine/rendering/Renderer.hpp`).
+
+Both Windows backends implement `IRenderer` (`src/engine/rendering/IRenderer.hpp`).
+`RendererFactory` (`src/engine/rendering/RendererFactory.hpp`) selects the backend via
+the `--renderer d3d11|vulkan` runtime flag.
 
 ### LuaEngine (`src/engine/scripting/LuaEngine.hpp`)
 
@@ -130,27 +137,30 @@ Scripts in `scripts/` define hook functions called by C++:
 
 ---
 
-## Qt Editor Architecture
+## Dear ImGui Editor Architecture
+
+> **Note:** Qt6 was replaced by Dear ImGui (MIT license) as the editor framework.
+> Dear ImGui is the industry-standard immediate-mode GUI used by game engine tooling
+> at virtually every AAA studio (Unity, Unreal, Godot, and most in-house engines).
 
 ```
-QApplication
-└─ MainWindow (QMainWindow)
-    ├─ Menu bar (File | Build | Help)
-    ├─ Toolbar
-    ├─ ContentBrowser (QDockWidget → QTreeView + QFileSystemModel)
-    │   Signals: fileSelected(path)
-    ├─ SceneEditor (QWidget — central, custom paintEvent)
-    │   Draws: grid, entity boxes
-    │   Handles: left-click = place entity, Delete = remove
-    │   saveScene() → JSON via QJsonDocument
-    │   loadScene() ← JSON via QJsonDocument
-    └─ Status bar
+Win32 + D3D11 host window
+└─ EditorApp::Run() — ImGui DockSpace, menu bar, status bar
+    ├─ ContentBrowserPanel
+    │   Uses std::filesystem to browse Content/ tree.
+    │   Signals: double-click opens asset.
+    ├─ SceneEditorPanel (ImGui DrawList canvas)
+    │   Draws: grid, entity boxes.
+    │   Handles: left-click = place entity, Delete = remove.
+    │   saveScene() → JSON via nlohmann/json.
+    │   loadScene() ← JSON via nlohmann/json.
+    └─ (planned) InspectorPanel + HierarchyPanel
 ```
 
 **How to add a new editor panel:**
-1. Create `editor/src/MyPanel.hpp` / `.cpp` deriving from `QWidget` or `QDockWidget`.
-2. Add a `Q_OBJECT` macro and any signals/slots.
-3. In `MainWindow::setupDockWidgets()`, create and dock it.
+1. Create `editor/src/panels/MyPanel.hpp` / `.cpp`.
+2. Inherit from no base class — panels are plain C++ objects with a `Draw()` method.
+3. In `EditorApp::Render()`, call `MyPanel::Draw()` inside an `ImGui::Begin()`/`End()` block.
 4. Add the `.cpp` to `EDITOR_SOURCES` in `editor/CMakeLists.txt`.
 
 ---
@@ -170,7 +180,7 @@ tools/audio_authoring/audio_engine/
 Cook step (stub, see samples/vertical_slice_project/cook_assets.py):
   AudioEngine.generate_track("battle") → "Cooked/Audio/battle.bank"
 
-Engine loads:  Cooked/Audio/*.bank → AudioSystem (C++, to be implemented in M2)
+Engine loads:  Cooked/Audio/*.bank → XAudio2Backend + AudioSystem (C++, ✅ implemented in M3)
 ```
 
 **Schema:** `shared/schemas/audio_bank.schema.json`
@@ -192,7 +202,7 @@ Cook step:
   animation_engine.io.Exporter.export_clip(clip, "Cooked/Anim/Walk.animc")
   animation_engine.io.Exporter.export_skeleton(skel, "Cooked/Anim/Human.skelc")
 
-Engine loads:  Cooked/Anim/*.skelc + *.animc → AnimationSystem (C++, M2)
+Engine loads:  Cooked/Anim/*.skelc + *.animc → AnimationSystem (C++, ⬜ M4)
 ```
 
 **Schemas:** `shared/schemas/skeleton.schema.json`, `anim_clip.schema.json`,
@@ -258,9 +268,9 @@ Study files in this order:
 8. `src/game/systems/CombatSystem.*` — ATB combat
 9. `src/game/systems/AISystem.*` — FSM + A*
 10. `src/engine/scripting/LuaEngine.*` — scripting integration
-11. `editor/src/MainWindow.*` — Qt Widgets, signals/slots, dock widgets
-12. `editor/src/ContentBrowser.*` — Qt Model/View (QFileSystemModel)
-13. `editor/src/SceneEditor.*` — Custom painting, JSON I/O
+11. `editor/src/EditorApp.*` — Dear ImGui DockSpace, Win32+D3D11 host
+12. `editor/src/ContentBrowserPanel.*` — std::filesystem tree browser
+13. `editor/src/SceneEditorPanel.*` — ImGui DrawList canvas, JSON I/O
 14. `tools/audio_authoring/audio_engine/engine.py` — Python façade pattern
 15. `tools/anim_authoring/animation_engine/` — animation data model
 16. `samples/vertical_slice_project/cook_assets.py` — scripted pipeline
