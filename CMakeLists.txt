@@ -529,14 +529,23 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     # Physics sources (M5 — Jolt Physics, optional).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Optional Physics Subsystem
-    # The physics/ sources are included only when ENGINE_ENABLE_PHYSICS=ON
-    # and JoltPhysics was found via vcpkg (see the find_package block above).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Physics Source Inclusion Strategy
+    # -----------------------------------------------------------------------
+    # physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
+    # raycast.cpp all depend on Jolt Physics types and the PhysicsWorld
+    # implementation.  They are ONLY compiled when ENGINE_ENABLE_PHYSICS=ON
+    # and JoltPhysics was found via vcpkg.
     #
-    # hit_volume.cpp and rigid_body.cpp compile even without Jolt because
-    # they contain only pure C++17 math (AABB overlap, descriptor helpers).
-    # physics_world.cpp and character_controller.cpp are wrapped in
-    # #ifdef ENGINE_ENABLE_PHYSICS guards, so they compile to empty translation
-    # units if the macro is not defined — but we only add them when it IS.
+    # hit_volume.cpp is an exception: it contains only pure C++17 AABB math
+    # with no Jolt dependency.  It is compiled in ALL builds so that the
+    # HitVolumeManager (used by the combat system) is always available.
+    #
+    # Why NOT include rigid_body.cpp without Jolt?
+    # rigid_body.cpp calls PhysicsWorld::CreateBox/CreateSphere/etc.  Those
+    # methods are defined in physics_world.cpp — which is only compiled when
+    # Jolt is present.  Including rigid_body.cpp without physics_world.cpp
+    # would produce unresolved external linker errors (LNK2019 on MSVC).
     # -----------------------------------------------------------------------
     if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
         list(APPEND SANDBOX_SOURCES
@@ -544,16 +553,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             src/engine/physics/rigid_body.cpp
             src/engine/physics/character_controller.cpp
             src/engine/physics/raycast.cpp
-            src/engine/physics/hit_volume.cpp
-        )
-    else()
-        # Even without Jolt, compile the pure-C++ physics helpers so the
-        # HitVolumeManager and RigidBodyCreator types are always available.
-        list(APPEND SANDBOX_SOURCES
-            src/engine/physics/rigid_body.cpp
-            src/engine/physics/hit_volume.cpp
         )
     endif()
+    # hit_volume.cpp has no Jolt dependency — always include it.
+    list(APPEND SANDBOX_SOURCES
+        src/engine/physics/hit_volume.cpp
+    )
 
     # -----------------------------------------------------------------------
     # LuaEngine sources (optional — only when bundled Lua headers are present).

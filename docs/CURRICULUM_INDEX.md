@@ -6,13 +6,13 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1064 across 40 subsystems.
+**Total lessons:** 1065 across 40 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (46 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (47 lessons)
 - [ci/workflows](#ciworkflows) (33 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
 - [editor/src](#editorsrc) (45 lessons)
@@ -460,14 +460,27 @@ src/engine/audio/audio_system.cpp
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L531) (line 531)
 
-The physics/ sources are included only when ENGINE_ENABLE_PHYSICS=ON
-and JoltPhysics was found via vcpkg (see the find_package block above).
+-----------------------------------------------------------------------
 
-hit_volume.cpp and rigid_body.cpp compile even without Jolt because
-they contain only pure C++17 math (AABB overlap, descriptor helpers).
-physics_world.cpp and character_controller.cpp are wrapped in
-#ifdef ENGINE_ENABLE_PHYSICS guards, so they compile to empty translation
-units if the macro is not defined — but we only add them when it IS.
+### Physics Source Inclusion Strategy
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L533) (line 533)
+
+-----------------------------------------------------------------------
+physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
+raycast.cpp all depend on Jolt Physics types and the PhysicsWorld
+implementation.  They are ONLY compiled when ENGINE_ENABLE_PHYSICS=ON
+and JoltPhysics was found via vcpkg.
+
+hit_volume.cpp is an exception: it contains only pure C++17 AABB math
+with no Jolt dependency.  It is compiled in ALL builds so that the
+HitVolumeManager (used by the combat system) is always available.
+
+Why NOT include rigid_body.cpp without Jolt?
+rigid_body.cpp calls PhysicsWorld::CreateBox/CreateSphere/etc.  Those
+methods are defined in physics_world.cpp — which is only compiled when
+Jolt is present.  Including rigid_body.cpp without physics_world.cpp
+would produce unresolved external linker errors (LNK2019 on MSVC).
 -----------------------------------------------------------------------
 if(ENGINE_ENABLE_PHYSICS AND JoltPhysics_FOUND)
 list(APPEND SANDBOX_SOURCES
@@ -475,20 +488,16 @@ src/engine/physics/physics_world.cpp
 src/engine/physics/rigid_body.cpp
 src/engine/physics/character_controller.cpp
 src/engine/physics/raycast.cpp
-src/engine/physics/hit_volume.cpp
-)
-else()
-Even without Jolt, compile the pure-C++ physics helpers so the
-HitVolumeManager and RigidBodyCreator types are always available.
-list(APPEND SANDBOX_SOURCES
-src/engine/physics/rigid_body.cpp
-src/engine/physics/hit_volume.cpp
 )
 endif()
+hit_volume.cpp has no Jolt dependency — always include it.
+list(APPEND SANDBOX_SOURCES
+src/engine/physics/hit_volume.cpp
+)
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L561) (line 561)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L566) (line 566)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -501,7 +510,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L574) (line 574)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L579) (line 579)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -525,7 +534,7 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L614) (line 614)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L619) (line 619)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -537,7 +546,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L623) (line 623)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L628) (line 628)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -546,7 +555,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### JoltPhysics::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L633) (line 633)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L638) (line 638)
 
 The vcpkg JoltPhysics package provides an imported CMake target that
 carries all include directories and link libraries automatically.
@@ -558,7 +567,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L645) (line 645)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L650) (line 650)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -567,7 +576,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L651) (line 651)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L656) (line 656)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -576,7 +585,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L656) (line 656)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L661) (line 661)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -587,7 +596,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L672) (line 672)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L677) (line 677)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -598,7 +607,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L685) (line 685)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L690) (line 690)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -632,7 +641,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L717) (line 717)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L722) (line 722)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -647,7 +656,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L732) (line 732)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L737) (line 737)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -662,7 +671,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L774) (line 774)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L779) (line 779)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -685,7 +694,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L795) (line 795)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L800) (line 800)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -706,7 +715,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L812) (line 812)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L817) (line 817)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -717,7 +726,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L835) (line 835)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L840) (line 840)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -739,7 +748,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L854) (line 854)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L859) (line 859)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -750,7 +759,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L862) (line 862)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L867) (line 867)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -760,7 +769,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L892) (line 892)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L897) (line 897)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -769,7 +778,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L899) (line 899)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L904) (line 904)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1108,28 +1117,33 @@ name: Build Windows + Jolt Physics (M5)
 runs-on: windows-latest
 continue-on-error: true   # Until Jolt vcpkg install is stable on runners
 
-### Installing Jolt Physics via vcpkg on CI
+### Installing vcpkg dependencies in Manifest Mode
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L214) (line 214)
 
 -----------------------------------------------------------------------
 GitHub Actions windows-latest runners ship with vcpkg at
-$env:VCPKG_INSTALLATION_ROOT.  We call vcpkg.exe directly to install
-the joltphysics triplet for x64-windows.
+$env:VCPKG_INSTALLATION_ROOT.  When a vcpkg.json manifest exists in the
+repository root, vcpkg operates in "manifest mode": you run
+`vcpkg install` WITHOUT specifying individual package names.  vcpkg reads
+vcpkg.json and installs all listed dependencies (including joltphysics).
 
-Cache key: the joltphysics version in the vcpkg baseline.
-Cache hit: vcpkg skips the download + build.
-Cache miss: vcpkg downloads and compiles Jolt (~30 s on modern runners).
+Classic-mode syntax (`vcpkg install joltphysics:x64-windows`) is
+rejected in manifest mode with:
+  "In manifest mode, vcpkg install does not support individual package args."
+
+The --triplet flag sets the default target platform for the install.
+Cache key: hash of vcpkg.json so the cache is invalidated when deps change.
 -----------------------------------------------------------------------
 - name: Cache vcpkg packages
 uses: actions/cache@v4
 with:
 path: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
-key: vcpkg-joltphysics-${{ runner.os }}-x64
+key: vcpkg-manifest-${{ runner.os }}-x64-${{ hashFiles('vcpkg.json') }}
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L252) (line 252)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L258) (line 258)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1142,7 +1156,7 @@ shell: cmd
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L265) (line 265)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L271) (line 271)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1160,7 +1174,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L290) (line 290)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L296) (line 296)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1171,7 +1185,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L301) (line 301)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L307) (line 307)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1186,7 +1200,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L323) (line 323)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L329) (line 329)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -6565,7 +6579,7 @@ Platform: All
 
 ### CapsuleShape for the character
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L99) (line 99)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L98) (line 98)
 
 -----------------------------------------------------------------------
 We create a CapsuleShape and wrap it in a RotatedTranslatedShape to
@@ -6588,7 +6602,7 @@ return false;
 
 ### CharacterVirtualSettings
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L135) (line 135)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L134) (line 134)
 
 -----------------------------------------------------------------------
 Key tuning parameters:
@@ -6611,7 +6625,7 @@ settings.mUp                      = JPH::Vec3::sAxisY();
 
 ### CharacterVirtual cleanup
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L175) (line 175)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L174) (line 174)
 
 CharacterVirtual is reference-counted via JPH::Ref<>.
 Resetting the Ref releases the reference; Jolt deletes the object
@@ -6623,7 +6637,7 @@ m_initialised     = false;
 
 ### Applying Gravity
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L193) (line 193)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L192) (line 192)
 
 -----------------------------------------------------------------------
 CharacterVirtual does NOT automatically apply gravity — that is the
@@ -6638,7 +6652,7 @@ const bool grounded = IsGrounded();
 
 ### Jump Impulse
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L212) (line 212)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L211) (line 211)
 
 We set the vertical velocity directly to kJumpImpulse.
 This is an instantaneous impulse (v = sqrt(2gh) for max height h).
@@ -6654,7 +6668,7 @@ m_velocity.y -= kGravity * dt;
 
 ### CharacterVirtual::Update() parameters
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L233) (line 233)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L232) (line 232)
 
 -----------------------------------------------------------------------
 deltaTime    — time step
@@ -6672,24 +6686,24 @@ all static and moving bodies.
 -----------------------------------------------------------------------
 auto& impl = *world.GetImpl();
 
-### BroadPhaseLayerFilter and ObjectLayerFilter
+### Pass-through Collision Filters
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L250) (line 250)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L249) (line 249)
 
-We want the character to collide with everything, so we use the
-default "allow all" filters provided by Jolt.
-JPH::DefaultBroadPhaseLayerFilter bpFilter(
-impl.objectVsBroadPhaseFilter,
-static_cast<JPH::ObjectLayer>(PhysicsWorld::kLayerMoving)
-);
-JPH::DefaultObjectLayerFilter objFilter(
-impl.objectLayerPairFilter,
-static_cast<JPH::ObjectLayer>(PhysicsWorld::kLayerMoving)
-);
+We want the character to collide with all static and dynamic bodies.
+Providing simple "allow all" implementations of the BroadPhaseLayerFilter
+and ObjectLayerFilter abstract base classes achieves this cleanly and
+works across all Jolt Physics versions without requiring helper utilities.
+struct AllBroadPhase final : public JPH::BroadPhaseLayerFilter {
+bool ShouldCollide(JPH::BroadPhaseLayer) const override { return true; }
+};
+struct AllObjectLayer final : public JPH::ObjectLayerFilter {
+bool ShouldCollide(JPH::ObjectLayer) const override { return true; }
+};
 
 ### GroundState
 
-**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L296) (line 296)
+**Source:** [`src/engine/physics/character_controller.cpp`](src/engine/physics/character_controller.cpp#L298) (line 298)
 
 EOnGround       → standing on a walkable surface
 EOnSteepGround  → touching a surface too steep to walk (slope > maxSlopeAngle)

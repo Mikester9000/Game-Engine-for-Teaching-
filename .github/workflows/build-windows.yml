@@ -211,27 +211,33 @@ jobs:
           arch: x64
 
       # -----------------------------------------------------------------------
-      # TEACHING NOTE — Installing Jolt Physics via vcpkg on CI
+      # TEACHING NOTE — Installing vcpkg dependencies in Manifest Mode
       # -----------------------------------------------------------------------
       # GitHub Actions windows-latest runners ship with vcpkg at
-      # $env:VCPKG_INSTALLATION_ROOT.  We call vcpkg.exe directly to install
-      # the joltphysics triplet for x64-windows.
+      # $env:VCPKG_INSTALLATION_ROOT.  When a vcpkg.json manifest exists in the
+      # repository root, vcpkg operates in "manifest mode": you run
+      # `vcpkg install` WITHOUT specifying individual package names.  vcpkg reads
+      # vcpkg.json and installs all listed dependencies (including joltphysics).
       #
-      # Cache key: the joltphysics version in the vcpkg baseline.
-      # Cache hit: vcpkg skips the download + build.
-      # Cache miss: vcpkg downloads and compiles Jolt (~30 s on modern runners).
+      # Classic-mode syntax (`vcpkg install joltphysics:x64-windows`) is
+      # rejected in manifest mode with:
+      #   "In manifest mode, vcpkg install does not support individual package args."
+      #
+      # The --triplet flag sets the default target platform for the install.
+      # Cache key: hash of vcpkg.json so the cache is invalidated when deps change.
       # -----------------------------------------------------------------------
       - name: Cache vcpkg packages
         uses: actions/cache@v4
         with:
           path: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
-          key: vcpkg-joltphysics-${{ runner.os }}-x64
+          key: vcpkg-manifest-${{ runner.os }}-x64-${{ hashFiles('vcpkg.json') }}
 
-      - name: Install joltphysics via vcpkg
+      - name: Install vcpkg dependencies (includes joltphysics)
         run: |
           $vcpkg = "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe"
-          & $vcpkg install joltphysics:x64-windows
+          & $vcpkg install --triplet x64-windows
         shell: pwsh
+        working-directory: ${{ github.workspace }}
 
       # -----------------------------------------------------------------------
       # Configure CMake with the physics-enabled preset.
