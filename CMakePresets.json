@@ -218,6 +218,7 @@
         "ENGINE_ENABLE_PHYSICS": "ON"
       }
     }
+  ],
   "buildPresets": [
     {
       "name": "windows-debug",

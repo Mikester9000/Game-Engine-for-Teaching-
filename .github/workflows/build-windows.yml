@@ -330,12 +330,27 @@ jobs:
       # in classic mode (running from $env:TEMP so no vcpkg.json is in scope).
       # This avoids the manifest-mode joltphysics conflict while still giving
       # CMake exactly the packages the editor needs.
+      #
+      # IMPORTANT: The system vcpkg at C:\vcpkg on GitHub-hosted windows-latest
+      # runners is periodically updated but can lag behind the upstream vcpkg
+      # port registry.  In particular, older imgui ports did not expose a
+      # "docking" feature — the feature was added in a later port revision.
+      # We therefore update the vcpkg portfiles (git pull on C:\vcpkg) before
+      # installing, so the imgui port is guaranteed to have the docking feature.
+      # This is safe: only text portfiles are updated; installed packages are
+      # left untouched and the cache step below preserves them across runs.
       # -----------------------------------------------------------------------
+      - name: Update vcpkg portfiles
+        run: git -C C:\vcpkg pull --ff-only
+        shell: pwsh
+        continue-on-error: true   # non-fatal if network unavailable; install may succeed from cache
+
       - name: Cache vcpkg packages (editor)
         uses: actions/cache@v4
         with:
           path: C:\vcpkg\installed
-          key: vcpkg-editor-${{ runner.os }}-x64
+          key: vcpkg-editor-${{ runner.os }}-x64-${{ hashFiles('editor/CMakeLists.txt') }}
+          restore-keys: vcpkg-editor-${{ runner.os }}-x64
 
       - name: Install imgui + nlohmann-json via vcpkg (classic mode)
         run: |
