@@ -36,10 +36,10 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Shared runtime headers | ✅ | `shared/runtime/`: `Guid.hpp`, `VersionedFile.hpp`, `Log.hpp` |
 | CI — Linux build + Python tests | ✅ | `.github/workflows/build-linux.yml`: builds terminal game, runs 32+11 pytest |
 | CI — asset manifest validation | ✅ | `.github/workflows/validate-assets.yml` |
-| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; optional Vulkan job |
+| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; optional Vulkan job; `build-windows-physics` job (Jolt, classic-mode vcpkg, `--scene physics_test`) |
 | CI — contract / golden-file tests | ✅ | `.github/workflows/contract-tests.yml`: runs `cook`, diffs against `tests/golden/assetdb_expected.json`; pytest cook pipeline (13 tests); TEACHING NOTE audit |
 | CI — Architecture Lint | ✅ | `.github/workflows/architecture-lint.yml`: runs `check_architecture.py` (file-size + layer rules) and `extract_teaching_notes.py`; fails if `CURRICULUM_INDEX.md` is stale |
-| `vcpkg.json` | ✅ | Repo root; `nlohmann-json` (M2), `directxtex` (M3 texture), `imgui[docking,dx11-binding,win32-binding]` (editor) |
+| `vcpkg.json` | ✅ | Repo root; `nlohmann-json` (M2), `directxtex` (M3 texture), `imgui[docking,dx11-binding,win32-binding]` (editor), `joltphysics` (M5; CI physics job installs via classic-mode vcpkg separately) |
 | Vertical slice sample skeleton | ✅ | `samples/vertical_slice_project/`: `cook_assets.py` (stubs), `Project.json`, `AssetRegistry.json`, `Content/`, `Cooked/` |
 
 ---
@@ -67,7 +67,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | **Post-processing (bloom + tonemap)** | **(DEFERRED)** | Full-screen pass pipeline |
 | **Dynamic sky / procedural time-of-day** | **(DEFERRED)** | `src/engine/rendering/sky_renderer.hpp/.cpp` |
 | **Weather VFX (rain, fog)** | **(DEFERRED)** | `src/engine/rendering/weather_fx.hpp/.cpp` |
-| D3D11 GPU skinned mesh pass | ⬜ | HLSL skinning vertex shader; joint matrix constant buffer (CB) |
+| D3D11 GPU skinned mesh pass | ✅ | `shaders/skinned_mesh.vs.hlsl` + `skinned_mesh.ps.hlsl`; `GpuSkinningBuffer` (64 × Mat4 CB); D3D11Renderer `skinned_mesh` scene |
 | **Vulkan GPU skinned mesh pass** | **(DEFERRED)** | `shaders/skinned_mesh.vert/.frag`; joint matrix UBO |
 | D3D11 swapchain resize handling | ✅ | `D3D11Renderer::RecreateSwapchain()` |
 | D3D11 headless frame recording | ✅ | `D3D11Renderer::RecordHeadlessFrame()` |
@@ -133,7 +133,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. Next: M5 Physics. Vulkan texture is deferred.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. Next: M6 Editor.
 
 ---
 
@@ -158,16 +158,17 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Jolt Physics integration | ⬜ | Nothing exists in `src/engine/physics/` |
-| `PhysicsWorld` wrapper | ⬜ | `src/engine/physics/physics_world.hpp/.cpp` |
-| Rigid body ECS component | ⬜ | `src/engine/physics/rigid_body.hpp/.cpp` |
-| Character capsule controller | ⬜ | `src/engine/physics/character_controller.hpp/.cpp` |
-| Raycast interface | ⬜ | `src/engine/physics/raycast.hpp/.cpp` |
-| Hit volumes (combat) | ⬜ | `src/engine/physics/hit_volume.hpp/.cpp` |
+| Jolt Physics integration | ✅ | `vcpkg.json` has `joltphysics`; `ENGINE_ENABLE_PHYSICS` CMake option (default ON); `find_package(Jolt CONFIG QUIET)` |
+| `PhysicsWorld` wrapper | ✅ | `src/engine/physics/physics_world.hpp/.cpp` — pImpl facade; `Init`, `Step`, `Shutdown`; `CreateBox/Sphere/Capsule`; `Raycast` |
+| Rigid body ECS component | ✅ | `RigidBodyComponent` (component 22) + `RigidBodyCreator` in `src/engine/physics/rigid_body.hpp/.cpp` — `Create`, `Destroy`, sync helpers |
+| Character capsule controller | ✅ | `src/engine/physics/character_controller.hpp/.cpp` — `JPH::CharacterVirtual`; gravity, step-up, slope-slide, jump; `IsGrounded()` |
+| Raycast interface | ✅ | `src/engine/physics/raycast.hpp/.cpp` — `CastRay`, `CastRayDown`, `CastSphere`; `ShapeCastHit` |
+| Hit volumes (combat) | ✅ | `src/engine/physics/hit_volume.hpp/.cpp` — `HitVolumeManager`; AABB Attack/Hurt volume register/query |
+| `ColliderComponent` (ECS) | ✅ | Component 23 in `ECS.hpp` — `shapeType` (Box/Sphere/Capsule), `halfExtents`, `radius`, `isTrigger` |
+| `physics_test` CI scene | ✅ | `--scene physics_test` in `main.cpp`; 3 acceptance tests (drop_sphere, step_ledge, raycast); `build-windows-physics` CI job |
+| `physics_impl.hpp` | ✅ | Internal pImpl header; `PhysicsWorldImpl` struct + Jolt layer filters; never included outside `physics/` |
 
-**Next step (M5):** Add Jolt Physics via vcpkg (`vcpkg install jolt-physics`).
-Add `ENGINE_ENABLE_PHYSICS` CMake option. Create `physics_world.hpp/.cpp` wrapping
-`JPH::PhysicsSystem`. See `docs/FF15_REQUIREMENTS_BLUEPRINT.md §10` for acceptance tests.
+**M5 is ✅ complete.** Jolt Physics integrated: `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent` + `ColliderComponent` in ECS, `physics_test` headless acceptance scene, CI job. Next: M6 Editor.
 
 ---
 
@@ -255,17 +256,16 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M3 ✅ complete (D3D11 texture, D3D11 textured quad, XAudio2 audio all done). M4 ✅ complete (CPU animation core + IK solver + D3D11 GPU skinning). Next: M5 Physics.**
+> **Current position: M5 ✅ complete (Jolt Physics: PhysicsWorld, CharacterController, Raycast, HitVolumeManager, RigidBodyComponent + ColliderComponent in ECS, physics_test CI). Next: M6 Editor.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **1 — Now** | **M5: Physics** | Jolt Physics via vcpkg; character capsule falls + steps; raycasts work; `RigidBodyComponent` + `ColliderComponent` added to ECS |
-| **2** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
-| **3** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
-| **4** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
-| **5+** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
+| **1 — Now** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
+| **2** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
+| **3** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
+| **4+** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
@@ -279,9 +279,10 @@ Game-Engine-for-Teaching-/
 │   ├── engine/         # Platform-independent engine kernel
 │   │   ├── core/       # Logger, EventBus, Types
 │   │   ├── ecs/        # Entity-Component-System (ECS.hpp — 2 000 lines)
-│   │   ├── animation/  # M4 runtime: skeleton, anim_clip, blend_tree, animation_system
+│   │   ├── animation/  # M4 runtime: skeleton, anim_clip, blend_tree, animation_system, IK solver, GPU skinning
 │   │   ├── math/       # math_types.hpp (Vec3, Quat, Mat4 — row-major D3D11)
 │   │   ├── input/      # Input system (ncurses on Linux)
+│   │   ├── physics/    # M5 runtime: physics_world, character_controller, raycast, hit_volume, rigid_body
 │   │   ├── platform/   # Win32 window, message pump
 │   │   ├── rendering/  # ncurses renderer + D3D11 renderer (+ Vulkan, optional)
 │   │   └── scripting/  # Lua 5.4 embedding
@@ -408,8 +409,8 @@ check this table — the component you need may already exist.
 |-----------|-----------|-------------------|
 | `AudioSourceComponent` | Audio system (M3) | Already ✅ added |
 | `AnimatorComponent` | Animation system (M4) | Already ✅ added — `skeletonID`, `currentClipID`, `blendTreeID`, `playbackSpeed`, `currentTime`, `jointMatrices[MAX_JOINTS]` |
-| `RigidBodyComponent` | Physics system (M5) | `mass` (float), `isStatic` (bool), `useGravity` (bool), `linearDamping` (float), Jolt body ID (opaque handle) |
-| `ColliderComponent` | Physics system (M5) | `shapeType` (enum: sphere/capsule/box/mesh), `radius/halfExtents`, `isTrigger` (bool), physics layer mask |
+| `RigidBodyComponent` | Physics system (M5) | Already ✅ added — component 22: `mass`, `isStatic`, `useGravity`, `linearDamping`, `bodyID` (opaque Jolt handle, uint32_t) |
+| `ColliderComponent` | Physics system (M5) | Already ✅ added — component 23: `shapeType` (Box/Sphere/Capsule), `halfExtents`, `radius`, `isTrigger` |
 | `VehicleComponent` | Vehicle system (post-M8) | `throttle`, `brake`, `steerAngle`, wheel suspension state (4 wheels), `currentSpeed` |
 
 ---
@@ -487,24 +488,66 @@ set(GLSL_SHADERS
 )
 ```
 
-**5. For a new CMake option (e.g. `ENGINE_ENABLE_PHYSICS`):**
+**5. For a new CMake option — pattern used for `ENGINE_ENABLE_PHYSICS` (M5, already done):**
 
 ```cmake
-# Add near the other option() calls at the top of CMakeLists.txt:
-option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration" OFF)
+# ✅ Already implemented — shown here as the reference pattern for future options.
+# Find the package quietly so missing SDK does not hard-fail the configure step:
+option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration (M5)" ON)
 if(ENGINE_ENABLE_PHYSICS)
-    find_package(JoltPhysics REQUIRED)  # via vcpkg
-    target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_PHYSICS)
-    target_link_libraries(engine_sandbox PRIVATE JoltPhysics)
+    find_package(Jolt CONFIG QUIET)   # ← Jolt is the CMake package name for joltphysics@5+
+    if(Jolt_FOUND)
+        message(STATUS "Jolt (JoltPhysics) found: physics subsystem ENABLED.")
+    else()
+        message(STATUS "Jolt NOT found — ENGINE_ENABLE_PHYSICS will be OFF.")
+        set(ENGINE_ENABLE_PHYSICS OFF CACHE BOOL "" FORCE)
+    endif()
 endif()
+# Link: target_link_libraries(engine_sandbox PRIVATE Jolt::Jolt)
+# Define: target_compile_definitions(engine_sandbox PRIVATE ENGINE_ENABLE_PHYSICS)
 ```
 
 ---
 
-## M3 Bootstrap Guide (Active Milestone — D3D11 Only)
+## M5 Bootstrap Guide (Completed Milestone — Jolt Physics)
 
-M2 is complete. M3 is the **D3D11 Texture + XAudio2 Audio** milestone.
-Vulkan texture work is **DEFERRED** — see "Vulkan — Deferred Requirements Reference".
+**M5 is ✅ complete.** All steps listed below are done. This section is kept as a reference for how the physics subsystem was integrated.
+
+### ✅ Already Done (do NOT redo these)
+
+- **Step 1 — `joltphysics` in vcpkg.json** ✅  
+  `joltphysics` added to `vcpkg.json`. CI physics job installs via classic-mode vcpkg (no manifest) to avoid imgui docking conflict.
+
+- **Step 2 — `ENGINE_ENABLE_PHYSICS` CMake option** ✅  
+  `CMakeLists.txt`: `option(ENGINE_ENABLE_PHYSICS ... ON)` + `find_package(Jolt CONFIG QUIET)`. Physics .cpp files compiled only when `ENGINE_ENABLE_PHYSICS AND Jolt_FOUND`. CMake package name is `Jolt` (not `JoltPhysics`); target is `Jolt::Jolt`.
+
+- **Step 3 — `physics_impl.hpp` pImpl header** ✅  
+  `src/engine/physics/physics_impl.hpp` — `PhysicsWorldImpl` struct + Jolt layer filter classes. Only included by `physics_world.cpp`. Keeps Jolt headers out of all public APIs.
+
+- **Step 4 — `PhysicsWorld` wrapper** ✅  
+  `src/engine/physics/physics_world.hpp/.cpp` — `Init/Step/Shutdown`, `CreateBox/Sphere/Capsule`, `GetPosition/SetPosition/GetLinearVelocity/SetLinearVelocity`, `Raycast`.
+
+- **Step 5 — `CharacterController`** ✅  
+  `src/engine/physics/character_controller.hpp/.cpp` — `JPH::CharacterVirtual`; gravity, step-up (0.4 m), slope-slide (50°), jump impulse (5 m/s), `IsGrounded()`.
+
+- **Step 6 — Raycast + ShapeCast helpers** ✅  
+  `src/engine/physics/raycast.hpp/.cpp` — `CastRay`, `CastRayDown`, `CastSphere`; `ShapeCastHit` output struct.
+
+- **Step 7 — `HitVolumeManager`** ✅  
+  `src/engine/physics/hit_volume.hpp/.cpp` — AABB Attack/Hurt volumes; `Register/Unregister/SetActive/Update/QueryOverlaps`.
+
+- **Step 8 — `RigidBodyCreator` + ECS components** ✅  
+  `src/engine/physics/rigid_body.hpp/.cpp` — `RigidBodyCreator::Create/Destroy/SyncPositionFromPhysics/PushPositionToPhysics`. `RigidBodyComponent` (component 22) + `ColliderComponent` (component 23) added to `ECS.hpp`.
+
+- **Step 9 — `physics_test` acceptance scene** ✅  
+  `main.cpp`: `--scene physics_test` runs 3 tests (drop_sphere, step_ledge, raycast); exits `[PASS]` or `[FAIL]`.
+
+- **Step 10 — CI job** ✅  
+  `build-windows.yml` → `build-windows-physics` job: classic-mode vcpkg install, `windows-ninja-debug-physics` preset, `--scene physics_test` run.
+
+---
+
+## M3 Bootstrap Guide (Completed Milestone — D3D11 Texture + XAudio2)
 
 ### ✅ Already Done (do NOT redo these)
 
@@ -580,10 +623,10 @@ end
 
 ## vcpkg Setup
 
-`vcpkg.json` exists in the repository root with all M2 and M3 (audio/D3D11 texture) dependencies already present:
+`vcpkg.json` exists in the repository root with all M2–M5 dependencies:
 
 ```json
-// vcpkg.json — current state (M3 complete, D3D11-only focus)
+// vcpkg.json — current state (M5 complete)
 {
   "name": "educational-game-engine",
   "version-string": "1.0.0",
@@ -593,13 +636,13 @@ end
     {
       "name": "imgui",
       "features": ["docking", "dx11-binding", "win32-binding"]  // Editor ✅
-    }
+    },
+    "joltphysics"             // M5 — Jolt Physics ✅ (CI physics job uses classic-mode vcpkg install)
   ]
 }
 ```
 
 Planned additions:
-- **M5** (physics): `"joltphysics"`
 - **M5+** (glTF mesh loading): `"tinygltf"`
 
 Integrate with CMake (in `CMakeLists.txt`):
@@ -699,6 +742,10 @@ cmake --build --preset windows-debug
 cmake --preset windows-debug-engine-only
 cmake --build --preset windows-debug-engine-only
 
+# Build engine with Jolt Physics (requires joltphysics via vcpkg):
+cmake --preset windows-ninja-debug-physics -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build --preset windows-ninja-debug-physics
+
 # Cook vertical slice assets:
 cd samples/vertical_slice_project
 python cook_assets.py
@@ -719,7 +766,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M3 | D3D11 texture + XAudio2 + D3D11 textured quad | ✅ |
 | M4 | Animation runtime (C++) — CPU core | ✅ |
 | M4b | IK solver + D3D11 GPU skinning CB | ✅ |
-| M5 | Jolt Physics | ⬜ |
+| M5 | Jolt Physics | ✅ |
 | M6 | Editor inspector + Play-in-Engine | ⬜ |
 | M7 | World streaming | ⬜ |
 | M8 | Wire all gameplay into D3D11 runtime | ⬜ |
