@@ -27,7 +27,7 @@ Inspired by Final Fantasy XV's creation toolchain.
 |-------------|---------|-------|
 | CMake       | 3.16+   | |
 | MSVC        | 2019+   | Visual Studio 17 2022 recommended |
-| vcpkg       | latest  | Install `imgui[docking,dx11-binding,win32-binding]` via `vcpkg.json` |
+| vcpkg       | latest  | Install `imgui[docking-experimental,dx11-binding,win32-binding]` via `vcpkg.json` |
 
 ## Building
 

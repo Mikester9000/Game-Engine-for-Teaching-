@@ -25,9 +25,9 @@
 # --------------------------------------
 # vcpkg supports "features" -- optional compile-time variants of a package.
 # For imgui we enable three features in vcpkg.json:
-#   docking        -- enables the dockable-window API (ImGui::DockSpace etc.)
-#   dx11-binding   -- adds imgui_impl_dx11.h/.cpp for D3D11 rendering
-#   win32-binding  -- adds imgui_impl_win32.h/.cpp for Win32 window input
+#   docking-experimental -- enables the dockable-window API (ImGui::DockSpace etc.)
+#   dx11-binding         -- adds imgui_impl_dx11.h/.cpp for D3D11 rendering
+#   win32-binding        -- adds imgui_impl_win32.h/.cpp for Win32 window input
 # vcpkg packages these as additional headers/sources exposed via the same
 # imgui::imgui imported target.
 
