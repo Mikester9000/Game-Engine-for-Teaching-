@@ -134,6 +134,27 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M3 — Textured quad headless validation (D3D11 texture pipeline)
+      # -----------------------------------------------------------------------
+      - name: Run headless validation (M3 — textured_quad scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene textured_quad
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # M4b — GPU skinning headless validation
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Skinned mesh headless validation.
+      # Loads the "skinned_mesh" scene which compiles skinned_mesh.vs.hlsl and
+      # skinned_mesh.ps.hlsl, creates the GpuSkinningBuffer constant buffer,
+      # uploads 2 joint matrices, and calls DrawIndexed(24).
+      # All of this executes on the WARP software rasteriser — no GPU needed.
+      # Expected output: "[PASS] skinned_mesh scene pipeline OK (WARP headless)."
+      # -----------------------------------------------------------------------
+      - name: Run headless validation (M4b — skinned_mesh scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene skinned_mesh
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # 6. Cook the vertical slice sample project.
       # -----------------------------------------------------------------------
       - name: Cook vertical slice project

@@ -63,6 +63,7 @@
 
 #include "engine/rendering/IRenderer.hpp"
 #include "engine/rendering/d3d11/d3d11_texture.hpp"
+#include "engine/animation/gpu_skinning.hpp"
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — D3D11 / DXGI Headers
@@ -151,6 +152,9 @@ private:
     /** Draw the textured quad scene to the currently bound render target. */
     void DrawTexturedQuad();
 
+    /** Draw the GPU-skinned mesh scene to the currently bound render target. */
+    void DrawSkinnedMesh();
+
     /** Release all scene resources (called from Shutdown and before LoadScene). */
     void UnloadScene();
 
@@ -184,25 +188,19 @@ private:
     bool                    m_headless      = false;
     bool                    m_initialised   = false;
 
+public:
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — Scene State (M3 Textured Quad)
+    // TEACHING NOTE — Public Scene-Resource Structs
     // -----------------------------------------------------------------------
-    // Rather than one flat list of members for every scene we will ever have,
-    // we group the per-scene resources into a small inner struct.  Each call
-    // to LoadScene() tears down the previous scene (UnloadScene) and builds
-    // the new one.
+    // These inner structs are public to allow static helper functions in the
+    // .cpp file to create and populate them without requiring friendship.
+    // They contain only D3D11 COM pointers and are plain aggregates —
+    // making them public does not expose any hidden invariants.
     //
-    // TexturedQuadScene holds everything the GPU needs to render a single
-    // textured unit quad:
-    //   vs / ps           — compiled HLSL vertex and pixel shaders.
-    //   inputLayout       — describes the vertex buffer format to the IA stage.
-    //   vertexBuf / indexBuf — quad geometry (4 verts, 2 triangles).
-    //   texture           — DDS texture loaded via D3D11Texture.
-    //   fallbackSRV /
-    //   fallbackSampler   — 1×1 white texture used when no DDS file exists
-    //                       (CI / headless mode).
-    //   loaded            — true once all resources are created successfully.
+    // TexturedQuadScene (M3): resources for the UV-mapped quad.
+    // SkinnedMeshScene  (M4b): resources for the GPU-skinned strip.
     // -----------------------------------------------------------------------
+
     struct TexturedQuadScene
     {
         ID3D11VertexShader*       vs             = nullptr;
@@ -211,10 +209,8 @@ private:
         ID3D11Buffer*             vertexBuf      = nullptr;
         ID3D11Buffer*             indexBuf       = nullptr;
 
-        // Texture loaded from a DDS file via D3D11Texture.
         D3D11Texture              texture;
 
-        // 1×1 white fallback texture (created inline when no DDS is present).
         ID3D11ShaderResourceView* fallbackSRV     = nullptr;
         ID3D11SamplerState*       fallbackSampler  = nullptr;
 
@@ -222,8 +218,27 @@ private:
         bool                      loaded           = false;
     };
 
+    struct SkinnedMeshScene
+    {
+        ID3D11VertexShader*       vs          = nullptr;
+        ID3D11PixelShader*        ps          = nullptr;
+        ID3D11InputLayout*        inputLayout = nullptr;
+        ID3D11Buffer*             vertexBuf   = nullptr;
+        ID3D11Buffer*             indexBuf    = nullptr;
+        ID3D11RasterizerState*    rastState   = nullptr;
+
+        engine::animation::GpuSkinningBuffer skinningCB;
+
+        int  indexCount = 0;
+        bool loaded     = false;
+    };
+
+private:
     TexturedQuadScene   m_quadScene;
     std::string         m_currentScene;   ///< Name of the active scene, or "".
+
+    SkinnedMeshScene    m_skinnedScene;
+    float               m_sceneTime = 0.0f;  ///< Seconds since last LoadScene call.
 };
 
 } // namespace rendering

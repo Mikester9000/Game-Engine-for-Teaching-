@@ -1,10 +1,10 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-19T17:05:20Z",
+  "generatedAt": "2026-04-19T19:06:41Z",
   "assets": [
     {
-      "id": "e17e32ab-e5f8-4f9c-8b67-c3e920125bae",
+      "id": "8db148f2-55cd-4d57-aa33-fe299742327d",
       "type": "scene",
       "name": "MainTown",
       "source": "Maps/MainTown.scene.json",

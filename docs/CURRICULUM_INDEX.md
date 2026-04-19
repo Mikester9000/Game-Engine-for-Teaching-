@@ -6,17 +6,17 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 935 across 39 subsystems.
+**Total lessons:** 998 across 39 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (38 lessons)
-- [ci/workflows](#ciworkflows) (29 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (41 lessons)
+- [ci/workflows](#ciworkflows) (30 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
 - [editor/src](#editorsrc) (45 lessons)
-- [engine/animation](#engineanimation) (41 lessons)
+- [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
 - [engine/core](#enginecore) (50 lessons)
@@ -24,7 +24,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (201 lessons)
+- [engine/rendering](#enginerendering) (215 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
@@ -32,7 +32,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/systems](#gamesystems) (85 lessons)
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (19 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (20 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -361,11 +361,19 @@ src/engine/animation/skeleton.cpp
 src/engine/animation/anim_clip.cpp
 src/engine/animation/blend_tree.cpp
 src/engine/animation/animation_system.cpp
+
+### M4b: IK solver (renderer-agnostic, pure C++17).
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L439) (line 439)
+
+Two-Bone analytical IK and FABRIK iterative N-joint IK.
+Lives in animation/ alongside the other CPU-side animation systems.
+src/engine/animation/ik_solver.cpp
 )
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L443) (line 443)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L447) (line 447)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -377,17 +385,25 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L451) (line 451)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L455) (line 455)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
 src/engine/rendering/d3d11/d3d11_texture.cpp
+
+### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L459) (line 459)
+
+buffer that uploads 64 joint matrices (4096 bytes) to the VS
+every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
+src/engine/animation/gpu_skinning.cpp
 )
 endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L473) (line 473)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L481) (line 481)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -400,7 +416,7 @@ src/engine/audio/audio_system.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L486) (line 486)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L494) (line 494)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -413,7 +429,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L499) (line 499)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L507) (line 507)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -437,7 +453,7 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L539) (line 539)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L547) (line 547)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -449,7 +465,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L548) (line 548)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L556) (line 556)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -458,7 +474,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L561) (line 561)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L569) (line 569)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -467,7 +483,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L567) (line 567)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L575) (line 575)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -476,7 +492,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L572) (line 572)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L580) (line 580)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -487,7 +503,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L593) (line 593)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L601) (line 601)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -521,7 +537,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L625) (line 625)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L633) (line 633)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -536,7 +552,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L640) (line 640)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L648) (line 648)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -551,7 +567,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L682) (line 682)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L690) (line 690)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -574,7 +590,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L703) (line 703)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L711) (line 711)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -592,11 +608,21 @@ if(ENGINE_ENABLE_D3D11)
 set(HLSL_SHADERS
 "${CMAKE_SOURCE_DIR}/shaders/textured_quad.vs.hlsl"
 "${CMAKE_SOURCE_DIR}/shaders/textured_quad.ps.hlsl"
+
+### M4b: GPU skinning HLSL shaders.
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L728) (line 728)
+
+skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
+  worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
+skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
+"${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.vs.hlsl"
+"${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.ps.hlsl"
 )
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L737) (line 737)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L751) (line 751)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -618,7 +644,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L770) (line 770)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -629,7 +655,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L764) (line 764)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L778) (line 778)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -639,7 +665,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L793) (line 793)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L807) (line 807)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -648,7 +674,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L800) (line 800)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L814) (line 814)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -946,9 +972,23 @@ Expected output: "[PASS] D3D11 device initialised..." followed by exit 0.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless
 shell: cmd
 
+### Skinned mesh headless validation.
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L146) (line 146)
+
+Loads the "skinned_mesh" scene which compiles skinned_mesh.vs.hlsl and
+skinned_mesh.ps.hlsl, creates the GpuSkinningBuffer constant buffer,
+uploads 2 joint matrices, and calls DrawIndexed(24).
+All of this executes on the WARP software rasteriser — no GPU needed.
+Expected output: "[PASS] skinned_mesh scene pipeline OK (WARP headless)."
+-----------------------------------------------------------------------
+- name: Run headless validation (M4b — skinned_mesh scene)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene skinned_mesh
+shell: cmd
+
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L153) (line 153)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L174) (line 174)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -966,7 +1006,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L178) (line 178)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L199) (line 199)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -977,7 +1017,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L189) (line 189)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L210) (line 210)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -992,7 +1032,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L211) (line 211)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L232) (line 232)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -2270,6 +2310,707 @@ BlendTree owns all its nodes via unique_ptr.  The caller builds the tree
 using CreateNode<T>(...), which returns a raw pointer for wiring, while
 BlendTree retains ownership.  The tree is destroyed when BlendTree goes
 out of scope.
+
+### D3D11 Dynamic Constant Buffer Update Pattern
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L6) (line 6)
+
+============================================================================
+Every frame the CPU has fresh joint matrices from the AnimationSystem.
+We need to get those 4096 bytes into VRAM so the vertex shader can read them.
+
+D3D11 offers several update strategies:
+
+  1. UpdateSubresource()  — copies from CPU to a DEFAULT-usage resource.
+                            Causes a pipeline stall if the GPU is still
+                            reading the resource.  Slower for per-frame data.
+
+  2. Map(WRITE_DISCARD)   — maps a DYNAMIC resource for CPU writes.
+                            The driver "discards" the old data (returns a new
+                            memory region) so no GPU stall occurs.
+                            Fastest for small, frequently-updated buffers.
+
+  3. Map(WRITE_NO_OVERWRITE) — reuse the same physical memory, but CPU
+                               promises not to overwrite data still in flight.
+                               Useful for ring-buffer streaming.
+
+We use strategy 2 (WRITE_DISCARD) for simplicity and correctness.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: Windows (D3D11 only)
+
+### Constant Buffer Size Rules
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L62) (line 62)
+
+-----------------------------------------------------------------------
+D3D11 requires the ByteWidth of a constant buffer to be a non-zero
+multiple of 16 bytes.  sizeof(math::Mat4) = 64 bytes (16 floats × 4
+bytes), so maxJoints × 64 is always a multiple of 64 which is also a
+multiple of 16.
+-----------------------------------------------------------------------
+const UINT byteWidth = static_cast<UINT>(maxJoints) *
+static_cast<UINT>(sizeof(math::Mat4));
+
+### USAGE_DYNAMIC marks this buffer as CPU-writable.
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L74) (line 74)
+
+D3D11 places it in write-combined memory accessible by both CPU and GPU.
+desc.Usage              = D3D11_USAGE_DYNAMIC;
+
+### BIND_CONSTANT_BUFFER makes it visible in the shader
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L77) (line 77)
+
+as a cbuffer.  Only one bind flag is allowed for DYNAMIC resources.
+desc.BindFlags          = D3D11_BIND_CONSTANT_BUFFER;
+
+### CPU_ACCESS_WRITE enables Map() with WRITE_DISCARD.
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L80) (line 80)
+
+desc.CPUAccessFlags     = D3D11_CPU_ACCESS_WRITE;
+desc.MiscFlags          = 0;
+desc.StructureByteStride = 0;
+
+### nullptr pInitialData for DYNAMIC resources
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L86) (line 86)
+
+-----------------------------------------------------------------------
+We do not supply initial data because the CPU will write the joint
+matrices via Upload() every frame before the first draw.  Passing
+nullptr here is allowed for DYNAMIC usage; the initial contents of the
+buffer are undefined but will be fully overwritten before first use.
+-----------------------------------------------------------------------
+const HRESULT hr = device->CreateBuffer(&desc, nullptr, &m_cbuffer);
+if (FAILED(hr))
+{
+std::cerr << "[GpuSkinningBuffer] CreateBuffer failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec << "\n";
+m_cbuffer = nullptr;
+return false;
+}
+
+### Map / WRITE_DISCARD / Unmap
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L116) (line 116)
+
+-----------------------------------------------------------------------
+Map() returns a pointer to GPU-accessible memory.
+
+  D3D11_MAP_WRITE_DISCARD:
+    The driver allocates a fresh memory region.  The previous contents
+    are "discarded" (the GPU may still be reading the old region, but
+    that's fine because we got a NEW region).  This avoids stalls.
+
+  The mapped resource's pData pointer is only valid between Map and Unmap.
+  Never cache or use pData outside this window.
+
+  Unmap() commits the write to the driver and invalidates pData.
+-----------------------------------------------------------------------
+D3D11_MAPPED_SUBRESOURCE mapped = {};
+const HRESULT hr = context->Map(m_cbuffer,
+0,                        // subresource 0
+D3D11_MAP_WRITE_DISCARD,  // discard old data
+0,                        // no flags
+&mapped);
+if (FAILED(hr))
+{
+std::cerr << "[GpuSkinningBuffer] Map failed. HRESULT=0x"
+<< std::hex << static_cast<unsigned long>(hr) << std::dec << "\n";
+return;
+}
+
+### Fill unused slots with identity matrices.
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L147) (line 147)
+
+If count < maxJoints, any joints beyond count get identity so vertices
+that reference those joint indices are not deformed unexpectedly.
+if (toWrite < m_maxJoints)
+{
+Build an identity Mat4 and repeat it for remaining slots.
+const math::Mat4 identity = math::Mat4::Identity();
+auto* dst = static_cast<math::Mat4*>(mapped.pData);
+for (int i = toWrite; i < m_maxJoints; ++i)
+dst[i] = identity;
+}
+
+### VSSetConstantBuffers
+
+**Source:** [`src/engine/animation/gpu_skinning.cpp`](src/engine/animation/gpu_skinning.cpp#L168) (line 168)
+
+-----------------------------------------------------------------------
+This binds m_cbuffer to VS constant-buffer slot `slot` (b<slot> in HLSL).
+The vertex shader can then access all 64 joint matrices by indexing into
+the cbuffer array.
+
+Note: we only set the VS stage here.  If the same joint data were needed
+in the geometry or pixel shader, we would also call
+GSSetConstantBuffers / PSSetConstantBuffers with the same buffer.
+-----------------------------------------------------------------------
+context->VSSetConstantBuffers(slot, 1, &m_cbuffer);
+}
+
+### What is GPU Skinning?
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L6) (line 6)
+
+============================================================================
+In CPU skinning the joint-matrix multiplications are done on the CPU and the
+already-transformed vertices are sent to the GPU each frame.  That approach
+wastes bus bandwidth and CPU cycles.
+
+In GPU skinning (shader skinning):
+  1. All joint matrices are uploaded once per frame to a constant buffer.
+  2. Each vertex stores bone indices + bone weights (4 influences).
+  3. The vertex shader blends the vertex position using those weights:
+
+       worldPos = sum_i( boneWeight[i] * (jointMatrix[boneIndex[i]] * bindPos) )
+
+  4. The vertex buffer itself NEVER changes — it always contains the static
+     bind-pose mesh.
+
+This is the standard approach used by every modern AAA game engine because:
+  • Only 4096 bytes (64 × 64-byte Mat4) travel the bus per character per
+    frame instead of MB of vertex data.
+  • The GPU is already designed to execute many identical ALU operations in
+    parallel — blending positions with 4 matrices per vertex is trivial.
+  • The vertex buffer can be shared between multiple instances (same mesh,
+    different skeletons, different animations).
+
+============================================================================
+
+### D3D11 Constant Buffer Layout
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L31) (line 31)
+
+============================================================================
+A D3D11 constant buffer is a block of bytes accessible to any shader stage.
+Layout rules (D3D11 default packing, not cbuffer row_major):
+  • Each float4x4 (Mat4) is 64 bytes (4 rows × 4 floats × 4 bytes).
+  • 64 matrices × 64 bytes = 4096 bytes (4 KiB) per character.
+  • The buffer must be a multiple of 16 bytes — 4096 satisfies this.
+
+The buffer is D3D11_USAGE_DYNAMIC because the CPU writes new joint matrices
+every frame.  D3D11_MAP_WRITE_DISCARD tells the driver to return a new
+region of memory rather than stalling until the GPU finishes reading the
+old data (pipeline hazard avoidance).
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: Windows (D3D11 only)
+
+### D3D11 headers require WIN32_LEAN_AND_MEAN + NOMINMAX guards.
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L57) (line 57)
+
+These are defined as compile-time macros by the CMakeLists.txt SANDBOX_DEFS
+list, so they are already active when this header is compiled as part of
+engine_sandbox.  The #ifndef guards prevent double-definition warnings if
+the macros are already set elsewhere.
+ifndef WIN32_LEAN_AND_MEAN
+ define WIN32_LEAN_AND_MEAN
+endif
+ifndef NOMINMAX
+ define NOMINMAX
+endif
+include <d3d11.h>
+
+### Why 64?
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L78) (line 78)
+
+64 joints covers most humanoid characters (typically 50–60 joints).
+64 × sizeof(Mat4) = 64 × 64 = 4096 bytes — fits nicely in one D3D11
+constant buffer slot and is well within the D3D11 constant-buffer limit of
+65536 bytes (4096 floats = 4096 × 4 bytes = 16 KiB for a cbuffer).
+
+For very complex characters (clothes, face bones) you might raise this to
+128 or 256, but that uses more vertex-shader constant registers on older
+hardware (GT610 / FL10_0 class).
+---------------------------------------------------------------------------
+inline constexpr int kMaxGpuJoints = 64;
+
+### D3D11_USAGE_DYNAMIC + CPU_ACCESS_WRITE
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L129) (line 129)
+
+These two flags together tell D3D11 that:
+  • The GPU only reads the buffer (no GPU writes).
+  • The CPU will write to it every frame via Map/Unmap.
+The driver can place it in a write-combined memory region (WC) which
+is optimised for CPU→GPU streaming with minimal CPU-side caching.
+
+D3D11_MAP_WRITE_DISCARD (used in Upload) tells the driver to give us a
+fresh memory region, avoiding any GPU stall waiting for the previous
+frame's draw to finish reading the old data.
+
+### Map / Unmap Pattern
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L149) (line 149)
+
+Map returns a pointer to GPU-visible memory (or a staging area).
+We memcpy the matrices, then Unmap signals to D3D11 that we are done.
+After Unmap the CPU pointer is invalid.
+
+Matrices beyond `count` are set to identity so the shader never reads
+uninitialised data even if a vertex references a joint index ≥ count.
+
+### VSSetConstantBuffers
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L168) (line 168)
+
+A vertex shader can access up to 14 constant buffer slots (D3D11
+minimum, more in practice).  We bind the joint matrices to b0 so the
+HLSL shader reads them as:
+
+  cbuffer JointCB : register(b0) { float4x4 g_joints[64]; };
+
+If you have a per-object CB (world matrix, etc.) use b1 for that.
+
+### Always unbind constant buffers after drawing.
+
+**Source:** [`src/engine/animation/gpu_skinning.hpp`](src/engine/animation/gpu_skinning.hpp#L182) (line 182)
+
+Leaving a resource bound and then trying to write to it later (e.g. via
+Map) can trigger D3D11 debug-layer warnings.
+
+### Two-Bone IK: Step-by-Step
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L11) (line 11)
+
+============================================================================
+
+Imagine a two-bone arm:  root (shoulder) → mid (elbow) → end (wrist).
+
+             pole
+              ↑
+        mid●  │
+         / \  │
+        /   \ │
+ root ●       ● end (target)
+
+Given: root, mid, end positions, target position, pole-vector hint.
+Find:  new mid position such that end snaps to target.
+
+Step 1 — Measure bone lengths.
+  a = |mid  – root|  (upper arm)
+  b = |end  – mid |  (forearm)
+
+Step 2 — Clamp target distance.
+  d = clamp(|target – root|, 0.001, a + b – ε)
+  (If target is beyond full reach, the arm stretches as far as it can.)
+
+Step 3 — Law of Cosines: angle at root.
+  cos(α) = (a² + d² – b²) / (2 a d)
+  α      = acos(clamp(…, –1, 1))
+
+Step 4 — Construct the bent-elbow direction.
+  dir     = normalize(target – root)   (points from root to target)
+  perpDir = component of poleDir perpendicular to dir
+  (This is what makes the elbow bend in the desired direction.)
+
+Step 5 — New mid position.
+  midPos_new = root + a * (cos(α) * dir + sin(α) * perpDir)
+
+============================================================================
+
+### FABRIK: Step-by-Step
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L47) (line 47)
+
+============================================================================
+
+Chain: j[0] (root) --- j[1] --- j[2] --- j[3] (end effector)
+Bone lengths: L[0] = |j[1]-j[0]|, L[1] = |j[2]-j[1]|, L[2] = |j[3]-j[2]|
+
+Per-iteration:
+
+  Forward pass (end to root):
+    j[3] = target
+    for i = 2 downto 0:
+      direction = normalize(j[i] – j[i+1])
+      j[i]      = j[i+1] + direction * L[i]
+
+  Backward pass (root to end):
+    j[0] = originalRoot
+    for i = 1 to N-1:
+      direction = normalize(j[i] – j[i-1])
+      j[i]      = j[i-1] + direction * L[i-1]
+
+  Stop when |j[N-1] – target| < tolerance.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Use float for bone lengths.
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L105) (line 105)
+
+These distances are in world units and remain constant throughout the
+solve (bones are inextensible rigid segments).
+-----------------------------------------------------------------------
+const float a = (midPos - rootPos).Length();   // upper bone
+const float b = (endPos - midPos).Length();    // lower bone
+
+### Clamping target distance.
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L119) (line 119)
+
+If the target is too close (d < |a-b|) or too far (d > a+b), the chain
+cannot form a valid triangle.  We clamp d so:
+  • If the target is farther than (a+b), stretch the chain in a line.
+  • If the target is closer than |a-b|, the chain wraps back (rare).
+-----------------------------------------------------------------------
+const float dRaw = (target - rootPos).Length();
+const float dMin = std::fabsf(a - b) + kEps;
+const float dMax = a + b - kEps;
+const float d    = std::max(dMin, std::min(dMax, dRaw));
+
+### Clamping the cosine before acos().
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L133) (line 133)
+
+Floating-point arithmetic can produce values slightly outside [-1, 1]
+due to rounding.  acos() is undefined outside that range.  Clamping
+prevents NaN at the cost of a few ULPs of error, which is undetectable
+in animation.
+-----------------------------------------------------------------------
+const float cosAlpha = std::max(-1.0f, std::min(1.0f,
+(a*a + d*d - b*b) / (2.0f * a * d)));
+const float alpha    = std::acos(cosAlpha);   // angle at root
+
+### Pole Vector Decomposition
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L146) (line 146)
+
+The "pole vector" hints which side the elbow bends toward.  We cannot
+use it directly because it may not be perpendicular to rootToTarget.
+We must project out the component along rootToTarget to get the true
+perpendicular direction.
+
+  perpDir = normalize( poleDir – (poleDir · rootToTarget) * rootToTarget )
+
+This is the standard Gram-Schmidt orthogonalization for two vectors.
+If poleDir is parallel to rootToTarget (degenerate), we fall back to
+an arbitrary perpendicular using the cross product with (0,1,0).
+-----------------------------------------------------------------------
+const Vec3 rootToTarget = (target - rootPos).Normalized();
+
+### Rotating the root→target axis by alpha.
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L194) (line 194)
+
+The new elbow is at distance a from root, in the plane spanned by
+rootToTarget and perpDir, at angle alpha from rootToTarget.
+
+  outMidPos = root + a * (cos(alpha) * rootToTarget + sin(alpha) * perpDir)
+
+cos(alpha) is the component along the target direction.
+sin(alpha) is the component along the pole direction (the "bend").
+-----------------------------------------------------------------------
+outMidPos = rootPos
++ rootToTarget * (a * std::cos(alpha))
++ perpDir       * (a * std::sin(alpha));
+
+### Shortest-Arc Rotation
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L222) (line 222)
+
+-----------------------------------------------------------------------
+We want the quaternion q such that q rotates srcDir to dstDir along the
+shortest arc on the unit sphere.
+
+Algorithm:
+  1. Dot product → cosine of angle between the vectors.
+  2. Cross product → rotation axis (perpendicular to the plane).
+  3. If dot ≈ 1, vectors are nearly identical → return identity.
+  4. If dot ≈ -1, vectors are antiparallel → 180° around arbitrary axis.
+
+Reference: "Real-Time Rendering" (Möller et al.), §4.3.
+-----------------------------------------------------------------------
+const Vec3 sn = srcDir.Normalized();
+const Vec3 dn = dstDir.Normalized();
+
+### Computing Bone Lengths on Add
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L273) (line 273)
+
+-----------------------------------------------------------------------
+When the second joint (and each subsequent joint) is added, we compute
+the bone length as the distance to the previous joint.  This ensures
+the chain is "at rest" (bone lengths are the bind-pose lengths) at
+construction time.
+
+The bone at index i connects joint i to joint i+1.
+m_boneLengths has one fewer entry than m_joints.
+-----------------------------------------------------------------------
+if (!m_joints.empty())
+{
+float len = (worldPos - m_joints.back()).Length();
+m_boneLengths.push_back(len);
+}
+m_joints.push_back(worldPos);
+}
+
+### Re-using the solver for a different pose each frame.
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L300) (line 300)
+
+-----------------------------------------------------------------------
+Callers typically reset the joint positions from the current animated
+skeleton before solving, so FABRIK operates from the current frame's
+pose rather than from a fixed bind pose.  This prevents the IK from
+"snapping" visually and gives smoother results.
+-----------------------------------------------------------------------
+assert(positions.size() == m_joints.size());
+m_joints = positions;
+}
+
+### If the target is farther than the full chain length,
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L323) (line 323)
+
+the best we can do is point the chain straight toward the target.
+We still run the backward pass which will do exactly this.
+-----------------------------------------------------------------------
+const Vec3  rootPos     = m_joints[0];   // Remember root for backward pass.
+const float totalLen    = TotalLength();
+const float targetDist  = (target - rootPos).Length();
+
+### Each iteration does two passes:
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L334) (line 334)
+
+Forward:  snap end to target, propagate constraints backward.
+  Backward: restore root, propagate constraints forward.
+On each step we snap a joint toward the previous one while maintaining
+bone length.  This is the key insight of FABRIK: it only uses direction
+vectors and scalar distances — no matrices, no inverse Jacobians.
+-----------------------------------------------------------------------
+bool converged = false;
+
+### Check the END effector, not every joint.
+
+**Source:** [`src/engine/animation/ik_solver.cpp`](src/engine/animation/ik_solver.cpp#L374) (line 374)
+
+We only care whether the last joint reached the target.
+Individual intermediate joints don't need a tolerance check.
+----------------------------------------------------------------
+const float endError = (m_joints[static_cast<size_t>(N - 1)] - target).Length();
+if (endError < m_tolerance || targetDist > totalLen)
+{
+converged = true;
+break;
+}
+}
+
+### What is Inverse Kinematics?
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L6) (line 6)
+
+============================================================================
+Forward Kinematics (FK): given joint rotations, compute end-effector position.
+Inverse Kinematics (IK): given a desired end-effector position, compute the
+joint rotations needed to reach it.
+
+IK is used in FFXV-style games for:
+  • Foot placement — keep feet planted on uneven terrain.
+  • Hand IK — grip weapons, grab ledges, interact with the world.
+  • Look-at — head/eye tracking toward a point of interest.
+  • Aim IK — blend a character's spine toward an aim target.
+
+============================================================================
+
+### Two Approaches
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L19) (line 19)
+
+============================================================================
+
+1. TwoBoneIK — ANALYTICAL (exact, O(1), fixed 2-bone chain)
+   Uses the Law of Cosines to compute the exact elbow/knee angle for a
+   root→mid→tip chain.  Best for arms (shoulder→elbow→wrist) and legs
+   (hip→knee→ankle) because those are always exactly two bones.
+   A "pole vector" hint selects which side the middle joint bends toward.
+
+2. FABRIKSolver — ITERATIVE (approximate, fast convergence, N bones)
+   Forward And Backward Reaching Inverse Kinematics.  Works on chains of
+   any length.  Each iteration does two linear passes (forward and backward)
+   along the chain.  Typically converges in 1–5 iterations.
+   Best for tails, spines, tentacles, and other multi-joint chains.
+
+============================================================================
+
+### Output Format
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L35) (line 35)
+
+============================================================================
+Both solvers output world-space positions of the solved joints.
+The AnimationSystem can use these positions to compute the rotation
+quaternion for each joint (rotate the current bone direction toward
+the new bone direction using Quat::FromAxisAngle + cross product).
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: All (no platform-specific code)
+
+### When to Use TwoBoneIK
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L69) (line 69)
+
+Use this for any chain that is EXACTLY two bones long:
+  • Arms:  shoulder → elbow → wrist
+  • Legs:  hip      → knee  → ankle
+  • Claw:  knuckle  → finger_mid → finger_tip
+
+The analytical approach is O(1) and gives the mathematically exact answer
+every frame without iteration.
+
+### Law of Cosines
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L78) (line 78)
+
+Given a triangle with sides a, b, c and angles α, β, γ opposite to them:
+  c² = a² + b² – 2ab·cos(γ)
+Rearranged to find an angle:
+  cos(γ) = (a² + b² – c²) / (2ab)
+
+We use this to find the required angle at the root joint (α) and at the
+mid joint (β) given the desired target distance.
+
+### Law of Cosines Derivation
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L111) (line 111)
+
+-----------------------------------------------------------------------
+Let:
+  a = |midPos  – rootPos|   (upper bone length)
+  b = |endPos  – midPos |   (lower bone length)
+  d = clamped(|target – rootPos|, 0.001, a+b)  (target distance)
+
+Angle at root (alpha):
+  cos(alpha) = (a² + d² – b²) / (2·a·d)
+  alpha      = acos(clamp(…, -1, 1))
+
+Angle at mid (beta):
+  cos(beta)  = (a² + b² – d²) / (2·a·b)
+
+We then rotate the root→target axis by alpha using the pole vector as
+the rotation axis to find the new mid joint position.
+-----------------------------------------------------------------------
+
+### Shortest-Arc Rotation
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L145) (line 145)
+
+Given two unit vectors, the rotation between them lies in the plane
+they span.  The axis is their cross product (perpendicular to both),
+and the angle is acos(dot(src, dst)).
+
+Edge cases handled:
+  • src ≈ dst: return identity (no rotation needed).
+  • src ≈ -dst: return 180° around a stable perpendicular axis.
+
+### FABRIK Algorithm (Aristidou & Lasenby, 2011)
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L166) (line 166)
+
+"Forward And Backward Reaching Inverse Kinematics"
+
+FABRIK represents each joint as a world-space position.  It converges by
+alternating two linear passes:
+
+  Forward pass (end → root):
+    Place the end effector at the target.
+    Propagate constraints backward along the chain.
+
+  Backward pass (root → end):
+    Restore the root to its original position.
+    Propagate constraints forward along the chain.
+
+### Why FABRIK is fast
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L180) (line 180)
+
+Each forward and backward pass is O(N) linear work (just vector arithmetic).
+Unlike Jacobian-based methods (which require matrix inversion), FABRIK
+converges in 1–5 iterations for most game scenarios.  No trigonometry is
+needed; only distance normalization.
+
+### Bone Lengths
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L186) (line 186)
+
+Bone lengths are computed automatically from the initial joint positions
+passed to AddJoint().  They are fixed (inextensible) throughout solving.
+
+### Convergence Criterion
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L190) (line 190)
+
+Solving stops when |joints[N] – target| < tolerance, or after maxIterations
+regardless of error.  For foot planting at 60 fps, 4 iterations is typical.
+
+### Call order matters.
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L217) (line 217)
+
+Joints must be added root-first (joint 0 = root, joint N = end effector).
+The bone length between joint i and joint i+1 is computed automatically.
+
+### Frame Usage Pattern
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L249) (line 249)
+
+-----------------------------------------------------------------------
+Typical per-frame usage:
+
+  // 1. Reset joints to current animated world positions.
+  solver.SetJoints(animatedWorldPositions);
+
+  // 2. Solve toward the foot IK target on the terrain.
+  bool reached = solver.Solve(footTargetOnTerrain);
+
+  // 3. Derive joint rotations from the solved positions.
+  for (int i = 0; i < solver.JointCount()-1; ++i)
+  {
+      Vec3 newDir = (solver.GetJoint(i+1) - solver.GetJoint(i)).Normalized();
+      // … compute Quat to rotate bone[i] toward newDir …
+  }
+-----------------------------------------------------------------------
+
+### FABRIK state
+
+**Source:** [`src/engine/animation/ik_solver.hpp`](src/engine/animation/ik_solver.hpp#L293) (line 293)
+
+m_joints:      current world positions (modified each Solve() call)
+m_bindJoints:  original bind-pose positions (to reset the chain)
+m_boneLengths: fixed bone lengths (computed once in AddJoint)
+-----------------------------------------------------------------------
+std::vector<math::Vec3> m_joints;        ///< Working joint positions
+std::vector<float>      m_boneLengths;   ///< bone[i] = |joint[i+1] - joint[i]|
 
 ### Mat4 Inversion (Fast 4×4 Rigid-Body Inverse)
 
@@ -6675,7 +7416,7 @@ Target: Windows (MSVC)
 
 ### pragma comment(lib, ...) vs CMake target_link_libraries
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L42) (line 42)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L43) (line 43)
 
 ---------------------------------------------------------------------------
 On MSVC we can tell the linker which .lib to pull in directly from source
@@ -6692,7 +7433,7 @@ pragma comment(lib, "d3dcompiler.lib")
 
 ### Quad Vertex Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L68) (line 68)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L70) (line 70)
 
 Each vertex carries a 2-D NDC position (no Z — the VS sets it to 0) and a
 2-D UV coordinate.  D3D11 convention: UV (0,0) = top-left of the texture.
@@ -6708,16 +7449,96 @@ pragma pack(pop)
 
 ### Index Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L90) (line 90)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L92) (line 92)
 
 Two clockwise triangles (D3D11 default front face) sharing the diagonal edge:
   Triangle 0: top-left (0), top-right (1), bottom-left (2)
   Triangle 1: top-right (1), bottom-right (3), bottom-left (2)
 static const uint16_t kQuadIndices[6] = { 0, 1, 2, 1, 3, 2 };
 
+### SkinnedVertex Layout
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L102) (line 102)
+
+The skinned mesh vertex format carries:
+  pos       — bind-pose position in NDC space (z=0, w=1)
+  normal    — surface normal for lighting
+  uv        — texture coordinates (V encodes height for the gradient)
+  boneIndex — up to 4 joint indices into the constant buffer array
+  boneWeight — corresponding weights (must sum to 1.0 per vertex)
+
+We use uint32_t for bone indices and float for weights to keep the
+CPU code readable.  In production you would use uint8_t (indices 0-255)
+and UNORM8 weights to halve the vertex size.
+pragma pack(push, 1)
+struct SkinnedVertex
+{
+float    x, y, z;            ///< NDC position (z=0 for this flat demo)
+float    nx, ny, nz;         ///< Surface normal
+float    u, v;               ///< UV (V = height, 0 = bottom, 1 = top)
+uint32_t boneIndex[4];       ///< Bone indices (only 2 joints used in demo)
+float    boneWeight[4];      ///< Bone weights (sum = 1.0 per vertex)
+};
+pragma pack(pop)
+
+### Skinned Strip Geometry
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L124) (line 124)
+
+5 rows × 2 vertices = 10 vertices forming a vertical strip in NDC.
+  x = ±0.10 NDC (narrow strip for clarity)
+  y = -0.8 to +0.8 NDC (tall, covers 80% of screen height)
+
+Skeleton (2 joints):
+  Joint 0 (bone 0): root at NDC origin — identity skin matrix — vertices STATIC.
+  Joint 1 (bone 1): child — Rotation(Z, θ) skin matrix — vertices ROTATE.
+
+Skinning weights interpolate from 100% bone 0 at the bottom to 100% bone 1
+in the top half, with a smooth 2-row blend zone in the middle.  This
+demonstrates the blend artefact that linear blend skinning produces at joints.
+
+Normals all point toward the camera (0, 0, -1) for consistent lighting.
+The strip lies in the Z=0 plane.
+static const SkinnedVertex kSkinnedVerts[10] =
+{
+Row 0: y = -0.80  — fully weighted to bone 0 (static anchor)
+{ -0.10f, -0.80f, 0.0f,   0,0,-1,   0.0f, 0.00f,   {0,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+{  0.10f, -0.80f, 0.0f,   0,0,-1,   1.0f, 0.00f,   {0,0,0,0}, {1.00f,0.00f,0.0f,0.0f} },
+
+### Index Buffer (4 quads = 8 triangles = 24 indices)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L162) (line 162)
+
+Vertex layout (strip, left = x=-0.1, right = x=+0.1, y increases upward):
+  Row 0 (y=-0.8):  v0 (left)   v1 (right)
+  Row 1 (y=-0.4):  v2 (left)   v3 (right)
+  Row 2 (y= 0.0):  v4 (left)   v5 (right)
+  Row 3 (y=+0.4):  v6 (left)   v7 (right)
+  Row 4 (y=+0.8):  v8 (left)   v9 (right)
+
+D3D11 default: front face = CLOCKWISE when viewed from the camera.
+The camera is conceptually at z<0, looking toward +z.
+Screen-space X is right, Y is up.
+
+For each quad (rows i and i+1), the two triangles are:
+  Triangle A: v[2i], v[2i+1], v[2i+2]  →  (left-bottom, right-bottom, left-top)
+  Triangle B: v[2i+1], v[2i+3], v[2i+2] →  (right-bottom, right-top, left-top)
+
+Screen-space CW verification for Triangle A (using row 0):
+  v0=(-0.1,-0.8), v1=(+0.1,-0.8), v2=(-0.1,-0.4)
+  Cross product (v1-v0) × (v2-v0):
+    (0.2, 0, 0) × (0, 0.4, 0) = (0, 0, 0.08)  — positive z = CW in screen space ✓
+static const uint16_t kSkinnedIndices[24] =
+{
+0, 1, 2,    1, 3, 2,   // Quad 0: rows 0-1
+2, 3, 4,    3, 5, 4,   // Quad 1: rows 1-2
+4, 5, 6,    5, 7, 6,   // Quad 2: rows 2-3
+6, 7, 8,    7, 9, 8,   // Quad 3: rows 3-4
+};
+
 ### Driver Type Selection
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L117) (line 117)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L212) (line 212)
 
 -----------------------------------------------------------------------
 D3D_DRIVER_TYPE_HARDWARE — uses the physical GPU (fastest).
@@ -6733,7 +7554,7 @@ headless ? D3D_DRIVER_TYPE_WARP
 
 ### Feature Levels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L131) (line 131)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L226) (line 226)
 
 -----------------------------------------------------------------------
 We request feature levels in descending order.  D3D11CreateDevice picks
@@ -6756,7 +7577,7 @@ sizeof(featureLevels) / sizeof(featureLevels[0]));
 
 ### Device Creation Flags
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L152) (line 152)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L247) (line 247)
 
 -----------------------------------------------------------------------
 D3D11_CREATE_DEVICE_DEBUG enables the D3D11 debug layer (analogous to
@@ -6770,7 +7591,7 @@ endif
 
 ### D3D11CreateDevice vs D3D11CreateDeviceAndSwapChain
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L166) (line 166)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L261) (line 261)
 
 We separate device creation from swap chain creation so that headless
 mode can skip the swap chain entirely (no HWND needed).
@@ -6790,7 +7611,7 @@ D3D11_SDK_VERSION,
 
 ### Fallback from Debug Layer to No-Debug
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L186) (line 186)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L281) (line 281)
 
 -----------------------------------------------------------------------
 On some Windows installations the optional D3D11 debug layer DLL
@@ -6812,7 +7633,7 @@ D3D11_SDK_VERSION,
 
 ### DXGI Swap Chain Description
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L251) (line 251)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L346) (line 346)
 
 -----------------------------------------------------------------------
 IDXGISwapChain is the bridge between D3D11 and the OS window manager.
@@ -6839,7 +7660,7 @@ scDesc.Windowed                           = TRUE;
 
 ### DXGI_SWAP_EFFECT_DISCARD
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L274) (line 274)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L369) (line 369)
 
 The oldest swap effect; supported on all D3D11 hardware.  The contents
 of the back buffer are undefined after Present — we always clear so it
@@ -6848,7 +7669,7 @@ scDesc.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
 ### Obtaining the IDXGIFactory via the Device's Adapter
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L281) (line 281)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L376) (line 376)
 
 -----------------------------------------------------------------------
 We must create the swap chain through the same DXGI factory that owns
@@ -6861,7 +7682,7 @@ IDXGIFactory* dxgiFactory = nullptr;
 
 ### Render-Target View (RTV)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L324) (line 324)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L419) (line 419)
 
 A RTV is a "view" that tells D3D11 which texture sub-resource to render
 into.  Here we point it at the swap chain's back buffer.
@@ -6876,7 +7697,7 @@ return false;
 
 ### Caching Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L345) (line 345)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L440) (line 440)
 
 -----------------------------------------------------------------------
 Store the back-buffer size so DrawFrame can set the viewport and bind
@@ -6888,7 +7709,7 @@ m_height = height;
 
 ### Flush and Flush-to-Idle before release
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L383) (line 383)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L478) (line 478)
 
 Before releasing any D3D11 objects we flush the immediate context so
 any in-flight GPU commands are drained.  Without this, destroying
@@ -6898,7 +7719,7 @@ m_context->Flush();
 
 ### D3D11 Frame Setup: Bind RTV + Viewport
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L408) (line 408)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L503) (line 503)
 
 -----------------------------------------------------------------------
 Before issuing any draw or clear commands we must:
@@ -6915,7 +7736,7 @@ Before issuing any draw or clear commands we must:
 
 ### D3D11 Clear
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L436) (line 436)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L531) (line 531)
 
 -----------------------------------------------------------------------
 ClearRenderTargetView fills the back buffer with a solid colour.
@@ -6927,19 +7748,32 @@ m_context->ClearRenderTargetView(m_renderTarget, clearColor);
 
 ### Scene Draw Pass (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L446) (line 446)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L541) (line 541)
 
 -----------------------------------------------------------------------
 If a scene has been loaded via LoadScene(), draw it on top of the clear
 colour.  The RTV and viewport are already set from the frame setup above,
-so DrawTexturedQuad can issue draw calls directly.
+so the draw methods can issue draw calls directly.
+
+M3: textured_quad — a UV-mapped full-screen quad.
+M4b: skinned_mesh — a GPU-skinned animated strip (2-joint skeleton).
 -----------------------------------------------------------------------
 if (m_quadScene.loaded && m_currentScene == "textured_quad")
 DrawTexturedQuad();
 
+### Advancing the demo animation timer.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L553) (line 553)
+
+m_sceneTime accumulates real elapsed time (seconds) and is used by
+DrawSkinnedMesh() to compute a sinusoidal joint rotation angle.
+We advance it unconditionally so LoadScene("skinned_mesh") can start
+animating immediately.
+m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
+
 ### Present interval
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L456) (line 456)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L564) (line 564)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -6951,7 +7785,7 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L474) (line 474)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L582) (line 582)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -6960,7 +7794,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L523) (line 523)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L631) (line 631)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -6985,7 +7819,7 @@ return false;
 
 ### COM Reference Counting
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L572) (line 572)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L680) (line 680)
 
 COM objects are reference-counted.  CreateRenderTargetView internally
 calls AddRef on the texture, so the texture stays alive even after we
@@ -7000,7 +7834,7 @@ return false;
 
 ### Validating the Scene Pipeline in Headless Mode (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L589) (line 589)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L697) (line 697)
 
 -----------------------------------------------------------------------
 If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
@@ -7017,9 +7851,37 @@ vp.Height   = 64.0f;
 vp.MaxDepth = 1.0f;
 m_context->RSSetViewports(1, &vp);
 
+### Headless validation for the GPU skinning scene (M4b).
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L717) (line 717)
+
+We bind the off-screen RTV, set a matching 64×64 viewport, and call
+DrawSkinnedMesh() once.  This validates that the skinned mesh pipeline
+(VS, PS, input layout, joint constant buffer, geometry buffers)
+compiles and executes correctly under WARP without a physical GPU.
+if (m_skinnedScene.loaded && m_currentScene == "skinned_mesh")
+{
+D3D11_VIEWPORT vp = {};
+vp.Width    = 64.0f;
+vp.Height   = 64.0f;
+vp.MaxDepth = 1.0f;
+m_context->RSSetViewports(1, &vp);
+
+### C++ requires functions to be declared before use.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L744) (line 744)
+
+LoadSkinnedMeshScene is a file-scope static helper defined later in this
+translation unit.  Rather than move the entire 300-line function above
+LoadScene (which would hurt reading order), we use a forward declaration.
+static bool LoadSkinnedMeshScene(
+ID3D11Device*                    device,
+const std::string&               shaderDir,
+D3D11Renderer::SkinnedMeshScene& scene);
+
 ### Runtime HLSL Compilation with D3DCompileFromFile
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L644) (line 644)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L797) (line 797)
 
 -----------------------------------------------------------------------
 D3D11 shaders are written in HLSL and can be compiled either:
@@ -7042,7 +7904,7 @@ Windows filesystem API uses UTF-16 internally.
 
 ### Embedded Fallback HLSL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L670) (line 670)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L823) (line 823)
 
 -----------------------------------------------------------------------
 If the .hlsl files are not present on disk (e.g. a minimal CI run that
@@ -7060,7 +7922,7 @@ static const char* kVsFallback =
 
 ### std::wstring for Win32 wide-char path
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L704) (line 704)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L857) (line 857)
 
 D3DCompileFromFile requires a LPCWSTR (wide string) path.
 std::filesystem::path::wstring() gives us that on MSVC.
@@ -7080,7 +7942,7 @@ D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
 
 ### Creating Shader Objects
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L784) (line 784)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L937) (line 937)
 
 -----------------------------------------------------------------------
 D3D11 separates shader compilation (→ bytecode blob) from shader object
@@ -7094,7 +7956,7 @@ nullptr, &m_quadScene.vs);
 
 ### Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L816) (line 816)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L969) (line 969)
 
 -----------------------------------------------------------------------
 The Input Assembler (IA) stage needs to know how the raw bytes in the
@@ -7117,7 +7979,7 @@ D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 ### Vertex and Index Buffers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L852) (line 852)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1005) (line 1005)
 
 -----------------------------------------------------------------------
 D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
@@ -7138,7 +8000,7 @@ bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
 
 ### Texture Loading vs Fallback
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L901) (line 901)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1054) (line 1054)
 
 -----------------------------------------------------------------------
 We look for a test DDS texture in the shaderDir's parent (project root)
@@ -7157,7 +8019,7 @@ ddsPath = ddsPath.lexically_normal();
 
 ### Procedural 1×1 White Fallback Texture
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L927) (line 927)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1080) (line 1080)
 
 -----------------------------------------------------------------------
 When no DDS file is present we create a 1×1 RGBA8 white texture
@@ -7166,9 +8028,88 @@ same texture-binding code path so the quad renders in white.
 -----------------------------------------------------------------------
 std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n";
 
+### LoadScene_SkinnedMesh (private helper — inlined in LoadScene)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1160) (line 1160)
+
+We use a local lambda at file scope to keep the main LoadScene() readable.
+All resource creation follows the same pattern as the textured quad:
+  compile HLSL → create shaders → create input layout → create buffers.
+
+### Fallback HLSL for the skinned mesh vertex shader.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1173) (line 1173)
+
+-----------------------------------------------------------------------
+This is a minimal version of skinned_mesh.vs.hlsl that performs linear
+blend skinning for up to 4 bone influences.  It matches the full HLSL
+file that ships in the shaders/ directory; the inline copy guarantees
+LoadScene never fails even if the .hlsl files were not copied to the
+output directory (e.g. on a first clean build before POST_BUILD runs).
+-----------------------------------------------------------------------
+static const char* kSkinnedVsFallback =
+"cbuffer JointCB:register(b0){float4x4 g_joints[64];};\n"
+"struct VSIn{float3 p:POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;"
+"uint4 bi:BLENDINDICES;float4 bw:BLENDWEIGHT;};\n"
+"struct PSIn{float4 p:SV_POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;};\n"
+"PSIn main(VSIn i){\n"
+"  float4 sp=float4(0,0,0,0);float3 sn=float3(0,0,0);\n"
+"  [unroll]for(int b=0;b<4;++b){\n"
+"    float w=i.bw[b];uint idx=i.bi[b];\n"
+"    sp+=w*mul(float4(i.p,1),g_joints[idx]);\n"
+"    sn+=w*mul(i.n,(float3x3)g_joints[idx]);}\n"
+"  PSIn o;float wi=(abs(sp.w)>0.0001f)?(1.0f/sp.w):1.0f;\n"
+"  o.p=float4(sp.xyz*wi,1);o.n=normalize(sn);o.uv=i.uv;return o;}\n";
+
+### SkinnedVertex Input Layout
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1280) (line 1280)
+
+The D3D11_INPUT_ELEMENT_DESC array must exactly match the SkinnedVertex
+struct defined at the top of this file (field order and byte offsets).
+
+BLENDINDICES uses DXGI_FORMAT_R32G32B32A32_UINT  (4 × uint32 = 16 bytes).
+BLENDWEIGHT  uses DXGI_FORMAT_R32G32B32A32_FLOAT (4 × float  = 16 bytes).
+
+In production you would use R8G8B8A8_UINT + R8G8B8A8_UNORM (4+4 = 8 bytes
+per vertex instead of 32 bytes) to reduce vertex bandwidth.  We use 32-bit
+types here for readability.
+-----------------------------------------------------------------------
+D3D11_INPUT_ELEMENT_DESC layout[] =
+{
+{ "POSITION",      0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "NORMAL",        0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "TEXCOORD",      0, DXGI_FORMAT_R32G32_FLOAT,       0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "BLENDINDICES",  0, DXGI_FORMAT_R32G32B32A32_UINT,  0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "BLENDWEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 48, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+};
+
+### Why cull-none for the skinning demo?
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1353) (line 1353)
+
+The strip starts facing the camera but rotates 360° as bone 1 oscillates.
+With the default back-face culling the strip disappears every 180°.
+D3D11_CULL_NONE makes both faces visible — useful for flat 2-sided meshes
+like cloth, leaves, and demo strips.  For opaque characters you typically
+keep cull-back and ensure mesh normals are consistent.
+-----------------------------------------------------------------------
+{
+D3D11_RASTERIZER_DESC rd = {};
+rd.FillMode = D3D11_FILL_SOLID;
+rd.CullMode = D3D11_CULL_NONE;
+rd.FrontCounterClockwise = FALSE;
+rd.DepthClipEnable = TRUE;
+hr = device->CreateRasterizerState(&rd, &scene.rastState);
+if (FAILED(hr)) {
+std::cerr << "[D3D11Renderer] CreateRasterizerState (skinned) failed.\n";
+return false;
+}
+}
+
 ### The D3D11 Draw Call Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1003) (line 1003)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1385) (line 1385)
 
 -----------------------------------------------------------------------
 Every draw call in D3D11 requires the full pipeline state to be set:
@@ -7183,31 +8124,85 @@ We set IA, VS, and PS here for the quad draw call.
 
 ### PSSetShaderResources / PSSetSamplers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1015) (line 1015)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1397) (line 1397)
 
 These calls bind texture resources and sampler states to HLSL registers.
 register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
 register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
 -----------------------------------------------------------------------
 
+### Constructing the Skin Matrices for the 2-Joint Demo
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1453) (line 1453)
+
+-----------------------------------------------------------------------
+The demo skeleton has two joints:
+
+  Joint 0 (bone 0 — root):
+    bind-pose world matrix = Identity.
+    invBind[0]             = Identity.
+    worldAnim[0]           = Identity (root never moves).
+    skinMatrix[0]          = Identity * Identity = Identity.
+    → Vertices weighted to bone 0 are NOT deformed (static anchor).
+
+  Joint 1 (bone 1 — child):
+    bind-pose world matrix = Identity (joint 1 is co-located at origin).
+    invBind[1]             = Identity.
+    worldAnim[1]           = Rotation(Z, θ(t)).
+    skinMatrix[1]          = Identity * Rotation(Z, θ) = Rotation(Z, θ).
+    → Vertices weighted to bone 1 rotate around the world origin.
+
+The result: the bottom half of the strip (bone 0) is fixed; the top
+half (bone 1) sweeps an arc; the blend zone smoothly transitions.
+-----------------------------------------------------------------------
+const float angle = std::sin(m_sceneTime * 1.5f) * (kPi * 0.25f);  // ±45°
+
+### Input Assembler (IA) Stage Setup
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1488) (line 1488)
+
+-----------------------------------------------------------------------
+We set the same four IA parameters as any other draw call:
+  IASetInputLayout      — tells D3D11 how to decode vertex bytes.
+  IASetPrimitiveTopology — triangles for a solid mesh.
+  IASetVertexBuffers    — our SkinnedVertex buffer.
+  IASetIndexBuffer      — 16-bit index buffer.
+-----------------------------------------------------------------------
+m_context->IASetInputLayout(m_skinnedScene.inputLayout);
+m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+### DrawIndexed
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1512) (line 1512)
+
+-----------------------------------------------------------------------
+DrawIndexed(indexCount, startIndex, baseVertex):
+  • Reads `indexCount` indices starting at `startIndex`.
+  • Each index is added to `baseVertex` to get the actual vertex index.
+For our strip: 24 indices, 0 start, 0 base offset.
+-----------------------------------------------------------------------
+m_context->DrawIndexed(static_cast<UINT>(m_skinnedScene.indexCount), 0, 0);
+
 ### Release Order (LIFO vs Creation Order)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1068) (line 1068)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1534) (line 1534)
 
 COM objects must be released in reverse-creation order when one object
 holds a reference to another.  For independent scene objects (shaders,
 buffers, textures) the order doesn't strictly matter, but releasing in
 reverse makes intent clear.
-if (m_quadScene.fallbackSampler)
-{
-m_quadScene.fallbackSampler->Release();
-m_quadScene.fallbackSampler = nullptr;
-}
-if (m_quadScene.fallbackSRV)
-{
-m_quadScene.fallbackSRV->Release();
-m_quadScene.fallbackSRV = nullptr;
-}
+
+### Release order: state objects first (they don't depend on
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1564) (line 1564)
+
+shaders), then shaders, then geometry buffers, then the CB.
+if (m_skinnedScene.rastState)   { m_skinnedScene.rastState->Release();   m_skinnedScene.rastState   = nullptr; }
+if (m_skinnedScene.ps)          { m_skinnedScene.ps->Release();          m_skinnedScene.ps          = nullptr; }
+if (m_skinnedScene.vs)          { m_skinnedScene.vs->Release();          m_skinnedScene.vs          = nullptr; }
+if (m_skinnedScene.inputLayout) { m_skinnedScene.inputLayout->Release(); m_skinnedScene.inputLayout = nullptr; }
+if (m_skinnedScene.indexBuf)    { m_skinnedScene.indexBuf->Release();    m_skinnedScene.indexBuf    = nullptr; }
+if (m_skinnedScene.vertexBuf)   { m_skinnedScene.vertexBuf->Release();   m_skinnedScene.vertexBuf   = nullptr; }
 
 ### Why Direct3D 11?
 
@@ -7277,7 +8272,7 @@ Requires: d3d11.lib, dxgi.lib, d3dcompiler.lib (Windows SDK — always present)
 
 ### D3D11 / DXGI Headers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L68) (line 68)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L69) (line 69)
 
 ---------------------------------------------------------------------------
 These headers ship with the Windows SDK — no separate download needed.
@@ -7291,7 +8286,7 @@ include <d3dcompiler.h>
 
 ### Object Lifecycle
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L90) (line 90)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L91) (line 91)
 
 All COM objects (ID3D11Device, etc.) are managed via raw COM pointers.
 We call Release() manually in Shutdown() in reverse-creation order.
@@ -7306,14 +8301,14 @@ D3D11Renderer();
 
 ### COM pointer naming convention
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L161) (line 161)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L165) (line 165)
 
 We prefix all COM interface pointers with m_ (member) and use the
 interface name as the type hint.  e.g. m_device is an ID3D11Device*.
 
 ### Storing Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L173) (line 173)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L177) (line 177)
 
 -----------------------------------------------------------------------
 We cache the current back-buffer size so that DrawFrame can set the
@@ -7325,34 +8320,19 @@ across hardware and WARP.
 uint32_t                m_width         = 0;
 uint32_t                m_height        = 0;
 
-### Scene State (M3 Textured Quad)
+### Public Scene-Resource Structs
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L188) (line 188)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L193) (line 193)
 
 -----------------------------------------------------------------------
-Rather than one flat list of members for every scene we will ever have,
-we group the per-scene resources into a small inner struct.  Each call
-to LoadScene() tears down the previous scene (UnloadScene) and builds
-the new one.
+These inner structs are public to allow static helper functions in the
+.cpp file to create and populate them without requiring friendship.
+They contain only D3D11 COM pointers and are plain aggregates —
+making them public does not expose any hidden invariants.
 
-TexturedQuadScene holds everything the GPU needs to render a single
-textured unit quad:
-  vs / ps           — compiled HLSL vertex and pixel shaders.
-  inputLayout       — describes the vertex buffer format to the IA stage.
-  vertexBuf / indexBuf — quad geometry (4 verts, 2 triangles).
-  texture           — DDS texture loaded via D3D11Texture.
-  fallbackSRV /
-  fallbackSampler   — 1×1 white texture used when no DDS file exists
-                      (CI / headless mode).
-  loaded            — true once all resources are created successfully.
+TexturedQuadScene (M3): resources for the UV-mapped quad.
+SkinnedMeshScene  (M4b): resources for the GPU-skinned strip.
 -----------------------------------------------------------------------
-struct TexturedQuadScene
-{
-ID3D11VertexShader*       vs             = nullptr;
-ID3D11PixelShader*        ps             = nullptr;
-ID3D11InputLayout*        inputLayout    = nullptr;
-ID3D11Buffer*             vertexBuf      = nullptr;
-ID3D11Buffer*             indexBuf       = nullptr;
 
 ### DDS Parsing without a Third-Party Library
 
@@ -13293,6 +14273,10 @@ Usage:
   engine_sandbox.exe --headless --scene triangle  # M1 validation
   engine_sandbox.exe --scene testworld            # M3 full system demo (windowed)
   engine_sandbox.exe --headless --scene testworld # M3 full system demo (CI)
+  engine_sandbox.exe --scene textured_quad        # M3 D3D11 textured quad (windowed)
+  engine_sandbox.exe --headless --scene textured_quad  # M3 D3D11 texture CI
+  engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
+  engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
 
 ============================================================================
 
@@ -13304,7 +14288,7 @@ Target: Windows (MSVC)
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L89) (line 89)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L93) (line 93)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -13321,7 +14305,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L104) (line 104)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L108) (line 108)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -13338,7 +14322,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L117) (line 117)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L121) (line 121)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -13350,7 +14334,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L139) (line 139)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L143) (line 143)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -13369,7 +14353,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L154) (line 154)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L158) (line 158)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -13382,7 +14366,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L171) (line 171)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -13393,7 +14377,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L200) (line 200)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -13408,7 +14392,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L221) (line 221)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L225) (line 225)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -13418,7 +14402,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L251) (line 251)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L255) (line 255)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -13434,7 +14418,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L300) (line 300)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L304) (line 304)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -13453,13 +14437,40 @@ return 1;
 }
 std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
 }
+else if (scene == "textured_quad" || scene == "skinned_mesh")
+{
+-----------------------------------------------------------
+
+### Headless Scene Validation (M3 / M4b)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L325) (line 325)
+
+-----------------------------------------------------------
+RecordHeadlessFrame() creates a 64×64 off-screen render
+target, binds it, draws the scene once, then flushes.
+It validates that the full GPU pipeline (VS, PS, buffers,
+constant buffers, textures) can be compiled and executed
+on the WARP software rasteriser without errors.
+
+"textured_quad": exercises D3D11 texture + HLSL pipeline.
+"skinned_mesh":  exercises GPU skinning CB + HLSL skinning VS.
+-----------------------------------------------------------
+if (!renderer->RecordHeadlessFrame())
+{
+std::cout << "[FAIL] Headless " << scene << " scene recording failed.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+std::cout << "[PASS] " << scene << " scene pipeline OK (WARP headless).\n";
+}
 else if (scene == "testworld")
 {
 -----------------------------------------------------------
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L321) (line 321)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L348) (line 348)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -13477,7 +14488,7 @@ return 1;
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L367) (line 367)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L394) (line 394)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -13487,7 +14498,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L375) (line 375)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L402) (line 402)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -13517,7 +14528,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L429) (line 429)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L456) (line 456)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -13530,7 +14541,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L445) (line 445)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L472) (line 472)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
