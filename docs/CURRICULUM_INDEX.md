@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1138 across 41 subsystems.
+**Total lessons:** 1141 across 41 subsystems.
 
 ---
 
@@ -15,7 +15,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [CMakeLists.txt](#cmakelists.txt) (51 lessons)
 - [ci/workflows](#ciworkflows) (37 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
-- [editor/src](#editorsrc) (94 lessons)
+- [editor/src](#editorsrc) (97 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
@@ -1272,16 +1272,32 @@ We install imgui and nlohmann-json from the system vcpkg at C:\vcpkg
 in classic mode (running from $env:TEMP so no vcpkg.json is in scope).
 This avoids the manifest-mode joltphysics conflict while still giving
 CMake exactly the packages the editor needs.
+
+The system vcpkg at C:\vcpkg on GitHub-hosted windows-latest runners
+is pinned to a specific baseline that may lag behind the upstream port
+registry.  Older imgui portfiles may not define the "docking" feature,
+causing vcpkg install to fail with "imgui has no feature named docking".
+
+A simple "git pull --ff-only" fails silently because C:\vcpkg's local
+branch has diverged from origin (the binary artifacts were modified by
+the runner bootstrap).  Instead we use "git fetch + checkout" to
+surgically replace only the ports/imgui portfiles from origin/master
+without touching the rest of the local state.  If that also fails
+(network issue), the fallback is the actions/cache hit from a prior run.
 -----------------------------------------------------------------------
-- name: Cache vcpkg packages (editor)
-uses: actions/cache@v4
-with:
-path: C:\vcpkg\installed
-key: vcpkg-editor-${{ runner.os }}-x64
+- name: Refresh vcpkg imgui portfiles from origin
+shell: pwsh
+continue-on-error: true
+run: |
+Fetch the latest commit metadata from the vcpkg upstream, then
+check out only ports/imgui from FETCH_HEAD to avoid merge conflicts.
+git -C C:\vcpkg fetch origin master --depth=1 --no-tags --quiet
+git -C C:\vcpkg checkout FETCH_HEAD -- ports/imgui
+Write-Host "imgui portfiles refreshed."
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L364) (line 364)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L387) (line 387)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1295,7 +1311,7 @@ shell: pwsh
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L388) (line 388)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L411) (line 411)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1313,7 +1329,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L413) (line 413)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1324,7 +1340,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L424) (line 424)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1339,7 +1355,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L446) (line 446)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L469) (line 469)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -2114,29 +2130,80 @@ if (ImGui::BeginDragDropTarget())
 if (const ImGuiPayload* payload =
 ImGui::AcceptDragDropPayload("CONTENT_ASSET"))
 {
-Payload is a null-terminated UTF-8 file path.
-const char* assetPath = static_cast<const char*>(payload->Data);
+
+### ImGui drag-drop payloads are raw byte buffers.
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L238) (line 238)
+
+AcceptDragDropPayload() does not promise a trailing '\0', so we
+must respect DataSize when constructing the path string to avoid
+reading past the end of the buffer.
+if (payload->Data != nullptr && payload->DataSize > 0)
+{
+std::string assetPath(
+static_cast<const char*>(payload->Data),
+static_cast<std::size_t>(payload->DataSize));
+Strip any trailing null terminator the sender may have included.
+if (!assetPath.empty() && assetPath.back() == '\0')
+assetPath.pop_back();
+
+### Case-insensitive extension comparison
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L260) (line 260)
+
+ContentBrowserPanel::IsAssetFile already lower-cases extensions
+before filtering the file tree, but the payload arrives as the
+raw OS path.  Dropping a file with an upper-case extension (e.g.
+.PNG or .FBX from Windows Explorer) would silently skip
+component inference unless we normalise here.
+std::string ext = p.extension().string();
+for (char& c : ext)
+c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
 ### Auto-populating component data from asset type
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L259) (line 259)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L278) (line 278)
 
 Depending on the file extension we pre-fill a relevant component
 so the designer doesn't have to add it manually.  This is the
 same "component inference from asset type" pattern used by
 Unity (dragging a Mesh creates a MeshRenderer component) and
 Unreal (dragging a StaticMesh creates a StaticMeshActor).
-const bool isMesh    = (ext == ".fbx" || ext == ".obj" ||
-ext == ".gltf" || ext == ".glb");
-const bool isTexture = (ext == ".png" || ext == ".jpg" ||
-ext == ".jpeg" || ext == ".dds" ||
+
+Meshes and textures are intentionally split: only texture
+extensions pre-fill RenderComponent.spriteSheet (which is a
+2D sprite/texture path by definition).  Mesh files (.fbx, .obj,
+.gltf, .glb) create a named entity without a component so the
+designer can add the correct mesh component explicitly.  Mixing
+mesh paths into spriteSheet would cause silent load failures.
+const bool isTexture = (ext == ".png"  || ext == ".jpg"  ||
+ext == ".jpeg" || ext == ".dds"  ||
 ext == ".tga"  || ext == ".bmp");
-const bool isAudio   = (ext == ".wav" || ext == ".ogg" ||
+const bool isAudio   = (ext == ".wav"  || ext == ".ogg"  ||
 ext == ".mp3"  || ext == ".bank");
+
+### Editor-authored component JSON must match
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L308) (line 308)
+
+the runtime ECS field names exactly so the scene serialiser
+can reconstruct the component without silent load failures.
+AudioSourceComponent fields (from ECS.hpp): clipID, isPlaying,
+isLooping, volume  (NOT bankPath / autoPlay / loop).
+ent.components["AudioSourceComponent"] = {
+{ "clipID",     assetPath },
+{ "isPlaying",  false },
+{ "isLooping",  false },
+{ "volume",     1.0f }
+};
+}
+Mesh files (.fbx, .obj, .gltf, .glb) create a named entity
+with no pre-filled component — the designer adds a mesh
+component manually once the mesh pipeline is available.
 
 ### BeginPopupModal
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L312) (line 312)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L344) (line 344)
 
 BeginPopupModal renders a centered modal dialog.
 ImGui::InputText writes into m_nameBuffer (a C-style char array).
@@ -2150,7 +2217,7 @@ ImGui::SetNextItemWidth(240.f);
 
 ### Guid::New() for UUID generation
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L339) (line 339)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L371) (line 371)
 
 Guid::New() from shared/runtime/Guid.hpp generates an RFC 4122
 v4 UUID -- the same pattern used by the cook pipeline and asset
@@ -2167,7 +2234,7 @@ ImGui::CloseCurrentPopup();
 
 ### nlohmann-json for scene save
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L365) (line 365)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L397) (line 397)
 
 nlohmann/json.hpp provides a single-header JSON library (MIT licence).
 json j = { {"key", value}, ... } builds a JSON object with initialiser lists.
@@ -2183,7 +2250,7 @@ tsStream << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%SZ");
 
 ### Persisting component data
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L399) (line 399)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L431) (line 431)
 
 Only write the "components" key when there is something to write.
 This keeps scenes that only have positional data compact.
@@ -2192,7 +2259,7 @@ je["components"] = ent.components;
 
 ### nlohmann-json for scene load
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L418) (line 418)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L450) (line 450)
 
 json::parse(stream) reads from any std::istream.
 j.value("key", default) safely reads a key with a fallback if missing.
@@ -2205,7 +2272,7 @@ if (!ifs) return false;
 
 ### Loading component data
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L456) (line 456)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L488) (line 488)
 
 If the scene file has a "components" object, load it into
 ent.components as raw JSON.  The InspectorPanel will parse it.

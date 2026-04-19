@@ -331,19 +331,27 @@ jobs:
       # This avoids the manifest-mode joltphysics conflict while still giving
       # CMake exactly the packages the editor needs.
       #
-      # IMPORTANT: The system vcpkg at C:\vcpkg on GitHub-hosted windows-latest
-      # runners is periodically updated but can lag behind the upstream vcpkg
-      # port registry.  In particular, older imgui ports did not expose a
-      # "docking" feature — the feature was added in a later port revision.
-      # We therefore update the vcpkg portfiles (git pull on C:\vcpkg) before
-      # installing, so the imgui port is guaranteed to have the docking feature.
-      # This is safe: only text portfiles are updated; installed packages are
-      # left untouched and the cache step below preserves them across runs.
+      # The system vcpkg at C:\vcpkg on GitHub-hosted windows-latest runners
+      # is pinned to a specific baseline that may lag behind the upstream port
+      # registry.  Older imgui portfiles may not define the "docking" feature,
+      # causing vcpkg install to fail with "imgui has no feature named docking".
+      #
+      # A simple "git pull --ff-only" fails silently because C:\vcpkg's local
+      # branch has diverged from origin (the binary artifacts were modified by
+      # the runner bootstrap).  Instead we use "git fetch + checkout" to
+      # surgically replace only the ports/imgui portfiles from origin/master
+      # without touching the rest of the local state.  If that also fails
+      # (network issue), the fallback is the actions/cache hit from a prior run.
       # -----------------------------------------------------------------------
-      - name: Update vcpkg portfiles
-        run: git -C C:\vcpkg pull --ff-only
+      - name: Refresh vcpkg imgui portfiles from origin
         shell: pwsh
-        continue-on-error: true   # non-fatal if network unavailable; install may succeed from cache
+        continue-on-error: true
+        run: |
+          # Fetch the latest commit metadata from the vcpkg upstream, then
+          # check out only ports/imgui from FETCH_HEAD to avoid merge conflicts.
+          git -C C:\vcpkg fetch origin master --depth=1 --no-tags --quiet
+          git -C C:\vcpkg checkout FETCH_HEAD -- ports/imgui
+          Write-Host "imgui portfiles refreshed."
 
       - name: Cache vcpkg packages (editor)
         uses: actions/cache@v4

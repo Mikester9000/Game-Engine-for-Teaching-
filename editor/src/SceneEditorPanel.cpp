@@ -235,63 +235,95 @@ void SceneEditorPanel::RenderCanvas()
         if (const ImGuiPayload* payload =
                 ImGui::AcceptDragDropPayload("CONTENT_ASSET"))
         {
-            // Payload is a null-terminated UTF-8 file path.
-            const char* assetPath = static_cast<const char*>(payload->Data);
-
-            // Convert screen-space mouse position to canvas-local position.
-            const ImVec2 mouse = ImGui::GetMousePos();
-            const float  dropX = mouse.x - m_canvasOriginX;
-            const float  dropY = mouse.y - m_canvasOriginY;
-
-            // Derive entity name from the file stem
-            fs::path p(assetPath);
-            const std::string entityName = p.stem().string();
-            const std::string ext        = p.extension().string();
-
-            // Create the entity
-            SceneEntity ent;
-            ent.id   = Guid::New().ToString();
-            ent.name = entityName.empty() ? "Asset" : entityName;
-            ent.x    = dropX;
-            ent.y    = dropY;
-            ent.z    = 0.f;
-
-            // TEACHING NOTE — Auto-populating component data from asset type
-            // Depending on the file extension we pre-fill a relevant component
-            // so the designer doesn't have to add it manually.  This is the
-            // same "component inference from asset type" pattern used by
-            // Unity (dragging a Mesh creates a MeshRenderer component) and
-            // Unreal (dragging a StaticMesh creates a StaticMeshActor).
-            const bool isMesh    = (ext == ".fbx" || ext == ".obj" ||
-                                    ext == ".gltf" || ext == ".glb");
-            const bool isTexture = (ext == ".png" || ext == ".jpg" ||
-                                    ext == ".jpeg" || ext == ".dds" ||
-                                    ext == ".tga"  || ext == ".bmp");
-            const bool isAudio   = (ext == ".wav" || ext == ".ogg" ||
-                                    ext == ".mp3"  || ext == ".bank");
-
-            if (isMesh || isTexture)
+            // TEACHING NOTE — ImGui drag-drop payloads are raw byte buffers.
+            // AcceptDragDropPayload() does not promise a trailing '\0', so we
+            // must respect DataSize when constructing the path string to avoid
+            // reading past the end of the buffer.
+            if (payload->Data != nullptr && payload->DataSize > 0)
             {
-                // Pre-populate RenderComponent with the asset path
-                ent.components["RenderComponent"] = {
-                    { "spriteSheet", std::string(assetPath) },
-                    { "zOrder",      0 },
-                    { "isVisible",   true }
-                };
-            }
-            else if (isAudio)
-            {
-                // Pre-populate AudioSourceComponent
-                ent.components["AudioSourceComponent"] = {
-                    { "bankPath",    std::string(assetPath) },
-                    { "autoPlay",    false },
-                    { "loop",        false },
-                    { "volume",      1.0f }
-                };
-            }
+                std::string assetPath(
+                    static_cast<const char*>(payload->Data),
+                    static_cast<std::size_t>(payload->DataSize));
+                // Strip any trailing null terminator the sender may have included.
+                if (!assetPath.empty() && assetPath.back() == '\0')
+                    assetPath.pop_back();
 
-            m_entities.push_back(ent);
-            m_selectedIdx = static_cast<int>(m_entities.size()) - 1;
+                // Convert screen-space mouse position to canvas-local position.
+                const ImVec2 mouse = ImGui::GetMousePos();
+                const float  dropX = mouse.x - m_canvasOriginX;
+                const float  dropY = mouse.y - m_canvasOriginY;
+
+                // Derive entity name from the file stem
+                fs::path p(assetPath);
+                const std::string entityName = p.stem().string();
+
+                // TEACHING NOTE — Case-insensitive extension comparison
+                // ContentBrowserPanel::IsAssetFile already lower-cases extensions
+                // before filtering the file tree, but the payload arrives as the
+                // raw OS path.  Dropping a file with an upper-case extension (e.g.
+                // .PNG or .FBX from Windows Explorer) would silently skip
+                // component inference unless we normalise here.
+                std::string ext = p.extension().string();
+                for (char& c : ext)
+                    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+                // Create the entity
+                SceneEntity ent;
+                ent.id   = Guid::New().ToString();
+                ent.name = entityName.empty() ? "Asset" : entityName;
+                ent.x    = dropX;
+                ent.y    = dropY;
+                ent.z    = 0.f;
+
+                // TEACHING NOTE — Auto-populating component data from asset type
+                // Depending on the file extension we pre-fill a relevant component
+                // so the designer doesn't have to add it manually.  This is the
+                // same "component inference from asset type" pattern used by
+                // Unity (dragging a Mesh creates a MeshRenderer component) and
+                // Unreal (dragging a StaticMesh creates a StaticMeshActor).
+                //
+                // Meshes and textures are intentionally split: only texture
+                // extensions pre-fill RenderComponent.spriteSheet (which is a
+                // 2D sprite/texture path by definition).  Mesh files (.fbx, .obj,
+                // .gltf, .glb) create a named entity without a component so the
+                // designer can add the correct mesh component explicitly.  Mixing
+                // mesh paths into spriteSheet would cause silent load failures.
+                const bool isTexture = (ext == ".png"  || ext == ".jpg"  ||
+                                        ext == ".jpeg" || ext == ".dds"  ||
+                                        ext == ".tga"  || ext == ".bmp");
+                const bool isAudio   = (ext == ".wav"  || ext == ".ogg"  ||
+                                        ext == ".mp3"  || ext == ".bank");
+
+                if (isTexture)
+                {
+                    // Pre-populate RenderComponent with the texture path.
+                    ent.components["RenderComponent"] = {
+                        { "spriteSheet", assetPath },
+                        { "zOrder",      0 },
+                        { "isVisible",   true }
+                    };
+                }
+                else if (isAudio)
+                {
+                    // TEACHING NOTE — Editor-authored component JSON must match
+                    // the runtime ECS field names exactly so the scene serialiser
+                    // can reconstruct the component without silent load failures.
+                    // AudioSourceComponent fields (from ECS.hpp): clipID, isPlaying,
+                    // isLooping, volume  (NOT bankPath / autoPlay / loop).
+                    ent.components["AudioSourceComponent"] = {
+                        { "clipID",     assetPath },
+                        { "isPlaying",  false },
+                        { "isLooping",  false },
+                        { "volume",     1.0f }
+                    };
+                }
+                // Mesh files (.fbx, .obj, .gltf, .glb) create a named entity
+                // with no pre-filled component — the designer adds a mesh
+                // component manually once the mesh pipeline is available.
+
+                m_entities.push_back(ent);
+                m_selectedIdx = static_cast<int>(m_entities.size()) - 1;
+            }
         }
         ImGui::EndDragDropTarget();
     }
