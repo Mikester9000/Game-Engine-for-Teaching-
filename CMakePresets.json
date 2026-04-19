@@ -11,6 +11,10 @@
       "hidden": true,
       "description": "Base settings shared by all Windows presets. Uses the default MSVC toolset (no override). CI compatible with GitHub Actions windows-latest (VS 2022 / v143).",
       "generator": "Visual Studio 17 2022",
+      "toolset": {
+        "value": "v180",
+        "strategy": "set"
+      },
       "architecture": {
         "value": "x64",
         "strategy": "set"
