@@ -24,21 +24,26 @@
  * =============================================================================
  * TEACHING NOTE -- Application State in Immediate-Mode UI
  * =============================================================================
- * In Qt, application state (current project path, status message ...) was
- * stored as member variables of QMainWindow and updated via signals/slots.
- *
  * In ImGui the same state lives as member variables of EditorApp.
  * There are no signals or slots -- each frame EditorApp::Render() reads the
  * state and decides what to draw.  When the user clicks a button, the state
  * is updated immediately (same frame, same call stack).
  *
- * This makes control flow much easier to follow for students:
- *   if (ImGui::MenuItem("Open Project..."))
- *   {
- *       // open file dialog -- happens RIGHT HERE, no callback needed
- *       ...
- *       m_projectPath = result;
- *   }
+ * =============================================================================
+ * TEACHING NOTE -- M6 Panel Layout
+ * =============================================================================
+ * M6 adds three new dockable panels alongside the existing canvas:
+ *
+ *   +----------------+------------------------+--------------+
+ *   |  Content       |  Scene Editor          |  Inspector   |
+ *   |  Browser       |  (canvas)              |  (props)     |
+ *   |                +------------------------+              |
+ *   |                |  Scene Hierarchy       |              |
+ *   +----------------+------------------------+--------------+
+ *
+ * All panels share the scene state via SceneEditorPanel's public accessor API.
+ * EditorApp owns the single SceneEditorPanel and passes a pointer to the
+ * hierarchy and inspector panels at construction time.
  *
  * =============================================================================
  */
@@ -48,6 +53,8 @@
 #include <string>
 #include "ContentBrowserPanel.hpp"
 #include "SceneEditorPanel.hpp"
+#include "panels/SceneHierarchyPanel.hpp"
+#include "panels/InspectorPanel.hpp"
 
 /**
  * @class EditorApp
@@ -67,8 +74,10 @@ public:
      *   1. Full-screen DockSpace (background window)
      *   2. Main menu bar
      *   3. ContentBrowserPanel::Render()
-     *   4. SceneEditorPanel::Render()
-     *   5. Status bar
+     *   4. SceneEditorPanel::Render()   (canvas)
+     *   5. SceneHierarchyPanel::Render()
+     *   6. InspectorPanel::Render()
+     *   7. Status bar
      */
     void Render();
 
@@ -76,6 +85,7 @@ private:
     // ---- Helper methods ----------------------------------------------------
     void RenderMenuBar();
     void RenderStatusBar();
+    void LaunchPlayInEngine();  ///< Save scene + launch engine_sandbox.exe
 
     // ---- File dialog helpers (Windows native via COMDLG32) -----------------
     // TEACHING NOTE -- Native file dialogs without Qt
@@ -86,10 +96,18 @@ private:
     std::string PickFolder(const char* title);
     std::string PickSaveFile(const char* title, const char* filter,
                              const char* defaultExt);
+    std::string PickOpenFile(const char* title, const char* filter);
 
     // ---- Member state ------------------------------------------------------
-    ContentBrowserPanel  m_contentBrowser;   ///< Left dock: file tree
-    SceneEditorPanel     m_sceneEditor;      ///< Center: scene canvas
+
+    // TEACHING NOTE -- Panel ownership
+    // EditorApp owns the panels by value (no heap allocation needed).
+    // SceneHierarchyPanel and InspectorPanel hold a NON-OWNING pointer to
+    // m_sceneEditor and are wired up in the EditorApp constructor.
+    ContentBrowserPanel  m_contentBrowser;   ///< Content/ file tree
+    SceneEditorPanel     m_sceneEditor;      ///< Scene canvas (owns entity data)
+    SceneHierarchyPanel  m_hierarchy;        ///< M6: entity list panel
+    InspectorPanel       m_inspector;        ///< M6: property editor panel
 
     std::string  m_projectPath;      ///< Absolute path to currently open project
     std::string  m_statusMessage;    ///< Bottom status bar text

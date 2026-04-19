@@ -122,18 +122,20 @@ backend.
 
 ---
 
-## Milestone 6 — Editor *(medium-term)*
+## Milestone 6 — Editor *(in progress — M6)*
 
 **Goal:** Save a scene in the editor and immediately run it in the engine.
 
-| Item | Priority |
-|------|----------|
-| Entity inspector / property editor (`editor/src/panels/inspector.hpp/.cpp`) | HIGH |
-| Scene hierarchy panel (`editor/src/panels/scene_hierarchy.hpp/.cpp`) | HIGH |
-| Scene ECS serialization (`src/engine/scene/scene_serialiser.hpp/.cpp`) | HIGH |
-| "Play In Engine" button — launches `engine_sandbox.exe` with current scene | HIGH |
-| Mesh placement in scene editor (drag from content browser) | MEDIUM |
-| Undo/redo stack in scene editor | LOW |
+| Item | Status | Priority |
+|------|--------|----------|
+| Entity inspector / property editor (`editor/src/panels/InspectorPanel.hpp/.cpp`) | ✅ Done | HIGH |
+| Scene hierarchy panel (`editor/src/panels/SceneHierarchyPanel.hpp/.cpp`) | ✅ Done | HIGH |
+| Scene ECS serialization (`src/engine/scene/scene_serialiser.hpp/.cpp`) | ✅ Done | HIGH |
+| "Play In Engine" button — saves temp scene + launches `engine_sandbox.exe` | ✅ Done | HIGH |
+| Headless editor CLI (`--headless`, `--create-scene`, `--load-scene --validate`) | ✅ Done | HIGH |
+| Load Scene from menu (`File > Load Scene...`) | ✅ Done | MEDIUM |
+| Mesh placement via asset drag-drop from content browser | ⬜ | MEDIUM |
+| Undo/redo stack in scene editor | ⬜ | LOW |
 
 ---
 

@@ -1,6 +1,6 @@
 /**
  * @file EditorApp.cpp
- * @brief Top-level editor application implementation.
+ * @brief Top-level editor application implementation (M6 updated).
  */
 
 #include "EditorApp.hpp"
@@ -22,6 +22,16 @@ namespace fs = std::filesystem;
 
 EditorApp::EditorApp()
 {
+    // TEACHING NOTE -- Wiring panels with non-owning pointers
+    // SceneHierarchyPanel and InspectorPanel need a pointer to m_sceneEditor
+    // so they can read/write the shared entity list and selection state.
+    // We wire them here after m_sceneEditor is constructed (member init order
+    // guarantees m_sceneEditor is fully constructed before m_hierarchy and
+    // m_inspector, but their constructors receive nullptr; we call SetScenePanel
+    // explicitly to be safe regardless of declaration order).
+    m_hierarchy.SetScenePanel(&m_sceneEditor);
+    m_inspector.SetScenePanel(&m_sceneEditor);
+
     m_statusMessage = "Ready";
 }
 
@@ -52,6 +62,13 @@ void EditorApp::Render()
     m_contentBrowser.Render();
     m_sceneEditor.Render();
 
+    // TEACHING NOTE -- M6 new panels
+    // These two panels share state with m_sceneEditor via the pointer set in
+    // the constructor.  They are separate dockable ImGui windows -- the user
+    // can drag them to any position in the DockSpace layout.
+    m_hierarchy.Render();
+    m_inspector.Render();
+
     // ---- About popup -------------------------------------------------------
     if (m_showAbout)
         ImGui::OpenPopup("About##popup");
@@ -63,12 +80,14 @@ void EditorApp::Render()
     if (ImGui::BeginPopupModal("About##popup", &m_showAbout,
                                ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextUnformatted("Creation Suite Editor  v1.0");
+        ImGui::TextUnformatted("Creation Suite Editor  v1.0  (M6)");
         ImGui::Separator();
         ImGui::TextUnformatted("Part of the Game Engine for Teaching monorepo.");
         ImGui::TextUnformatted("Dear ImGui (MIT) for UI.");
         ImGui::TextUnformatted("D3D11 (Windows SDK) for rendering.");
         ImGui::TextUnformatted("nlohmann-json (MIT) for scene files.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("M6 panels: Scene Hierarchy, Inspector, Play-in-Engine.");
         ImGui::Spacing();
         if (ImGui::Button("Close", ImVec2(120, 0)))
         {
@@ -128,6 +147,35 @@ void EditorApp::RenderMenuBar()
             }
         }
 
+        if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+        {
+            m_sceneEditor.NewScene();
+            m_statusMessage = "New scene created.";
+            m_statusTimer   = 3.f;
+        }
+
+        // TEACHING NOTE -- Load Scene (M6)
+        // Mirrors "Save Scene" but in the other direction: shows a file open
+        // dialog, then calls SceneEditorPanel::LoadScene() to parse the JSON.
+        if (ImGui::MenuItem("Load Scene...", "Ctrl+Shift+O"))
+        {
+            std::string filePath = PickOpenFile(
+                "Load Scene", "Scene Files\0*.scene.json\0All Files\0*.*\0");
+            if (!filePath.empty())
+            {
+                if (m_sceneEditor.LoadScene(filePath))
+                {
+                    m_statusMessage = "Loaded: " + filePath;
+                    m_statusTimer   = 4.f;
+                }
+                else
+                {
+                    m_statusMessage = "Load failed: " + filePath;
+                    m_statusTimer   = 5.f;
+                }
+            }
+        }
+
         if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
         {
             if (m_projectPath.empty())
@@ -137,7 +185,6 @@ void EditorApp::RenderMenuBar()
             }
             else
             {
-                std::string defaultDir = m_projectPath + "/Content/Maps";
                 std::string filePath = PickSaveFile(
                     "Save Scene", "Scene Files\0*.scene.json\0All Files\0*.*\0",
                     "scene.json");
@@ -195,6 +242,29 @@ void EditorApp::RenderMenuBar()
                 m_statusTimer   = 4.f;
             }
         }
+
+        ImGui::Separator();
+
+        // TEACHING NOTE -- Play in Engine (M6)
+        // "Play in Engine" saves the current scene to a temp .scene.json file
+        // and launches engine_sandbox.exe with --scene pointing to that file.
+        // This allows the designer to immediately test the scene in the runtime
+        // engine without leaving the editor.
+        //
+        // The engine_sandbox.exe is expected to live in the same directory as
+        // editor.exe (both are built into the same CMake output directory).
+        if (ImGui::MenuItem("Play in Engine", "F5"))
+        {
+            LaunchPlayInEngine();
+        }
+
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Save scene to a temp file and launch engine_sandbox.exe.\n"
+                "engine_sandbox.exe must be in the same folder as editor.exe.");
+        }
+
         ImGui::EndMenu();
     }
 
@@ -207,6 +277,102 @@ void EditorApp::RenderMenuBar()
     }
 
     ImGui::EndMainMenuBar();
+}
+
+// ---------------------------------------------------------------------------
+// Shared helper — wide-char to UTF-8
+// ---------------------------------------------------------------------------
+
+// TEACHING NOTE -- WideCharToMultiByte for UTF-8 conversion
+// Windows internally uses UTF-16 (wide char) for all API strings.
+// Our public API uses std::string (UTF-8), which is the cross-platform norm.
+// WideCharToMultiByte(CP_UTF8, ...) converts UTF-16 → UTF-8.
+// The two-pass pattern (first call returns required buffer size, second fills it)
+// is required because UTF-8 and UTF-16 have variable-length encodings.
+static std::string WideToUtf8(const std::wstring& ws)
+{
+    if (ws.empty()) return {};
+    const int len = WideCharToMultiByte(
+        CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return {};
+    std::string s(static_cast<size_t>(len - 1), '\0');
+    WideCharToMultiByte(
+        CP_UTF8, 0, ws.c_str(), -1, s.data(), len, nullptr, nullptr);
+    return s;
+}
+
+// ---------------------------------------------------------------------------
+// Play in Engine
+// ---------------------------------------------------------------------------
+
+// TEACHING NOTE -- Play in Engine implementation
+// Steps:
+//   1. Write the scene to a well-known temp path (%TEMP%\editor_scene.scene.json).
+//   2. Find engine_sandbox.exe next to editor.exe (same output folder).
+//   3. Launch via ShellExecuteExW with --scene <tempPath>.
+//
+// GetModuleFileNameW(nullptr, ...) returns the path of the running .exe.
+// We strip the filename to get the directory, then look for engine_sandbox.exe.
+//
+// Production note: in a shipping editor you would write the scene to
+// the project's Cooked/ folder and pass a project-relative path.  The temp
+// path approach is simpler for a teaching demo.
+void EditorApp::LaunchPlayInEngine()
+{
+    // Build temp scene path: %TEMP%\editor_preview.scene.json
+    wchar_t tempDir[MAX_PATH] = {};
+    GetTempPathW(MAX_PATH, tempDir);
+    std::wstring tempScene(tempDir);
+    tempScene += L"editor_preview.scene.json";
+
+    const std::string tempSceneNarrow = WideToUtf8(tempScene);
+
+    if (!m_sceneEditor.SaveScene(tempSceneNarrow))
+    {
+        m_statusMessage = "Play in Engine: failed to save temp scene!";
+        m_statusTimer   = 5.f;
+        return;
+    }
+
+    // Find engine_sandbox.exe next to this editor.exe
+    wchar_t exePath[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    std::wstring exeDir(exePath);
+    const auto lastSlash = exeDir.find_last_of(L"\\/");
+    if (lastSlash != std::wstring::npos)
+        exeDir = exeDir.substr(0, lastSlash);
+
+    std::wstring sandboxExe = exeDir + L"\\engine_sandbox.exe";
+
+    // Build command-line arguments
+    std::wstring args = L"--scene \"" + tempScene + L"\"";
+
+    // TEACHING NOTE -- ShellExecuteExW vs CreateProcessW
+    // ShellExecuteExW is simpler but does not let us capture the output.
+    // CreateProcessW gives full control (redirect stdout/stderr, wait for exit).
+    // We use ShellExecuteExW here for brevity; swap to CreateProcessW if you
+    // want to show the engine output in the editor's console panel.
+    SHELLEXECUTEINFOW sei = {};
+    sei.cbSize      = sizeof(sei);
+    sei.fMask       = SEE_MASK_NOCLOSEPROCESS;
+    sei.lpVerb      = L"open";
+    sei.lpFile      = sandboxExe.c_str();
+    sei.lpParameters = args.c_str();
+    sei.lpDirectory = exeDir.c_str();
+    sei.nShow       = SW_SHOWNORMAL;
+
+    if (ShellExecuteExW(&sei))
+    {
+        m_statusMessage = "Play in Engine: launched engine_sandbox.exe";
+        m_statusTimer   = 4.f;
+        if (sei.hProcess)
+            CloseHandle(sei.hProcess);
+    }
+    else
+    {
+        m_statusMessage = "Play in Engine: engine_sandbox.exe not found next to editor.exe";
+        m_statusTimer   = 6.f;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -239,13 +405,22 @@ void EditorApp::RenderStatusBar()
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 2.f);  // vertical centre
         ImGui::TextUnformatted(m_statusMessage.c_str());
 
-        // Show project path on the right side
+        // Show entity count + project path on the right side
+        const int entCount = static_cast<int>(m_sceneEditor.GetEntities().size());
+        std::string right;
+        if (entCount > 0)
+            right = std::to_string(entCount) + " entit" + (entCount == 1 ? "y" : "ies");
         if (!m_projectPath.empty())
         {
-            const std::string label = "Project: " + m_projectPath;
-            float textWidth = ImGui::CalcTextSize(label.c_str()).x;
+            if (!right.empty()) right += "   |   ";
+            right += "Project: " + m_projectPath;
+        }
+
+        if (!right.empty())
+        {
+            float textWidth = ImGui::CalcTextSize(right.c_str()).x;
             ImGui::SameLine(ImGui::GetContentRegionAvail().x - textWidth);
-            ImGui::TextDisabled("%s", label.c_str());
+            ImGui::TextDisabled("%s", right.c_str());
         }
     }
     ImGui::End();
@@ -336,6 +511,44 @@ std::string EditorApp::PickSaveFile(const char* /*title*/, const char* filter,
 
     std::string result;
     if (GetSaveFileNameW(&ofn))
+    {
+        int len = WideCharToMultiByte(
+            CP_UTF8, 0, szFile, -1, nullptr, 0, nullptr, nullptr);
+        if (len > 0)
+        {
+            result.resize(static_cast<size_t>(len - 1));
+            WideCharToMultiByte(
+                CP_UTF8, 0, szFile, -1, result.data(), len, nullptr, nullptr);
+        }
+    }
+    return result;
+}
+
+// TEACHING NOTE -- GetOpenFileName (classic Win32 open dialog)
+// Mirrors PickSaveFile but uses OFN_FILEMUSTEXIST instead of OFN_OVERWRITEPROMPT.
+// This is the standard "Open File" dialog used in all Win32 applications.
+std::string EditorApp::PickOpenFile(const char* /*title*/, const char* filter)
+{
+    size_t filterLen = 0;
+    const char* p    = filter;
+    while (*p || *(p + 1)) { ++filterLen; ++p; }
+    filterLen += 2;
+
+    std::wstring wFilter(filterLen, L'\0');
+    for (size_t i = 0; i < filterLen; ++i)
+        wFilter[i] = static_cast<wchar_t>(static_cast<unsigned char>(filter[i]));
+
+    wchar_t szFile[MAX_PATH] = {};
+
+    OPENFILENAMEW ofn   = {};
+    ofn.lStructSize     = sizeof(ofn);
+    ofn.lpstrFilter     = wFilter.c_str();
+    ofn.lpstrFile       = szFile;
+    ofn.nMaxFile        = MAX_PATH;
+    ofn.Flags           = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+
+    std::string result;
+    if (GetOpenFileNameW(&ofn))
     {
         int len = WideCharToMultiByte(
             CP_UTF8, 0, szFile, -1, nullptr, 0, nullptr, nullptr);

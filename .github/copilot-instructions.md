@@ -168,7 +168,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | `physics_test` CI scene | ✅ | `--scene physics_test` in `main.cpp`; 3 acceptance tests (drop_sphere, step_ledge, raycast); `build-windows-physics` CI job |
 | `physics_impl.hpp` | ✅ | Internal pImpl header; `PhysicsWorldImpl` struct + Jolt layer filters; never included outside `physics/` |
 
-**M5 is ✅ complete.** Jolt Physics integrated: `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent` + `ColliderComponent` in ECS, `physics_test` headless acceptance scene, CI job. Next: M6 Editor.
+**M5 is ✅ complete.** Jolt Physics integrated: `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent` + `ColliderComponent` in ECS, `physics_test` headless acceptance scene, CI job. **M6 is 🔨 in progress.** `SceneHierarchyPanel`, `InspectorPanel`, `SceneSerialiser`, `Play-in-Engine`, headless editor CLI, `ENGINE_ENABLE_JSON` added to CMake. Remaining: asset drag-drop, CI editor build step. Next: complete M6 then M7.
 
 ---
 
@@ -243,13 +243,14 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `EditorApp` (DockSpace, menu bar, status bar) | ✅ | `editor/src/EditorApp.hpp/.cpp` |
+| `EditorApp` (DockSpace, menu bar, status bar) | ✅ | `editor/src/EditorApp.hpp/.cpp`; M6: Play-in-Engine, Load Scene, panel wiring |
 | `ContentBrowserPanel` | ✅ | `editor/src/ContentBrowserPanel.hpp/.cpp` — file tree via std::filesystem |
-| `SceneEditorPanel` canvas | ✅ | `editor/src/SceneEditorPanel.hpp/.cpp` — ImGui DrawList canvas + JSON I/O |
-| Entity inspector / property editor | ⬜ | `editor/src/panels/inspector.hpp/.cpp` |
-| Scene hierarchy panel | ⬜ | `editor/src/panels/scene_hierarchy.hpp/.cpp` |
-| Scene ECS serialization | ⬜ | `src/engine/scene/scene_serialiser.hpp/.cpp` — JSON ↔ ECS snapshot |
-| Play-in-Engine button | ⬜ | Launch `engine_sandbox.exe` with current scene file |
+| `SceneEditorPanel` canvas | ✅ | `editor/src/SceneEditorPanel.hpp/.cpp` — ImGui DrawList canvas + JSON I/O; M6: z+components, shared-state accessors |
+| Entity inspector / property editor | ✅ | `editor/src/panels/InspectorPanel.hpp/.cpp` — table-driven (kComponentDefs); DragFloat/DragInt/Checkbox; Add Component popup |
+| Scene hierarchy panel | ✅ | `editor/src/panels/SceneHierarchyPanel.hpp/.cpp` — entity list; add/rename/duplicate/delete; context menu |
+| Scene ECS serialization | ✅ | `src/engine/scene/scene_serialiser.hpp/.cpp` — JSON ↔ ECS World; SaveScene/LoadScene/CountEntities; ENGINE_ENABLE_JSON gated |
+| Play-in-Engine button | ✅ | `EditorApp::LaunchPlayInEngine()` — saves temp scene to %TEMP%, ShellExecuteExW engine_sandbox.exe |
+| Headless editor CLI | ✅ | `editor/src/main.cpp` — `--headless`, `--create-scene`, `--load-scene --validate`; AttachConsole_(); exit 0/1 |
 | Asset drag-drop into scene | ⬜ | Drag from ContentBrowser → SceneEditor |
 
 ---
@@ -262,7 +263,7 @@ Recommended implementation order to reach project completion (D3D11-first policy
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **1 — Now** | **M6: Editor** | Entity inspector; scene ECS serialization; Play-in-Engine |
+| **1 — Now** | **M6: Editor (in progress)** | ~~Entity inspector~~ ✅, ~~scene ECS serialization~~ ✅, ~~Play-in-Engine~~ ✅; remaining: asset drag-drop |
 | **2** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
 | **3** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
 | **4+** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
@@ -767,7 +768,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M4 | Animation runtime (C++) — CPU core | ✅ |
 | M4b | IK solver + D3D11 GPU skinning CB | ✅ |
 | M5 | Jolt Physics | ✅ |
-| M6 | Editor inspector + Play-in-Engine | ⬜ |
+| M6 | Editor inspector + Play-in-Engine | 🔨 |
 | M7 | World streaming | ⬜ |
 | M8 | Wire all gameplay into D3D11 runtime | ⬜ |
 | Post-M8 | Vulkan catch-up (resume all DEFERRED Vulkan items) | ⬜ |

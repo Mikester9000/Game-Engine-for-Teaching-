@@ -73,6 +73,14 @@ set(EDITOR_SOURCES
     # Scene editor panel -- 2D entity canvas with JSON save/load
     src/SceneEditorPanel.cpp
     src/SceneEditorPanel.hpp
+
+    # M6 -- Scene Hierarchy panel: entity list, rename, duplicate, delete
+    src/panels/SceneHierarchyPanel.cpp
+    src/panels/SceneHierarchyPanel.hpp
+
+    # M6 -- Inspector panel: component property editor (table-driven)
+    src/panels/InspectorPanel.cpp
+    src/panels/InspectorPanel.hpp
 )
 
 add_executable(creation-suite-editor WIN32 ${EDITOR_SOURCES})
@@ -82,6 +90,7 @@ add_executable(creation-suite-editor WIN32 ${EDITOR_SOURCES})
 # ---------------------------------------------------------------------------
 target_include_directories(creation-suite-editor PRIVATE
     src/
+    src/panels/
     # Shared runtime headers -- Guid.hpp (UUID generation), VersionedFile.hpp
     ${CMAKE_SOURCE_DIR}/shared/runtime
 )

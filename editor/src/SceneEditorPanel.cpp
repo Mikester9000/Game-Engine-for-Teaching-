@@ -49,25 +49,20 @@ void SceneEditorPanel::Render()
         NewScene();
 
     ImGui::SameLine();
+    // TEACHING NOTE — M6: entity list moved to SceneHierarchyPanel
+    // The entity sidebar that was here has been extracted into its own dockable
+    // SceneHierarchyPanel so users can position it anywhere in the layout.
+    // This panel is now canvas-only — the authoritative scene state (entity list
+    // + selection index) is still owned here and shared via GetEntities() /
+    // GetSelectedIdx() etc.
     ImGui::TextDisabled("  Left-click: place entity   |   Delete: remove selected");
 
     ImGui::Separator();
 
-    // Split the panel: canvas on the left, entity list on the right
-    // TEACHING NOTE -- ImGui::Columns (simple 2-column layout)
-    // Columns() divides the current window into N columns separated by a
-    // draggable divider.  Column 0 gets the canvas; column 1 the entity list.
-    ImGui::Columns(2, "scene_columns", true);
-    ImGui::SetColumnWidth(0, ImGui::GetContentRegionAvail().x * 0.75f);
-
+    // Full-width canvas (no column split — hierarchy is a separate panel)
     RenderCanvas();
 
-    ImGui::NextColumn();
-    RenderEntityList();
-
-    ImGui::Columns(1);
-
-    // Pending "New Entity" popup is handled after columns so it can be modal
+    // Pending "New Entity" popup
     HandleEntityPopup();
 
     ImGui::End();
@@ -212,40 +207,6 @@ void SceneEditorPanel::RenderCanvas()
 }
 
 // ---------------------------------------------------------------------------
-// Entity list sidebar
-// ---------------------------------------------------------------------------
-
-void SceneEditorPanel::RenderEntityList()
-{
-    ImGui::TextUnformatted("Entities");
-    ImGui::Separator();
-
-    ImGui::BeginChild("##entity_list", ImVec2(0, 0), ImGuiChildFlags_None);
-
-    for (int i = 0; i < static_cast<int>(m_entities.size()); ++i)
-    {
-        const SceneEntity& ent = m_entities[static_cast<size_t>(i)];
-        const bool selected    = (i == m_selectedIdx);
-
-        // TEACHING NOTE -- Selectable
-        // ImGui::Selectable renders a clickable row that highlights on hover
-        // and can show as "selected" when the second argument is true.
-        // It returns true the frame it is clicked.
-        if (ImGui::Selectable(ent.name.c_str(), selected))
-            m_selectedIdx = i;
-
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
-            ImGui::SetTooltip("ID: %s\nPos: (%.0f, %.0f)",
-                              ent.id.c_str(), ent.x, ent.y);
-    }
-
-    if (m_entities.empty())
-        ImGui::TextDisabled("(no entities)");
-
-    ImGui::EndChild();
-}
-
-// ---------------------------------------------------------------------------
 // New-entity popup
 // ---------------------------------------------------------------------------
 
@@ -336,15 +297,21 @@ bool SceneEditorPanel::SaveScene(const std::string& filePath) const
     json entitiesArr = json::array();
     for (const auto& ent : m_entities)
     {
-        entitiesArr.push_back({
-            { "id",   ent.id },
-            { "name", ent.name },
-            { "transform", {
-                { "x", ent.x },
-                { "y", ent.y },
-                { "z", 0.0   }
-            }}
-        });
+        json je;
+        je["id"]   = ent.id;
+        je["name"] = ent.name;
+        je["transform"] = {
+            { "x", ent.x },
+            { "y", ent.y },
+            { "z", ent.z }
+        };
+        // TEACHING NOTE — Persisting component data
+        // Only write the "components" key when there is something to write.
+        // This keeps scenes that only have positional data compact.
+        if (!ent.components.empty())
+            je["components"] = ent.components;
+
+        entitiesArr.push_back(je);
     }
     root["entities"] = entitiesArr;
 
@@ -392,7 +359,17 @@ bool SceneEditorPanel::LoadScene(const std::string& filePath)
             {
                 ent.x = entJson["transform"].value("x", 0.f);
                 ent.y = entJson["transform"].value("y", 0.f);
+                ent.z = entJson["transform"].value("z", 0.f);
             }
+
+            // TEACHING NOTE — Loading component data
+            // If the scene file has a "components" object, load it into
+            // ent.components as raw JSON.  The InspectorPanel will parse it.
+            if (entJson.contains("components") && entJson["components"].is_object())
+                ent.components = entJson["components"];
+            else
+                ent.components = nlohmann::json::object();
+
             m_entities.push_back(ent);
         }
     }

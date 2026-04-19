@@ -6,16 +6,16 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1068 across 40 subsystems.
+**Total lessons:** 1128 across 41 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (47 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (51 lessons)
 - [ci/workflows](#ciworkflows) (34 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
-- [editor/src](#editorsrc) (45 lessons)
+- [editor/src](#editorsrc) (87 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
@@ -26,6 +26,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
 - [engine/rendering](#enginerendering) (215 lessons)
+- [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
@@ -244,9 +245,30 @@ set(ENGINE_ENABLE_PHYSICS OFF CACHE BOOL "" FORCE)
 endif()
 endif()
 
+### nlohmann/json in the engine
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L198) (line 198)
+
+nlohmann-json is already in vcpkg.json (required by cook.exe and the editor).
+When the vcpkg toolchain is active, find_package(nlohmann_json) will find it
+automatically.  We use QUIET so a missing package is not an error — the
+scene_serialiser will compile out its JSON code via #ifdef ENGINE_ENABLE_JSON.
+
+Why not REQUIRED?  The engine_sandbox must build on any Windows machine, even
+without a vcpkg toolchain configured.  nlohmann/json is a "nice to have" for
+runtime scene loading; the engine works without it.
+---------------------------------------------------------------------------
+find_package(nlohmann_json CONFIG QUIET)
+if(nlohmann_json_FOUND)
+message(STATUS "nlohmann/json found: ENGINE_ENABLE_JSON ENABLED (M6 scene serialiser).")
+else()
+message(STATUS "nlohmann/json NOT found — scene_serialiser JSON code compiled out. "
+"Install via vcpkg or pass -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake")
+endif()
+
 ### find_package(Curses) sets:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L200) (line 200)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L221) (line 221)
 
 CURSES_LIBRARIES    — ncurses link flags
   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
@@ -260,7 +282,7 @@ endif()
 
 ### Build Lua from source (preferred)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L212) (line 212)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L233) (line 233)
 
 ──────────────────────────────────────────────────
 Lua is a small, self-contained library (~30 .c files).  Building it from the
@@ -282,7 +304,7 @@ Detection order:
 
 ### Building a static library from C source in CMake
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L239) (line 239)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L260) (line 260)
 
 -----------------------------------------------------------------------
 add_library(target STATIC files…) compiles the listed .c files and
@@ -294,7 +316,7 @@ include_directories() needed at the call-site.
 
 ### Platform compile flags for Lua
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L265) (line 265)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L286) (line 286)
 
 On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
 popen().  On Windows MSVC we disable several noisy warnings that come from
@@ -316,7 +338,7 @@ endif()
 
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L321) (line 321)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L342) (line 342)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -347,7 +369,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L363) (line 363)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L384) (line 384)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -357,7 +379,7 @@ if(ENGINE_ENABLE_TERMINAL)
 
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L408) (line 408)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L429) (line 429)
 
 The terminal game links against Lua 5.5 (built from bundled source or
 found as a system package).  ENGINE_ENABLE_LUA activates the Lua
@@ -369,7 +391,7 @@ endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L430) (line 430)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L451) (line 451)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -394,7 +416,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Animation Runtime Sources (M4)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L468) (line 468)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L489) (line 489)
 
 -----------------------------------------------------------------------
 The animation runtime is renderer-agnostic: it runs on both D3D11 and
@@ -409,7 +431,7 @@ src/engine/animation/animation_system.cpp
 
 ### M4b: IK solver (renderer-agnostic, pure C++17).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L479) (line 479)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L500) (line 500)
 
 Two-Bone analytical IK and FABRIK iterative N-joint IK.
 Lives in animation/ alongside the other CPU-side animation systems.
@@ -418,7 +440,7 @@ src/engine/animation/ik_solver.cpp
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L487) (line 487)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L508) (line 508)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -430,7 +452,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L495) (line 495)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L516) (line 516)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -438,7 +460,7 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 
 ### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L499) (line 499)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L520) (line 520)
 
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
@@ -448,7 +470,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L521) (line 521)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L542) (line 542)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -461,13 +483,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L534) (line 534)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L555) (line 555)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L536) (line 536)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L557) (line 557)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -498,9 +520,23 @@ list(APPEND SANDBOX_SOURCES
 src/engine/physics/hit_volume.cpp
 )
 
+### Conditional JSON sources
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L590) (line 590)
+
+scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
+The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
+When nlohmann/json is NOT found, the functions log an error and return
+false — no crash, no undefined symbols.  This way the sandbox always
+links cleanly regardless of vcpkg availability.
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/engine/scene/scene_serialiser.cpp
+)
+
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L569) (line 569)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L604) (line 604)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -513,7 +549,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L582) (line 582)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L617) (line 617)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -537,7 +573,7 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L622) (line 622)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L657) (line 657)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -549,7 +585,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L631) (line 631)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L666) (line 666)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -558,7 +594,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L641) (line 641)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L676) (line 676)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -568,9 +604,19 @@ if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
 target_link_libraries(engine_sandbox PRIVATE Jolt::Jolt)
 endif()
 
+### nlohmann_json::nlohmann_json (M6)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L685) (line 685)
+
+Header-only library; linking the CMake imported target adds the vcpkg
+include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
+if(nlohmann_json_FOUND)
+target_link_libraries(engine_sandbox PRIVATE nlohmann_json::nlohmann_json)
+endif()
+
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L653) (line 653)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L695) (line 695)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -579,7 +625,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L659) (line 659)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L701) (line 701)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -588,7 +634,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L664) (line 664)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L706) (line 706)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -599,7 +645,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L680) (line 680)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L722) (line 722)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -608,9 +654,19 @@ if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
 list(APPEND SANDBOX_DEFS ENGINE_ENABLE_PHYSICS)
 endif()
 
+### ENGINE_ENABLE_JSON compile definition (M6)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L730) (line 730)
+
+Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
+gates all JSON parsing/writing code behind this macro.
+if(nlohmann_json_FOUND)
+list(APPEND SANDBOX_DEFS ENGINE_ENABLE_JSON)
+endif()
+
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L693) (line 693)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L742) (line 742)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -644,7 +700,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L725) (line 725)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L774) (line 774)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -659,7 +715,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L740) (line 740)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L789) (line 789)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -674,7 +730,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L782) (line 782)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L831) (line 831)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -697,7 +753,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L803) (line 803)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L852) (line 852)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -718,7 +774,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L820) (line 820)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L869) (line 869)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -729,7 +785,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L843) (line 843)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L892) (line 892)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -751,7 +807,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L862) (line 862)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L911) (line 911)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -762,7 +818,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L870) (line 870)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L919) (line 919)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -772,7 +828,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L900) (line 900)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L949) (line 949)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -781,7 +837,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L907) (line 907)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L956) (line 956)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1361,7 +1417,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 ### Linking D3D11 + DXGI
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L92) (line 92)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L101) (line 101)
 
 d3d11.lib  -- Direct3D 11 device, context, swapchain.  Ships with the
               Windows SDK; no extra SDK install beyond Visual Studio.
@@ -1378,7 +1434,7 @@ dxgi
 
 ### UNICODE, WIN32_LEAN_AND_MEAN, NOMINMAX
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L110) (line 110)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L119) (line 119)
 
 UNICODE/_UNICODE  : Win32 API calls default to wide-char (wchar_t) variants.
 WIN32_LEAN_AND_MEAN : excludes rarely-used headers from <windows.h>,
@@ -1489,9 +1545,22 @@ default-open, selected highlight, and more.
 
 =============================================================================
 
+### Wiring panels with non-owning pointers
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L25) (line 25)
+
+SceneHierarchyPanel and InspectorPanel need a pointer to m_sceneEditor
+so they can read/write the shared entity list and selection state.
+We wire them here after m_sceneEditor is constructed (member init order
+guarantees m_sceneEditor is fully constructed before m_hierarchy and
+m_inspector, but their constructors receive nullptr; we call SetScenePanel
+explicitly to be safe regardless of declaration order).
+m_hierarchy.SetScenePanel(&m_sceneEditor);
+m_inspector.SetScenePanel(&m_sceneEditor);
+
 ### DockSpaceOverViewport
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L35) (line 35)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L45) (line 45)
 
 ImGui::DockSpaceOverViewport() creates a DockSpace that fills the entire
 main viewport.  All other ImGui windows can be docked into this space.
@@ -1505,9 +1574,19 @@ ImGui::GetMainViewport(),
 ImGuiDockNodeFlags_PassthruCentralNode
 );
 
+### M6 new panels
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L65) (line 65)
+
+These two panels share state with m_sceneEditor via the pointer set in
+the constructor.  They are separate dockable ImGui windows -- the user
+can drag them to any position in the DockSpace layout.
+m_hierarchy.Render();
+m_inspector.Render();
+
 ### ImGui Modal Popups
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L59) (line 59)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L76) (line 76)
 
 OpenPopup() marks a popup as "open"; BeginPopupModal() renders it.
 The popup blocks interaction with windows behind it (modal behaviour).
@@ -1515,12 +1594,14 @@ EndPopup() must always be called if BeginPopupModal returned true.
 if (ImGui::BeginPopupModal("About##popup", &m_showAbout,
 ImGuiWindowFlags_AlwaysAutoResize))
 {
-ImGui::TextUnformatted("Creation Suite Editor  v1.0");
+ImGui::TextUnformatted("Creation Suite Editor  v1.0  (M6)");
 ImGui::Separator();
 ImGui::TextUnformatted("Part of the Game Engine for Teaching monorepo.");
 ImGui::TextUnformatted("Dear ImGui (MIT) for UI.");
 ImGui::TextUnformatted("D3D11 (Windows SDK) for rendering.");
 ImGui::TextUnformatted("nlohmann-json (MIT) for scene files.");
+ImGui::Spacing();
+ImGui::TextUnformatted("M6 panels: Scene Hierarchy, Inspector, Play-in-Engine.");
 ImGui::Spacing();
 if (ImGui::Button("Close", ImVec2(120, 0)))
 {
@@ -1532,7 +1613,7 @@ ImGui::EndPopup();
 
 ### ImGui Menu Bar
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L98) (line 98)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L117) (line 117)
 
 ImGui::BeginMainMenuBar() / EndMainMenuBar() create a menu bar anchored to
 the top of the main viewport (not inside any ImGui window).
@@ -1544,9 +1625,34 @@ void EditorApp::RenderMenuBar()
 if (!ImGui::BeginMainMenuBar())
 return;
 
+### Load Scene (M6)
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L157) (line 157)
+
+Mirrors "Save Scene" but in the other direction: shows a file open
+dialog, then calls SceneEditorPanel::LoadScene() to parse the JSON.
+if (ImGui::MenuItem("Load Scene...", "Ctrl+Shift+O"))
+{
+std::string filePath = PickOpenFile(
+"Load Scene", "Scene Files\0*.scene.json\0All Files\0*.*\0");
+if (!filePath.empty())
+{
+if (m_sceneEditor.LoadScene(filePath))
+{
+m_statusMessage = "Loaded: " + filePath;
+m_statusTimer   = 4.f;
+}
+else
+{
+m_statusMessage = "Load failed: " + filePath;
+m_statusTimer   = 5.f;
+}
+}
+}
+
 ### Posting WM_QUIT from within ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L164) (line 164)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L211) (line 211)
 
 PostQuitMessage(0) posts a WM_QUIT to the Win32 message queue.
 The main loop detects this and sets done = true, triggering cleanup.
@@ -1555,7 +1661,7 @@ PostQuitMessage(0);
 
 ### ShellExecuteW to run the cook script
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L185) (line 185)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L232) (line 232)
 
 ShellExecuteW launches an external process using the Windows
 shell.  "open" + a .py file invokes the system Python interpreter.
@@ -1569,12 +1675,87 @@ m_statusMessage = "Cook started...";
 m_statusTimer   = 4.f;
 }
 }
-ImGui::EndMenu();
+
+### Play in Engine (M6)
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L248) (line 248)
+
+"Play in Engine" saves the current scene to a temp .scene.json file
+and launches engine_sandbox.exe with --scene pointing to that file.
+This allows the designer to immediately test the scene in the runtime
+engine without leaving the editor.
+
+The engine_sandbox.exe is expected to live in the same directory as
+editor.exe (both are built into the same CMake output directory).
+if (ImGui::MenuItem("Play in Engine", "F5"))
+{
+LaunchPlayInEngine();
 }
+
+### WideCharToMultiByte for UTF-8 conversion
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L286) (line 286)
+
+Windows internally uses UTF-16 (wide char) for all API strings.
+Our public API uses std::string (UTF-8), which is the cross-platform norm.
+WideCharToMultiByte(CP_UTF8, ...) converts UTF-16 → UTF-8.
+The two-pass pattern (first call returns required buffer size, second fills it)
+is required because UTF-8 and UTF-16 have variable-length encodings.
+static std::string WideToUtf8(const std::wstring& ws)
+{
+if (ws.empty()) return {};
+const int len = WideCharToMultiByte(
+CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
+if (len <= 0) return {};
+std::string s(static_cast<size_t>(len - 1), '\0');
+WideCharToMultiByte(
+CP_UTF8, 0, ws.c_str(), -1, s.data(), len, nullptr, nullptr);
+return s;
+}
+
+### Play in Engine implementation
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L308) (line 308)
+
+Steps:
+  1. Write the scene to a well-known temp path (%TEMP%\editor_scene.scene.json).
+  2. Find engine_sandbox.exe next to editor.exe (same output folder).
+  3. Launch via ShellExecuteExW with --scene <tempPath>.
+
+GetModuleFileNameW(nullptr, ...) returns the path of the running .exe.
+We strip the filename to get the directory, then look for engine_sandbox.exe.
+
+Production note: in a shipping editor you would write the scene to
+the project's Cooked/ folder and pass a project-relative path.  The temp
+path approach is simpler for a teaching demo.
+void EditorApp::LaunchPlayInEngine()
+{
+Build temp scene path: %TEMP%\editor_preview.scene.json
+wchar_t tempDir[MAX_PATH] = {};
+GetTempPathW(MAX_PATH, tempDir);
+std::wstring tempScene(tempDir);
+tempScene += L"editor_preview.scene.json";
+
+### ShellExecuteExW vs CreateProcessW
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L350) (line 350)
+
+ShellExecuteExW is simpler but does not let us capture the output.
+CreateProcessW gives full control (redirect stdout/stderr, wait for exit).
+We use ShellExecuteExW here for brevity; swap to CreateProcessW if you
+want to show the engine output in the editor's console panel.
+SHELLEXECUTEINFOW sei = {};
+sei.cbSize      = sizeof(sei);
+sei.fMask       = SEE_MASK_NOCLOSEPROCESS;
+sei.lpVerb      = L"open";
+sei.lpFile      = sandboxExe.c_str();
+sei.lpParameters = args.c_str();
+sei.lpDirectory = exeDir.c_str();
+sei.nShow       = SW_SHOWNORMAL;
 
 ### Simulating a Status Bar with ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L216) (line 216)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L382) (line 382)
 
 ImGui has no built-in "status bar" widget.  We simulate one by creating
 a small window pinned to the bottom of the viewport with no decorations.
@@ -1587,7 +1768,7 @@ constexpr float barHeight     = 22.f;
 
 ### IFileOpenDialog (modern Windows folder picker)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L258) (line 258)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L433) (line 433)
 
 The classic SHBrowseForFolderW dialog is old (Windows 3.1 era).
 The modern alternative is IFileOpenDialog with FOS_PICKFOLDERS set --
@@ -1600,7 +1781,7 @@ IFileOpenDialog* pFolderDialog = nullptr;
 
 ### GetSaveFileName (classic Win32 save dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L307) (line 307)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L482) (line 482)
 
 GetSaveFileNameW shows the standard "Save As" dialog. The filter string
 uses pairs of "Description\0*.ext\0" terminated by an extra \0.
@@ -1614,6 +1795,19 @@ size_t filterLen = 0;
 const char* p    = filter;
 while (*p || *(p + 1)) { ++filterLen; ++p; }
 filterLen += 2;  // trailing double-NUL
+
+### GetOpenFileName (classic Win32 open dialog)
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L527) (line 527)
+
+Mirrors PickSaveFile but uses OFN_FILEMUSTEXIST instead of OFN_OVERWRITEPROMPT.
+This is the standard "Open File" dialog used in all Win32 applications.
+std::string EditorApp::PickOpenFile(const char* /*title*/, const char* filter)
+{
+size_t filterLen = 0;
+const char* p    = filter;
+while (*p || *(p + 1)) { ++filterLen; ++p; }
+filterLen += 2;
 
 ### ImGui DockSpace Architecture
 
@@ -1643,27 +1837,36 @@ window can be docked just by dragging it.
 **Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L25) (line 25)
 
 =============================================================================
-In Qt, application state (current project path, status message ...) was
-stored as member variables of QMainWindow and updated via signals/slots.
-
 In ImGui the same state lives as member variables of EditorApp.
 There are no signals or slots -- each frame EditorApp::Render() reads the
 state and decides what to draw.  When the user clicks a button, the state
 is updated immediately (same frame, same call stack).
 
-This makes control flow much easier to follow for students:
-  if (ImGui::MenuItem("Open Project..."))
-  {
-      // open file dialog -- happens RIGHT HERE, no callback needed
-      ...
-      m_projectPath = result;
-  }
+=============================================================================
+
+### M6 Panel Layout
+
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L33) (line 33)
+
+=============================================================================
+M6 adds three new dockable panels alongside the existing canvas:
+
+  +----------------+------------------------+--------------+
+  |  Content       |  Scene Editor          |  Inspector   |
+  |  Browser       |  (canvas)              |  (props)     |
+  |                +------------------------+              |
+  |                |  Scene Hierarchy       |              |
+  +----------------+------------------------+--------------+
+
+All panels share the scene state via SceneEditorPanel's public accessor API.
+EditorApp owns the single SceneEditorPanel and passes a pointer to the
+hierarchy and inspector panels at construction time.
 
 =============================================================================
 
 ### Native file dialogs without Qt
 
-**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L81) (line 81)
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L91) (line 91)
 
 Qt provides QFileDialog::getExistingDirectory() etc.
 Without Qt we use the Win32 SHBrowseForFolderW API (folder picker) or
@@ -1672,6 +1875,19 @@ These helpers wrap those calls and return UTF-8 std::string results.
 std::string PickFolder(const char* title);
 std::string PickSaveFile(const char* title, const char* filter,
 const char* defaultExt);
+std::string PickOpenFile(const char* title, const char* filter);
+
+### Panel ownership
+
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L103) (line 103)
+
+EditorApp owns the panels by value (no heap allocation needed).
+SceneHierarchyPanel and InspectorPanel hold a NON-OWNING pointer to
+m_sceneEditor and are wired up in the EditorApp constructor.
+ContentBrowserPanel  m_contentBrowser;   ///< Content/ file tree
+SceneEditorPanel     m_sceneEditor;      ///< Scene canvas (owns entity data)
+SceneHierarchyPanel  m_hierarchy;        ///< M6: entity list panel
+InspectorPanel       m_inspector;        ///< M6: property editor panel
 
 ### What this file teaches
 
@@ -1694,18 +1910,20 @@ Passing nullptr as p_open means there is no close (X) button.
 ImGuiWindowFlags_NoCollapse keeps the panel always expanded.
 ImGui::Begin("Scene Editor", nullptr, ImGuiWindowFlags_NoCollapse);
 
-### ImGui::Columns (simple 2-column layout)
+### M6: entity list moved to SceneHierarchyPanel
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L57) (line 57)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L52) (line 52)
 
-Columns() divides the current window into N columns separated by a
-draggable divider.  Column 0 gets the canvas; column 1 the entity list.
-ImGui::Columns(2, "scene_columns", true);
-ImGui::SetColumnWidth(0, ImGui::GetContentRegionAvail().x * 0.75f);
+The entity sidebar that was here has been extracted into its own dockable
+SceneHierarchyPanel so users can position it anywhere in the layout.
+This panel is now canvas-only — the authoritative scene state (entity list
++ selection index) is still owned here and shared via GetEntities() /
+GetSelectedIdx() etc.
+ImGui::TextDisabled("  Left-click: place entity   |   Delete: remove selected");
 
 ### ImGui::BeginChild for a scrollable/bordered sub-region
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L82) (line 82)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L77) (line 77)
 
 BeginChild("id", size, border, flags) creates a clipped sub-region.
   size = (0,0) means "fill remaining content area".
@@ -1716,7 +1934,7 @@ canvasSize.y -= 4;  // small margin at the bottom
 
 ### ImDrawList
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L98) (line 98)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L93) (line 93)
 
 ImGui::GetWindowDrawList() returns the draw list of the current window.
 Commands added to a draw list are rendered in order (painter's algorithm).
@@ -1726,7 +1944,7 @@ ImDrawList* dl = ImGui::GetWindowDrawList();
 
 ### IsWindowHovered + GetMousePos
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L162) (line 162)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L157) (line 157)
 
 IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem) returns
 true when the canvas child window is hovered, even if another widget is
@@ -1740,7 +1958,7 @@ const float  my = mousePos.y - origin.y;
 
 ### IsKeyPressed vs IsKeyDown
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L201) (line 201)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L196) (line 196)
 
 IsKeyPressed() returns true ONCE on the frame the key goes down.
 IsKeyDown()    returns true every frame while the key is held.
@@ -1751,19 +1969,9 @@ m_entities.erase(m_entities.begin() + m_selectedIdx);
 m_selectedIdx = -1;
 }
 
-### Selectable
-
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L230) (line 230)
-
-ImGui::Selectable renders a clickable row that highlights on hover
-and can show as "selected" when the second argument is true.
-It returns true the frame it is clicked.
-if (ImGui::Selectable(ent.name.c_str(), selected))
-m_selectedIdx = i;
-
 ### BeginPopupModal
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L260) (line 260)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L221) (line 221)
 
 BeginPopupModal renders a centered modal dialog.
 ImGui::InputText writes into m_nameBuffer (a C-style char array).
@@ -1777,7 +1985,7 @@ ImGui::SetNextItemWidth(240.f);
 
 ### Guid::New() for UUID generation
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L287) (line 287)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L248) (line 248)
 
 Guid::New() from shared/runtime/Guid.hpp generates an RFC 4122
 v4 UUID -- the same pattern used by the cook pipeline and asset
@@ -1794,7 +2002,7 @@ ImGui::CloseCurrentPopup();
 
 ### nlohmann-json for scene save
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L313) (line 313)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L274) (line 274)
 
 nlohmann/json.hpp provides a single-header JSON library (MIT licence).
 json j = { {"key", value}, ... } builds a JSON object with initialiser lists.
@@ -1808,9 +2016,18 @@ std::time_t t = std::chrono::system_clock::to_time_t(now);
 std::ostringstream tsStream;
 tsStream << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%SZ");
 
+### Persisting component data
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L308) (line 308)
+
+Only write the "components" key when there is something to write.
+This keeps scenes that only have positional data compact.
+if (!ent.components.empty())
+je["components"] = ent.components;
+
 ### nlohmann-json for scene load
 
-**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L360) (line 360)
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L327) (line 327)
 
 json::parse(stream) reads from any std::istream.
 j.value("key", default) safely reads a key with a fallback if missing.
@@ -1820,6 +2037,17 @@ bool SceneEditorPanel::LoadScene(const std::string& filePath)
 {
 std::ifstream ifs(filePath);
 if (!ifs) return false;
+
+### Loading component data
+
+**Source:** [`editor/src/SceneEditorPanel.cpp`](editor/src/SceneEditorPanel.cpp#L365) (line 365)
+
+If the scene file has a "components" object, load it into
+ent.components as raw JSON.  The InspectorPanel will parse it.
+if (entJson.contains("components") && entJson["components"].is_object())
+ent.components = entJson["components"];
+else
+ent.components = nlohmann::json::object();
 
 ### ImGui Custom Drawing with DrawList
 
@@ -1876,10 +2104,42 @@ regardless of whether they were saved by the Qt or the ImGui editor.
 
 ### Plain data struct (no Qt types)
 
-**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L57) (line 57)
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L58) (line 58)
 
 The Qt version used QString for id and name.  Now we use std::string --
 C++ standard library types require no external framework.
+
+The 'components' field stores optional ECS-style component data as a JSON
+object, e.g.:
+  components["HealthComponent"] = { {"hp", 100}, {"maxHp", 100} }
+
+This allows the editor to round-trip rich component data through scene files
+without hard-coding every component type in SceneEntity.  The InspectorPanel
+reads and writes this field to provide per-component property editing.
+
+### JSON component bag
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L78) (line 78)
+
+Using nlohmann::json as a "property bag" lets the editor handle arbitrary
+component types without recompiling.  New component types added to
+ECS.hpp are immediately editable as long as the InspectorPanel knows their
+field names (it uses a per-type table defined in InspectorPanel.cpp).
+nlohmann::json components = nlohmann::json::object();
+};
+
+### Accessor pattern for shared panel state
+
+**Source:** [`editor/src/SceneEditorPanel.hpp`](editor/src/SceneEditorPanel.hpp#L128) (line 128)
+
+SceneEditorPanel owns the canonical scene data (entity list + selection).
+SceneHierarchyPanel and InspectorPanel are given a pointer to this panel
+and call these accessors to read/write shared state every frame.
+
+An alternative design is a shared SceneDocument struct owned by EditorApp.
+The accessor approach is simpler for a teaching project where the number
+of panels is small and well-defined.
+-------------------------------------------------------------------------
 
 ### Immediate-Mode GUI (ImGui) vs Retained-Mode GUI
 
@@ -1923,7 +2183,7 @@ install (same reason D3D11 is the engine's default renderer).
 
 ### Module-level (global) objects for D3D11
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L55) (line 55)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L57) (line 57)
 
 We store D3D11 objects at module scope so both the WndProc and the main
 loop can access them without threading overhead.  In a larger engine these
@@ -1936,7 +2196,7 @@ static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
 ### Window Procedure (WndProc)
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L80) (line 80)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L82) (line 82)
 
 Every Win32 window requires a "window procedure" callback that processes
 messages sent by the OS (WM_SIZE, WM_DESTROY, mouse events, key events ...).
@@ -1951,7 +2211,7 @@ return true;  // ImGui consumed the message
 
 ### Swap-chain resize on WM_SIZE
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L95) (line 95)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L97) (line 97)
 
 When the window is resized the swap chain buffers become stale.
 We must release the old render target view, resize the swap chain,
@@ -1965,9 +2225,67 @@ CreateRenderTarget();
 }
 return 0;
 
+### WinMain vs main()
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L129) (line 129)
+
+GUI applications use WinMain instead of main().  The difference is:
+  main()    -- console entry point; stdout/stderr attached by default.
+  WinMain() -- GUI entry point; no console by default.
+
+For headless/batch mode (M6 --headless, --create-scene, --load-scene), we
+need console output.  We call AllocConsole() + freopen_s to attach stdout
+so CI scripts can capture pass/fail output.
+---------------------------------------------------------------------------
+
+### WideToUtf8 is defined in both main.cpp and EditorApp.cpp
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L153) (line 153)
+
+because the two translation units are compiled independently.  The function
+is `static` in both files, so there is no ODR (One Definition Rule) conflict.
+For a larger codebase you would extract this into a shared header:
+  shared/runtime/StringHelpers.hpp
+and include it in both files.
+static std::string WideToUtf8(const std::wstring& ws)
+{
+if (ws.empty()) return {};
+const int len = WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, nullptr, 0, nullptr, nullptr);
+if (len <= 0) return {};
+std::string s(static_cast<size_t>(len - 1), '\0');
+WideCharToMultiByte(CP_UTF8, 0, ws.c_str(), -1, s.data(), len, nullptr, nullptr);
+return s;
+}
+
+### GetCommandLineW + CommandLineToArgvW
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L173) (line 173)
+
+WinMain receives a narrow lpCmdLine string.  For Unicode path support
+(e.g. --create-scene "C:\Users\Username\路径.scene.json") we use the
+wide-char GetCommandLineW() + CommandLineToArgvW() pair instead.
+CommandLineToArgvW correctly handles quoted paths with spaces.
+int argc = 0;
+LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
+
+### Headless editor for CI
+
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L200) (line 200)
+
+A headless run is useful for:
+  • CI: verify the editor's scene round-trip (create → write → load → validate).
+  • Build pipelines: batch-process scenes without launching a GUI.
+
+Exit code semantics (same convention as engine_sandbox):
+  0 = success ([PASS])
+  1 = failure ([FAIL])
+if (headless || !createPath.empty() || (!loadPath.empty() && validateLoad))
+{
+AttachOrAllocConsole();
+
 ### WNDCLASSEXW
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L131) (line 131)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L290) (line 290)
 
 WNDCLASSEXW describes the properties of a window class (shared template
 from which individual windows are created).
@@ -1986,7 +2304,7 @@ RegisterClassExW(&wc);
 
 ### ImGui Context
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L169) (line 169)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L328) (line 328)
 
 IMGUI_CHECKVERSION() verifies the ImGui headers and library are the same
 version (catches mismatched ABI at runtime, not just compile time).
@@ -2004,7 +2322,7 @@ io.IniFilename = "creation-suite-editor.ini";
 
 ### ImGui Backends
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L186) (line 186)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L345) (line 345)
 
 ImGui itself is platform-agnostic -- it only produces draw calls.
 "Backends" translate those draw calls to a specific platform/renderer:
@@ -2016,7 +2334,7 @@ ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
 ### The Game/Editor Loop
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L199) (line 199)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L358) (line 358)
 
 An editor loop mirrors a game loop:
   1. Poll OS messages   -- keyboard, mouse, resize, close.
@@ -2043,7 +2361,7 @@ if (done) break;
 
 ### DXGI Present
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L243) (line 243)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L402) (line 402)
 
 Present(1, 0) = vsync ON (swap every 1 monitor refresh).
 Present(0, 0) = vsync OFF (swap immediately, may tear).
@@ -2053,7 +2371,7 @@ g_pSwapChain->Present(1, 0);
 
 ### CreateDeviceAndSwapChain
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L264) (line 264)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L423) (line 423)
 
 D3D11CreateDeviceAndSwapChain is a single-call way to:
   a) Create an ID3D11Device (the GPU abstraction -- create resources).
@@ -2080,7 +2398,7 @@ sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
 ### WARP software fallback
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L309) (line 309)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L468) (line 468)
 
 If hardware creation fails (e.g. in CI or on a machine without D3D11 GPU),
 fall back to D3D_DRIVER_TYPE_WARP -- Microsoft's software rasteriser.
@@ -2095,6 +2413,448 @@ D3D11_SDK_VERSION, &sd, &g_pSwapChain,
 );
 if (FAILED(res)) return false;
 }
+
+### Table-driven component definitions
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L6) (line 6)
+
+=============================================================================
+kComponentDefs below is a static table of every component type the inspector
+knows about.  Each entry describes the component's display name and its
+fields (name, type, optional drag speed/min/max).
+
+Adding support for a new component type:
+  1. Add an entry to kComponentDefs with the component type name (must match
+     the key used in SceneEntity::components, which must also match the name
+     used by SceneSerialiser).
+  2. Add fields in the "fields" initialiser list.
+  3. Rebuild — no other changes needed.
+
+This approach deliberately avoids C++ reflection macros or template
+metaprogramming so the code is easy for students to read and extend.
+
+=============================================================================
+
+### ImGui DragFloat / DragInt
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L23) (line 23)
+
+=============================================================================
+ImGui::DragFloat("label", &value, speed, min, max, "%.2f") renders a field
+that the user can:
+  • Drag left/right to change the value.
+  • Double-click to type a value directly.
+  • Ctrl+click for precise input.
+
+This is the standard ImGui pattern for numeric property editing — the same
+interaction used in Unreal's Details panel and Unity's Inspector.
+
+=============================================================================
+
+### Component definition table
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L48) (line 48)
+
+Each ComponentDef describes one component type.
+Each FieldDef describes one field within a component.
+=============================================================================
+
+### Table-driven component definitions
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L75) (line 75)
+
+kComponentDefs is a `static const std::vector` — initialized once at first
+use (lazy static initialization, guaranteed thread-safe since C++11).
+
+Alternatives considered:
+  1. static constexpr std::array<ComponentDef, 6> — avoids heap allocation
+     but requires ComponentDef.fields to be a fixed-size array (e.g.
+     std::array<FieldDef, 9>) which makes the struct harder to read and
+     requires knowing each component's field count at compile time.
+  2. Code-generated lookup table — eliminates any allocation but adds a
+     build step.  Overkill for 6 components in a teaching project.
+
+For a shipping editor with hundreds of component types, a constexpr array
+(or code-generated table) would be the right call.  At 6 components this
+one-time heap allocation is unmeasurable.
+---------------------------------------------------------------------------
+static const std::vector<ComponentDef> kComponentDefs =
+{
+{
+"HealthComponent", "Health",
+{
+{ "hp",          FieldType::Int,   100.f, 1.f,  0.f, 9999.f },
+{ "maxHp",       FieldType::Int,   100.f, 1.f,  1.f, 9999.f },
+{ "mp",          FieldType::Int,    50.f, 1.f,  0.f, 9999.f },
+{ "maxMp",       FieldType::Int,    50.f, 1.f,  1.f, 9999.f },
+{ "regenRate",   FieldType::Float,   0.f, 0.1f, 0.f,  100.f },
+{ "mpRegenRate", FieldType::Float,   2.f, 0.1f, 0.f,  100.f },
+}
+},
+{
+"StatsComponent", "Stats",
+{
+{ "strength",     FieldType::Int,  10.f, 1.f, 0.f, 999.f },
+{ "defence",      FieldType::Int,   5.f, 1.f, 0.f, 999.f },
+{ "magic",        FieldType::Int,  10.f, 1.f, 0.f, 999.f },
+{ "spirit",       FieldType::Int,   5.f, 1.f, 0.f, 999.f },
+{ "speed",        FieldType::Int,  10.f, 1.f, 0.f, 999.f },
+{ "luck",         FieldType::Int,   5.f, 1.f, 0.f, 999.f },
+{ "vitality",     FieldType::Int,  10.f, 1.f, 0.f, 999.f },
+{ "critRate",     FieldType::Int,   5.f, 1.f, 0.f, 100.f },
+{ "critMultiplier", FieldType::Int, 200.f, 1.f, 100.f, 1000.f },
+}
+},
+{
+"RenderComponent", "Render",
+{
+{ "spriteSheet",  FieldType::String, 0.f,  0.f, 0.f, 0.f },
+{ "zOrder",       FieldType::Int,    0.f,  1.f, 0.f, 100.f },
+{ "isVisible",    FieldType::Bool,   1.f,  0.f, 0.f, 0.f },
+}
+},
+{
+"LevelComponent", "Level",
+{
+{ "level",     FieldType::Int, 1.f, 1.f, 1.f, 99.f  },
+{ "currentXP", FieldType::Int, 0.f, 1.f, 0.f, 1e7f  },
+}
+},
+{
+"AnimatorComponent", "Animator",
+{
+{ "skeletonID",    FieldType::String, 0.f, 0.f, 0.f, 0.f },
+{ "currentClipID", FieldType::String, 0.f, 0.f, 0.f, 0.f },
+{ "blendTreeID",   FieldType::String, 0.f, 0.f, 0.f, 0.f },
+{ "playbackSpeed", FieldType::Float,  1.f, 0.01f, 0.f, 10.f },
+}
+},
+{
+"AIComponent", "AI",
+{
+{ "sightRange",  FieldType::Float, 10.f, 0.1f, 0.f, 200.f },
+{ "hearRange",   FieldType::Float,  5.f, 0.1f, 0.f, 200.f },
+{ "attackRange", FieldType::Float,  2.f, 0.1f, 0.f, 50.f  },
+{ "isNocturnal", FieldType::Bool,   0.f, 0.f,  0.f, 0.f   },
+}
+},
+};
+
+### Disabled text style
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L193) (line 193)
+
+ImGui::TextDisabled() renders grey text — conventionally used for
+placeholder / hint text when there is nothing to show.
+ImGui::Spacing();
+ImGui::TextDisabled("Select an entity in the Scene Hierarchy");
+ImGui::TextDisabled("or click on the canvas to create one.");
+}
+
+### InputText with a fixed-size buffer
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L207) (line 207)
+
+ImGui::InputText writes into a C-style char array.  We must copy
+std::string → char[] before the widget and char[] → std::string after.
+char nameBuf[128];
+std::strncpy(nameBuf, ent.name.c_str(), sizeof(nameBuf) - 1);
+nameBuf[sizeof(nameBuf) - 1] = '\0';
+
+### CollapsingHeader
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L238) (line 238)
+
+CollapsingHeader renders a tree node that can be collapsed.
+ImGuiTreeNodeFlags_DefaultOpen keeps it open on first render.
+The section state is persisted to the imgui.ini file automatically.
+if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+return;
+
+### Label column alignment trick
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L245) (line 245)
+
+We use ImGui::Columns(2) + SetColumnWidth(0, 80) to create a two-column
+layout: label on the left, input widget filling the right.
+An alternative is ImGui::AlignTextToFramePadding() + SameLine(80.f).
+ImGui::PushID("transform");
+
+### per-type widgets
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L299) (line 299)
+
+Each FieldType maps to the most appropriate ImGui widget:
+  Float  → DragFloat (drag to change, double-click to type)
+  Int    → DragInt   (same, integer)
+  Bool   → Checkbox  (toggle)
+  String → InputText (free text)
+switch (fd.type)
+{
+case FieldType::Float:
+{
+float v = compJson[fd.name].get<float>();
+if (ImGui::DragFloat("##v", &v, fd.speed, fd.minVal, fd.maxVal, "%.2f"))
+compJson[fd.name] = v;
+break;
+}
+case FieldType::Int:
+{
+int v = compJson[fd.name].get<int>();
+if (ImGui::DragInt("##v", &v, fd.speed,
+static_cast<int>(fd.minVal),
+static_cast<int>(fd.maxVal)))
+compJson[fd.name] = v;
+break;
+}
+case FieldType::Bool:
+{
+bool v = compJson[fd.name].get<bool>();
+if (ImGui::Checkbox("##v", &v))
+compJson[fd.name] = v;
+break;
+}
+case FieldType::String:
+{
+std::string s = compJson[fd.name].get<std::string>();
+char buf[256];
+std::strncpy(buf, s.c_str(), sizeof(buf) - 1);
+buf[sizeof(buf) - 1] = '\0';
+if (ImGui::InputText("##v", buf, sizeof(buf)))
+compJson[fd.name] = std::string(buf);
+break;
+}
+}
+
+### json::erase removes a key from a JSON object.
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L367) (line 367)
+
+ent.components.erase(cd.typeName);
+ImGui::PopID();
+continue;
+}
+
+### BeginDisabled / EndDisabled
+
+**Source:** [`editor/src/panels/InspectorPanel.cpp`](editor/src/panels/InspectorPanel.cpp#L414) (line 414)
+
+Wrapping items in BeginDisabled/EndDisabled dims them and
+prevents interaction without removing them from the layout.
+ImGui::BeginDisabled();
+}
+
+### Inspector / Property Editor Pattern
+
+**Source:** [`editor/src/panels/InspectorPanel.hpp`](editor/src/panels/InspectorPanel.hpp#L6) (line 6)
+
+=============================================================================
+Every mainstream game editor has an "inspector" or "details" panel:
+  • Unity  — "Inspector" window (right side by default).
+  • Unreal — "Details" panel (right side by default).
+  • Godot  — "Inspector" dock (right side).
+
+The inspector shows the properties of the currently selected entity.
+Each component is shown as a collapsible section with editable fields.
+
+=============================================================================
+
+### Reflection-free property editing
+
+**Source:** [`editor/src/panels/InspectorPanel.hpp`](editor/src/panels/InspectorPanel.hpp#L17) (line 17)
+
+=============================================================================
+Commercial engines usually use C++ reflection (run-time type information
+about struct fields) to drive the inspector.  Unreal uses UPROPERTYs and a
+generated reflection database; Unity uses C# reflection attributes.
+
+For our teaching engine, components don't have runtime reflection yet.
+Instead, we use a TABLE-DRIVEN approach:
+
+  1. The editor stores component data as nlohmann::json blobs inside
+     SceneEntity::components (a JSON object keyed by component type name).
+  2. InspectorPanel has a hand-written table of "known component types" with
+     their field names, types, and ranges.
+  3. To add inspector support for a new component type, add an entry to the
+     kComponentDefs table in InspectorPanel.cpp — no template magic needed.
+
+This approach is O(1) to understand for students and O(N) to extend (N = new
+field definitions), which is exactly right for a teaching project.
+
+=============================================================================
+
+### Immediate-mode entity list
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L6) (line 6)
+
+=============================================================================
+In a retained-mode GUI (Qt, WPF) the hierarchy is a tree widget that you
+populate once and update via signals.  In Dear ImGui the list is rebuilt
+every frame from the current entity vector.  This sounds wasteful, but
+ImGui draws only what is visible (virtual scrolling) and rebuilding the
+list typically takes < 1 µs for scenes with hundreds of entities.
+
+The key lesson: immediate mode trades memory (no widget objects) for CPU
+time (rebuild every frame) — and the CPU cost is negligible at editor scale.
+
+=============================================================================
+
+### ImGui::Selectable + context menus
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L18) (line 18)
+
+=============================================================================
+ImGui::Selectable("label", isSelected) renders a highlighted row.
+ImGui::BeginPopupContextItem() opens a right-click popup attached to the
+last item — this is how all mainstream editors implement context menus.
+
+=============================================================================
+
+### SafeStrCopy helper
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L38) (line 38)
+
+std::strncpy does NOT guarantee null-termination when src is >= destSize.
+This helper always writes a '\0' at the last position so the buffer is
+always a valid C-string — a common defensive pattern for ImGui text buffers.
+Extracting it removes the repeated two-line pattern (strncpy + explicit NUL).
+static void SafeStrCopy(char* dest, size_t destSize, const std::string& src)
+{
+std::strncpy(dest, src.c_str(), destSize - 1);
+dest[destSize - 1] = '\0';
+}
+
+### Panel naming convention
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L55) (line 55)
+
+The window title includes a "##" suffix to show the entity count without
+changing the dockable panel identity.  ImGui uses the part after "##" as
+an invisible ID, so two windows named "A##1" and "A##2" are distinct.
+However, ImGui::Begin() always uses the FULL string as the tab title, so
+we rebuild the title every frame to show the live entity count.
+if (!m_scenePanel)
+{
+ImGui::Begin("Scene Hierarchy", nullptr, ImGuiWindowFlags_NoCollapse);
+ImGui::TextDisabled("(no scene panel attached)");
+ImGui::End();
+return;
+}
+
+### Small inline buttons
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L94) (line 94)
+
+SmallButton() renders a compact button that sits flush in text-height.
+It is ideal for toolbar-style actions at the top of a panel.
+if (ImGui::SmallButton("+ Add Entity"))
+{
+auto& entities = m_scenePanel->GetEntities();
+SceneEntity ent;
+ent.id   = Guid::New().ToString();
+ent.name = "Entity_" + std::to_string(entities.size() + 1);
+ent.x    = 0.f;
+ent.y    = 0.f;
+ent.z    = 0.f;
+entities.push_back(ent);
+Select the newly created entity
+m_scenePanel->SetSelectedIdx(static_cast<int>(entities.size()) - 1);
+}
+
+### BeginChild for a scrollable sub-region
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L136) (line 136)
+
+The entity list may be longer than the panel.  BeginChild with a fixed
+size or (0,0) fills the remaining space and makes the region scrollable.
+ImGui::BeginChild("##hierarchy_list", ImVec2(0, 0),
+ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+
+### UTF-8 icons in ImGui
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L149) (line 149)
+
+ImGui renders UTF-8 text natively.  Any glyph loaded in the font
+atlas can be used here.  We use ASCII box-drawing fallbacks that
+work with the default font.
+const int compCount = static_cast<int>(ent.components.size());
+char label[256];
+if (compCount > 0)
+std::snprintf(label, sizeof(label), "[E] %s  (%d comp)",
+ent.name.c_str(), compCount);
+else
+std::snprintf(label, sizeof(label), "[E] %s", ent.name.c_str());
+
+### PushID / PopID for stable ImGui IDs
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L161) (line 161)
+
+When rendering the same widget type (Selectable) multiple times in a
+loop, ImGui needs a unique ID for each.  PushID(i) prefixes the ID
+stack with the loop index so each row gets a distinct internal ID.
+ImGui::PushID(i);
+
+### BeginPopupContextItem
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L209) (line 209)
+
+BeginPopupContextItem() opens a right-click popup anchored to the last
+rendered item.  It returns true only while the popup is open.
+This is the standard ImGui pattern for per-item context menus.
+if (!ImGui::BeginPopupContextItem("##ctx"))
+return;
+
+### Non-modal popup with SetNextWindowPos
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.cpp`](editor/src/panels/SceneHierarchyPanel.cpp#L261) (line 261)
+
+Unlike BeginPopupModal, BeginPopup renders a floating (non-blocking)
+window.  We use BeginPopupModal here for rename so the user must
+explicitly confirm or cancel before continuing.
+bool open = true;
+if (ImGui::BeginPopupModal("Rename Entity##renamePopup", &open,
+ImGuiWindowFlags_AlwaysAutoResize))
+{
+ImGui::TextUnformatted("New name:");
+ImGui::SetNextItemWidth(240.f);
+
+### Scene Hierarchy Panel
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.hpp`](editor/src/panels/SceneHierarchyPanel.hpp#L6) (line 6)
+
+=============================================================================
+Every professional game editor has a "hierarchy" or "outliner" panel:
+  • Unity  — "Hierarchy" window (left side by default).
+  • Unreal — "Outliner" panel (top-right by default).
+  • Godot  — "Scene" dock (left side).
+
+The hierarchy shows all entities in the current scene as a list (M6) or tree
+(future — for parent/child relationships).  Clicking an entity selects it;
+the selection is reflected in both the canvas and the InspectorPanel.
+
+=============================================================================
+
+### Shared State via Pointer
+
+**Source:** [`editor/src/panels/SceneHierarchyPanel.hpp`](editor/src/panels/SceneHierarchyPanel.hpp#L18) (line 18)
+
+=============================================================================
+SceneHierarchyPanel does NOT own the entity data.  Instead it holds a
+pointer to SceneEditorPanel and reads/writes through its public accessor API:
+
+  m_scenePanel->GetEntities()     — read entity list
+  m_scenePanel->GetSelectedIdx()  — read selection
+  m_scenePanel->SetSelectedIdx()  — write selection
+  m_scenePanel->DeleteEntity(i)   — delete entity
+
+This pattern (a "non-owning view" or "observer") avoids duplicating state
+and keeps the hierarchy in sync with the canvas at zero extra cost.
+
+In a larger editor you might use a shared_ptr<SceneDocument> or an event bus
+to decouple the panels further.  For a teaching project, the pointer approach
+is deliberately simple and explicit.
+
+=============================================================================
 
 ---
 
@@ -5924,7 +6684,7 @@ a single boolean.
 
 ### Factory Methods
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2133) (line 2133)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2136) (line 2136)
 
 ─────────────────────────────────
 Rather than calling AddComponent 10 times at every call site, a factory
@@ -5936,7 +6696,7 @@ individual components afterwards.
 
 ### static_cast vs dynamic_cast
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2217) (line 2217)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2220) (line 2220)
 
 ─────────────────────────────────────────────
 dynamic_cast performs a runtime type check (RTTI) and returns nullptr
@@ -5952,7 +6712,7 @@ fine; using it on user-supplied pointers would be dangerous.
 
 ### Why a free function?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2294) (line 2294)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2297) (line 2297)
 
 ───────────────────────────────────────
 Putting registration in a free function keeps the World constructor clean
@@ -11583,6 +12343,231 @@ would corrupt the binary data (0x0D 0x0A → 0x0A would mis-align words).
 A shader module can be destroyed immediately after pipeline creation —
 the driver has copied what it needs.  We destroy both modules at the
 end of Create() to avoid holding onto them unnecessarily.
+
+---
+
+## engine/scene
+
+### Separating Interface from Implementation
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](src/engine/scene/scene_serialiser.cpp#L6) (line 6)
+
+=============================================================================
+scene_serialiser.hpp declares the PUBLIC API: what callers can call.
+This .cpp file contains the IMPLEMENTATION: the nlohmann/json include,
+the ECS header, and all the serialisation details.
+
+This separation is important for build performance.  Including ECS.hpp
+(~2000 lines of templates) in scene_serialiser.hpp would force EVERY
+file that calls SceneSerialiser::SaveScene() to recompile those templates.
+By keeping ECS.hpp in the .cpp only, the template expansion happens once.
+
+=============================================================================
+
+### nlohmann/json usage pattern
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](src/engine/scene/scene_serialiser.cpp#L18) (line 18)
+
+=============================================================================
+nlohmann::json can be built as either:
+  a) A Python-dict-like aggregate:  json j; j["hp"] = 100;
+  b) From an initialiser list:  json j = {{"hp", 100}, {"maxHp", 200}};
+  c) Parsed from a string/stream: json j = json::parse(stream);
+
+We use all three styles here as appropriate.  j.value("key", default)
+safely reads with a fallback — it never throws on a missing key.
+
+=============================================================================
+
+### <nlohmann/json.hpp> vs "nlohmann/json.hpp"
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](src/engine/scene/scene_serialiser.cpp#L39) (line 39)
+
+Angle brackets search the system/vcpkg include path set by CMake.
+This is the correct form for a vcpkg-installed library.
+ifdef ENGINE_ENABLE_JSON
+include <nlohmann/json.hpp>
+using json = nlohmann::json;
+endif
+
+### ISO-8601 Timestamp
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](src/engine/scene/scene_serialiser.cpp#L64) (line 64)
+
+-------------------------------------------------------------------------
+A "savedAt" timestamp lets tools and version control track when a scene
+was last authored.  We generate it from std::chrono::system_clock, the
+same approach used by SceneEditorPanel in the editor.
+-------------------------------------------------------------------------
+static std::string MakeTimestamp()
+{
+auto now = std::chrono::system_clock::now();
+std::time_t t = std::chrono::system_clock::to_time_t(now);
+std::ostringstream ss;
+ss << std::put_time(std::gmtime(&t), "%Y-%m-%dT%H:%M:%SZ");
+return ss.str();
+}
+
+### Per-component serialisation
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](src/engine/scene/scene_serialiser.cpp#L82) (line 82)
+
+Each component type is checked with World::HasComponent<T>().
+If present, its fields are written into the JSON components map.
+We only write components that the entity actually owns — sparse storage
+means it is common for an entity to have 3–5 of the 24 components.
+-------------------------------------------------------------------------
+static json SerialiseEntity(const World& world, EntityID entity)
+{
+json je;
+
+### Separate "transform" vs "components" layout
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](src/engine/scene/scene_serialiser.cpp#L114) (line 114)
+
+Transform is so fundamental that scene.schema.json promotes it to a
+top-level "transform" field rather than nesting it inside "components".
+This mirrors the Unity and Unreal convention where Transform is always
+present and displayed at the top of the inspector.
+if (world.HasComponent<TransformComponent>(entity))
+{
+const auto& tc = world.GetComponent<TransformComponent>(entity);
+je["transform"] = {
+{ "x",  tc.position.x }, { "y",  tc.position.y }, { "z",  tc.position.z },
+{ "rx", tc.rotation.x }, { "ry", tc.rotation.y }, { "rz", tc.rotation.z },
+{ "sx", tc.scale.x    }, { "sy", tc.scale.y    }, { "sz", tc.scale.z    }
+};
+}
+else
+{
+je["transform"] = { {"x",0},{"y",0},{"z",0},
+{"rx",0},{"ry",0},{"rz",0},
+{"sx",1},{"sy",1},{"sz",1} };
+}
+
+### Ensure the parent directory exists
+
+**Source:** [`src/engine/scene/scene_serialiser.cpp`](src/engine/scene/scene_serialiser.cpp#L303) (line 303)
+
+std::filesystem::create_directories() is a no-op if the path already
+exists and creates ALL intermediate directories if it does not.
+This mirrors how the Python cook script calls os.makedirs(exist_ok=True).
+fs::create_directories(fs::path(filePath).parent_path());
+
+### Scene Serialisation Pattern
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](src/engine/scene/scene_serialiser.hpp#L6) (line 6)
+
+=============================================================================
+"Serialisation" converts in-memory data (an ECS World) to a storable format
+(JSON text), and "deserialisation" does the reverse.
+
+This pattern appears in every commercial game engine:
+  • Unity       — uses YAML scene files with component snapshots.
+  • Unreal      — uses a binary format (.umap) with optional text export.
+  • Godot       — uses a custom text format (.tscn / .tres).
+
+We use JSON (via nlohmann-json, MIT licence) because:
+  1. Human-readable — you can inspect and hand-edit scene files.
+  2. Widely understood — no proprietary format.
+  3. nlohmann/json is already in vcpkg.json (required by cook.exe).
+
+=============================================================================
+
+### What Gets Serialised?
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](src/engine/scene/scene_serialiser.hpp#L22) (line 22)
+
+=============================================================================
+We serialise the "logical state" of each entity:
+  • EntityID                → "id" field (opaque integer for the current run,
+                              so we also store a stable string name)
+  • NameComponent           → "name" + "internalID" + "title"
+  • TransformComponent      → position, rotation, scale
+  • HealthComponent         → hp, maxHp, mp, maxMp
+  • StatsComponent          → strength, defence, magic, spirit, speed, luck
+  • RenderComponent         → spriteSheet, tint, zOrder, isVisible
+
+We do NOT serialise:
+  • Physics body IDs (bodyID in RigidBodyComponent) — these are assigned
+    fresh by PhysicsWorld on each play session.
+  • AI FSM state — transient runtime state that resets when you play.
+  • AnimatorComponent::jointMatrices — computed output, not source state.
+
+This matches how Unity distinguishes serialisable "fields" from transient
+runtime state.
+
+=============================================================================
+
+### Scene JSON Format (extends scene.schema.json)
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](src/engine/scene/scene_serialiser.hpp#L43) (line 43)
+
+=============================================================================
+
+{
+  "$schema": "../../shared/schemas/scene.schema.json",
+  "version":  "1.0.0",
+  "name":     "TestScene",
+  "entities": [
+    {
+      "id":   "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+      "name": "Player",
+      "transform":  { "x": 0.0, "y": 0.0, "z": 0.0,
+                      "rx": 0.0, "ry": 0.0, "rz": 0.0,
+                      "sx": 1.0, "sy": 1.0, "sz": 1.0 },
+      "components": {
+        "HealthComponent":  { "hp": 500, "maxHp": 500, "mp": 100, "maxMp": 100 },
+        "StatsComponent":   { "strength": 25, "defence": 15, "magic": 30 }
+      }
+    }
+  ]
+}
+
+=============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0.0  (M6 — Editor Shell)
+@date    2025
+@see     shared/schemas/scene.schema.json
+
+### Forward Declarations
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](src/engine/scene/scene_serialiser.hpp#L79) (line 79)
+
+Including ECS.hpp pulls in ~2000 lines of templates.  Any file that only
+calls SaveScene / LoadScene does not need those templates at compile time —
+it just needs to know that "class World" exists.  We use a forward declaration
+here and include the full header only in the .cpp implementation file.
+
+Note: World is declared at global scope in ECS.hpp (not inside a namespace).
+class World;
+
+### Static-Only Utility Classes
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](src/engine/scene/scene_serialiser.hpp#L95) (line 95)
+
+A class with only static methods is essentially a namespace with ADL
+(argument-dependent lookup) disabled.  It is a common C++ pattern for
+grouping related free functions under a descriptive type name.
+Alternative: free functions in a "scene_serialiser" namespace.
+
+### Why pass by const reference?
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](src/engine/scene/scene_serialiser.hpp#L124) (line 124)
+
+We use `const engine::World&` so the serialiser cannot accidentally
+mutate the world while reading it.  This is the C++ "const-correctness"
+principle: pass by const ref when you only need to read.
+
+### Incremental vs Replace Load
+
+**Source:** [`src/engine/scene/scene_serialiser.hpp`](src/engine/scene/scene_serialiser.hpp#L149) (line 149)
+
+Loading incrementally (not clearing first) allows "additive" scenes —
+e.g. spawning enemies defined in one scene file into a world that already
+has a player from another file.  This is how Unreal's sublevel streaming
+works.  For a "replace" load: clear the world first, then call LoadScene.
 
 ---
 

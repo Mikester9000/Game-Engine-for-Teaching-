@@ -13,9 +13,12 @@
 │                  AUTHORING (tools)                       │
 │                                                          │
 │  Creation Suite Editor (Dear ImGui + D3D11)              │
-│  ├─ EditorApp      ← DockSpace, menu bar, status bar     │
-│  ├─ ContentBrowser ← shows Content/ raw assets           │
-│  └─ SceneEditor    ← places entities, saves JSON         │
+│  ├─ EditorApp         ← DockSpace, menu bar, status bar  │
+│  ├─ ContentBrowser    ← shows Content/ raw assets        │
+│  ├─ SceneEditor       ← 2D canvas; entity placement      │
+│  ├─ SceneHierarchy    ← entity list; add/rename/delete   │  ← M6
+│  ├─ InspectorPanel    ← component property editor        │  ← M6
+│  └─ SceneSerialiser   ← JSON ↔ ECS World round-trip      │  ← M6
 │                                                          │
 │  tools/audio_authoring/ (Python)                         │
 │  ├─ AudioEngine.generate_track()                         │

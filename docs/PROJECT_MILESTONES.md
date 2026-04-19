@@ -257,39 +257,45 @@ ctest --test-dir build -L contract -R anim
 
 ## Milestone M6 — Editor Shell
 
-**Status:** ⬜ Not started
+**Status:** 🔨 In Progress
 
 ### Goals
-- A minimal `editor.exe` that opens a window with a scene hierarchy panel,
-  an inspector panel, and an asset browser.
-- Load / save a scene file (JSON).
-- ImGui used for all panels.
+- A `creation-suite-editor.exe` with a scene hierarchy panel, inspector panel,
+  content browser, scene canvas, Play-in-Engine button, and headless CLI mode.
+- Scene save/load as JSON (extends `shared/schemas/scene.schema.json`).
+- Dear ImGui used for all panels (DockSpace layout).
 
 ### Deliverables
 | File | Description |
 |---|---|
-| `src/editor/editor_main.cpp` | `editor.exe` entry point |
-| `src/editor/editor_app.hpp/.cpp` | Editor application class; owns window + ImGui context |
-| `src/editor/panels/scene_hierarchy.hpp/.cpp` | ECS entity tree view |
-| `src/editor/panels/inspector.hpp/.cpp` | Component property editor |
-| `src/editor/panels/asset_browser.hpp/.cpp` | AssetDB browser, drag-drop |
-| `src/engine/scene/scene_serialiser.hpp/.cpp` | JSON save/load of ECS snapshot |
-| `CMakeLists.txt` | `editor` target; ImGui dependency |
+| `editor/src/main.cpp` | Win32 + D3D11 + ImGui entry point; headless mode (`--headless`, `--create-scene`, `--load-scene --validate`) |
+| `editor/src/EditorApp.hpp/.cpp` | Editor app: DockSpace, menu bar, Play-in-Engine, Open/Save scene dialogs |
+| `editor/src/ContentBrowserPanel.hpp/.cpp` | Content/ file tree via std::filesystem |
+| `editor/src/SceneEditorPanel.hpp/.cpp` | 2D entity canvas with JSON save/load; shared-state accessors |
+| `editor/src/panels/SceneHierarchyPanel.hpp/.cpp` | Entity list: add/delete/rename/duplicate + context menu |
+| `editor/src/panels/InspectorPanel.hpp/.cpp` | Table-driven component property editor (DragFloat/DragInt/Checkbox/InputText); Add Component popup |
+| `src/engine/scene/scene_serialiser.hpp/.cpp` | `SceneSerialiser::SaveScene/LoadScene/CountEntities` — JSON ↔ ECS World round-trip |
+| `editor/CMakeLists.txt` | Updated: adds panel sources + `src/panels/` include path |
+| `CMakeLists.txt` | `find_package(nlohmann_json CONFIG QUIET)` + `scene_serialiser.cpp` + `ENGINE_ENABLE_JSON` define |
 
 ### Acceptance tests
 
 ```bat
-:: Headless editor startup
-.\Debug\editor.exe --headless
+:: Headless editor startup (validates panels initialise without D3D11)
+.\Debug\creation-suite-editor.exe --headless
 :: Expected: [PASS] Editor initialised. Scene hierarchy empty. Inspector ready.
 
-:: Scene round-trip
-.\Debug\editor.exe --headless --create-scene tests\scenes\basic.scene.json
-.\Debug\editor.exe --headless --load-scene tests\scenes\basic.scene.json --validate
-:: Expected: [PASS] Entity count matches. Component data identical.
+:: Scene round-trip (create → save → load → validate)
+.\Debug\creation-suite-editor.exe --headless --create-scene tests\scenes\basic.scene.json
+.\Debug\creation-suite-editor.exe --headless --load-scene tests\scenes\basic.scene.json --validate
+:: Expected: [PASS] Scene loaded: 1 entity in 'tests\scenes\basic.scene.json'
+
+:: Play-in-Engine (manual — requires engine_sandbox.exe in the same directory)
+:: Build > Play in Engine (F5) in the editor GUI
+:: Expected: engine_sandbox.exe launches with the preview scene
 ```
 
-**Done means:** CI green; editor opens and shows a scene; headless scene round-trip passes.
+**Done means:** Headless editor scene round-trip exits 0; inspector edits components; hierarchy shows entities with add/rename/delete; Play-in-Engine launches engine_sandbox.
 
 ---
 

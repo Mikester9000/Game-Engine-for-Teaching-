@@ -193,6 +193,27 @@ if(ENGINE_ENABLE_PHYSICS)
 endif()
 
 # ---------------------------------------------------------------------------
+# nlohmann/json — optional for engine_sandbox (M6 scene serialiser)
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — nlohmann/json in the engine
+# nlohmann-json is already in vcpkg.json (required by cook.exe and the editor).
+# When the vcpkg toolchain is active, find_package(nlohmann_json) will find it
+# automatically.  We use QUIET so a missing package is not an error — the
+# scene_serialiser will compile out its JSON code via #ifdef ENGINE_ENABLE_JSON.
+#
+# Why not REQUIRED?  The engine_sandbox must build on any Windows machine, even
+# without a vcpkg toolchain configured.  nlohmann/json is a "nice to have" for
+# runtime scene loading; the engine works without it.
+# ---------------------------------------------------------------------------
+find_package(nlohmann_json CONFIG QUIET)
+if(nlohmann_json_FOUND)
+    message(STATUS "nlohmann/json found: ENGINE_ENABLE_JSON ENABLED (M6 scene serialiser).")
+else()
+    message(STATUS "nlohmann/json NOT found — scene_serialiser JSON code compiled out. "
+                   "Install via vcpkg or pass -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake")
+endif()
+
+# ---------------------------------------------------------------------------
 # Find required system libraries (platform-gated)
 # ---------------------------------------------------------------------------
 
@@ -564,6 +585,20 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     )
 
     # -----------------------------------------------------------------------
+    # Scene serialiser (M6) — JSON ↔ ECS World round-trip.
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Conditional JSON sources
+    # scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
+    # The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
+    # When nlohmann/json is NOT found, the functions log an error and return
+    # false — no crash, no undefined symbols.  This way the sandbox always
+    # links cleanly regardless of vcpkg availability.
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/engine/scene/scene_serialiser.cpp
+    )
+
+    # -----------------------------------------------------------------------
     # LuaEngine sources (optional — only when bundled Lua headers are present).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Conditional Scripting in engine_sandbox
@@ -647,6 +682,13 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         target_link_libraries(engine_sandbox PRIVATE Jolt::Jolt)
     endif()
 
+    # TEACHING NOTE — nlohmann_json::nlohmann_json (M6)
+    # Header-only library; linking the CMake imported target adds the vcpkg
+    # include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
+    if(nlohmann_json_FOUND)
+        target_link_libraries(engine_sandbox PRIVATE nlohmann_json::nlohmann_json)
+    endif()
+
     # -----------------------------------------------------------------------
     # Compile definitions.
     # -----------------------------------------------------------------------
@@ -683,6 +725,13 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     # main.cpp uses it to gate the --scene physics_test acceptance tests.
     if(ENGINE_ENABLE_PHYSICS AND Jolt_FOUND)
         list(APPEND SANDBOX_DEFS ENGINE_ENABLE_PHYSICS)
+    endif()
+
+    # TEACHING NOTE — ENGINE_ENABLE_JSON compile definition (M6)
+    # Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
+    # gates all JSON parsing/writing code behind this macro.
+    if(nlohmann_json_FOUND)
+        list(APPEND SANDBOX_DEFS ENGINE_ENABLE_JSON)
     endif()
 
     target_compile_definitions(engine_sandbox PRIVATE ${SANDBOX_DEFS})
