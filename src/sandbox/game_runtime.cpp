@@ -233,7 +233,7 @@ void GameRuntime::Update(float dt)
     {
         // Start an encounter the first frame any enemy enters ATTACK state
         // (i.e. they have closed to within attackRange of the player).
-        bool anyAttacking = false;
+        bool anyEnemyAttacking = false;
         for (const auto& [eid, prevState] : m_prevAIStates)
         {
             (void)prevState;
@@ -242,12 +242,12 @@ void GameRuntime::Update(float dt)
             if (m_world.GetComponent<AIComponent>(eid).currentState
                     == AIComponent::State::ATTACK)
             {
-                anyAttacking = true;
+                anyEnemyAttacking = true;
                 break;
             }
         }
 
-        if (anyAttacking)
+        if (anyEnemyAttacking)
         {
             // Collect all still-living enemy IDs for the encounter.
             std::vector<EntityID> livingEnemies;
