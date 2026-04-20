@@ -6,16 +6,16 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1143 across 41 subsystems.
+**Total lessons:** 1146 across 41 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (51 lessons)
-- [ci/workflows](#ciworkflows) (39 lessons)
-- [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
-- [editor/src](#editorsrc) (97 lessons)
+- [ci/workflows](#ciworkflows) (40 lessons)
+- [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
+- [editor/src](#editorsrc) (98 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
@@ -1242,13 +1242,12 @@ shell: cmd
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
   1. Clones vcpkg into the workspace and pins it to a known-good release tag
-     (2024.12.16) where imgui carries the "docking" feature.  This avoids
-     depending on the C:\vcpkg snapshot baked into the windows-latest runner
-     image, which may be too old and fail with "imgui has no feature named
-     docking".
-  2. Installs imgui[docking,dx11-binding,win32-binding] and nlohmann-json
-     via the workspace vcpkg in classic mode (from $env:TEMP so no
-     vcpkg.json is in scope).
+     (2024.12.16).  At that tag the imgui feature is called
+     "docking-experimental" (not "docking").  We install
+     imgui[docking-experimental,...] to match the portfile.
+  2. Installs imgui[docking-experimental,dx11-binding,win32-binding] and
+     nlohmann-json via the workspace vcpkg in classic mode (from $env:TEMP
+     so no vcpkg.json is in scope).
   3. Configures the build with the windows-ninja-debug-editor preset, which
      sets BUILD_EDITOR=ON so CMake includes editor/CMakeLists.txt.
   4. Builds creation-suite-editor.exe.
@@ -1269,7 +1268,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L315) (line 315)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L314) (line 314)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1278,18 +1277,19 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L337) (line 337)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L336) (line 336)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
 relying on the system C:\vcpkg snapshot baked into the runner image.
-The system snapshot may be months old and may not include the "docking"
-feature for imgui, causing vcpkg install to fail with:
+
+At vcpkg tag 2024.12.16 the imgui docking feature is named
+"docking-experimental" — NOT "docking".  Using "docking" causes:
   "imgui has no feature named docking."
 
 By pinning to tag 2024.12.16 we guarantee:
-  • imgui portfile defines the docking, dx11-binding and win32-binding
-    features that the editor depends on.
+  • imgui portfile defines the docking-experimental, dx11-binding and
+    win32-binding features that the editor depends on.
   • The build is reproducible regardless of which runner image version
     GitHub rolls out.
 
@@ -1310,11 +1310,33 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
 Set-Location "$env:TEMP"
-& "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install "imgui[docking,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
+& "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install "imgui[docking-experimental,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
+
+### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L385) (line 385)
+
+The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
+root and auto-switches to "manifest mode", where it expects packages
+in ${CMAKE_BINARY_DIR}/vcpkg_installed/<triplet>/.  But our classic-
+mode install (run from $env:TEMP) wrote packages to
+<workspace>/vcpkg/installed/<triplet>/ instead.  Without this override
+CMake silently fails to find imgui and nlohmann-json.
+
+Fix: explicitly set VCPKG_INSTALLED_DIR to the classic-mode install
+root so the toolchain appends the correct path to CMAKE_PREFIX_PATH.
+-----------------------------------------------------------------------
+- name: Configure CMake (D3D11 + Editor)
+shell: pwsh
+run: >
+cmake --preset windows-ninja-debug-editor
+-DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+-DVCPKG_MANIFEST_INSTALL=OFF
+"-DVCPKG_INSTALLED_DIR=${{ github.workspace }}/vcpkg/installed"
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L398) (line 398)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L410) (line 410)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1328,7 +1350,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L422) (line 422)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L434) (line 434)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1346,7 +1368,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L459) (line 459)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1357,7 +1379,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L458) (line 458)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L470) (line 470)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1372,7 +1394,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L480) (line 480)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L492) (line 492)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -1486,9 +1508,9 @@ This migration means:
 --------------------------------------
 vcpkg supports "features" -- optional compile-time variants of a package.
 For imgui we enable three features in vcpkg.json:
-  docking        -- enables the dockable-window API (ImGui::DockSpace etc.)
-  dx11-binding   -- adds imgui_impl_dx11.h/.cpp for D3D11 rendering
-  win32-binding  -- adds imgui_impl_win32.h/.cpp for Win32 window input
+  docking-experimental -- enables the dockable-window API (ImGui::DockSpace etc.)
+  dx11-binding         -- adds imgui_impl_dx11.h/.cpp for D3D11 rendering
+  win32-binding        -- adds imgui_impl_win32.h/.cpp for Win32 window input
 vcpkg packages these as additional headers/sources exposed via the same
 imgui::imgui imported target.
 
@@ -1506,9 +1528,22 @@ and linker flags automatically.
 find_package(imgui         CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
+### RUNTIME_OUTPUT_DIRECTORY
+
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L88) (line 88)
+
+By default CMake places executables in <build>/<subdirectory>/ matching the
+add_subdirectory() tree (i.e. <build>/editor/ for this target).  Setting
+RUNTIME_OUTPUT_DIRECTORY to CMAKE_BINARY_DIR puts creation-suite-editor.exe
+at the build root next to engine_sandbox.exe, so CI steps and the Play-in-
+Engine launcher can find both with a single consistent path.
+set_target_properties(creation-suite-editor PROPERTIES
+RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
 ### Linking D3D11 + DXGI
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L101) (line 101)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L111) (line 111)
 
 d3d11.lib  -- Direct3D 11 device, context, swapchain.  Ships with the
               Windows SDK; no extra SDK install beyond Visual Studio.
@@ -1525,7 +1560,7 @@ dxgi
 
 ### UNICODE, WIN32_LEAN_AND_MEAN, NOMINMAX
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L119) (line 119)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L129) (line 129)
 
 UNICODE/_UNICODE  : Win32 API calls default to wide-char (wchar_t) variants.
 WIN32_LEAN_AND_MEAN : excludes rarely-used headers from <windows.h>,
@@ -1690,7 +1725,7 @@ TARGET SIDE (SceneEditorPanel):
 
 ### Wiring panels with non-owning pointers
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L25) (line 25)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L27) (line 27)
 
 SceneHierarchyPanel and InspectorPanel need a pointer to m_sceneEditor
 so they can read/write the shared entity list and selection state.
@@ -1703,7 +1738,7 @@ m_inspector.SetScenePanel(&m_sceneEditor);
 
 ### DockSpaceOverViewport
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L45) (line 45)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L47) (line 47)
 
 ImGui::DockSpaceOverViewport() creates a DockSpace that fills the entire
 main viewport.  All other ImGui windows can be docked into this space.
@@ -1712,14 +1747,24 @@ ImGuiDockNodeFlags_PassthruCentralNode lets the game/editor background
 (the D3D11 clear colour) show through the undocked central area.
 Without this flag the dockspace paints an opaque background over the
 central region even when no window is docked there.
+
+### DockSpaceOverViewport API change (imgui 1.89.4+)
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L56) (line 56)
+
+In imgui 1.89.4 the signature changed: the first argument switched from
+(const ImGuiViewport*) to (ImGuiID dockspace_id).  The viewport moved to
+the second argument.  vcpkg tag 2024.12.16 ships imgui 1.91.5, which uses
+this newer signature.  Pass 0 to let ImGui auto-assign a stable ID.
 ImGui::DockSpaceOverViewport(
+0,
 ImGui::GetMainViewport(),
 ImGuiDockNodeFlags_PassthruCentralNode
 );
 
 ### M6 new panels
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L65) (line 65)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L74) (line 74)
 
 These two panels share state with m_sceneEditor via the pointer set in
 the constructor.  They are separate dockable ImGui windows -- the user
@@ -1729,7 +1774,7 @@ m_inspector.Render();
 
 ### ImGui Modal Popups
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L76) (line 76)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L85) (line 85)
 
 OpenPopup() marks a popup as "open"; BeginPopupModal() renders it.
 The popup blocks interaction with windows behind it (modal behaviour).
@@ -1756,7 +1801,7 @@ ImGui::EndPopup();
 
 ### ImGui Menu Bar
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L117) (line 117)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L126) (line 126)
 
 ImGui::BeginMainMenuBar() / EndMainMenuBar() create a menu bar anchored to
 the top of the main viewport (not inside any ImGui window).
@@ -1770,7 +1815,7 @@ return;
 
 ### Load Scene (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L157) (line 157)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L166) (line 166)
 
 Mirrors "Save Scene" but in the other direction: shows a file open
 dialog, then calls SceneEditorPanel::LoadScene() to parse the JSON.
@@ -1795,7 +1840,7 @@ m_statusTimer   = 5.f;
 
 ### Posting WM_QUIT from within ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L211) (line 211)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L220) (line 220)
 
 PostQuitMessage(0) posts a WM_QUIT to the Win32 message queue.
 The main loop detects this and sets done = true, triggering cleanup.
@@ -1804,7 +1849,7 @@ PostQuitMessage(0);
 
 ### ShellExecuteW to run the cook script
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L232) (line 232)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L241) (line 241)
 
 ShellExecuteW launches an external process using the Windows
 shell.  "open" + a .py file invokes the system Python interpreter.
@@ -1821,7 +1866,7 @@ m_statusTimer   = 4.f;
 
 ### Play in Engine (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L248) (line 248)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L257) (line 257)
 
 "Play in Engine" saves the current scene to a temp .scene.json file
 and launches engine_sandbox.exe with --scene pointing to that file.
@@ -1837,7 +1882,7 @@ LaunchPlayInEngine();
 
 ### WideCharToMultiByte for UTF-8 conversion
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L286) (line 286)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L295) (line 295)
 
 Windows internally uses UTF-16 (wide char) for all API strings.
 Our public API uses std::string (UTF-8), which is the cross-platform norm.
@@ -1858,7 +1903,7 @@ return s;
 
 ### Play in Engine implementation
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L308) (line 308)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L317) (line 317)
 
 Steps:
   1. Write the scene to a well-known temp path (%TEMP%\editor_scene.scene.json).
@@ -1881,7 +1926,7 @@ tempScene += L"editor_preview.scene.json";
 
 ### ShellExecuteExW vs CreateProcessW
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L350) (line 350)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L359) (line 359)
 
 ShellExecuteExW is simpler but does not let us capture the output.
 CreateProcessW gives full control (redirect stdout/stderr, wait for exit).
@@ -1898,7 +1943,7 @@ sei.nShow       = SW_SHOWNORMAL;
 
 ### Simulating a Status Bar with ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L382) (line 382)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L391) (line 391)
 
 ImGui has no built-in "status bar" widget.  We simulate one by creating
 a small window pinned to the bottom of the viewport with no decorations.
@@ -1911,7 +1956,7 @@ constexpr float barHeight     = 22.f;
 
 ### IFileOpenDialog (modern Windows folder picker)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L433) (line 433)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L442) (line 442)
 
 The classic SHBrowseForFolderW dialog is old (Windows 3.1 era).
 The modern alternative is IFileOpenDialog with FOS_PICKFOLDERS set --
@@ -1924,7 +1969,7 @@ IFileOpenDialog* pFolderDialog = nullptr;
 
 ### GetSaveFileName (classic Win32 save dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L482) (line 482)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L491) (line 491)
 
 GetSaveFileNameW shows the standard "Save As" dialog. The filter string
 uses pairs of "Description\0*.ext\0" terminated by an extra \0.
@@ -1941,7 +1986,7 @@ filterLen += 2;  // trailing double-NUL
 
 ### GetOpenFileName (classic Win32 open dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L527) (line 527)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L536) (line 536)
 
 Mirrors PickSaveFile but uses OFN_FILEMUSTEXIST instead of OFN_OVERWRITEPROMPT.
 This is the standard "Open File" dialog used in all Win32 applications.
@@ -2466,7 +2511,7 @@ install (same reason D3D11 is the engine's default renderer).
 
 ### Module-level (global) objects for D3D11
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L57) (line 57)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L58) (line 58)
 
 We store D3D11 objects at module scope so both the WndProc and the main
 loop can access them without threading overhead.  In a larger engine these
@@ -2479,7 +2524,7 @@ static ID3D11RenderTargetView*  g_mainRenderTargetView = nullptr;
 
 ### Window Procedure (WndProc)
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L82) (line 82)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L83) (line 83)
 
 Every Win32 window requires a "window procedure" callback that processes
 messages sent by the OS (WM_SIZE, WM_DESTROY, mouse events, key events ...).
@@ -2494,7 +2539,7 @@ return true;  // ImGui consumed the message
 
 ### Swap-chain resize on WM_SIZE
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L97) (line 97)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L98) (line 98)
 
 When the window is resized the swap chain buffers become stale.
 We must release the old render target view, resize the swap chain,
@@ -2510,7 +2555,7 @@ return 0;
 
 ### WinMain vs main()
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L129) (line 129)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L130) (line 130)
 
 GUI applications use WinMain instead of main().  The difference is:
   main()    -- console entry point; stdout/stderr attached by default.
@@ -2523,7 +2568,7 @@ so CI scripts can capture pass/fail output.
 
 ### WideToUtf8 is defined in both main.cpp and EditorApp.cpp
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L153) (line 153)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L154) (line 154)
 
 because the two translation units are compiled independently.  The function
 is `static` in both files, so there is no ODR (One Definition Rule) conflict.
@@ -2542,7 +2587,7 @@ return s;
 
 ### GetCommandLineW + CommandLineToArgvW
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L173) (line 173)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L174) (line 174)
 
 WinMain receives a narrow lpCmdLine string.  For Unicode path support
 (e.g. --create-scene "C:\Users\Username\路径.scene.json") we use the
@@ -2553,7 +2598,7 @@ LPWSTR* wargv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
 ### Headless editor for CI
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L200) (line 200)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L201) (line 201)
 
 A headless run is useful for:
   • CI: verify the editor's scene round-trip (create → write → load → validate).
@@ -2568,7 +2613,7 @@ AttachOrAllocConsole();
 
 ### WNDCLASSEXW
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L290) (line 290)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L291) (line 291)
 
 WNDCLASSEXW describes the properties of a window class (shared template
 from which individual windows are created).
@@ -2587,7 +2632,7 @@ RegisterClassExW(&wc);
 
 ### ImGui Context
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L328) (line 328)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L329) (line 329)
 
 IMGUI_CHECKVERSION() verifies the ImGui headers and library are the same
 version (catches mismatched ABI at runtime, not just compile time).
@@ -2605,7 +2650,7 @@ io.IniFilename = "creation-suite-editor.ini";
 
 ### ImGui Backends
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L345) (line 345)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L346) (line 346)
 
 ImGui itself is platform-agnostic -- it only produces draw calls.
 "Backends" translate those draw calls to a specific platform/renderer:
@@ -2617,7 +2662,7 @@ ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
 ### The Game/Editor Loop
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L358) (line 358)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L359) (line 359)
 
 An editor loop mirrors a game loop:
   1. Poll OS messages   -- keyboard, mouse, resize, close.
@@ -2644,7 +2689,7 @@ if (done) break;
 
 ### DXGI Present
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L402) (line 402)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L403) (line 403)
 
 Present(1, 0) = vsync ON (swap every 1 monitor refresh).
 Present(0, 0) = vsync OFF (swap immediately, may tear).
@@ -2654,7 +2699,7 @@ g_pSwapChain->Present(1, 0);
 
 ### CreateDeviceAndSwapChain
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L423) (line 423)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L424) (line 424)
 
 D3D11CreateDeviceAndSwapChain is a single-call way to:
   a) Create an ID3D11Device (the GPU abstraction -- create resources).
@@ -2681,7 +2726,7 @@ sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
 ### WARP software fallback
 
-**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L468) (line 468)
+**Source:** [`editor/src/main.cpp`](editor/src/main.cpp#L469) (line 469)
 
 If hardware creation fails (e.g. in CI or on a machine without D3D11 GPU),
 fall back to D3D_DRIVER_TYPE_WARP -- Microsoft's software rasteriser.

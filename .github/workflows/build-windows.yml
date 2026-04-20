@@ -287,13 +287,12 @@ jobs:
   # ============================================================================
   # This job validates the Dear ImGui editor build (M6).  It:
   #   1. Clones vcpkg into the workspace and pins it to a known-good release tag
-  #      (2024.12.16) where imgui carries the "docking" feature.  This avoids
-  #      depending on the C:\vcpkg snapshot baked into the windows-latest runner
-  #      image, which may be too old and fail with "imgui has no feature named
-  #      docking".
-  #   2. Installs imgui[docking,dx11-binding,win32-binding] and nlohmann-json
-  #      via the workspace vcpkg in classic mode (from $env:TEMP so no
-  #      vcpkg.json is in scope).
+  #      (2024.12.16).  At that tag the imgui feature is called
+  #      "docking-experimental" (not "docking").  We install
+  #      imgui[docking-experimental,...] to match the portfile.
+  #   2. Installs imgui[docking-experimental,dx11-binding,win32-binding] and
+  #      nlohmann-json via the workspace vcpkg in classic mode (from $env:TEMP
+  #      so no vcpkg.json is in scope).
   #   3. Configures the build with the windows-ninja-debug-editor preset, which
   #      sets BUILD_EDITOR=ON so CMake includes editor/CMakeLists.txt.
   #   4. Builds creation-suite-editor.exe.
@@ -338,13 +337,14 @@ jobs:
       # -----------------------------------------------------------------------
       # We clone a specific vcpkg release tag into the workspace instead of
       # relying on the system C:\vcpkg snapshot baked into the runner image.
-      # The system snapshot may be months old and may not include the "docking"
-      # feature for imgui, causing vcpkg install to fail with:
+      #
+      # At vcpkg tag 2024.12.16 the imgui docking feature is named
+      # "docking-experimental" — NOT "docking".  Using "docking" causes:
       #   "imgui has no feature named docking."
       #
       # By pinning to tag 2024.12.16 we guarantee:
-      #   • imgui portfile defines the docking, dx11-binding and win32-binding
-      #     features that the editor depends on.
+      #   • imgui portfile defines the docking-experimental, dx11-binding and
+      #     win32-binding features that the editor depends on.
       #   • The build is reproducible regardless of which runner image version
       #     GitHub rolls out.
       #
@@ -372,7 +372,7 @@ jobs:
           # Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
           # vcpkg uses classic mode and only installs the packages we request.
           Set-Location "$env:TEMP"
-          & "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install "imgui[docking,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
+          & "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install "imgui[docking-experimental,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
 
       # -----------------------------------------------------------------------
       # Configure CMake with the editor preset.
@@ -381,6 +381,17 @@ jobs:
       # VCPKG_MANIFEST_INSTALL=OFF prevents the toolchain from re-running
       # manifest-mode install during cmake configure (avoids re-downloading
       # joltphysics and other vcpkg.json deps that this build doesn't need).
+      #
+      # TEACHING NOTE — VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
+      # The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
+      # root and auto-switches to "manifest mode", where it expects packages
+      # in ${CMAKE_BINARY_DIR}/vcpkg_installed/<triplet>/.  But our classic-
+      # mode install (run from $env:TEMP) wrote packages to
+      # <workspace>/vcpkg/installed/<triplet>/ instead.  Without this override
+      # CMake silently fails to find imgui and nlohmann-json.
+      #
+      # Fix: explicitly set VCPKG_INSTALLED_DIR to the classic-mode install
+      # root so the toolchain appends the correct path to CMAKE_PREFIX_PATH.
       # -----------------------------------------------------------------------
       - name: Configure CMake (D3D11 + Editor)
         shell: pwsh
@@ -388,6 +399,7 @@ jobs:
           cmake --preset windows-ninja-debug-editor
           -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake"
           -DVCPKG_MANIFEST_INSTALL=OFF
+          "-DVCPKG_INSTALLED_DIR=${{ github.workspace }}/vcpkg/installed"
 
       - name: Build creation-suite-editor
         run: cmake --build --preset windows-ninja-debug-editor --target creation-suite-editor

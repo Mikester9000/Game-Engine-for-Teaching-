@@ -38,12 +38,13 @@
  */
 
 #include <windows.h>
+#include <shellapi.h>   // CommandLineToArgvW
 #include <d3d11.h>
 #include <dxgi.h>
 #include <tchar.h>
 #include <string>
 
-// Dear ImGui headers (provided by vcpkg imgui[docking,dx11-binding,win32-binding])
+// Dear ImGui headers (provided by vcpkg imgui[docking-experimental,dx11-binding,win32-binding])
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>

@@ -25,9 +25,9 @@
 # --------------------------------------
 # vcpkg supports "features" -- optional compile-time variants of a package.
 # For imgui we enable three features in vcpkg.json:
-#   docking        -- enables the dockable-window API (ImGui::DockSpace etc.)
-#   dx11-binding   -- adds imgui_impl_dx11.h/.cpp for D3D11 rendering
-#   win32-binding  -- adds imgui_impl_win32.h/.cpp for Win32 window input
+#   docking-experimental -- enables the dockable-window API (ImGui::DockSpace etc.)
+#   dx11-binding         -- adds imgui_impl_dx11.h/.cpp for D3D11 rendering
+#   win32-binding        -- adds imgui_impl_win32.h/.cpp for Win32 window input
 # vcpkg packages these as additional headers/sources exposed via the same
 # imgui::imgui imported target.
 
@@ -84,6 +84,16 @@ set(EDITOR_SOURCES
 )
 
 add_executable(creation-suite-editor WIN32 ${EDITOR_SOURCES})
+
+# TEACHING NOTE -- RUNTIME_OUTPUT_DIRECTORY
+# By default CMake places executables in <build>/<subdirectory>/ matching the
+# add_subdirectory() tree (i.e. <build>/editor/ for this target).  Setting
+# RUNTIME_OUTPUT_DIRECTORY to CMAKE_BINARY_DIR puts creation-suite-editor.exe
+# at the build root next to engine_sandbox.exe, so CI steps and the Play-in-
+# Engine launcher can find both with a single consistent path.
+set_target_properties(creation-suite-editor PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
 
 # ---------------------------------------------------------------------------
 # Include paths
