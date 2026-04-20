@@ -38,7 +38,7 @@
             "enum": [
               "texture", "mesh", "material", "audio", "audio_bank",
               "scene", "skeleton", "anim_clip", "anim_graph",
-              "script", "font", "tilemap"
+              "script", "font", "tilemap", "level"
             ],
             "description": "Asset type tag used for filtering and loading."
           },

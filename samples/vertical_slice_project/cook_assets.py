@@ -372,9 +372,78 @@ def cook_animations(registry: list[dict]) -> int:
     return count
 
 
-# ---------------------------------------------------------------------------
-# Registry update
-# ---------------------------------------------------------------------------
+def cook_levels(registry: list[dict]) -> int:
+    """Cook streaming cell descriptor files (.cell.json → .level) from Content/Levels/.
+
+    TEACHING NOTE — M7.2: Level / Streaming Cell Cooking
+    ======================================================
+    A "level" asset represents one streaming cell in the open world.  Each
+    cell descriptor JSON (Content/Levels/*.cell.json) contains:
+      - Zone name, tilemap dimensions, danger rating
+      - Enemy spawn points (tile coordinates + enemy data IDs)
+      - NPC and shop ID lists
+
+    The cook step:
+      1. Reads the source .cell.json.
+      2. Validates the required fields are present.
+      3. Copies it to Cooked/Levels/ with the .level extension.
+         (A future cook step could convert to a compact binary format.)
+
+    The cooked .level file is loaded at runtime by GameStreamingManager::
+    OnLoadCell() via AssetLoader::LoadRaw(guid).  The GUID is registered in
+    AssetRegistry.json and looked up at runtime using RegisterCellGuid().
+
+    TEACHING NOTE — Why .level instead of keeping .cell.json?
+    Renaming to .level makes it explicit that this is a COOKED, runtime-ready
+    file — not a raw source file.  The extension signals the content pipeline
+    stage: .cell.json is edited by designers, .level is consumed by the engine.
+    """
+    levels_src = CONTENT_DIR / "Levels"
+    levels_dst = COOKED_DIR  / "Levels"
+    ensure_dir(levels_dst)
+
+    count = 0
+    for src in sorted(levels_src.glob("**/*.cell.json")):
+        rel = src.relative_to(levels_src)            # relative to Levels/
+        # TEACHING NOTE — Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
+        # Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
+        # leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
+        # All files matched by **/*.cell.json are guaranteed to end in ".cell.json".
+        cooked_name = src.name[: -len(".cell.json")] + ".level"
+        dst = levels_dst / rel.parent / cooked_name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+
+        # Validate the source JSON has required fields before cooking.
+        try:
+            with src.open(encoding="utf-8") as f:
+                data = json.load(f)
+            # Required: zoneName (or a sensible fallback)
+            if "tileWidth" not in data or "tileHeight" not in data:
+                print(f"  [WARN] {src.name}: missing tileWidth/tileHeight — cooking anyway")
+        except Exception as exc:
+            print(f"  [WARN] {src.name}: JSON parse failed ({exc}) — skipping")
+            continue
+
+        # STUB: copy file as-is (real cook could convert to binary for faster loading)
+        shutil.copy2(src, dst)
+
+        registry.append({
+            "id":     new_guid(),
+            "type":   "level",
+            "name":   src.name[: -len(".cell.json")],  # "cell_0_0.cell.json" → "cell_0_0"
+            "source": "Levels/" + str(rel),
+            "cooked": str(dst.relative_to(SCRIPT_DIR)),
+            "hash":   sha256_file(src),
+            "dependencies": [],
+            "tags":   ["level", "streaming-cell"],
+        })
+        count += 1
+        print(f"  [LVL] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+
+    return count
+
+
+
 
 def _try_relative_to(path: Path, base: Path) -> str:
     """Return path relative to base as a string, or the original string if not relative.
@@ -450,6 +519,12 @@ def main() -> int:
     total += n
     if n == 0:
         print("  (no JSON files found in Content/Animations/)")
+
+    print("\n--- Streaming Levels ---")
+    n = cook_levels(registry)
+    total += n
+    if n == 0:
+        print("  (no .cell.json files found in Content/Levels/)")
 
     print("\n--- Registry ---")
     update_registry(registry)

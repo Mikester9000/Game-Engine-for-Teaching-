@@ -185,7 +185,7 @@ class TestAssetEntries:
         valid_types = {
             "texture", "mesh", "material", "audio", "audio_bank",
             "scene", "skeleton", "anim_clip", "anim_graph",
-            "script", "font", "tilemap",
+            "script", "font", "tilemap", "level",
         }
         for asset in registry.get("assets", []):
             assert asset.get("type") in valid_types, (

@@ -157,6 +157,35 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M7 — World streaming acceptance tests (CPU-only, no GPU needed)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M7 World Streaming CI
+      # The three streaming scenes exercise WorldStreamingManager, WorldPartition,
+      # and AsyncLoader without touching the D3D11 renderer.  They run on the
+      # WARP headless device (same binary as M3/M4b) because the renderer is
+      # initialised before scene dispatch and then immediately shut down after
+      # each streaming test.
+      #
+      #   streaming_load   — 9 cells load at radius-1; no duplicates.
+      #   streaming_evict  — cells evicted when camera moves 3× cell-width away.
+      #   streaming_async  — Update() < 2 ms per frame over 120 frames.
+      #
+      # No extra vcpkg packages are needed: world streaming uses only std::thread,
+      # std::mutex, std::condition_variable — all in the C++17 standard library.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M7 — streaming_load)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_load
+        shell: cmd
+
+      - name: Run headless acceptance test (M7 — streaming_evict)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_evict
+        shell: cmd
+
+      - name: Run headless acceptance test (M7 — streaming_async)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_async
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # 6. Cook the vertical slice sample project.
       # -----------------------------------------------------------------------
       - name: Cook vertical slice project

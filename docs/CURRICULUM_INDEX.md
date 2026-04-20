@@ -6,16 +6,16 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1190 across 42 subsystems.
+**Total lessons:** 1237 across 42 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (52 lessons)
-- [ci/workflows](#ciworkflows) (40 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (53 lessons)
+- [ci/workflows](#ciworkflows) (41 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
-- [editor/src](#editorsrc) (98 lessons)
+- [editor/src](#editorsrc) (102 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
@@ -28,14 +28,14 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/rendering](#enginerendering) (215 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
-- [engine/world](#engineworld) (38 lessons)
+- [engine/world](#engineworld) (56 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
 - [game/systems](#gamesystems) (85 lessons)
-- [game/world](#gameworld) (70 lessons)
-- [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (29 lessons)
+- [game/world](#gameworld) (88 lessons)
+- [samples/vertical_slice_project](#samplesvertical_slice_project) (14 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (31 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -592,11 +592,19 @@ src/game/systems/CampSystem.cpp
 src/game/world/TileMap.cpp
 src/game/world/WorldMap.cpp
 src/game/world/Zone.cpp
+
+### M7.1: GameStreamingManager wires Zone lifecycle into
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L658) (line 658)
+
+WorldStreamingManager.  Compiled alongside Zone.cpp so that
+OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
+src/game/world/GameStreamingManager.cpp
 )
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L679) (line 679)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L683) (line 683)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -608,7 +616,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L688) (line 688)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L692) (line 692)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -617,7 +625,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L698) (line 698)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L702) (line 702)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -629,7 +637,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L707) (line 707)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L711) (line 711)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -639,7 +647,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L717) (line 717)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L721) (line 721)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -648,7 +656,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L723) (line 723)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L727) (line 727)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -657,7 +665,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L728) (line 728)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L732) (line 732)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -668,7 +676,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L744) (line 744)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L748) (line 748)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -679,7 +687,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L752) (line 752)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -689,7 +697,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L764) (line 764)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L768) (line 768)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -723,7 +731,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L796) (line 796)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L800) (line 800)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -738,7 +746,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L811) (line 811)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L815) (line 815)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -753,7 +761,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L853) (line 853)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L857) (line 857)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -776,7 +784,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L874) (line 874)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L878) (line 878)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -797,7 +805,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L891) (line 891)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L895) (line 895)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -808,7 +816,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L914) (line 914)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L918) (line 918)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -830,7 +838,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L933) (line 933)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L937) (line 937)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -841,7 +849,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L941) (line 941)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L945) (line 945)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -851,7 +859,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L971) (line 971)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L975) (line 975)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -860,7 +868,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L978) (line 978)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L982) (line 982)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1172,9 +1180,30 @@ Expected output: "[PASS] skinned_mesh scene pipeline OK (WARP headless)."
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene skinned_mesh
 shell: cmd
 
+### M7 World Streaming CI
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L162) (line 162)
+
+The three streaming scenes exercise WorldStreamingManager, WorldPartition,
+and AsyncLoader without touching the D3D11 renderer.  They run on the
+WARP headless device (same binary as M3/M4b) because the renderer is
+initialised before scene dispatch and then immediately shut down after
+each streaming test.
+
+  streaming_load   — 9 cells load at radius-1; no duplicates.
+  streaming_evict  — cells evicted when camera moves 3× cell-width away.
+  streaming_async  — Update() < 2 ms per frame over 120 frames.
+
+No extra vcpkg packages are needed: world streaming uses only std::thread,
+std::mutex, std::condition_variable — all in the C++17 standard library.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M7 — streaming_load)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_load
+shell: cmd
+
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L176) (line 176)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L205) (line 205)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1200,7 +1229,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L215) (line 215)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L244) (line 244)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1226,7 +1255,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L249) (line 249)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L278) (line 278)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1247,7 +1276,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L273) (line 273)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L302) (line 302)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1260,7 +1289,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L286) (line 286)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L315) (line 315)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1291,7 +1320,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L314) (line 314)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L343) (line 343)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1300,7 +1329,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L336) (line 336)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L365) (line 365)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1328,7 +1357,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L371) (line 371)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L400) (line 400)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1337,7 +1366,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L385) (line 385)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L414) (line 414)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1359,7 +1388,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L410) (line 410)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L439) (line 439)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1373,7 +1402,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L434) (line 434)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L463) (line 463)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1391,7 +1420,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L459) (line 459)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L488) (line 488)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1402,7 +1431,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L470) (line 470)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L499) (line 499)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1417,7 +1446,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L492) (line 492)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L521) (line 521)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -1805,7 +1834,7 @@ EndPopup() must always be called if BeginPopupModal returned true.
 if (ImGui::BeginPopupModal("About##popup", &m_showAbout,
 ImGuiWindowFlags_AlwaysAutoResize))
 {
-ImGui::TextUnformatted("Creation Suite Editor  v1.0  (M6)");
+ImGui::TextUnformatted("Creation Suite Editor  v1.0  (M7)");
 ImGui::Separator();
 ImGui::TextUnformatted("Part of the Game Engine for Teaching monorepo.");
 ImGui::TextUnformatted("Dear ImGui (MIT) for UI.");
@@ -1813,6 +1842,7 @@ ImGui::TextUnformatted("D3D11 (Windows SDK) for rendering.");
 ImGui::TextUnformatted("nlohmann-json (MIT) for scene files.");
 ImGui::Spacing();
 ImGui::TextUnformatted("M6 panels: Scene Hierarchy, Inspector, Play-in-Engine.");
+ImGui::TextUnformatted("M7.5: World Streaming debug overlay (View menu).");
 ImGui::Spacing();
 if (ImGui::Button("Close", ImVec2(120, 0)))
 {
@@ -1822,9 +1852,40 @@ ImGui::CloseCurrentPopup();
 ImGui::EndPopup();
 }
 
+### Streaming minimap reference panel
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L111) (line 111)
+
+────────────────────────────────────────────────────
+This floating window shows the colour legend for the streaming debug
+minimap that WorldStreamingManager::DrawDebugOverlay() produces.
+
+In M7.5 the overlay is a reference panel only: the editor does not own
+a live WorldStreamingManager instance (that lives in the game runtime).
+To see the actual cell-state grid, call DrawDebugOverlay() from your
+game loop and pass the ImDrawList + camera position.  Full editor
+integration (live cell grid inside the editor viewport) is planned for
+M8.7 when GameStreamingManager is wired to the D3D11 runtime.
+if (m_showStreamingOverlay)
+{
+ImGuiIO& imguiIO = ImGui::GetIO();
+const float overlayX = imguiIO.DisplaySize.x - 240.0f;
+const float overlayY = 40.0f;
+
+### DrawDebugOverlay usage
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L142) (line 142)
+
+────────────────────────────────────────
+Call from your D3D11 game loop (M8.7):
+  mgr.DrawDebugOverlay(ImGui::GetWindowDrawList(),
+                       originX, originY, 20.f, cameraPos);
+ImGui::TextUnformatted("Legend (DrawDebugOverlay):");
+ImGui::Spacing();
+
 ### ImGui Menu Bar
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L126) (line 126)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L189) (line 189)
 
 ImGui::BeginMainMenuBar() / EndMainMenuBar() create a menu bar anchored to
 the top of the main viewport (not inside any ImGui window).
@@ -1838,7 +1899,7 @@ return;
 
 ### Load Scene (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L166) (line 166)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L229) (line 229)
 
 Mirrors "Save Scene" but in the other direction: shows a file open
 dialog, then calls SceneEditorPanel::LoadScene() to parse the JSON.
@@ -1863,7 +1924,7 @@ m_statusTimer   = 5.f;
 
 ### Posting WM_QUIT from within ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L220) (line 220)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L283) (line 283)
 
 PostQuitMessage(0) posts a WM_QUIT to the Win32 message queue.
 The main loop detects this and sets done = true, triggering cleanup.
@@ -1872,7 +1933,7 @@ PostQuitMessage(0);
 
 ### ShellExecuteW to run the cook script
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L241) (line 241)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L304) (line 304)
 
 ShellExecuteW launches an external process using the Windows
 shell.  "open" + a .py file invokes the system Python interpreter.
@@ -1889,7 +1950,7 @@ m_statusTimer   = 4.f;
 
 ### Play in Engine (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L257) (line 257)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L320) (line 320)
 
 "Play in Engine" saves the current scene to a temp .scene.json file
 and launches engine_sandbox.exe with --scene pointing to that file.
@@ -1903,9 +1964,33 @@ if (ImGui::MenuItem("Play in Engine", "F5"))
 LaunchPlayInEngine();
 }
 
+### M7.5: View menu with streaming overlay toggle
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L344) (line 344)
+
+──────────────────────────────────────────────────────────────
+The View menu controls optional debug visualisations.  Adding toggles
+here (rather than hardcoding them) makes it easy to add more overlays
+in future milestones (e.g. physics bounding boxes, nav-mesh, AI states).
+
+ImGui::MenuItem with a bool* reference automatically renders a check-mark
+next to the label when the value is true, and toggles it on click.
+if (ImGui::BeginMenu("View"))
+{
+ImGui::MenuItem("World Streaming Overlay", nullptr, &m_showStreamingOverlay);
+if (ImGui::IsItemHovered())
+{
+ImGui::SetTooltip(
+"Show the world streaming debug minimap.\n"
+"Cells: grey=Unloaded, yellow=Loading, green=Loaded, red=Evicting.\n"
+"White outline = camera's current cell.");
+}
+ImGui::EndMenu();
+}
+
 ### WideCharToMultiByte for UTF-8 conversion
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L295) (line 295)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L380) (line 380)
 
 Windows internally uses UTF-16 (wide char) for all API strings.
 Our public API uses std::string (UTF-8), which is the cross-platform norm.
@@ -1926,7 +2011,7 @@ return s;
 
 ### Play in Engine implementation
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L317) (line 317)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L402) (line 402)
 
 Steps:
   1. Write the scene to a well-known temp path (%TEMP%\editor_scene.scene.json).
@@ -1949,7 +2034,7 @@ tempScene += L"editor_preview.scene.json";
 
 ### ShellExecuteExW vs CreateProcessW
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L359) (line 359)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L444) (line 444)
 
 ShellExecuteExW is simpler but does not let us capture the output.
 CreateProcessW gives full control (redirect stdout/stderr, wait for exit).
@@ -1966,7 +2051,7 @@ sei.nShow       = SW_SHOWNORMAL;
 
 ### Simulating a Status Bar with ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L391) (line 391)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L476) (line 476)
 
 ImGui has no built-in "status bar" widget.  We simulate one by creating
 a small window pinned to the bottom of the viewport with no decorations.
@@ -1979,7 +2064,7 @@ constexpr float barHeight     = 22.f;
 
 ### IFileOpenDialog (modern Windows folder picker)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L442) (line 442)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L527) (line 527)
 
 The classic SHBrowseForFolderW dialog is old (Windows 3.1 era).
 The modern alternative is IFileOpenDialog with FOS_PICKFOLDERS set --
@@ -1992,7 +2077,7 @@ IFileOpenDialog* pFolderDialog = nullptr;
 
 ### GetSaveFileName (classic Win32 save dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L491) (line 491)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L576) (line 576)
 
 GetSaveFileNameW shows the standard "Save As" dialog. The filter string
 uses pairs of "Description\0*.ext\0" terminated by an extra \0.
@@ -2009,7 +2094,7 @@ filterLen += 2;  // trailing double-NUL
 
 ### GetOpenFileName (classic Win32 open dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L536) (line 536)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L621) (line 621)
 
 Mirrors PickSaveFile but uses OFN_FILEMUSTEXIST instead of OFN_OVERWRITEPROMPT.
 This is the standard "Open File" dialog used in all Win32 applications.
@@ -2099,6 +2184,18 @@ ContentBrowserPanel  m_contentBrowser;   ///< Content/ file tree
 SceneEditorPanel     m_sceneEditor;      ///< Scene canvas (owns entity data)
 SceneHierarchyPanel  m_hierarchy;        ///< M6: entity list panel
 InspectorPanel       m_inspector;        ///< M6: property editor panel
+
+### M7.5: World Streaming debug overlay toggle
+
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L118) (line 118)
+
+────────────────────────────────────────────────────────────
+The streaming overlay draws a 2D minimap of cell states (grey=Unloaded,
+yellow=Loading, green=Loaded, red=Evicting) over the SceneEditorPanel
+canvas.  Toggled from the View menu.  Only available when
+ENGINE_ENABLE_D3D11 and BUILD_EDITOR are both defined.
+bool         m_showStreamingOverlay  = false;   ///< Streaming debug minimap
+};
 
 ### What this file teaches
 
@@ -13539,11 +13636,13 @@ By keeping Jolt/platform/engine-specific code OUT of the header, any file
 that #includes async_loader.hpp only pays for a lightweight recompile if
 this .cpp changes — not the other way around.
 
+M7.3 additions: CancelJob() + cancelled-flag check in WorkerLoop().
+M7.4 additions: maxCount parameter in PumpMainThreadCompletions().
 ============================================================================
 
 ### Safe destruction
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L33) (line 33)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L35) (line 35)
 
 ─────────────────────────────────
 If Stop() was not called before the destructor (e.g. due to an exception
@@ -13558,7 +13657,7 @@ Stop();
 
 ### std::atomic initialisation
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L51) (line 51)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L53) (line 53)
 
 ────────────────────────────────────────────
 m_stop is a std::atomic<bool> so both the main thread and worker thread
@@ -13568,7 +13667,7 @@ m_stop.store(false, std::memory_order_relaxed);
 
 ### Graceful shutdown sequence
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L67) (line 67)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L69) (line 69)
 
 ───────────────────────────────────────────
 1. Set the stop flag under the pending mutex so the worker cannot miss
@@ -13581,29 +13680,88 @@ m_stop.store(true, std::memory_order_release);
 }
 m_cv.notify_one();
 
-### Swap-and-drain pattern (see header for explanation)
+### Register cancel token before pushing the job
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L102) (line 102)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L95) (line 95)
+
+──────────────────────────────────────────────────────────────
+We store the shared cancellation flag in m_cancelTokens BEFORE
+pushing the job to m_pending.  This ensures CancelJob() can always
+find the token even if the worker pops the job between the push
+and the map insert (which cannot happen here — both happen under
+the same lock).
+m_cancelTokens[job.cellId] = job.cancelled;
+m_pending.push_back(std::move(job));
+}
+Wake the worker thread.  If the worker is already processing a job,
+it will pick this one up after finishing the current one.
+m_cv.notify_one();
+}
+
+### Cancellation via m_cancelTokens (M7.3 fix)
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L112) (line 112)
+
+─────────────────────────────────────────────────────────────
+We look up the shared cancellation flag in m_cancelTokens rather than
+only scanning m_pending.  This is important because once the worker
+pops a job from m_pending (under m_pendingMtx) and then releases the
+lock, the deque no longer contains the job.  A deque-only scan would
+silently miss in-flight jobs.
+
+m_cancelTokens retains the same shared_ptr that lives inside the
+worker's local job copy.  Writing to the flag here (store_release)
+is therefore visible to the worker's two cancel-checks (before and
+after work()) even if the job was already popped from the deque.
+std::lock_guard<std::mutex> lock(m_pendingMtx);
+const auto it = m_cancelTokens.find(cellId);
+if (it != m_cancelTokens.end())
+{
+it->second->store(true, std::memory_order_release);
+Note: we do NOT erase from m_cancelTokens here.  The worker erases
+the entry when it pops the job.  This keeps the flag reachable for
+the post-work() cancellation check in WorkerLoop.
+}
+LOG_INFO("AsyncLoader: CancelJob requested for cellId=" << cellId);
+}
+
+### Swap-and-drain with optional frame-budget cap (M7.4)
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L138) (line 138)
 
 ─────────────────────────────────────────────────────────────────────
-std::queue<CompletedJob> localCompleted;
+Steps:
+  1. Lock m_completedMtx briefly; swap m_completed into a local deque.
+  2. Unlock immediately so the worker can push new completions while
+     we are executing callbacks.
+  3. Process up to maxCount items from the local deque.
+  4. Prepend any unconsumed items back to m_completed for next frame.
+
+maxCount == 0 means "no cap — drain everything".
+std::deque<CompletedJob> localCompleted;
 {
 std::lock_guard<std::mutex> lock(m_completedMtx);
 std::swap(m_completed, localCompleted);
 }
-No lock held during callback invocation.
-while (!localCompleted.empty())
-{
-CompletedJob& c = localCompleted.front();
-if (c.job.onComplete)
-c.job.onComplete(c.success);
-localCompleted.pop();
+
+### Preserve FIFO order when prepending leftovers
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L173) (line 173)
+
+─────────────────────────────────────────────────────────────────
+localCompleted was drained front-to-back, so any remaining items
+are already in the correct oldest-to-newest order.
+push_front() inserts before the current head; iterating forward
+would reverse the remainder.  Iterating in reverse preserves the
+original FIFO ordering across frames.
+for (auto it = localCompleted.rbegin(); it != localCompleted.rend(); ++it)
+m_completed.push_front(std::move(*it));
 }
 }
 
 ### Condition variable wait loop pattern
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L131) (line 131)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L197) (line 197)
 
 ──────────────────────────────────────────────────────
 The canonical wait-loop guards against spurious wakeups:
@@ -13617,9 +13775,43 @@ is equivalent to:
 The predicate checks BOTH that there is work AND that we should not stop.
 We wake up when m_pending is non-empty OR m_stop is set.
 
+### Erase the cancel token while still under lock
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L229) (line 229)
+
+────────────────────────────────────────────────────────────────
+Once we pop the job from m_pending, CancelJob() can no longer
+find it via a deque scan.  We erase from m_cancelTokens here
+(still under m_pendingMtx) so a concurrent CancelJob() call
+that arrives after this erase will not find a stale token.
+The worker's local `job` still holds its own shared_ptr copy,
+so the two cancel-checks below can still read the flag even
+after the map entry is gone.
+m_cancelTokens.erase(job.cellId);
+}
+Lock released — main thread can enqueue more work while we execute.
+
+### Early-out on cancellation
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L243) (line 243)
+
+──────────────────────────────────────────
+The main thread may have called CancelJob() between the time this
+job was enqueued and now.  Check the shared atomic flag and skip
+execution entirely if the job was cancelled.  We do NOT push a
+completion callback for cancelled jobs — the WorldStreamingManager
+has already transitioned the cell to Unloaded in EvictCells().
+if (job.cancelled && job.cancelled->load(std::memory_order_acquire))
+{
+LOG_INFO("AsyncLoader: job '" << job.label
+<< "' (cellId=" << job.cellId
+<< ") was cancelled — skipping.");
+continue;
+}
+
 ### Catching exceptions on the worker thread
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L172) (line 172)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L265) (line 265)
 
 ──────────────────────────────────────────────────────────
 If job.work() throws, we catch it here and report failure via
@@ -13646,6 +13838,22 @@ else
 {
 No work function provided — treat as success (no-op job).
 success = true;
+}
+
+### Double-check after execution
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L297) (line 297)
+
+──────────────────────────────────────────────
+CancelJob() may have been called WHILE work() was executing.
+In that case the cell is already Unloaded in WorldStreamingManager.
+Pushing a completion callback would re-mark it as Loaded, corrupting
+the state machine.  Skip the push if cancelled.
+if (job.cancelled && job.cancelled->load(std::memory_order_acquire))
+{
+LOG_INFO("AsyncLoader: job '" << job.label
+<< "' completed but was cancelled mid-flight — discarding.");
+continue;
 }
 
 ### Why an Async Loader?
@@ -13716,7 +13924,7 @@ Platform: All (std::thread is available on Windows, Linux, macOS)
 
 ### std::function as a generic callable
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L91) (line 91)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L93) (line 93)
 
 ────────────────────────────────────────────────────
 std::function<void()> can hold any callable: a plain function pointer, a
@@ -13732,9 +13940,23 @@ inside the lambda — e.g.:
       if (ok) zonePtr->SpawnEnemies(world);
   };
 
+### std::atomic<bool> for Lock-Free Cancel
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L119) (line 119)
+
+────────────────────────────────────────────────────────
+Because the worker thread reads this flag WITHOUT holding any mutex,
+it must be an atomic.  The cancel-check is a pure read (load_acquire)
+and the cancel-set is a pure write (store_release), so the cheapest
+memory order is sufficient — no expensive full barriers needed.
+
+Using a shared_ptr lets CancelJob() find the flag from the pending
+queue (by cell ID) and set it AFTER the job has been moved off the
+queue and into the worker thread's local copy.
+
 ### Returning bool vs. throwing exceptions
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L123) (line 123)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L142) (line 142)
 
 ────────────────────────────────────────────────────────
 We return bool rather than throw so that the worker thread never sees an
@@ -13743,7 +13965,7 @@ via the onComplete(false) callback instead.
 
 ### Main-thread safety
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L136) (line 136)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L155) (line 155)
 
 ─────────────────────────────────────
 All ECS writes, rendering-state changes, and audio events must happen
@@ -13753,7 +13975,7 @@ engine API.
 
 ### RAII and Lifecycle
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L173) (line 173)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L192) (line 192)
 
 ────────────────────────────────────
 Start()/Stop() are explicit rather than constructor/destructor because the
@@ -13763,7 +13985,7 @@ the thread would spin up before the owning object finished constructing.
 
 ### Graceful shutdown
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L210) (line 210)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L229) (line 229)
 
 ────────────────────────────────────
 We set m_stop = true then notify the condition variable.  The worker
@@ -13771,34 +13993,148 @@ thread checks m_stop after each job and exits cleanly.  We then call
 m_thread.join() to wait for it.  This avoids std::terminate() being
 called if the thread is still running at destruction.
 
-### Swap-and-drain pattern
+### Cancellation with Atomic Flags (m_cancelTokens map)
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L239) (line 239)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L259) (line 259)
 
-─────────────────────────────────────────
-Rather than holding the completion mutex while invoking callbacks
-(which could re-enqueue jobs, causing a deadlock), we:
-  1. Lock m_completedMtx briefly.
-  2. Swap m_completed into a local queue.
-  3. Unlock m_completedMtx.
-  4. Iterate the local queue and invoke callbacks with NO lock held.
-This minimises lock contention and eliminates deadlock risk.
+─────────────────────────────────────────────────────────────────────
+Scanning only the pending deque is insufficient: once the worker pops
+a job from the deque (under m_pendingMtx), it releases the lock and
+proceeds to execute work().  At that point the deque no longer contains
+the job, so a deque-only scan in CancelJob would silently miss it.
+
+Fix: m_cancelTokens holds every pending-or-in-flight job's shared
+cancellation flag, keyed by cellId.  EnqueueJob inserts into the map;
+the WorkerLoop erases the entry (under lock) the moment it pops the job.
+CancelJob looks up the map first — if the job has already been popped the
+map still has the entry (until the worker erases it), so the flag is set
+and the worker's local copy (which shares the same shared_ptr) sees it.
+
+Cancelled jobs produce NO completion callback — the cell transitions
+directly to Unloaded in WorldStreamingManager::EvictCells().
+
+### Swap-and-drain with budget cap
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L288) (line 288)
+
+─────────────────────────────────────────────────
+1. Lock m_completedMtx briefly.
+2. Swap m_completed into a local deque.
+3. Unlock m_completedMtx (no lock held during callbacks).
+4. Invoke up to maxCount callbacks from the front of the local deque.
+5. Swap any remaining (budget-limited) completions back into
+   m_completed for the next frame.
+
+### Why deque instead of queue?
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L297) (line 297)
+
+─────────────────────────────────────────────
+std::deque supports efficient push_back AND iteration, letting us
+cheaply put unconsumed completions back.  std::queue wraps deque
+but does not expose direct iteration — we use deque directly here.
 
 ### Worker loop pattern
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L266) (line 266)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L320) (line 320)
 
 ─────────────────────────────────────
 The worker sits in a wait loop:
   1. Acquire m_pendingMtx.
   2. Wait on m_cv until m_pending is non-empty OR m_stop is true.
   3. Pop one job, release the lock.
-  4. Execute job.work().
-  5. Lock m_completedMtx, push result, unlock.
-  6. Repeat until m_stop && m_pending is empty.
+  4. Check cancelled flag — skip job if set (M7.3).
+  5. Execute job.work().
+  6. Lock m_completedMtx, push result, unlock.
+  7. Repeat until m_stop && m_pending is empty.
 
 Releasing the pending lock BEFORE executing work() is important:
 it lets the main thread enqueue more jobs while the worker is busy.
+
+### Why a separate map?
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L351) (line 351)
+
+─────────────────────────────────────
+m_pending is only scanned to cancel *queued* jobs.  Once the worker
+pops a job from m_pending it is removed from the deque, making
+m_pending useless for in-flight cancellation.
+
+m_cancelTokens retains the shared_ptr for every pending-or-in-flight
+job.  The worker erases the entry (still under m_pendingMtx) the
+moment it pops the job — this small critical section is inexpensive
+because map::erase is O(1) amortised.
+
+After the worker erases the entry the token is still alive inside the
+worker's local LoadJob copy, so any CancelJob() call that races
+with the erase and succeeds will either:
+  a) find the token in the map (set flag → worker sees it after work()),
+  b) not find it (worker already erased + checked — job will complete).
+
+Both outcomes are correct; the worst case is a spurious completion for
+a cancelled cell which the state machine handles gracefully.
+
+### Data Transfer Objects (DTOs) in a Pipeline
+
+**Source:** [`src/engine/world/cell_data.hpp`](src/engine/world/cell_data.hpp#L6) (line 6)
+
+============================================================================
+CellData is a plain-old-data (POD) struct that acts as the handoff between
+two stages of the streaming pipeline:
+
+  Stage 1 (worker thread)  — OnLoadCell() reads the .level file and
+                              deserialises its JSON into a CellData.
+  Stage 2 (main thread)    — OnCellLoaded() receives the CellData and
+                              calls Zone::Load() + SpawnEnemies() to
+                              create the actual ECS entities.
+
+CellData intentionally has NO virtual methods, NO pointers to heap-allocated
+resources, and NO ECS types.  This makes it trivially copyable between
+threads and easy to serialise/deserialise.
+
+─── .level file format (JSON source, binary cooked) ─────────────────────────
+Source cell descriptor (Content/Levels/*.cell.json):
+{
+  "zoneName":         "Duscae Grasslands",
+  "tileWidth":        40,
+  "tileHeight":       40,
+  "isDungeon":        false,
+  "dangerLevel":      2,
+  "recommendedLevel": 10,
+  "spawns": [
+    { "enemyDataID": 1, "tileX": 5, "tileY": 7, "respawnTime": 45.0 },
+    { "enemyDataID": 2, "tileX": 22, "tileY": 31, "respawnTime": 60.0 }
+  ],
+  "npcIDs":  [101, 102],
+  "shopIDs": [5]
+}
+
+The cook step (cook_assets.py cook_levels()) copies the source JSON into
+Cooked/Levels/ without transformation.  A future cook step could convert
+to a binary format for faster runtime parsing.
+
+─── SpawnEntry ───────────────────────────────────────────────────────────────
+Each SpawnEntry in CellData::spawns tells GameStreamingManager where to
+place one enemy when the cell loads.  enemyDataID maps to a GameDatabase
+entry that provides the enemy's stats, AI behaviour, loot table, etc.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17 (no platform-specific code)
+
+### Tile-coordinate spawn points
+
+**Source:** [`src/engine/world/cell_data.hpp`](src/engine/world/cell_data.hpp#L71) (line 71)
+
+────────────────────────────────────────────────
+Spawn positions are stored in TILE coordinates (integer grid), not world
+units.  At load time, GameStreamingManager converts tile coordinates to
+world units: worldX = tileX * Zone::kTileSize + cellOriginX.
+Tile coordinates are compact (int16 would suffice) and independent of
+world scale, making them safe to store in cooked files without precision loss.
 
 ### Keeping math in the .cpp
 
@@ -13962,22 +14298,20 @@ This file wires together the two subsystems:
   WorldPartition   — "which cells should be loaded right now?"
   AsyncLoader      — "load them without blocking the main thread"
 
-WorldStreamingManager is deliberately thin in this skeleton: it delegates
-geometry queries to WorldPartition and I/O to AsyncLoader.  The real logic
-lives in the delta computation (RequestCells / EvictCells) and the virtual
-OnLoadCell / OnCellLoaded / OnEvictCell hooks.
+WorldStreamingManager is deliberately thin: it delegates geometry queries
+to WorldPartition and I/O to AsyncLoader.  The real game logic lives in
+the game-layer GameStreamingManager subclass which overrides the virtual
+hooks (OnLoadCell / OnCellLoaded / OnEvictCell) to call Zone::Load etc.
 
-When M7 reaches full implementation, the hooks will call:
-  • AssetLoader::LoadRaw() to read cooked .level data from disk.
-  • Zone::Load()          to build the TileMap and register spawn points.
-  • Zone::SpawnEnemies()  to create ECS entities on the main thread.
-  • Zone::Unload()        to destroy ECS entities on eviction.
+M7.3: EvictCells now cancels LOADING cells via AsyncLoader::CancelJob().
+M7.4: Update passes m_maxCompletionsPerFrame to PumpMainThreadCompletions().
+M7.5: DrawDebugOverlay (BUILD_EDITOR only) draws a cell-state minimap.
 
 ============================================================================
 
 ### Shutdown order
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L83) (line 83)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L88) (line 88)
 
 ─────────────────────────────────
 We stop the loader BEFORE evicting cells because:
@@ -13986,38 +14320,49 @@ We stop the loader BEFORE evicting cells because:
 After Stop() returns, the completion queue is drained by pumping
 once more, then we evict all loaded cells in deterministic order.
 
+### Frame budget cap
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L120) (line 120)
+
+─────────────────────────────────
+PumpMainThreadCompletions(m_maxCompletionsPerFrame) stops draining
+after m_maxCompletionsPerFrame callbacks.  Remaining completions stay
+in the AsyncLoader's queue and are processed in the next Update().
+This prevents a spike when many cells complete simultaneously.
+m_loader.PumpMainThreadCompletions(m_maxCompletionsPerFrame);
+
 ### Stub implementation
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L173) (line 173)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L194) (line 194)
 
 ─────────────────────────────────────
-In the full M7 implementation this will:
-  1. Determine the cooked .level file path from the cell ID.
-  2. Call AssetLoader::LoadRaw(guid) to read the file bytes.
-  3. Deserialise the entity/tile data.
-  4. Return true on success.
+The base-class stub returns true immediately so the state machine can
+be exercised in tests without real I/O.
 
-For now, log and return true so the test harness can exercise the
-state machine without real I/O.
+GameStreamingManager (game/world/GameStreamingManager.hpp) overrides
+this to:
+  1. Call AssetLoader::LoadRaw(cellGuid) to read the .level file bytes.
+  2. Deserialise into a CellData struct.
+  3. Return true on success.
 LOG_INFO("WorldStreamingManager: OnLoadCell stub — cell "
 << coord.cx << "," << coord.cz
-<< " (id=" << id << ") [TODO: real I/O]");
+<< " (id=" << id << ")");
 return true;
 }
 
 ### Stub implementation
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L191) (line 191)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L212) (line 212)
 
 ─────────────────────────────────────
-Full M7 implementation will call:
+GameStreamingManager overrides this to call:
   zone.SpawnEnemies(world);
   zone.SpawnNPCs(world);
 if (success)
 {
 LOG_INFO("WorldStreamingManager: OnCellLoaded — cell "
 << coord.cx << "," << coord.cz
-<< " (id=" << id << ") [TODO: spawn entities]");
+<< " (id=" << id << ")");
 m_cellStates[id] = CellState::Loaded;
 m_loadedCells.insert(id);
 }
@@ -14032,19 +14377,19 @@ m_cellStates[id] = CellState::Unloaded;
 
 ### Stub implementation
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L215) (line 215)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L236) (line 236)
 
 ─────────────────────────────────────
-Full M7 implementation will call:
+GameStreamingManager overrides this to call:
   zone.Unload(world);
 LOG_INFO("WorldStreamingManager: OnEvictCell — cell "
 << coord.cx << "," << coord.cz
-<< " (id=" << id << ") [TODO: destroy entities]");
+<< " (id=" << id << ")");
 }
 
 ### Capturing by value in the lambda
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L242) (line 242)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L263) (line 263)
 
 ──────────────────────────────────────────────────
 The lambda captures id and coord by VALUE (not by reference) because
@@ -14052,22 +14397,47 @@ these stack variables will be gone by the time the worker thread
 executes the job.  Capturing by reference would be a dangling-reference
 bug — one of the most common threading mistakes in C++.
 
-### Eviction guard
+### M7.3: Cancel in-flight loads + notify subclass
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L280) (line 280)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L303) (line 303)
 
-────────────────────────────────
-We only evict cells that are fully LOADED.  Evicting a LOADING cell
-would require cancellation support in AsyncLoader (a TODO item).
-For now, if a cell is still loading when it goes out of range, we
-leave it to finish loading and evict it on the next Update() call.
-if (it->second != CellState::Loaded)
-{
-LOG_INFO("WorldStreamingManager: cell " << id
-<< " is not LOADED — skipping eviction (state="
-<< static_cast<int>(it->second) << ")");
-continue;
-}
+─────────────────────────────────────────────────────────────────
+When a cell moves out of range while still loading, call
+CancelJob() to set its cancellation flag.  The worker will
+skip executing the job (or discard its result if already
+running).  We immediately mark the cell as Unloaded here —
+no completion callback will fire for this cell.
+
+We ALSO call OnEvictCell() so that game-layer subclasses
+(e.g. GameStreamingManager) can clean up any per-cell staging
+data written by OnLoadCell() on the worker thread.  Without
+this hook, pending data in maps like m_pendingData would
+leak until the entry was overwritten by a future load.
+const CellCoord coord = CellCoordFromId(id);
+m_loader.CancelJob(id);
+OnEvictCell(id, coord);
+m_cellStates.erase(it);
+
+### Streaming Debug Minimap
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L356) (line 356)
+
+─────────────────────────────────────────
+This overlay draws a 2D grid of cells as coloured rectangles, where
+the colour encodes the CellState.  It is useful during development
+to verify that the streaming radius is correct and that cells
+transition through Unloaded → Loading → Loaded → Evicting as expected.
+
+Grid layout:
+  diameter  = 2 * streamRadius + 1  (e.g. radius=1 → 3×3 grid)
+  top-left  = origin (parameter)
+  camera cell is drawn with an additional white outline border
+
+Colour legend (ABGR format for IM_COL32):
+  Grey   (#808080) = UNLOADED  — no data in memory
+  Yellow (#FFFF00) = LOADING   — worker thread is processing this cell
+  Green  (#00C040) = LOADED    — entities are spawned and active
+  Red    (#FF4040) = EVICTING  — entities being destroyed
 
 ### World Streaming Architecture
 
@@ -14092,37 +14462,36 @@ Every frame (Update call), the manager:
 
   UNLOADED ──EnqueueLoad()──► LOADING ──onComplete(ok)──► LOADED
      ▲                           │                           │
-     └──── onComplete(!ok) ◄─────┘                           │
-     └─────────────────────────────── EvictCells() ──────────┘
+     │       EvictCells()        │                           │
+     └──────────────────── CancelJob() ◄────────────────────┘
 
-  LOADING → EVICTING is not implemented in this skeleton (it would require
-  a cancellation token in AsyncLoader).  TODO for full M7 implementation.
+  M7.3: LOADING → UNLOADED is now supported via CancelJob().
+  When a cell moves out of range while still LOADING, EvictCells()
+  calls CancelJob() and immediately marks the cell as UNLOADED — no
+  completion callback is ever fired.
 
 ─── Thread Safety ───────────────────────────────────────────────────────────
 All public methods of WorldStreamingManager MUST be called from the main
 thread.  The AsyncLoader handles its own internal locking.
 
-─── TODO (M7 full implementation) ──────────────────────────────────────────
-  • Wire real Zone::Load / Zone::Unload calls inside the job lambdas.
-  • Integrate AssetLoader to read cooked cell data (.level files).
-  • Add cancellation: if a cell becomes irrelevant while in LOADING state,
-    the completion callback should discard the result instead of spawning.
-  • Add frame budget cap: limit PumpMainThreadCompletions to ≤ N completions
-    per frame so ECS spawning never exceeds 2 ms per the M7 spec.
-  • Add debug overlay (ImGui): draw loaded/loading/evicting cells as a 2D
-    minimap for visual debugging during development.
+─── M7 Full Implementation Status ──────────────────────────────────────────
+  ✅ Zone::Load / Zone::Unload wired in GameStreamingManager (M7.1).
+  ✅ AssetLoader::LoadRaw for .level files in GameStreamingManager (M7.2).
+  ✅ CancelJob + cancellation token in AsyncLoader (M7.3).
+  ✅ Per-frame completion budget via m_maxCompletionsPerFrame (M7.4).
+  ✅ DrawDebugOverlay (ImGui minimap) when BUILD_EDITOR is ON (M7.5).
 
 ============================================================================
 
 @author  Educational Game Engine Project
-@version 1.0
+@version 1.1
 @date    2024
 C++ Standard: C++17
 Platform: All (no platform-specific code; async_loader uses std::thread)
 
 ### State Machine Enum
 
-**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L76) (line 76)
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L84) (line 84)
 
 ────────────────────────────────────
 Tracking per-cell state prevents duplicate loads (enqueuing LOADING cells
@@ -14132,7 +14501,7 @@ debugging straightforward.
 
 ### Composition over inheritance
 
-**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L111) (line 111)
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L119) (line 119)
 
 ──────────────────────────────────────────────
 WorldStreamingManager OWNS (as members) a WorldPartition and an AsyncLoader.
@@ -14140,9 +14509,21 @@ It does NOT inherit from them.  Composition gives more flexibility: the
 streaming behaviour can be changed by swapping implementations without
 altering the public API or breaking callers.
 
+### Optional ECS World reference
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L149) (line 149)
+
+──────────────────────────────────────────────
+The base WorldStreamingManager is an engine-layer class that knows
+nothing about ECS entities.  Passing World* here lets the game-layer
+GameStreamingManager use the same Init() call while still receiving
+a reference to the ECS World for Zone::SpawnEnemies etc.
+The base class stores the pointer but never dereferences it; that is
+solely the responsibility of subclasses.
+
 ### Delta computation
 
-**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L159) (line 159)
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L180) (line 180)
 
 ────────────────────────────────────
 Each frame we compare:
@@ -14155,9 +14536,22 @@ Each frame we compare:
 Set subtraction on unordered_sets is O(N) where N is the streaming
 radius squared — typically ≤ 25 cells, so negligible CPU cost.
 
+### Frame Budget Cap (M7.4)
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L204) (line 204)
+
+─────────────────────────────────────────
+Spawning many entities simultaneously (e.g. 25 cells all completing
+in the same frame for a radius-2 load) can spike the main thread beyond
+the 2 ms frame budget.  By limiting completions to N per frame, the work
+is spread across multiple frames — each frame stays under budget.
+
+Remaining completions accumulate in AsyncLoader's completed queue and
+are drained in subsequent frames.
+
 ### Callback vs. virtual method
 
-**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L211) (line 211)
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L254) (line 254)
 
 ────────────────────────────────────────────
 We expose this as a public virtual method (and also via SetLoadCallback)
@@ -14167,16 +14561,40 @@ so the class can be extended in two ways:
 Both are valid; the callback approach is used in the skeleton to avoid
 a forced inheritance hierarchy before M7 is complete.
 
-TODO: wire real Zone::Load + AssetLoader calls here.
+### Decoupled Debug Visualisation
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L302) (line 302)
+
+────────────────────────────────────────────────
+DrawDebugOverlay is gated by BUILD_EDITOR so there is zero overhead in
+shipping builds.  The editor build defines BUILD_EDITOR=1 and links
+imgui::imgui, giving it access to ImDrawList.
+
+Colour legend:
+  Grey   — UNLOADED (no data in memory)
+  Yellow — LOADING  (I/O in progress on worker thread)
+  Green  — LOADED   (entities spawned, ready)
+  Red    — EVICTING (entities being destroyed)
+  White outline — the cell currently containing the camera
 
 ### Guard against duplicate enqueue
 
-**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L265) (line 265)
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L357) (line 357)
 
 ─────────────────────────────────────────────────
 We only enqueue a cell if its current state is Unloaded.  If it is
 already Loading or Loaded, we skip it silently.  This prevents sending
 two load jobs for the same cell (which would spawn entities twice).
+
+### Cancellation for LOADING cells
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L371) (line 371)
+
+─────────────────────────────────────────────────
+Without cancellation, a cell that moves out of range while loading
+would continue loading on the worker thread and then trigger a
+completion callback that would spawn entities for an area the player
+has already left.  CancelJob() prevents this waste.
 
 ---
 
@@ -16280,6 +16698,329 @@ Adjusting the probabilities is the core of weather "feel" tuning.
 
 ## game/world
 
+### M7 Full Streaming Pipeline
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L6) (line 6)
+
+============================================================================
+This file brings together every subsystem introduced in M7:
+
+  WorldStreamingManager (engine layer)
+    Provides: Init, Update, AsyncLoader, WorldPartition, state machine.
+
+  Zone (game layer)
+    Provides: Load, SpawnEnemies, SpawnNPCs, Unload.
+
+  AssetLoader (engine layer)
+    Provides: LoadRaw(guid) → raw bytes from a cooked .level file.
+
+  CellData (engine/world)
+    Provides: Data-transfer-object between worker-thread parsing and
+    main-thread spawning.
+
+The full streaming pipeline (per cell, one load cycle):
+
+  Main thread              Worker thread
+  ─────────────────        ──────────────────────────────────────────────
+  Update() enqueues        OnLoadCell():
+  LoadJob for cellId   →     1. Look up GUID in m_cellGuids
+                              2. If loader: LoadRaw(guid) → bytes
+                              3. Parse JSON → CellData (ENGINE_ENABLE_JSON)
+                              4. Store in m_pendingData (under m_pendingMtx)
+                              5. Return true
+                         ↓
+  PumpCompletions()    ←   Worker posts CompletedJob to m_completed
+  fires OnCellLoaded():
+    1. Retrieve CellData from m_pendingData
+    2. Build ZoneData from CellData
+    3. Construct Zone, call Zone::Load(zoneData)
+    4. Zone::SpawnEnemies(*m_world)
+    5. Zone::SpawnNPCs(*m_world)
+    6. Call base class OnCellLoaded → marks cell as LOADED
+
+  EvictCells() fires OnEvictCell():
+    1. Zone::Unload(*m_world) → destroys all tracked ECS entities
+    2. Erase zone + zoneData from maps
+
+============================================================================
+
+### Base class chain
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L73) (line 73)
+
+─────────────────────────────────
+We pass &world as the World* parameter to WorldStreamingManager::Init().
+The base class stores it in m_world (protected) so both OnCellLoaded()
+and OnEvictCell() can dereference it for ECS operations.
+return WorldStreamingManager::Init(cellSize, streamRadius, &world);
+}
+
+### Worker-thread responsibilities
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L106) (line 106)
+
+────────────────────────────────────────────────
+This method runs on the AsyncLoader worker thread.  Allowed operations:
+  • File I/O via AssetLoader::LoadRaw() (thread-safe).
+  • Pure data construction (CellData, ZoneData).
+  • Writing m_pendingData under m_pendingMtx.
+
+Forbidden operations (would cause data races):
+  • Calling world.CreateEntity() / world.AddComponent<T>() [ECS is not thread-safe].
+  • Writing to m_zones / m_zoneDataStore.
+
+### M7.2: AssetLoader integration
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L132) (line 132)
+
+──────────────────────────────────────────────
+LoadRaw() reads the cooked bytes synchronously on the worker
+thread.  This is the only blocking call in the streaming path —
+and it runs off the main thread, so it does NOT stall rendering.
+const std::vector<uint8_t> bytes =
+m_assetLoader->LoadRaw(guidIt->second);
+
+### JSON parsing on the worker thread
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L149) (line 149)
+
+──────────────────────────────────────────────────
+Parsing JSON is CPU-bound (no I/O).  Doing it on the worker
+thread means the main thread never sees this CPU cost.
+This is a key advantage of the async pipeline.
+try
+{
+const std::string jsonStr(
+reinterpret_cast<const char*>(bytes.data()),
+bytes.size());
+const nlohmann::json j = nlohmann::json::parse(jsonStr);
+
+### Graceful degradation without JSON support
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L207) (line 207)
+
+─────────────────────────────────────────────────────────
+Without nlohmann-json available (e.g. building without vcpkg),
+we create a default CellData with the zone name set from the
+cell coordinate.  No entities will be spawned.
+cellData.zoneName = "Cell_" + std::to_string(coord.cx)
++ "_" + std::to_string(coord.cz);
+cellData.valid    = true;
+LOG_WARN("GameStreamingManager: ENGINE_ENABLE_JSON not defined — "
+"skipping JSON parse for cell " << coord.cx << "," << coord.cz);
+endif
+}
+}
+else
+{
+No GUID registered and no pre-registered data.
+
+### Procedural fallback
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L223) (line 223)
+
+──────────────────────────────────────
+For cells without a cooked data file, we generate a default
+CellData with a procedural zone name.  This allows the
+streaming system to function (cells load and unload cleanly)
+without requiring every cell to have an asset file.
+cellData.zoneName = "Cell_" + std::to_string(coord.cx)
++ "_" + std::to_string(coord.cz);
+cellData.valid    = true;
+}
+}
+
+### Main-thread spawning
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L252) (line 252)
+
+──────────────────────────────────────
+This callback runs on the main thread (via PumpMainThreadCompletions).
+It is safe to:
+  • Call world.CreateEntity() / world.AddComponent<T>()
+  • Modify m_zones / m_zoneDataStore (main-thread-only maps)
+
+Do NOT call this from the worker thread.
+
+### Invalid payloads must not enter the success path.
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L287) (line 287)
+
+The CellData contract says valid == false represents a failed load
+(e.g. parse failure, empty bytes, or missing asset data).  We
+forward failure to the base streaming manager so the cell does not
+transition to LOADED with an empty/default ZoneData.
+WorldStreamingManager::OnCellLoaded(id, coord, false);
+return;
+}
+
+### ZoneData lifetime
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L297) (line 297)
+
+───────────────────────────────────
+Zone stores a const ZoneData* pointer.  We MUST keep the ZoneData alive
+for as long as the Zone is active.  m_zoneDataStore (an unordered_map)
+guarantees that element addresses are stable — inserting new entries
+does not invalidate existing ones.
+ZoneData& zd = m_zoneDataStore[id];
+zd.id               = m_nextZoneId++;
+zd.name             = cellData.zoneName;
+zd.description      = "Streaming cell " + std::to_string(coord.cx)
++ "," + std::to_string(coord.cz);
+zd.recommendedLevel = cellData.recommendedLevel;
+zd.isDungeon        = cellData.isDungeon;
+zd.tileWidth        = cellData.tileWidth;
+zd.tileHeight       = cellData.tileHeight;
+zd.dangerLevel      = cellData.dangerLevel;
+zd.npcIDs           = cellData.npcIDs;
+zd.shopIDs          = cellData.shopIDs;
+
+### Explicit vs. procedural spawn points
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L316) (line 316)
+
+──────────────────────────────────────────────────────
+If the .level file contains explicit SpawnEntry records with authored
+tile positions and respawn times, we pass them to Zone via AddSpawnPoint()
+AFTER Zone::Load() — bypassing RegisterDefaultSpawnPoints() which would
+distribute enemies randomly across floor tiles.
+
+If there are no explicit spawns, we fall back to populating zd.enemyIDs
+so that RegisterDefaultSpawnPoints() in Zone::Load() produces procedural
+spawn points.  This dual-path strategy lets hand-authored cells override
+layout while unregistered cells still function correctly.
+if (cellData.spawns.empty())
+{
+No explicit spawn data — leave placement to RegisterDefaultSpawnPoints.
+(zd.enemyIDs stays empty; no spawn points will be registered.)
+}
+Explicit spawn positions are added after Load() (see below).
+
+### Honouring authored spawn positions
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L343) (line 343)
+
+────────────────────────────────────────────────────────
+Each SpawnEntry from the cooked .level file carries a tile position
+(tileX, tileY) and a respawn timer.  We translate it directly into a
+SpawnPoint and hand it to Zone::AddSpawnPoint(), which inserts it into
+Zone::m_spawnPoints.  SpawnEnemies() then places the entity at exactly
+that tile — matching the designer's intent rather than randomising.
+for (const auto& se : cellData.spawns)
+{
+SpawnPoint sp;
+sp.enemyDataID = se.enemyDataID;
+sp.x           = se.tileX;
+sp.y           = se.tileY;
+sp.respawnTime = se.respawnTime;
+zone.AddSpawnPoint(sp);
+}
+
+### Cleaning up staging data on evict/cancel
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L408) (line 408)
+
+──────────────────────────────────────────────────────────
+If this cell was cancelled mid-load (EvictCells calls OnEvictCell for
+LOADING cells too, since M7.3 fix), the worker may have already written
+CellData into m_pendingData before the cancellation flag was checked.
+OnCellLoaded will never fire for such a cell, so we clean up here to
+prevent the staging map from growing unboundedly.
+{
+std::lock_guard<std::mutex> lock(m_pendingMtx);
+m_pendingData.erase(id);
+}
+
+### We do NOT call WorldStreamingManager::OnEvictCell().
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L420) (line 420)
+
+The base class virtual method only logs; the actual state-machine
+transition (erasing from m_cellStates + m_loadedCells) is done by the
+non-virtual EvictCells() method AFTER this callback returns.
+}
+
+### M7.1: Zone ↔ WorldStreamingManager Wiring
+
+**Source:** [`src/game/world/GameStreamingManager.hpp`](src/game/world/GameStreamingManager.hpp#L6) (line 6)
+
+============================================================================
+WorldStreamingManager (engine layer) provides a generic streaming framework
+with virtual hooks:
+  • OnLoadCell()   — called on the worker thread for file I/O
+  • OnCellLoaded() — called on the main thread after loading
+  • OnEvictCell()  — called on the main thread to destroy a cell
+
+GameStreamingManager (game layer) overrides these hooks to call the real
+Zone lifecycle methods:
+  • OnLoadCell()   → deserialise the .level file into a CellData
+  • OnCellLoaded() → Zone::Load() + Zone::SpawnEnemies() + Zone::SpawnNPCs()
+  • OnEvictCell()  → Zone::Unload() (destroys all tracked ECS entities)
+
+This separation keeps the engine layer clean (no game-specific headers)
+while the game layer can freely reference ECS, Zone, GameDatabase, etc.
+
+─── Thread Safety ───────────────────────────────────────────────────────────
+OnLoadCell() runs on the worker thread.  It writes the parsed CellData into
+m_pendingData under m_pendingMtx.  OnCellLoaded() and OnEvictCell() run on
+the main thread; they read/erase m_pendingData under m_pendingMtx.
+
+The Zone map (m_zones) and ZoneData store (m_zoneDataStore) are main-thread
+only — never accessed from the worker thread.
+
+─── M7.2: AssetLoader Integration ──────────────────────────────────────────
+If an AssetLoader is provided to Init(), OnLoadCell() calls
+AssetLoader::LoadRaw(cellGuid) to read the cooked .level file bytes and
+parses them into a CellData using nlohmann-json (when ENGINE_ENABLE_JSON).
+
+Cells without a registered GUID get an empty CellData (no spawns).
+This allows the streaming system to function in tests without a full
+asset pipeline.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: Windows (SANDBOX_SOURCES) + Linux (GAME_SOURCES)
+
+### Optional AssetLoader
+
+**Source:** [`src/game/world/GameStreamingManager.hpp`](src/game/world/GameStreamingManager.hpp#L121) (line 121)
+
+──────────────────────────────────────
+Accepting a nullable AssetLoader pointer allows the streaming system to
+function in unit tests and headless CI without a full asset pipeline.
+Tests can call RegisterCellData() to inject CellData directly, while
+the production game path uses the AssetLoader for real file I/O.
+
+### Decoupled cell addressing
+
+**Source:** [`src/game/world/GameStreamingManager.hpp`](src/game/world/GameStreamingManager.hpp#L143) (line 143)
+
+─────────────────────────────────────────────
+We store GUIDs separately from the WorldPartition so that cell
+coordinates can change (e.g. the streaming radius grows) without
+invalidating the GUID mapping.  The GUID is the stable identifier;
+the cell ID is a derived hash used only at runtime.
+
+### Thread safety of OnLoadCell
+
+**Source:** [`src/game/world/GameStreamingManager.hpp`](src/game/world/GameStreamingManager.hpp#L172) (line 172)
+
+────────────────────────────────────────────
+This method runs on the AsyncLoader worker thread.  It must NOT touch:
+  • The ECS World  (not thread-safe)
+  • m_zones / m_zoneDataStore  (main-thread only)
+
+Safe operations:
+  • Read m_cellGuids (read-only after Init())
+  • Read m_preRegistered (read-only after RegisterCellData())
+  • Call AssetLoader::LoadRaw()  (file I/O — thread-safe)
+  • Write m_pendingData (under m_pendingMtx)
+
 ### Separating Interface from Implementation
 
 **Source:** [`src/game/world/TileMap.cpp`](src/game/world/TileMap.cpp#L7) (line 7)
@@ -17496,9 +18237,36 @@ the  AnimAssetPipeline  class from  animation_engine.integration  to
 deserialise skeletons and clips, apply key-frame reduction and then write
 the cooked .skelc / .animc files.
 
+### M7.2: Level / Streaming Cell Cooking
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L378) (line 378)
+
+### Why .level instead of keeping .cell.json?
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L396) (line 396)
+
+Renaming to .level makes it explicit that this is a COOKED, runtime-ready
+file — not a raw source file.  The extension signals the content pipeline
+stage: .cell.json is edited by designers, .level is consumed by the engine.
+"""
+levels_src = CONTENT_DIR / "Levels"
+levels_dst = COOKED_DIR  / "Levels"
+ensure_dir(levels_dst)
+
+### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L408) (line 408)
+
+Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
+leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
+All files matched by **/*.cell.json are guaranteed to end in ".cell.json".
+cooked_name = src.name[: -len(".cell.json")] + ".level"
+dst = levels_dst / rel.parent / cooked_name
+dst.parent.mkdir(parents=True, exist_ok=True)
+
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L382) (line 382)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L451) (line 451)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -17511,7 +18279,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L396) (line 396)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L465) (line 465)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
@@ -17607,9 +18375,9 @@ Usage:
   engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
-  engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 4 cells
-  engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict 1 cell
-  engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing
+  engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
+  engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
+  engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
 
 ============================================================================
 
@@ -17649,9 +18417,9 @@ M7 World Streaming infrastructure without requiring a renderer, physics, or
 any file I/O.  They are always available in the build (no compile gate).
 
 Three acceptance criteria from docs/PROJECT_MILESTONES.md §M7:
-  streaming_load  — Load 4 adjacent cells; no duplicates; entity count = N.
-  streaming_evict — Evict 1 cell; loaded-cell count decreases by 1; no dangling refs.
-  streaming_async — Main-thread update stays under 2 ms while cells load async.
+  streaming_load  — Load 9 cells (radius-1 = 3×3); no duplicates.
+  streaming_evict — Mid-load cancellation (M7.3): cancel 9 LOADING cells, no stuck cells.
+  streaming_async — Frame budget (M7.4): radius-2 (25 cells), cap=4/frame, all load in ≤120 frames.
 ---------------------------------------------------------------------------
 include "engine/world/world_streaming.hpp"
 include "engine/world/world_partition.hpp"
@@ -17921,7 +18689,7 @@ window.Shutdown();
 return 1;
 }
 
-### M7 streaming_load acceptance test
+### M7 streaming_load acceptance test (M7.1)
 
 **Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L638) (line 638)
 
@@ -17934,15 +18702,12 @@ cells without duplicates:
   3. Pump completions for up to 120 frames (2 s).
   4. Assert LoadedCellCount() == expected count.
 
-The stub implementation of OnLoadCell returns true
-immediately on the worker thread, so cells transition to
-LOADED on the next PumpMainThreadCompletions().
-
-TODO (full M7): replace OnLoadCell stub with real I/O;
-     assert entity counts match cell content.
+The base-class OnLoadCell returns true immediately on the
+worker thread, so cells transition to LOADED on the next
+PumpMainThreadCompletions() call.
 -----------------------------------------------------------
 engine::world::WorldStreamingManager mgr;
-if (!mgr.Init(256.0f, /*streamRadius=*/1))
+if (!mgr.Init(256.0f, /*streamRadius=*/1, /*world=*/nullptr))
 {
 std::cout << "[FAIL] streaming_load: WorldStreamingManager::Init() failed.\n";
 renderer->Shutdown();
@@ -17950,26 +18715,44 @@ window.Shutdown();
 return 1;
 }
 
-### M7 streaming_evict acceptance test
+### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L692) (line 692)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L689) (line 689)
 
 -----------------------------------------------------------
-Verifies that cells going out of streaming range are evicted:
+Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
+  CANCELLATION RACE (mid-load eviction):
   1. Init manager (radius=1).
-  2. Update at origin → 9 cells loaded.
-  3. Move view far away (>2 cells) → origin cells evicted.
-  4. Assert LoadedCellCount() decreased.
+  2. ONE Update() at origin → 9 cells enqueued as LOADING.
+     (PumpMainThreadCompletions was called at the START of that
+     Update(), draining an empty queue.  Jobs sit in the worker
+     queue but OnCellLoaded hasn't run yet — all 9 cells are
+     in the LOADING state on the main thread.)
+  3. IMMEDIATELY move camera far away.
+     EvictCells() sees 9 LOADING cells → calls CancelJob() on
+     each one; transitions them to UNLOADED without waiting for
+     any completion callback.
+  4. Run 120 frames at far position.
+  5. Assert: LoadingCellCount() == 0 (no cells stuck in LOADING).
+  6. Assert: LoadedCellCount() == 9 (only far cells, not origin).
 
-Note: cells in LOADING state are not evicted synchronously
-in this skeleton (cancellation is a TODO).  To get clean
-eviction, we wait for all loads to complete before moving.
+### Why LoadingCellCount() is reliably 9 after step 2
 
-TODO (full M7): verify no dangling ECS entity refs after eviction.
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L708) (line 708)
+
+─────────────────────────────────────────────────────────────────
+  Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
+  On the very first Update() at origin, the completed queue is empty
+  (no jobs have finished yet).  All 9 jobs are enqueued as LOADING.
+  The worker thread may have processed some jobs, but their results
+  sit in AsyncLoader::m_completed until the NEXT PumpMainThreadCompletions
+  call — which happens at the start of the NEXT Update().
+  Therefore, between Update(origin) and Update(far), ALL 9 cells
+  are reliably in LOADING state on the main thread.
 -----------------------------------------------------------
 engine::world::WorldStreamingManager mgr;
-if (!mgr.Init(256.0f, /*streamRadius=*/1))
+if (!mgr.Init(256.0f, /*streamRadius=*/1, /*world=*/nullptr))
 {
 std::cout << "[FAIL] streaming_evict: WorldStreamingManager::Init() failed.\n";
 renderer->Shutdown();
@@ -17977,31 +18760,39 @@ window.Shutdown();
 return 1;
 }
 
-### M7 streaming_async acceptance test
+### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L753) (line 753)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L789) (line 789)
 
 -----------------------------------------------------------
-Verifies that Update() never blocks the main thread for more
-than 2 ms while async cell loads are in progress.
+Verifies that:
+  a) Update() never blocks the main thread for more than 2 ms.
+  b) The frame-budget cap (maxCompletionsPerFrame=4) correctly
+     spreads ECS spawning across multiple frames even when all
+     25 cells (radius=2) complete in the same frame.
 
 Method:
-  1. Init manager (radius=1).
+  1. Init manager with radius=2 (5×5 = 25 cells) and default
+     maxCompletionsPerFrame=4.
   2. For 120 frames, call Update() and measure wall-clock time.
-  3. Report worst-frame time; pass if all frames < 2 ms.
+  3. After all frames, verify ALL 25 cells are loaded
+     (budget cap spreads work but does NOT prevent loading).
+  4. Report worst-frame time; warn if any frame > 2 ms
+     (scheduler preemption can inflate CI timings spuriously).
 
-PumpMainThreadCompletions() drains the completion queue in
-O(N) where N = completions this frame.  For 9 cells this
-is always very small.
+### Frame budget cap (M7.4)
 
-The actual cell I/O (OnLoadCell stub) runs on the worker
-thread — zero cost to the main-thread measurement.
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L806) (line 806)
 
-TODO (full M7): repeat with real Zone::Load file I/O and
-     assert the 2 ms budget still holds.
+──────────────────────────────────────────
+With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
+at most 4 cells' OnCellLoaded() callbacks fire per frame.
+The remaining completions stay queued and drain in subsequent frames.
+Total frames needed to drain all 25: ceil(25/4) = 7 frames minimum.
+Our 120-frame budget is generous; all 25 should be LOADED by frame 10.
 -----------------------------------------------------------
 engine::world::WorldStreamingManager mgr;
-if (!mgr.Init(256.0f, /*streamRadius=*/1))
+if (!mgr.Init(256.0f, /*streamRadius=*/2, /*world=*/nullptr))
 {
 std::cout << "[FAIL] streaming_async: WorldStreamingManager::Init() failed.\n";
 renderer->Shutdown();
@@ -18011,7 +18802,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L802) (line 802)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L849) (line 849)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -18027,7 +18818,7 @@ budgetExceeded = true;
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L843) (line 843)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L904) (line 904)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -18037,7 +18828,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L851) (line 851)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L912) (line 912)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -18067,7 +18858,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L905) (line 905)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L966) (line 966)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -18080,7 +18871,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L921) (line 921)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L982) (line 982)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

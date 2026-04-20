@@ -1,0 +1,30 @@
+{
+  "zoneName": "Duscae Grasslands — Cell 0,0",
+  "tileWidth": 40,
+  "tileHeight": 40,
+  "isDungeon": false,
+  "dangerLevel": 2,
+  "recommendedLevel": 10,
+  "spawns": [
+    {
+      "enemyDataID": 1,
+      "tileX": 5,
+      "tileY": 7,
+      "respawnTime": 45.0
+    },
+    {
+      "enemyDataID": 2,
+      "tileX": 22,
+      "tileY": 18,
+      "respawnTime": 60.0
+    },
+    {
+      "enemyDataID": 1,
+      "tileX": 35,
+      "tileY": 30,
+      "respawnTime": 45.0
+    }
+  ],
+  "npcIDs": [],
+  "shopIDs": []
+}

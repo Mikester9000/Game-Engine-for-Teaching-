@@ -655,6 +655,10 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         src/game/world/TileMap.cpp
         src/game/world/WorldMap.cpp
         src/game/world/Zone.cpp
+        # TEACHING NOTE — M7.1: GameStreamingManager wires Zone lifecycle into
+        # WorldStreamingManager.  Compiled alongside Zone.cpp so that
+        # OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
+        src/game/world/GameStreamingManager.cpp
     )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})
