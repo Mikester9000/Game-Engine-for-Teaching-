@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1145 across 41 subsystems.
+**Total lessons:** 1146 across 41 subsystems.
 
 ---
 
@@ -14,7 +14,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 
 - [CMakeLists.txt](#cmakelists.txt) (51 lessons)
 - [ci/workflows](#ciworkflows) (40 lessons)
-- [editor/CMakeLists.txt](#editorcmakelists.txt) (5 lessons)
+- [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (98 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
@@ -1528,9 +1528,22 @@ and linker flags automatically.
 find_package(imgui         CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
+### RUNTIME_OUTPUT_DIRECTORY
+
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L88) (line 88)
+
+By default CMake places executables in <build>/<subdirectory>/ matching the
+add_subdirectory() tree (i.e. <build>/editor/ for this target).  Setting
+RUNTIME_OUTPUT_DIRECTORY to CMAKE_BINARY_DIR puts creation-suite-editor.exe
+at the build root next to engine_sandbox.exe, so CI steps and the Play-in-
+Engine launcher can find both with a single consistent path.
+set_target_properties(creation-suite-editor PROPERTIES
+RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
 ### Linking D3D11 + DXGI
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L101) (line 101)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L111) (line 111)
 
 d3d11.lib  -- Direct3D 11 device, context, swapchain.  Ships with the
               Windows SDK; no extra SDK install beyond Visual Studio.
@@ -1547,7 +1560,7 @@ dxgi
 
 ### UNICODE, WIN32_LEAN_AND_MEAN, NOMINMAX
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L119) (line 119)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L129) (line 129)
 
 UNICODE/_UNICODE  : Win32 API calls default to wide-char (wchar_t) variants.
 WIN32_LEAN_AND_MEAN : excludes rarely-used headers from <windows.h>,
