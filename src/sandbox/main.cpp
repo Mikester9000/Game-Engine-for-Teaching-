@@ -925,8 +925,19 @@ int main(int argc, char* argv[])
                 //      adds a QuestEntry to the player's QuestComponent.
                 //      We verify activeCount > 0 to confirm.
                 // -----------------------------------------------------------
-                sandbox::GameRuntime gameRuntime;
-                if (!gameRuntime.Init())
+                // TEACHING NOTE — Heap-allocate GameRuntime
+                // ──────────────────────────────────────────
+                // GameRuntime contains a value-type ECS World.  World's
+                // EntityManager holds std::array<Signature, MAX_ENTITIES>
+                // (65 536 × 8 bytes ≈ 512 KB).  MSVC reserves the full
+                // stack frame for ALL local variables in main() at function
+                // entry, so a stack-allocated GameRuntime would push the
+                // frame well over the 1 MB Windows default stack limit even
+                // when this branch is never taken (e.g., --headless with no
+                // --scene arg).  Using make_unique puts the data on the heap
+                // and avoids the stack overflow.
+                auto gameRuntime = std::make_unique<sandbox::GameRuntime>();
+                if (!gameRuntime->Init())
                 {
                     std::cout << "[FAIL] m8_gameplay: GameRuntime::Init() failed.\n";
                     renderer->Shutdown();
@@ -936,22 +947,22 @@ int main(int argc, char* argv[])
 
                 constexpr float kDt     = 1.0f / 60.0f;
                 constexpr int   kFrames = 60;
-                const int playerHpBefore = gameRuntime.GetWorld().HasComponent<HealthComponent>(
-                    gameRuntime.GetPlayerID())
-                    ? gameRuntime.GetWorld().GetComponent<HealthComponent>(
-                        gameRuntime.GetPlayerID()).hp
+                const int playerHpBefore = gameRuntime->GetWorld().HasComponent<HealthComponent>(
+                    gameRuntime->GetPlayerID())
+                    ? gameRuntime->GetWorld().GetComponent<HealthComponent>(
+                        gameRuntime->GetPlayerID()).hp
                     : -1;
 
                 for (int f = 0; f < kFrames; ++f)
-                    gameRuntime.Update(kDt);
+                    gameRuntime->Update(kDt);
 
                 int testsFailed = 0;
 
                 // --- Test 1: Player HP unchanged ---
                 {
-                    const EntityID pid = gameRuntime.GetPlayerID();
-                    const int hpAfter  = gameRuntime.GetWorld().HasComponent<HealthComponent>(pid)
-                        ? gameRuntime.GetWorld().GetComponent<HealthComponent>(pid).hp
+                    const EntityID pid = gameRuntime->GetPlayerID();
+                    const int hpAfter  = gameRuntime->GetWorld().HasComponent<HealthComponent>(pid)
+                        ? gameRuntime->GetWorld().GetComponent<HealthComponent>(pid).hp
                         : -1;
 
                     if (hpAfter != playerHpBefore)
@@ -970,7 +981,7 @@ int main(int argc, char* argv[])
 
                 // --- Test 2: At least 1 AI state transition ---
                 {
-                    const int transitions = gameRuntime.GetAIStateTransitionCount();
+                    const int transitions = gameRuntime->GetAIStateTransitionCount();
                     if (transitions < 1)
                     {
                         std::cout << "[FAIL] m8_gameplay/ai_transition: "
@@ -987,11 +998,11 @@ int main(int argc, char* argv[])
 
                 // --- Test 3: Quest objective registered ---
                 {
-                    const EntityID pid = gameRuntime.GetPlayerID();
+                    const EntityID pid = gameRuntime->GetPlayerID();
                     bool questOk = false;
-                    if (gameRuntime.GetWorld().HasComponent<QuestComponent>(pid))
+                    if (gameRuntime->GetWorld().HasComponent<QuestComponent>(pid))
                     {
-                        const auto& qc = gameRuntime.GetWorld()
+                        const auto& qc = gameRuntime->GetWorld()
                                             .GetComponent<QuestComponent>(pid);
                         questOk = (qc.activeCount > 0);
                     }
@@ -1008,7 +1019,7 @@ int main(int argc, char* argv[])
                     }
                 }
 
-                gameRuntime.Shutdown();
+                gameRuntime->Shutdown();
 
                 if (testsFailed > 0)
                 {
