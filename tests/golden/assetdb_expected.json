@@ -1,7 +1,10 @@
 {
   "version": "1.0.0",
   "assets": [
-    { "id": "01ae51cb-8d21-4632-bc1b-650b6b03e0f7", "cookedPath": "Cooked/Maps/MainTown.scene.json" },
-    { "id": "5789bdad-790f-434e-8d02-f17c0e2d2eb7", "cookedPath": "Cooked/Levels/cell_0_0.level" }
+    { "id": "63d82695-f567-42f7-a8a3-110afe1e03d0", "cookedPath": "Cooked/Maps/MainTown.scene.json" },
+    { "id": "5db40c3b-a192-4a4c-a1aa-728775cd12fa", "cookedPath": "Cooked/Levels/cell_0_0.level" },
+    { "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011", "cookedPath": "Cooked/Levels/cell_0_1.level" },
+    { "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022", "cookedPath": "Cooked/Levels/cell_1_0.level" },
+    { "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033", "cookedPath": "Cooked/Levels/cell_1_1.level" }
   ]
 }

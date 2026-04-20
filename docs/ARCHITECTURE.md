@@ -47,23 +47,31 @@
 │                  RUNTIME ENGINE (C++17)                  │
 │                                                          │
 │  main()                                                  │
-│  └─ Game (singleton)                                     │
+│  └─ engine_sandbox (D3D11 Windows)                       │
 │      ├─ World (ECS)                                      │
 │      │   ├─ EntityManager                                │
 │      │   └─ ComponentPool<T>[N]                          │
-│      ├─ Renderer (Vulkan on Windows)                     │
-│      ├─ InputSystem                                      │
-│      ├─ LuaEngine (Lua 5.4 scripting)                    │
-│      ├─ EventBus<T> (Combat/Quest/World/UI)              │
-│      └─ GameSystems                                      │
-│          ├─ CombatSystem                                 │
-│          ├─ AISystem                                     │
-│          ├─ CampSystem                                   │
-│          ├─ InventorySystem                              │
-│          ├─ MagicSystem                                  │
-│          ├─ QuestSystem                                  │
-│          ├─ ShopSystem                                   │
-│          └─ WeatherSystem                                │
+│      ├─ D3D11Renderer        ← IRenderer interface       │
+│      ├─ GameRuntime (M8)     ← drives all gameplay       │
+│      │   ├─ CombatSystem     ← ATB + damage              │
+│      │   ├─ AISystem         ← FSM + A* pathfinding      │
+│      │   ├─ WeatherSystem    ← day/night cycle           │
+│      │   ├─ QuestSystem      ← objective tracking        │
+│      │   ├─ InputMapper      ← keyboard → ECS (M8.2)     │
+│      │   ├─ CameraSystem     ← third-person orbit (M8.3) │
+│      │   ├─ DialogueSystem   ← NPC interactions (M8.6)   │
+│      │   ├─ SaveSystem       ← 15 slots + auto-save (M8.8)│
+│      │   └─ GameStreamingMgr ← live cell streaming (M8.7)│
+│      │       ├─ WorldStreamingManager (engine layer)     │
+│      │       ├─ WorldPartition (spatial grid)            │
+│      │       ├─ AsyncLoader (worker thread)              │
+│      │       └─ Zone (per-cell entity lifecycle)         │
+│      ├─ AnimationSystem      ← M4 CPU + GPU skinning     │
+│      ├─ PhysicsWorld         ← M5 Jolt Physics           │
+│      ├─ AudioSystem          ← M3 XAudio2                │
+│      ├─ Hud                  ← M8.5 ImGui overlay        │
+│      ├─ LuaEngine            ← Lua 5.4 scripting         │
+│      └─ EventBus<T>          ← Combat/Quest/World/UI     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -241,12 +249,13 @@ When you change a format:
 ```
 samples/vertical_slice_project/
 ├─ Project.json             ← project descriptor
-├─ AssetRegistry.json       ← updated by cook step
+├─ AssetRegistry.json       ← updated by cook step; 5 entries (1 scene + 4 level cells)
 ├─ Content/                 ← raw source assets (committed)
 │   ├─ Textures/            ← .png placeholder textures
 │   ├─ Audio/               ← .wav source audio
 │   ├─ Maps/                ← .scene.json maps
-│   └─ Animations/          ← .json source animation data
+│   ├─ Animations/          ← .json source animation data
+│   └─ Levels/              ← .cell.json streaming cells (cell_0_0 … cell_1_1)
 ├─ Cooked/                  ← generated at cook time (gitignored)
 └─ cook_assets.py           ← one-command cook script
 
@@ -281,6 +290,11 @@ Study files in this order:
 13. `editor/src/SceneEditorPanel.*` — ImGui DrawList canvas, JSON I/O, drag-drop target
 14. `editor/src/panels/SceneHierarchyPanel.*` — M6: entity list, context menus, rename
 15. `editor/src/panels/InspectorPanel.*` — M6: table-driven property editor, Add Component
-16. `tools/audio_authoring/audio_engine/engine.py` — Python façade pattern
-17. `tools/anim_authoring/animation_engine/` — animation data model
-18. `samples/vertical_slice_project/cook_assets.py` — scripted pipeline
+16. `src/engine/world/world_streaming.hpp` — M7: streaming manager + cell state machine
+17. `src/engine/world/world_partition.hpp` — M7: spatial grid (CellCoord / CellId)
+18. `src/engine/world/async_loader.hpp` — M7: worker-thread job queue + cancellation tokens
+19. `src/game/world/GameStreamingManager.*` — M8.7: Zone lifecycle wired into streaming
+20. `src/sandbox/game_runtime.*` — M8: D3D11 gameplay integration (all systems wired)
+21. `tools/audio_authoring/audio_engine/engine.py` — Python façade pattern
+22. `tools/anim_authoring/animation_engine/` — animation data model
+23. `samples/vertical_slice_project/cook_assets.py` — scripted pipeline

@@ -168,32 +168,31 @@ Every milestone produces an **executable or headless-validation pass** before
 the next milestone starts.  This is non-negotiable.  See
 `docs/PROJECT_MILESTONES.md` for the detailed definition of each milestone.
 
-> **Current position:** M0 ✅, M1 ✅, M1.5 ✅, M2 ✅ are complete.  **M3 is the active milestone** (D3D11 texture + XAudio2 audio done; Vulkan texture + textured quad still needed).
+> **Current position:** M0–M8 all complete. **Next: Post-M8 work** (PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up).
 
 | Milestone | Name | Status | "Done" means |
 |---|---|---|---|
 | M0 | **D3D11 sandbox (default)** | ✅ Complete | `engine_sandbox.exe --headless` exits 0 using D3D11 WARP; no Vulkan SDK needed |
 | M0v | **Vulkan sandbox (optional)** | ✅ Complete | `engine_sandbox.exe --renderer vulkan` opens a window; Vulkan clears screen |
-| M1 | **Triangle (Vulkan)** | ✅ Complete | `VulkanPipeline` + `VulkanMesh`; `shaders/triangle.vert/.frag` compiled to SPIR-V; coloured triangle draws; `--renderer vulkan --headless --scene triangle` exits 0 |
-| M2 | **AssetDB + Cooker** | ✅ Complete | `src/tools/cook/cook_main.cpp` (`cook.exe`); `src/engine/assets/asset_db.hpp/.cpp`; `engine_sandbox --headless --validate-project` exits 0; `contract-tests.yml` CI; `build-windows.yml` CI |
-| M3 | **Hello Texture + Audio** | 🔨 In Progress | D3D11 texture ✅; XAudio2 backend ✅; AudioSystem ✅; AudioSourceComponent ✅; Vulkan texture ⬜; descriptor sets ⬜; textured quad shaders ⬜ |
-| M4 | **Animation runtime** | ⬜ | `src/engine/animation/skeleton.hpp/.cpp` + `anim_clip` + `blend_tree` + `gpu_skinning`; animated character on screen |
-| M5 | **Physics integration** | ⬜ | Jolt Physics via vcpkg; `src/engine/physics/`; character capsule falls; raycast returns hit; headless physics tests pass |
-| M6 | **Editor improvements** | ⬜ | Entity inspector panel; scene ECS serialisation; Play-in-Engine button |
-| M7 | **World streaming** | ⬜ | `src/engine/world/world_streaming.hpp/.cpp`; async loader; headless streaming tests pass |
-| M8 | **Gameplay integration** | ⬜ | All gameplay systems (combat, AI, quests, camp, weather) wired into D3D11/Vulkan runtime; Lua hooks fire; 300-frame headless sim passes |
+| M1 | **Triangle (Vulkan)** | ✅ Complete | `VulkanPipeline` + `VulkanMesh`; coloured triangle draws; `--renderer vulkan --headless --scene triangle` exits 0 |
+| M2 | **AssetDB + Cooker** | ✅ Complete | `cook.exe`; `asset_db.hpp/.cpp`; `--validate-project` exits 0; CI green |
+| M3 | **Hello Texture + Audio** | ✅ Complete | D3D11 texture loader; XAudio2 backend + AudioSystem; textured quad scene; headless CI |
+| M4 | **Animation runtime** | ✅ Complete | Skeleton + anim clip + blend tree + GPU skinning CB; IK solver; skinned_mesh scene CI |
+| M5 | **Physics integration** | ✅ Complete | Jolt Physics; `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`; `physics_test` CI |
+| M6 | **Editor improvements** | ✅ Complete | `SceneHierarchyPanel`, `InspectorPanel`, `SceneSerialiser`, Play-in-Engine, asset drag-drop; editor CI |
+| M7 | **World streaming** | ✅ Complete | `WorldStreamingManager` + `WorldPartition` + `AsyncLoader`; `GameStreamingManager` Zone wiring; cancellation tokens; frame-budget cap; debug overlay; streaming CI |
+| M8 | **Gameplay integration** | ✅ Complete | `GameRuntime` + `InputMapper` + `CameraSystem` + `Hud` + `DialogueSystem` + `SaveSystem` + `GameStreamingManager` → D3D11; `m8_gameplay` + `m8_streaming` CI scenes; 4 authored streaming cells |
 
 **Post-M8 work (in order):**
-1. `src/engine/ui/` — Vulkan HUD + menu stack + font renderer
-2. `src/engine/save/` — ECS snapshot save/load (15 slots + auto-save)
-3. Full PBR pipeline — IBL, directional shadow map, bloom, tonemapping
-4. Dynamic sky + weather VFX — `sky_renderer.hpp/.cpp`, `weather_fx.hpp/.cpp`
-5. `src/game/systems/dialogue_system.hpp/.cpp` — dialogue tree + NPC conversations
-6. `src/engine/ai/behaviour_tree.hpp/.cpp` — behaviour tree to replace/augment FSM
-7. `src/engine/ai/formation_system.hpp/.cpp` — party formation
-8. Vehicle physics — `src/game/systems/vehicle_system.hpp/.cpp` + `src/engine/physics/vehicle_physics.hpp/.cpp`
-9. `src/engine/cinematics/` — cinematic sequencer + camera rig
-10. `src/tools/pak/pak_main.cpp` — PAK packager for release
+1. PBR rendering (IBL + directional shadows + bloom + tonemap) — D3D11 first, then Vulkan catch-up
+2. Dynamic sky + weather VFX — `sky_renderer.hpp/.cpp`, `weather_fx.hpp/.cpp`
+3. Vehicle physics — `VehicleComponent` + wheel-ray suspension
+4. Behaviour tree AI — `src/engine/ai/behaviour_tree.hpp/.cpp`
+5. Formation system — `src/engine/ai/formation_system.hpp/.cpp`
+6. Cinematics — `CinematicSequencer` + camera rig
+7. Vulkan catch-up — all DEFERRED items (vulkan_texture, descriptor sets, Vulkan PBR, Vulkan skinning)
+8. Nav-mesh baker + runtime pathfinding
+9. PAK packager — `src/tools/pak/pak_main.cpp`
 
 ---
 

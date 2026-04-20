@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1298 across 46 subsystems.
+**Total lessons:** 1308 across 46 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (54 lessons)
-- [ci/workflows](#ciworkflows) (42 lessons)
+- [ci/workflows](#ciworkflows) (43 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
@@ -35,11 +35,11 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
 - [game/systems](#gamesystems) (99 lessons)
-- [game/world](#gameworld) (88 lessons)
+- [game/world](#gameworld) (89 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (14 lessons)
-- [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (9 lessons)
-- [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (2 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (35 lessons)
+- [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
+- [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (39 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -1236,9 +1236,28 @@ the headless D3D11 sandbox and asserts three conditions:
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_gameplay
 shell: cmd
 
-### M5 Physics CI Job
+### M8.7 Streaming Integration Test
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L219) (line 219)
+
+This scene validates the complete M8.7 pipeline that wires the world
+streaming system into the D3D11 GameRuntime:
+
+  1. Loads assetdb.json produced by cook.exe (step 6 above).
+  2. Inits GameStreamingManager with the real AssetLoader.
+  3. Registers the cell_0_0 GUID for world cell (0,0).
+  4. Runs 200 Update() calls so the async worker can complete.
+  5. Asserts: at least 1 cell reached the LOADED state.
+
+Must run AFTER step 6 (Cook) because assetdb.json must exist.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M8.7 — m8_streaming)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_streaming
+shell: cmd
+
+### M5 Physics CI Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L238) (line 238)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1264,7 +1283,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L258) (line 258)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L277) (line 277)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1290,7 +1309,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L292) (line 292)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L311) (line 311)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1311,7 +1330,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L316) (line 316)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L335) (line 335)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1324,7 +1343,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L329) (line 329)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L348) (line 348)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1355,7 +1374,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L357) (line 357)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L376) (line 376)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1364,7 +1383,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L379) (line 379)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L398) (line 398)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1392,7 +1411,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L414) (line 414)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L433) (line 433)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1401,7 +1420,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L428) (line 428)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1423,7 +1442,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L453) (line 453)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L472) (line 472)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1437,7 +1456,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L477) (line 477)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L496) (line 496)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1455,7 +1474,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L502) (line 502)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L521) (line 521)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1466,7 +1485,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L513) (line 513)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L532) (line 532)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1481,7 +1500,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L535) (line 535)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L554) (line 554)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -17754,9 +17773,47 @@ sp.respawnTime = se.respawnTime;
 zone.AddSpawnPoint(sp);
 }
 
+### M8.7: AnimatorComponent for D3D11 skinned-mesh pass
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L366) (line 366)
+
+─────────────────────────────────────────────────────────────────────
+The D3D11 skinned-mesh vertex shader (skinned_mesh.vs.hlsl) reads a
+joint-matrix constant buffer uploaded by GpuSkinningBuffer.  Any
+entity that should be rendered with GPU skinning MUST have an
+AnimatorComponent so AnimationSystem can write joint matrices each
+frame.  We add a default component here for every enemy and NPC
+spawned by the streaming manager.
+
+skeletonID / currentClipID are deliberately left as placeholder
+strings ("skel_enemy_default", "clip_idle").  When real skeleton and
+clip assets are cooked and registered with AnimationSystem, update
+these IDs to the corresponding asset GUIDs.  The engine will then
+evaluate real keyframe data instead of identity matrices.
+for (const uint32_t eid : zone.GetEnemyEntities())
+{
+if (!m_world->HasComponent<AnimatorComponent>(eid))
+{
+auto& anim        = m_world->AddComponent<AnimatorComponent>(eid);
+anim.skeletonID   = "skel_enemy_default";
+anim.currentClipID = "clip_idle";
+anim.isPlaying    = true;
+}
+}
+for (const uint32_t eid : zone.GetNPCEntities())
+{
+if (!m_world->HasComponent<AnimatorComponent>(eid))
+{
+auto& anim        = m_world->AddComponent<AnimatorComponent>(eid);
+anim.skeletonID   = "skel_npc_default";
+anim.currentClipID = "clip_idle_npc";
+anim.isPlaying    = true;
+}
+}
+
 ### Cleaning up staging data on evict/cancel
 
-**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L408) (line 408)
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L445) (line 445)
 
 ──────────────────────────────────────────────────────────
 If this cell was cancelled mid-load (EvictCells calls OnEvictCell for
@@ -17771,7 +17828,7 @@ m_pendingData.erase(id);
 
 ### We do NOT call WorldStreamingManager::OnEvictCell().
 
-**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L420) (line 420)
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L457) (line 457)
 
 The base class virtual method only logs; the actual state-machine
 transition (erasing from m_cellStates + m_loadedCells) is done by the
@@ -19137,7 +19194,7 @@ print(f"\n  Registry written: {REGISTRY_FILE.name}  ({len(registry)} assets)")
 
 ### Component registration must happen before entity creation.
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L45) (line 45)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L46) (line 46)
 
 RegisterAllComponents() sets up one typed pool per component type in the
 World.  Attempting to AddComponent<T> without registering T first would
@@ -19147,7 +19204,7 @@ RegisterAllComponents(m_world);
 
 ### Open-world navigation grid.
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L53) (line 53)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L54) (line 54)
 
 The terminal AISystem uses a TileMap for A* pathfinding.  For the 3D
 open world we create a 100×100 all-floor "flat plain" so enemies can
@@ -19161,7 +19218,7 @@ LOG_INFO("GameRuntime: navigation grid 100×100 tiles (all floor).");
 
 ### Enemy spawn positions
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L125) (line 125)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L126) (line 126)
 
 Each enemy is placed at a different tile offset from the centre so they
 begin IDLE and must wander/chase before reaching the player.  The AI
@@ -19180,7 +19237,7 @@ const std::pair<std::string, Vec3> kEnemySpawns[] = {
 
 ### AISystem compares TileDistance (distance / TILE_SIZE)
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L150) (line 150)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L151) (line 151)
 
 against these fields, so they must stay in TILE units.  Do NOT
 multiply by TILE_SIZE here; doing so would make ranges ~64× too large
@@ -19192,7 +19249,7 @@ ai.attackRange =  1.5f;   //  1.5 tiles ≈  96 world units
 
 ### QuestSystem::AcceptQuest()
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L181) (line 181)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L182) (line 182)
 
 This wires the player into the quest system.  The QuestComponent on
 playerID is updated with the quest entry.  Objective progress is later
@@ -19202,16 +19259,61 @@ if (m_quests->AcceptQuest(m_playerID, 1))
 LOG_INFO("GameRuntime: quest 1 'The Road to Dawn' accepted.");
 }
 
+### Streaming wired into GameRuntime
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L207) (line 207)
+
+─────────────────────────────────────────────────
+GameStreamingManager is the game-layer subclass of WorldStreamingManager
+(from M7).  Wiring it here completes M8.7:
+
+  1. We try to load the cooked AssetDB from the vertical slice project.
+     If it doesn't exist (e.g. cook.exe hasn't been run yet) we continue
+     without file-backed streaming — cells still load with default empty
+     data.  This makes the m8_gameplay acceptance test (which runs BEFORE
+     cooking in CI) work correctly.
+
+  2. Cell size = TILE_SIZE × 40 (2 560 world units).
+     The player starts at tile (50,50) → world (3 200, 0, 3 200).
+     Cell coord = floor(3 200 / 2 560) = 1.  The player is in cell (1,1).
+
+  3. We register the cooked cell file GUIDs for the four vertical-slice
+     cells around the player's starting position.  The GUIDs are stable
+     identifiers written into AssetRegistry.json at authoring time and
+     preserved unchanged by cook.exe into assetdb.json.
+-----------------------------------------------------------------------
+
+### Stable GUID mapping
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L261) (line 261)
+
+The GUID is the canonical cross-system identifier.  The CellId is a
+derived runtime hash that changes if cell coordinates change.  Always
+register by (GUID, cellId) so asset references survive grid renames.
+struct CellReg { int cx; int cz; const char* guid; };
+constexpr CellReg kCells[] = {
+{ 1, 1, "5db40c3b-a192-4a4c-a1aa-728775cd12fa" },  // cell_0_0
+{ 0, 1, "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011" },  // cell_0_1
+{ 1, 0, "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022" },  // cell_1_0
+{ 0, 0, "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033" },  // cell_1_1
+};
+for (const auto& c : kCells)
+{
+const uint32_t cellId =
+engine::world::CellIdFromCoord({ c.cx, c.cz });
+m_streamingMgr.RegisterCellGuid(cellId, c.guid);
+}
+
 ### System update order (see header for rationale).
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L214) (line 214)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L300) (line 300)
 
 1. Input — read keyboard state and write into player components.
 m_inputMapper.Update(m_world, m_playerID, dt);
 
 ### CombatSystem is stateful: Update() only does meaningful
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L231) (line 231)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L317) (line 317)
 
 work after StartCombat() has been called, and player actions must be
 forwarded via explicit CombatSystem entry points (PlayerAttack /
@@ -19236,16 +19338,37 @@ break;
 }
 }
 
+### Streaming pumped last (after HUD / camera)
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L411) (line 411)
+
+─────────────────────────────────────────────────────────────────
+Update() drives the WorldStreamingManager's completion queue:
+  a. Queries WorldPartition for cells near the player.
+  b. Enqueues load/evict jobs via AsyncLoader.
+  c. Calls PumpMainThreadCompletions() to fire OnCellLoaded/OnEvictCell
+     callbacks (which spawn/despawn ECS entities) on the main thread.
+Placing this last keeps entity spawning out of mid-frame ECS iteration
+in steps 3–6, preventing iterator invalidation.
+if (m_world.HasComponent<TransformComponent>(m_playerID))
+{
+const auto& tr = m_world.GetComponent<TransformComponent>(m_playerID);
+const engine::math::Vec3 playerPos{
+tr.position.x, tr.position.y, tr.position.z };
+m_streamingMgr.Update(playerPos);
+}
+}
+
 ### Encoding game state in the clear colour.
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L345) (line 345)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L451) (line 451)
 
 We modulate a base sky colour with gameplay conditions so the CI
 log output and the headless D3D11 back buffer both reflect live state.
 
 ### Transition detection via state comparison.
 
-**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L383) (line 383)
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L489) (line 489)
 
 We store each enemy's previous AI state and compare each frame.
 A difference means a state transition occurred.
@@ -19279,13 +19402,14 @@ Design goals:
      the m8_gameplay acceptance test can run in headless CI mode.
 
 ─── System Update Order (per frame) ────────────────────────────────────────
-  1. InputMapper     — keyboard state → ECS component flags
-  2. WeatherSystem   — advance day/night cycle
-  3. AISystem        — enemy FSM + A* pathfinding
-  4. CombatSystem    — ATB timers, attack resolution, damage
-  5. QuestSystem     — objective progress checks
-  6. CameraSystem    — update view/proj matrices
-  7. Hud             — extract HudState snapshot
+  1. InputMapper          — keyboard state → ECS component flags
+  2. WeatherSystem        — advance day/night cycle
+  3. AISystem             — enemy FSM + A* pathfinding
+  4. CombatSystem         — ATB timers, attack resolution, damage
+  5. QuestSystem          — objective progress checks
+  6. CameraSystem         — update view/proj matrices
+  7. Hud                  — extract HudState snapshot
+  8. GameStreamingManager — pump async cell load/evict completions (M8.7)
 
 ============================================================================
 
@@ -19297,7 +19421,7 @@ Platform: Windows (engine_sandbox); headless safe.
 
 ### Render feedback without direct renderer coupling
 
-**Source:** [`src/sandbox/game_runtime.hpp`](src/sandbox/game_runtime.hpp#L133) (line 133)
+**Source:** [`src/sandbox/game_runtime.hpp`](src/sandbox/game_runtime.hpp#L137) (line 137)
 
 ─────────────────────────────────────────────────────────────────
 GameRuntime communicates with the renderer through a single colour tuple
@@ -19309,6 +19433,20 @@ The colour encodes game state visually:
   Night       — deep blue          (r↓ g↓ b↑)
   Combat      — red pulse          (r↑ g↓ b↓)
   Idle        — neutral near-black (r≈ g≈ b≈)
+
+### Streaming integration in GameRuntime
+
+**Source:** [`src/sandbox/game_runtime.hpp`](src/sandbox/game_runtime.hpp#L182) (line 182)
+
+──────────────────────────────────────────────────────
+GameStreamingManager, AssetDB, and AssetLoader are value members so they
+share the GameRuntime lifetime.  AssetLoader holds a raw pointer to
+AssetDB, so the ordering here (DB before loader) guarantees the DB
+outlives the loader.  std::unique_ptr defers AssetLoader construction
+until Init() has successfully loaded the database.
+GameStreamingManager                         m_streamingMgr;
+engine::assets::AssetDB                      m_assetDB;
+std::unique_ptr<engine::assets::AssetLoader> m_assetLoader;
 
 ---
 
@@ -19396,6 +19534,7 @@ Usage:
   engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
   engine_sandbox.exe --scene game                         # M8 full gameplay windowed (D3D11)
   engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
+  engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
 
 ============================================================================
 
@@ -19407,7 +19546,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L91) (line 91)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L92) (line 92)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -19427,7 +19566,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L109) (line 109)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L110) (line 110)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -19445,7 +19584,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L125) (line 125)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L126) (line 126)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -19458,9 +19597,27 @@ in the D3D11 engine_sandbox without a real window.  It:
 ---------------------------------------------------------------------------
 include "sandbox/game_runtime.hpp"
 
+### M8.7 Streaming integration headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L139) (line 139)
+
+---------------------------------------------------------------------------
+The m8_streaming scene validates the full M8.7 pipeline:
+  1. Loads assetdb.json produced by cook.exe.
+  2. Inits a GameStreamingManager with a real AssetLoader.
+  3. Registers the cell_0_0 GUID for world cell (0,0).
+  4. Runs 200 Update() calls so the async worker can complete.
+  5. Asserts: at least 1 cell reached the LOADED state.
+
+Run AFTER cook.exe — the test exits with [FAIL] if assetdb.json is absent.
+In build-windows.yml this step appears after the "Cook vertical slice
+project" step, guaranteeing the file is present.
+---------------------------------------------------------------------------
+include "game/world/GameStreamingManager.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L146) (line 146)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L163) (line 163)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -19477,7 +19634,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L161) (line 161)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L178) (line 178)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -19494,7 +19651,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L174) (line 174)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L191) (line 191)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -19506,7 +19663,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L213) (line 213)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -19525,7 +19682,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L211) (line 211)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L228) (line 228)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -19538,7 +19695,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L224) (line 224)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L241) (line 241)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -19549,7 +19706,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L253) (line 253)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L270) (line 270)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -19564,7 +19721,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L278) (line 278)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L295) (line 295)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -19574,7 +19731,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L308) (line 308)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L325) (line 325)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -19590,7 +19747,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L357) (line 357)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L374) (line 374)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -19615,7 +19772,7 @@ else if (scene == "textured_quad" || scene == "skinned_mesh")
 
 ### Headless Scene Validation (M3 / M4b)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L378) (line 378)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L395) (line 395)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -19642,7 +19799,7 @@ else if (scene == "physics_test")
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L401) (line 401)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L418) (line 418)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -19667,7 +19824,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L522) (line 522)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L539) (line 539)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -19688,7 +19845,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L606) (line 606)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L623) (line 623)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -19706,7 +19863,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L620) (line 620)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L637) (line 637)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -19724,7 +19881,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L653) (line 653)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L670) (line 670)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -19750,7 +19907,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L704) (line 704)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L721) (line 721)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -19772,7 +19929,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L723) (line 723)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L740) (line 740)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -19795,7 +19952,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L804) (line 804)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L821) (line 821)
 
 -----------------------------------------------------------
 Verifies that:
@@ -19815,7 +19972,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L821) (line 821)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L838) (line 838)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -19835,7 +19992,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L864) (line 864)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L881) (line 881)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -19851,7 +20008,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L906) (line 906)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L923) (line 923)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -19877,7 +20034,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L928) (line 928)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L945) (line 945)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -19898,9 +20055,51 @@ window.Shutdown();
 return 1;
 }
 
+### M8.7 Streaming Integration headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1054) (line 1054)
+
+-----------------------------------------------------------
+This acceptance scene validates the complete M8.7 pipeline:
+
+  1. ASSET DB LOAD — Load assetdb.json produced by cook.exe.
+     Exits [FAIL] if the file is missing (cook.exe must run
+     before this scene is invoked, as enforced in CI).
+
+  2. STREAMING INIT — Create a GameStreamingManager with the
+     real AssetLoader and ECS World.
+
+  3. GUID REGISTRATION — Register the stable GUID
+     "5db40c3b-…" (cell_0_0) for world cell (0,0).
+
+  4. UPDATE LOOP — Run 200 Update() calls at position
+     (128, 0, 128), which lies in cell (0,0) when cell size
+     is 256 world units.  The async worker has enough calls
+     to complete the load and trigger PumpCompletions().
+
+  5. LOADED COUNT — Assert ≥ 1 cell reached LOADED state.
+
+### Why 200 iterations?
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1075) (line 1075)
+
+The async loader works on a background thread.  The main
+thread drains at most kMaxPerFrame completions per
+Update() call (default: 4).  For 9 cells in a radius-1
+patch, 200 iterations is generous headroom even on a busy
+CI runner where the worker thread may be slow to schedule.
+-----------------------------------------------------------
+
+### Heap-allocate World (same reason as GameRuntime)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1098) (line 1098)
+
+auto streamWorld = std::make_unique<World>();
+RegisterAllComponents(*streamWorld);
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1050) (line 1050)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1154) (line 1154)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -19910,7 +20109,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1058) (line 1058)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1162) (line 1162)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -19940,7 +20139,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1086) (line 1086)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1190) (line 1190)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -19963,7 +20162,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1139) (line 1139)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1243) (line 1243)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -19976,7 +20175,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1155) (line 1155)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1259) (line 1259)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

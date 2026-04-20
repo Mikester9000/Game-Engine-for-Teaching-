@@ -70,6 +70,7 @@
  *   engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
  *   engine_sandbox.exe --scene game                         # M8 full gameplay windowed (D3D11)
  *   engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
  *
  * ============================================================================
  *
@@ -133,6 +134,22 @@
 //   5. Asserts: quest objective registered for player.
 // ---------------------------------------------------------------------------
 #include "sandbox/game_runtime.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M8.7 Streaming integration headless test
+// ---------------------------------------------------------------------------
+// The m8_streaming scene validates the full M8.7 pipeline:
+//   1. Loads assetdb.json produced by cook.exe.
+//   2. Inits a GameStreamingManager with a real AssetLoader.
+//   3. Registers the cell_0_0 GUID for world cell (0,0).
+//   4. Runs 200 Update() calls so the async worker can complete.
+//   5. Asserts: at least 1 cell reached the LOADED state.
+//
+// Run AFTER cook.exe — the test exits with [FAIL] if assetdb.json is absent.
+// In build-windows.yml this step appears after the "Cook vertical slice
+// project" step, guaranteeing the file is present.
+// ---------------------------------------------------------------------------
+#include "game/world/GameStreamingManager.hpp"
 
 #include <iostream>
 #include <exception>
@@ -1031,8 +1048,95 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] m8_gameplay: all 3 acceptance tests passed.\n";
             }
-            else
+            else if (scene == "m8_streaming")
             {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — M8.7 Streaming Integration headless test
+                // -----------------------------------------------------------
+                // This acceptance scene validates the complete M8.7 pipeline:
+                //
+                //   1. ASSET DB LOAD — Load assetdb.json produced by cook.exe.
+                //      Exits [FAIL] if the file is missing (cook.exe must run
+                //      before this scene is invoked, as enforced in CI).
+                //
+                //   2. STREAMING INIT — Create a GameStreamingManager with the
+                //      real AssetLoader and ECS World.
+                //
+                //   3. GUID REGISTRATION — Register the stable GUID
+                //      "5db40c3b-…" (cell_0_0) for world cell (0,0).
+                //
+                //   4. UPDATE LOOP — Run 200 Update() calls at position
+                //      (128, 0, 128), which lies in cell (0,0) when cell size
+                //      is 256 world units.  The async worker has enough calls
+                //      to complete the load and trigger PumpCompletions().
+                //
+                //   5. LOADED COUNT — Assert ≥ 1 cell reached LOADED state.
+                //
+                // TEACHING NOTE — Why 200 iterations?
+                // The async loader works on a background thread.  The main
+                // thread drains at most kMaxPerFrame completions per
+                // Update() call (default: 4).  For 9 cells in a radius-1
+                // patch, 200 iterations is generous headroom even on a busy
+                // CI runner where the worker thread may be slow to schedule.
+                // -----------------------------------------------------------
+
+                // 1. Load AssetDB (requires cook.exe to have run first).
+                engine::assets::AssetDB streamDb;
+                const std::string kDbPath =
+                    "samples/vertical_slice_project/Cooked/assetdb.json";
+                if (!streamDb.Load(kDbPath))
+                {
+                    std::cout << "[FAIL] m8_streaming: assetdb.json not found at '"
+                              << kDbPath << "'. Run cook.exe first.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                engine::assets::AssetLoader streamLoader(&streamDb);
+
+                // 2. Create ECS World and streaming manager.
+                // TEACHING NOTE — Heap-allocate World (same reason as GameRuntime)
+                auto streamWorld = std::make_unique<World>();
+                RegisterAllComponents(*streamWorld);
+
+                auto streamMgr = std::make_unique<GameStreamingManager>();
+                constexpr float kStreamCellSize = 256.0f;  // world units
+                if (!streamMgr->Init(*streamWorld, &streamLoader, kStreamCellSize, 1))
+                {
+                    std::cout << "[FAIL] m8_streaming: GameStreamingManager::Init failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+
+                // 3. Register cell_0_0 GUID for world cell (0,0).
+                // This GUID is stable — it matches the 'id' field in
+                // AssetRegistry.json and is preserved verbatim by cook.exe.
+                const std::string kCell00Guid = "5db40c3b-a192-4a4c-a1aa-728775cd12fa";
+                const uint32_t    kCellId00   =
+                    engine::world::CellIdFromCoord({ 0, 0 });
+                streamMgr->RegisterCellGuid(kCellId00, kCell00Guid);
+
+                // 4. Update 200 times — camera at (128, 0, 128) → inside cell (0,0).
+                const engine::math::Vec3 kCamPos{ 128.0f, 0.0f, 128.0f };
+                for (int i = 0; i < 200; ++i)
+                    streamMgr->Update(kCamPos);
+
+                const int loadedCells = streamMgr->LoadedCellCount();
+                streamMgr->Shutdown();
+
+                // 5. Validate.
+                if (loadedCells < 1)
+                {
+                    std::cout << "[FAIL] m8_streaming: no cells reached LOADED state "
+                                 "after 200 Update() calls.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] m8_streaming: " << loadedCells
+                          << " cell(s) loaded from disk via AssetLoader.\n";
+            }
                 // M0 baseline: device init succeeded.
                 std::cout << "[PASS] " << renderer->BackendName()
                           << " device initialised. Headless mode: "

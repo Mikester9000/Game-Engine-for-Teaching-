@@ -213,6 +213,25 @@ jobs:
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project samples\vertical_slice_project
         shell: cmd
 
+      # -----------------------------------------------------------------------
+      # 8. M8.7 — Zone Streaming → D3D11 integration test.
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M8.7 Streaming Integration Test
+      # This scene validates the complete M8.7 pipeline that wires the world
+      # streaming system into the D3D11 GameRuntime:
+      #
+      #   1. Loads assetdb.json produced by cook.exe (step 6 above).
+      #   2. Inits GameStreamingManager with the real AssetLoader.
+      #   3. Registers the cell_0_0 GUID for world cell (0,0).
+      #   4. Runs 200 Update() calls so the async worker can complete.
+      #   5. Asserts: at least 1 cell reached the LOADED state.
+      #
+      # Must run AFTER step 6 (Cook) because assetdb.json must exist.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M8.7 — m8_streaming)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_streaming
+        shell: cmd
+
   # --------------------------------------------------------------------------
   # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
   # --------------------------------------------------------------------------

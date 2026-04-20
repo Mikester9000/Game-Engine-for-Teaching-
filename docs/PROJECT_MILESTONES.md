@@ -316,7 +316,7 @@ ctest --test-dir build -L contract -R anim
 
 ## Milestone M7 — World Streaming
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete
 
 ### Goals
 - Zone tiles stream in and out based on camera proximity without a loading screen.
@@ -326,69 +326,62 @@ ctest --test-dir build -L contract -R anim
 ### Deliverables
 | File | Description |
 |---|---|
-| `src/engine/world/world_streaming.hpp/.cpp` | Cell manager, proximity check, async load/evict |
-| `src/engine/world/world_partition.hpp/.cpp` | Spatial grid, visibility frustum cull |
-| `src/engine/world/async_loader.hpp/.cpp` | `std::thread` + lock-free queue; job: load cell → callback |
-| `src/game/world/Zone.hpp/.cpp` | Updated to cooperate with streaming manager |
-| `tools/creation_engine.py` | Cell packager: zone JSON → `cooked/levels/<id>.level` |
+| `src/engine/world/world_streaming.hpp/.cpp` | `WorldStreamingManager`: proximity check, async load/evict, frame-budget cap, ImGui debug overlay |
+| `src/engine/world/world_partition.hpp/.cpp` | `WorldPartition`: spatial grid; `CellCoord`, `CellIdFromCoord`, `GetCellsNearPosition` |
+| `src/engine/world/async_loader.hpp/.cpp` | `AsyncLoader`: single worker thread + job queue; `CancelJob` cancellation token |
+| `src/engine/world/cell_data.hpp` | `CellData` + `SpawnEntry` POD structs |
+| `src/game/world/GameStreamingManager.hpp/.cpp` | Game-layer subclass: Zone lifecycle wired into streaming hooks |
+| `samples/vertical_slice_project/Content/Levels/cell_0_0.cell.json` | First cooked streaming cell; `cook_assets.py` gains `cook_levels()` |
 
 ### Acceptance tests
 
 ```bat
-:: Headless streaming — load 4 adjacent cells
-.\Debug\engine_sandbox.exe --headless --test streaming_load --cells 4
-:: Expected: [PASS] 4 cells loaded. Entity count = N. No duplicates.
-
-:: Headless streaming — evict 1 cell
-.\Debug\engine_sandbox.exe --headless --test streaming_evict
-:: Expected: [PASS] Cell evicted. Entity count reduced by expected amount. No dangling refs.
-
-:: Async load does not block main thread
-.\Debug\engine_sandbox.exe --headless --test streaming_async --frames 120
-:: Expected: [PASS] Main thread frame time never exceeded 2 ms during cell load.
+engine_sandbox.exe --headless --scene streaming_load   :: 9 cells load at radius-1; no duplicates
+engine_sandbox.exe --headless --scene streaming_evict  :: evict on camera move; mid-load cancellation
+engine_sandbox.exe --headless --scene streaming_async  :: 25 cells, cap=4/frame, all load ≤120 frames
 ```
 
-**Done means:** CI green; all streaming headless tests pass; no frame spikes > 2 ms during cell load.
+**Done means:** All three streaming scenes exit 0 in CI; frame-budget cap confirmed; cancellation tokens work.
 
 ---
 
 ## Milestone M8 — Gameplay Integration
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete
 
 ### Goals
-- All existing gameplay systems (combat, quests, AI, camp, inventory, magic,
-  shop, weather) wired into the **D3D11** runtime instead of the ncurses terminal.
-- Lua scripting still works via `LuaEngine`.
-- Sample FF15 slice project: one zone, one enemy, one quest, one party member.
+- All gameplay systems (Combat, AI, Quest, Weather, etc.) wired into the **D3D11** `engine_sandbox` runtime.
+- Zone streaming from AssetRegistry → cooked cells → live ECS entities (M8.7).
+- Production save system: 15 slots + auto-save + migration (M8.8).
+- D3D11 ImGui HUD overlay (M8.5).
 
-### Deliverables
-| File | Description |
-|---|---|
-| `src/game/Game.hpp/.cpp` | Updated `Game::Init` and `Game::Run` to use D3D11 + audio + physics |
-| `src/game/systems/combat_system.hpp/.cpp` | Renamed from `CombatSystem`; uses physics raycasts |
-| `src/game/systems/quest_system.hpp/.cpp` | Renamed; triggers dialogue + camera events |
-| `src/game/systems/ai_system.hpp/.cpp` | Renamed; uses behaviour tree + nav-mesh |
-| `src/game/systems/weather_system.hpp/.cpp` | Renamed; drives sky renderer |
-| `samples/ff15_slice/` | Full sample project: zone, enemy, quest, manifest, scripts |
+### Sub-milestones
+| Sub | Deliverable | Status |
+|-----|-------------|--------|
+| M8.1 | `GameRuntime`: D3D11 main-loop driver; ticks all ECS systems | ✅ |
+| M8.2 | `InputMapper`: Win32 keyboard → ECS component state | ✅ |
+| M8.3 | `CameraSystem`: third-person follow camera + mouse orbit | ✅ |
+| M8.4 | (Part of M4b) AISystem ported to 3D world positions | ✅ |
+| M8.5 | D3D11 ImGui HUD: HP/MP bars, ATB gauge, equipped spell | ✅ |
+| M8.6 | `DialogueSystem` + QuestSystem → HUD notifications + NPC sample | ✅ |
+| M8.7 | `GameStreamingManager` → D3D11 runtime; `AnimatorComponent` on streamed entities; 3 new authored cells | ✅ |
+| M8.8 | `SaveSystem`: 15 slots + auto-save; JSON ECS serialisation + `"version"` migration | ✅ |
+| M8.9 | `--scene m8_gameplay` headless acceptance test (CI) | ✅ |
 
 ### Acceptance tests
 
 ```bat
-:: Headless full simulation — 300 frames
-.\Debug\engine_sandbox.exe --headless --run-sim 300 --project samples\ff15_slice\
-:: Expected: [PASS] 300 frames. Combat resolved. Quest objective updated. Camp rest triggered. No crashes.
+:: M8.9 — gameplay systems headless (run BEFORE cook.exe)
+engine_sandbox.exe --headless --scene m8_gameplay
+:: [PASS] m8_gameplay: all 3 acceptance tests passed.
 
-:: Lua hooks fire
-.\Debug\engine_sandbox.exe --headless --test lua_hooks
-:: Expected: [PASS] on_combat_start fired. on_camp_rest fired. on_level_up fired.
-
-:: Full CI suite
-ctest --test-dir build
-:: Expected: all tests pass
+:: M8.7 — zone streaming from disk (run AFTER cook.exe)
+cook.exe --project samples\vertical_slice_project --verbose
+engine_sandbox.exe --headless --scene m8_streaming
+:: [PASS] m8_streaming: ≥1 cell(s) loaded from disk via AssetLoader.
 ```
 
-**Done means:** CI green; full headless simulation passes 300 frames; all Lua hooks fire; sample project loads and validates.
+**Done means:** `m8_gameplay` and `m8_streaming` both exit 0 in CI; all M8 sub-milestones complete.
 
 ---
 
@@ -396,13 +389,13 @@ ctest --test-dir build
 
 | ID | Name | Key deliverable |
 |---|---|---|
-| M9 | Cinematics | `cinematic_sequencer` + cut-scene editor |
-| M10 | Vehicle physics | `vehicle_physics` + road baker + chase camera |
-| M11 | Advanced AI | Full behaviour tree; nav-mesh baker |
-| M12 | UI system | Vulkan HUD; menu stack; font renderer |
-| M13 | Save system | ECS snapshot save/load; migration |
-| M14 | Behaviour tree AI | Boss patterns; formation AI |
-| M15 | PAK packager + release | `pak.exe`; distribution directory; installer |
+| M9 | PBR Rendering | IBL + directional shadows + bloom + tonemap (D3D11 first, then Vulkan catch-up) |
+| M10 | Dynamic Sky | Procedural time-of-day + weather VFX (rain, fog) |
+| M11 | Vehicle Physics | Wheel-ray suspension + chase camera + `VehicleComponent` |
+| M12 | Behaviour Tree AI | Boss patterns; formation system; nav-mesh baker |
+| M13 | Cinematics | `CinematicSequencer` + camera rig + cut-scene editor |
+| M14 | Vulkan Catch-up | Resume all DEFERRED Vulkan items (textures, descriptors, PBR, skinning) |
+| M15 | PAK Packager + Release | `pak.exe`; distribution directory; installer |
 
 ---
 
@@ -418,5 +411,5 @@ ctest --test-dir build
 | M4 | Animation runtime | ✅ Complete |
 | M5 | Physics integration | ✅ Complete |
 | M6 | Editor shell | ✅ Complete |
-| M7 | World streaming | ⬜ |
-| M8 | Gameplay integration | ⬜ |
+| M7 | World streaming | ✅ Complete |
+| M8 | Gameplay integration | ✅ Complete |

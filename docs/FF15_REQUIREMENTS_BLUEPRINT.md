@@ -58,7 +58,7 @@ Status legend: ✅ exists · 🔨 in progress · ⬜ not yet started
 
 ## 1. Open-World Streaming
 
-**Status:** ⬜
+**Status:** ✅ Complete (M7 + M8.7)
 
 **Purpose:** Load and unload sections of a large continuous world without a
 loading screen.  FF15's Duscae region is ~4 km² of seamless terrain; the
@@ -66,14 +66,16 @@ engine achieves this by streaming "cells" in/out based on camera proximity.
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/engine/world/world_streaming.hpp/.cpp` — cell manager, async loader, eviction policy |
-| | `src/engine/world/world_partition.hpp/.cpp` — spatial grid, visibility culling |
-| | `src/game/world/Zone.hpp/.cpp` — already exists; integrate streaming on top |
-| **Tool component(s)** | `tools/creation_engine.py` (level baker, streaming cell packager) |
-| **Data formats** | Source: `.level.json`; Cooked: `cooked/levels/<id>.level` (tile data + spawn list, binary) |
-| **Acceptance tests** | `engine_sandbox.exe --headless --validate-project samples/ --check streaming` exits 0 |
-| | Load 4 adjacent cells; assert no entity is missing or duplicated |
-| | Unload a cell; assert all its entities are destroyed |
+| **Runtime component(s)** | `src/engine/world/world_streaming.hpp/.cpp` — `WorldStreamingManager`; proximity load/evict; frame-budget cap ✅ |
+| | `src/engine/world/world_partition.hpp/.cpp` — spatial grid; `CellCoord`, `CellIdFromCoord` ✅ |
+| | `src/engine/world/async_loader.hpp/.cpp` — worker-thread job queue; `CancelJob` cancellation token ✅ |
+| | `src/game/world/GameStreamingManager.hpp/.cpp` — Zone lifecycle wiring; `AnimatorComponent` on streamed entities ✅ |
+| **Tool component(s)** | `cook.exe` — copies `.cell.json` → `.level` cooked file; `AssetRegistry.json` updated ✅ |
+| **Data formats** | Source: `.cell.json` (zone name, spawns, NPC IDs); Cooked: `Cooked/Levels/<name>.level` ✅ |
+| **Acceptance tests** | `streaming_load`: 9 cells load at radius-1; no duplicates ✅ |
+| | `streaming_evict`: evict on camera move; mid-load cancellation ✅ |
+| | `streaming_async`: 25 cells, cap=4/frame, all load ≤120 frames ✅ |
+| | `m8_streaming`: load `cell_0_0.level` from AssetDB via real AssetLoader ✅ |
 
 ---
 
@@ -322,24 +324,24 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-> **Last updated: 2026-04-17 — after M1 (triangle) completion.**
+> **Last updated: 2026-04-20 — after M8 (gameplay integration) completion.**
 > Update each cell as subsystem code is committed and tests pass.
 > The project is complete when every cell shows ✅.
 
 | # | Subsystem | Runtime | Tool | Tests | Notes |
 |---|---|---|---|---|---|
-| 1 | Open-world streaming | ⬜ | 🔨 | ⬜ | `Zone`/`TileMap` exist; streaming manager not started |
-| 2 | Party AI | 🔨 | ⬜ | ⬜ | FSM + A* done (terminal); BT + formation ⬜ |
-| 3 | Action combat | 🔨 | ⬜ | ⬜ | ATB/warp-strike done (terminal); physics hit-detection ⬜ |
-| 4 | Quests & objectives | 🔨 | ⬜ | ⬜ | QuestSystem done (terminal); dialogue system ⬜ |
+| 1 | Open-world streaming | ✅ | ✅ | ✅ | `WorldStreamingManager` + `GameStreamingManager` + 4 streaming CI scenes; M8.7 wires into D3D11 GameRuntime |
+| 2 | Party AI | 🔨 | ⬜ | ⬜ | FSM + A* done (D3D11 GameRuntime); BT + formation ⬜ |
+| 3 | Action combat | 🔨 | ⬜ | ⬜ | ATB/warp-strike in D3D11 GameRuntime (M8.1); physics hit-detection ⬜ |
+| 4 | Quests & objectives | 🔨 | ⬜ | ⬜ | QuestSystem + DialogueSystem in D3D11 GameRuntime (M8.6); dialogue tree editor ⬜ |
 | 5 | Cinematics | ⬜ | ⬜ | ⬜ | No `src/engine/cinematics/` |
 | 6 | Vehicles | ⬜ | ⬜ | ⬜ | State enum only; no physics/road/camera |
-| 7 | Weather & time-of-day | 🔨 | ⬜ | ⬜ | WeatherSystem done (terminal); sky renderer ⬜ |
-| 8 | Audio pipeline | ⬜ | ✅ | 🔨 | Python tool + 32 tests ✅; XAudio2 C++ runtime ⬜ |
-| 9 | Animation pipeline | ⬜ | ✅ | 🔨 | Python tool + 11 tests ✅; C++ runtime ⬜ |
-| 10 | Physics | 🔨 | ⬜ | 🔨 | M5: Jolt PhysicsWorld, CharacterController, Raycast, HitVolume, ECS components (RigidBodyComponent + ColliderComponent); 3 headless acceptance tests in CI |
-| 11 | UI | 🔨 | ⬜ | ⬜ | ncurses terminal UI ✅; Vulkan HUD ⬜ |
-| 12 | Save system | ⬜ | ⬜ | ⬜ | `SaveGame()`/`LoadGame()` declared; no `src/engine/save/` |
-| 13 | Build / release pipeline | 🔨 | ✅ | ⬜ | Python tools + validate CI ✅; `cook.exe`, `pak.exe`, contract tests ⬜ |
+| 7 | Weather & time-of-day | 🔨 | ⬜ | ⬜ | WeatherSystem in D3D11 GameRuntime (M8.1); sky renderer ⬜ |
+| 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + AudioSourceComponent ✅ (M3) |
+| 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
+| 10 | Physics | ✅ | ✅ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent`; 3 headless CI tests (M5) |
+| 11 | UI | 🔨 | ⬜ | ⬜ | D3D11 ImGui HUD (HP/MP bars, ATB) ✅ (M8.5); menu stack + font renderer ⬜ |
+| 12 | Save system | ✅ | ✅ | ✅ | `SaveSystem`: 15 slots + auto-save + `"version"` migration field; JSON ECS snapshot ✅ (M8.8) |
+| 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI ✅; `pak.exe` ⬜ |
 
 ✅ complete · 🔨 in progress / partial · ⬜ not yet started

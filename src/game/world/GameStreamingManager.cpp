@@ -363,9 +363,46 @@ void GameStreamingManager::OnCellLoaded(uint32_t                      id,
         zone.SpawnEnemies(*m_world);
         zone.SpawnNPCs(*m_world);
 
+        // TEACHING NOTE — M8.7: AnimatorComponent for D3D11 skinned-mesh pass
+        // ─────────────────────────────────────────────────────────────────────
+        // The D3D11 skinned-mesh vertex shader (skinned_mesh.vs.hlsl) reads a
+        // joint-matrix constant buffer uploaded by GpuSkinningBuffer.  Any
+        // entity that should be rendered with GPU skinning MUST have an
+        // AnimatorComponent so AnimationSystem can write joint matrices each
+        // frame.  We add a default component here for every enemy and NPC
+        // spawned by the streaming manager.
+        //
+        // skeletonID / currentClipID are deliberately left as placeholder
+        // strings ("skel_enemy_default", "clip_idle").  When real skeleton and
+        // clip assets are cooked and registered with AnimationSystem, update
+        // these IDs to the corresponding asset GUIDs.  The engine will then
+        // evaluate real keyframe data instead of identity matrices.
+        for (const uint32_t eid : zone.GetEnemyEntities())
+        {
+            if (!m_world->HasComponent<AnimatorComponent>(eid))
+            {
+                auto& anim        = m_world->AddComponent<AnimatorComponent>(eid);
+                anim.skeletonID   = "skel_enemy_default";
+                anim.currentClipID = "clip_idle";
+                anim.isPlaying    = true;
+            }
+        }
+        for (const uint32_t eid : zone.GetNPCEntities())
+        {
+            if (!m_world->HasComponent<AnimatorComponent>(eid))
+            {
+                auto& anim        = m_world->AddComponent<AnimatorComponent>(eid);
+                anim.skeletonID   = "skel_npc_default";
+                anim.currentClipID = "clip_idle_npc";
+                anim.isPlaying    = true;
+            }
+        }
+
         LOG_INFO("GameStreamingManager: cell " << coord.cx << "," << coord.cz
                  << " spawned — zone='" << zd.name << "'"
-                 << ", enemies registered=" << zd.enemyIDs.size());
+                 << ", enemies=" << zone.GetEnemyEntities().size()
+                 << ", npcs=" << zone.GetNPCEntities().size()
+                 << " (AnimatorComponent attached to all)");
     }
     else
     {

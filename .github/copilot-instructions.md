@@ -133,7 +133,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. Next: M8 Gameplay Integration.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **Next: Post-M8 (PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up).**
 
 ---
 
@@ -259,7 +259,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M7 ✅ complete (all sub-milestones M7.1–M7.5: Zone wiring, AssetLoader `.level` integration, cancellation tokens, frame-budget cap, ImGui debug overlay). Next: M8 Gameplay Integration.**
+> **Current position: M8 ✅ complete (all sub-milestones M8.1–M8.9: GameRuntime, InputMapper, CameraSystem, HUD, DialogueSystem, Zone streaming → D3D11, SaveSystem, m8_gameplay CI scene, m8_streaming CI scene). Next: Post-M8 (PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up).**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -267,8 +267,12 @@ Recommended implementation order to reach project completion (D3D11-first policy
 |----------|-----------|-----------------|
 | ~~**1**~~ | ~~**M6: Editor**~~ | ✅ done — SceneHierarchyPanel, InspectorPanel, SceneSerialiser, Play-in-Engine, asset drag-drop |
 | ~~**2**~~ | ~~**M7: World streaming**~~ | ✅ done — WorldStreamingManager + Zone wiring (M7.1), AssetLoader `.level` (M7.2), cancellation tokens (M7.3), frame-budget cap (M7.4), ImGui debug overlay (M7.5) |
-| **1 — Now** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
-| **2** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
+| ~~**3**~~ | ~~**M8: Gameplay integration**~~ | ✅ done — GameRuntime, InputMapper, CameraSystem, HUD, DialogueSystem, Zone streaming → D3D11 (M8.7), SaveSystem, m8_gameplay + m8_streaming CI scenes |
+| **1 — Now** | **Post-M8: PBR rendering** | D3D11 PBR pixel shader (IBL + directional light + shadows + bloom) |
+| **2** | **Post-M8: Dynamic sky** | Procedural time-of-day sky renderer + weather VFX |
+| **3** | **Post-M8: Vehicle physics** | `VehicleComponent` + wheel-ray suspension + chase camera |
+| **4** | **Post-M8: Behaviour tree AI** | Replace/augment FSM with real BT; formation system; nav-mesh baker |
+| **5** | **Post-M8: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
@@ -287,7 +291,7 @@ Implementation order within M8:
 | **M8.4 — Enemy AI in 3D** ✅ | Port `AISystem` (FSM + A*) to work on 3D world positions (not 2D tile coords); adapt `TileMap` pathfinding grid to be generated from `WorldPartition` cell data | `src/game/systems/AISystem.cpp` — replace `TileCoord` with `Vec3` nav grid |
 | **M8.5 — Combat HUD (ImGui)** ✅ | D3D11 ImGui overlay showing HP/MP bars, ATB gauge, equipped spell, party member icons; driven by ECS component reads on the player + party | `src/engine/ui/hud.hpp/.cpp`; wired in `D3D11Renderer::DrawFrame` after scene pass |
 | **M8.6 — Quest + dialogue** ✅ | Implement `DialogueSystem` (missing stub); wire `QuestSystem` objective complete → HUD notification; add sample quest + NPC to vertical-slice cell | `src/game/systems/dialogue_system.hpp/.cpp`; update `cell_0_0.cell.json` |
-| **M8.7 — Zone streaming → D3D11** | Replace stub `GameStreamingManager` test data with real vertical-slice cells; `GameStreamingManager` spawns `AnimatorComponent`-bearing NPCs + enemies whose meshes are rendered by D3D11 skinned-mesh pass | Update `AssetRegistry.json`; wire `GameStreamingManager` into `game_runtime` |
+| **M8.7 — Zone streaming → D3D11** ✅ | Replace stub `GameStreamingManager` test data with real vertical-slice cells; `GameStreamingManager` spawns `AnimatorComponent`-bearing NPCs + enemies whose meshes are rendered by D3D11 skinned-mesh pass | Update `AssetRegistry.json`; wire `GameStreamingManager` into `game_runtime` |
 | **M8.8 — Save/load (15 slots)** ✅ | Production `SaveSystem`: JSON serialise full ECS `World` state, 15 numbered slots + auto-save slot; migration via `"version"` field; wired to CampSystem auto-save hook | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` |
 | **M8.9 — CI acceptance scene** ✅ | `--scene m8_gameplay` headless run: spawn player + 3 enemies; tick 60 frames; assert player HP unchanged (no bugs), at least 1 AI state transition, quest objective registered | `main.cpp --scene m8_gameplay`; `build-windows.yml` job |
 
@@ -797,8 +801,8 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M7.3 | Cancellation token in `AsyncLoader` (`CancelJob`) | ✅ |
 | M7.4 | Frame-budget cap (`SetMaxCompletionsPerFrame`) | ✅ |
 | M7.5 | ImGui streaming debug overlay + editor View menu toggle | ✅ |
-| M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | 🔨 |
-| Post-M8 | Vulkan catch-up (resume all DEFERRED Vulkan items) | ⬜ |
+| M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | ✅ |
+| Post-M8 | PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up | ⬜ |
 
 ---
 
