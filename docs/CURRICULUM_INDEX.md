@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1190 across 42 subsystems.
+**Total lessons:** 1191 across 42 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (52 lessons)
-- [ci/workflows](#ciworkflows) (40 lessons)
+- [ci/workflows](#ciworkflows) (41 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (98 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
@@ -1172,9 +1172,30 @@ Expected output: "[PASS] skinned_mesh scene pipeline OK (WARP headless)."
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene skinned_mesh
 shell: cmd
 
+### M7 World Streaming CI
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L162) (line 162)
+
+The three streaming scenes exercise WorldStreamingManager, WorldPartition,
+and AsyncLoader without touching the D3D11 renderer.  They run on the
+WARP headless device (same binary as M3/M4b) because the renderer is
+initialised before scene dispatch and then immediately shut down after
+each streaming test.
+
+  streaming_load   — 9 cells load at radius-1; no duplicates.
+  streaming_evict  — cells evicted when camera moves 3× cell-width away.
+  streaming_async  — Update() < 2 ms per frame over 120 frames.
+
+No extra vcpkg packages are needed: world streaming uses only std::thread,
+std::mutex, std::condition_variable — all in the C++17 standard library.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M7 — streaming_load)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_load
+shell: cmd
+
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L176) (line 176)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L205) (line 205)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1200,7 +1221,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L215) (line 215)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L244) (line 244)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1226,7 +1247,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L249) (line 249)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L278) (line 278)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1247,7 +1268,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L273) (line 273)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L302) (line 302)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1260,7 +1281,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L286) (line 286)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L315) (line 315)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1291,7 +1312,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L314) (line 314)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L343) (line 343)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1300,7 +1321,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L336) (line 336)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L365) (line 365)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1328,7 +1349,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L371) (line 371)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L400) (line 400)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1337,7 +1358,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L385) (line 385)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L414) (line 414)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1359,7 +1380,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L410) (line 410)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L439) (line 439)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1373,7 +1394,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L434) (line 434)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L463) (line 463)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1391,7 +1412,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L459) (line 459)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L488) (line 488)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1402,7 +1423,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L470) (line 470)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L499) (line 499)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1417,7 +1438,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L492) (line 492)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L521) (line 521)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -17607,9 +17628,9 @@ Usage:
   engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
-  engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 4 cells
-  engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict 1 cell
-  engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing
+  engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
+  engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
+  engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
 
 ============================================================================
 

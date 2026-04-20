@@ -36,7 +36,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Shared runtime headers | ✅ | `shared/runtime/`: `Guid.hpp`, `VersionedFile.hpp`, `Log.hpp` |
 | CI — Linux build + Python tests | ✅ | `.github/workflows/build-linux.yml`: builds terminal game, runs 32+11 pytest |
 | CI — asset manifest validation | ✅ | `.github/workflows/validate-assets.yml` |
-| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; optional Vulkan job; `build-windows-physics` job (Jolt, classic-mode vcpkg, `--scene physics_test`) |
+| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; M7 streaming tests (`streaming_load`, `streaming_evict`, `streaming_async`); `build-windows-physics` job (Jolt, classic-mode vcpkg, `--scene physics_test`) |
 | CI — contract / golden-file tests | ✅ | `.github/workflows/contract-tests.yml`: runs `cook`, diffs against `tests/golden/assetdb_expected.json`; pytest cook pipeline (13 tests); TEACHING NOTE audit |
 | CI — Architecture Lint | ✅ | `.github/workflows/architecture-lint.yml`: runs `check_architecture.py` (file-size + layer rules) and `extract_teaching_notes.py`; fails if `CURRICULUM_INDEX.md` is stale |
 | `vcpkg.json` | ✅ | Repo root; `nlohmann-json` (M2), `directxtex` (M3 texture), `imgui[docking,dx11-binding,win32-binding]` (editor), `joltphysics` (M5; CI physics job installs via classic-mode vcpkg separately) |
@@ -133,7 +133,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. Next: M6 Editor.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming) is ✅ complete. Next: M8 Gameplay Integration.
 
 ---
 
@@ -168,7 +168,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | `physics_test` CI scene | ✅ | `--scene physics_test` in `main.cpp`; 3 acceptance tests (drop_sphere, step_ledge, raycast); `build-windows-physics` CI job |
 | `physics_impl.hpp` | ✅ | Internal pImpl header; `PhysicsWorldImpl` struct + Jolt layer filters; never included outside `physics/` |
 
-**M5 is ✅ complete.** Jolt Physics integrated: `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent` + `ColliderComponent` in ECS, `physics_test` headless acceptance scene, CI job. **M6 is 🔨 in progress.** `SceneHierarchyPanel`, `InspectorPanel`, `SceneSerialiser`, `Play-in-Engine`, headless editor CLI, `ENGINE_ENABLE_JSON` added to CMake. Remaining: asset drag-drop, CI editor build step. Next: complete M6 then M7.
+**M5 is ✅ complete.** Jolt Physics integrated: `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent` + `ColliderComponent` in ECS, `physics_test` headless acceptance scene, CI job. **M6 is ✅ complete.** `SceneHierarchyPanel`, `InspectorPanel`, `SceneSerialiser`, `Play-in-Engine`, headless editor CLI, asset drag-drop (ContentBrowser→SceneEditor), `build-windows-editor` CI job. **M7 is ✅ complete.** `WorldStreamingManager`, `WorldPartition`, `AsyncLoader`; 3 headless acceptance scenes (`streaming_load`, `streaming_evict`, `streaming_async`) in CI. Next: M8 Gameplay Integration.
 
 ---
 
@@ -196,13 +196,11 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 |------|--------|-------|
 | Tile-based `Zone` / `TileMap` | ✅ | `src/game/world/Zone.hpp/.cpp`, `TileMap.hpp/.cpp` |
 | `WorldMap` (multi-zone container) | ✅ | `src/game/world/WorldMap.hpp/.cpp` |
-| `world_streaming` (proximity-based) | ⬜ | `src/engine/world/world_streaming.hpp/.cpp` |
-| `world_partition` (spatial grid) | ⬜ | `src/engine/world/world_partition.hpp/.cpp` |
-| `async_loader` (worker thread) | ⬜ | `src/engine/world/async_loader.hpp/.cpp` |
+| `world_streaming` (proximity-based) | ✅ | `src/engine/world/world_streaming.hpp/.cpp` — delta load/evict coordinator; `WorldStreamingManager` |
+| `world_partition` (spatial grid) | ✅ | `src/engine/world/world_partition.hpp/.cpp` — `CellCoord`, `CellIdFromCoord`, `GetCellsNearPosition` |
+| `async_loader` (worker thread) | ✅ | `src/engine/world/async_loader.hpp/.cpp` — single worker thread + job queue; swap-and-drain completions |
 
-**Next step (M7):** Create `src/engine/world/world_streaming.hpp/.cpp`. Cell manager
-with a proximity-based load/evict loop. Integrate the existing `Zone` class as the
-streaming cell type. Use `std::thread` + a lock-free queue for the async loader.
+**M7 is ✅ complete.** `WorldStreamingManager` + `WorldPartition` + `AsyncLoader` implemented. Three headless acceptance tests (`streaming_load`, `streaming_evict`, `streaming_async`) run in CI. **Next step (M8):** Wire all gameplay systems (combat, AI, quests, etc.) into the D3D11 runtime.
 
 ---
 
@@ -251,22 +249,22 @@ Acceptance: save → load → component data matches byte-for-byte.
 | Scene ECS serialization | ✅ | `src/engine/scene/scene_serialiser.hpp/.cpp` — JSON ↔ ECS World; SaveScene/LoadScene/CountEntities; ENGINE_ENABLE_JSON gated |
 | Play-in-Engine button | ✅ | `EditorApp::LaunchPlayInEngine()` — saves temp scene to %TEMP%, ShellExecuteExW engine_sandbox.exe |
 | Headless editor CLI | ✅ | `editor/src/main.cpp` — `--headless`, `--create-scene`, `--load-scene --validate`; AttachConsole_(); exit 0/1 |
-| Asset drag-drop into scene | ⬜ | Drag from ContentBrowser → SceneEditor |
+| Asset drag-drop into scene | ✅ | Drag from ContentBrowser → SceneEditor; CONTENT_ASSET payload; auto-creates entity with RenderComponent or AudioSourceComponent |
 
 ---
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M5 ✅ complete (Jolt Physics: PhysicsWorld, CharacterController, Raycast, HitVolumeManager, RigidBodyComponent + ColliderComponent in ECS, physics_test CI). Next: M6 Editor.**
+> **Current position: M7 ✅ complete (World Streaming: WorldStreamingManager, WorldPartition, AsyncLoader, 3 CI acceptance scenes). Next: M8 Gameplay Integration.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **1 — Now** | **M6: Editor (in progress)** | ~~Entity inspector~~ ✅, ~~scene ECS serialization~~ ✅, ~~Play-in-Engine~~ ✅; remaining: asset drag-drop |
-| **2** | **M7: World streaming** | Async cell load/evict; no frame spikes during load |
-| **3** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
-| **4+** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
+| ~~**1**~~ | ~~**M6: Editor**~~ | ✅ done — SceneHierarchyPanel, InspectorPanel, SceneSerialiser, Play-in-Engine, asset drag-drop |
+| ~~**2**~~ | ~~**M7: World streaming**~~ | ✅ done — WorldStreamingManager, WorldPartition, AsyncLoader, CI streaming tests |
+| **1 — Now** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
+| **2** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
@@ -768,8 +766,8 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M4 | Animation runtime (C++) — CPU core | ✅ |
 | M4b | IK solver + D3D11 GPU skinning CB | ✅ |
 | M5 | Jolt Physics | ✅ |
-| M6 | Editor inspector + Play-in-Engine | 🔨 |
-| M7 | World streaming | ⬜ |
+| M6 | Editor inspector + Play-in-Engine | ✅ |
+| M7 | World streaming | ✅ |
 | M8 | Wire all gameplay into D3D11 runtime | ⬜ |
 | Post-M8 | Vulkan catch-up (resume all DEFERRED Vulkan items) | ⬜ |
 
