@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1297 across 46 subsystems.
+**Total lessons:** 1298 across 46 subsystems.
 
 ---
 
@@ -39,7 +39,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (14 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (9 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (2 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (34 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (35 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -19874,8 +19874,23 @@ The three acceptance criteria match the M8.9 plan:
      adds a QuestEntry to the player's QuestComponent.
      We verify activeCount > 0 to confirm.
 -----------------------------------------------------------
-sandbox::GameRuntime gameRuntime;
-if (!gameRuntime.Init())
+
+### Heap-allocate GameRuntime
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L928) (line 928)
+
+──────────────────────────────────────────
+GameRuntime contains a value-type ECS World.  World's
+EntityManager holds std::array<Signature, MAX_ENTITIES>
+(65 536 × 8 bytes ≈ 512 KB).  MSVC reserves the full
+stack frame for ALL local variables in main() at function
+entry, so a stack-allocated GameRuntime would push the
+frame well over the 1 MB Windows default stack limit even
+when this branch is never taken (e.g., --headless with no
+--scene arg).  Using make_unique puts the data on the heap
+and avoids the stack overflow.
+auto gameRuntime = std::make_unique<sandbox::GameRuntime>();
+if (!gameRuntime->Init())
 {
 std::cout << "[FAIL] m8_gameplay: GameRuntime::Init() failed.\n";
 renderer->Shutdown();
@@ -19885,7 +19900,7 @@ return 1;
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1039) (line 1039)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1050) (line 1050)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -19895,7 +19910,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1047) (line 1047)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1058) (line 1058)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -19925,7 +19940,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1075) (line 1075)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1086) (line 1086)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -19948,7 +19963,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1128) (line 1128)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1139) (line 1139)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -19961,7 +19976,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1144) (line 1144)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1155) (line 1155)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
