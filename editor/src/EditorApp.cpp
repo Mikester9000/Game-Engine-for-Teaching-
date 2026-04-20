@@ -9,8 +9,10 @@
 #include <string>
 #include <filesystem>
 
-// Windows native file dialogs
+// Windows native file dialogs and shell execution
 #include <windows.h>
+#include <shellapi.h>   // ShellExecuteW, ShellExecuteExW, SHELLEXECUTEINFOW
+#include <commdlg.h>    // OPENFILENAMEW, GetSaveFileNameW, GetOpenFileNameW
 #include <shobjidl.h>   // IFileOpenDialog (modern COM-based dialog)
 #include <shlobj.h>     // SHBrowseForFolderW (legacy folder picker)
 
@@ -50,7 +52,12 @@ void EditorApp::Render()
     // (the D3D11 clear colour) show through the undocked central area.
     // Without this flag the dockspace paints an opaque background over the
     // central region even when no window is docked there.
+    //
+    // TEACHING NOTE -- DockSpaceOverViewport API change (imgui >= 1.89.4)
+    // The first argument changed from (const ImGuiViewport*) to (ImGuiID).
+    // Pass 0 to let ImGui auto-assign a stable ID based on the viewport.
     ImGui::DockSpaceOverViewport(
+        0,
         ImGui::GetMainViewport(),
         ImGuiDockNodeFlags_PassthruCentralNode
     );
