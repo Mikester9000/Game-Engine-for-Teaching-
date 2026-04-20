@@ -94,8 +94,15 @@ void CameraSystem::Update(World& world,
                 world.IsAlive(cam.targetEntityID) &&
                 world.HasComponent<TransformComponent>(cam.targetEntityID))
             {
-                targetPos = world.GetComponent<TransformComponent>(
+                // TEACHING NOTE — Two Vec3 types coexist in this codebase:
+                // the global Vec3 in Types.hpp (used by game-layer components
+                // like TransformComponent::position) and engine::math::Vec3 in
+                // math_types.hpp (used by the engine rendering/camera maths).
+                // We bridge them here by copying x/y/z manually; no implicit
+                // conversion exists between the two distinct types.
+                const auto& p = world.GetComponent<TransformComponent>(
                     cam.targetEntityID).position;
+                targetPos = Vec3{ p.x, p.y, p.z };
             }
 
             // TEACHING NOTE — Orbit Camera Math

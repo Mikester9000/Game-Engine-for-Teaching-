@@ -103,9 +103,10 @@ bool GameRuntime::Init()
         auto& cur = m_world.AddComponent<CurrencyComponent>(m_playerID);
         cur.gil = 5000;
 
-        // Magic
-        m_world.AddComponent<MagicComponent>(m_playerID);
-        m_world.GetComponent<MagicComponent>(m_playerID).equippedSpell = "Firaga";
+        // Magic — equippedSpell is a uint32_t spell ID (1 = Firaga)
+        auto& mg = m_world.AddComponent<MagicComponent>(m_playerID);
+        mg.equippedSpell = 1;  // Firaga
+        mg.knownSpells.push_back(1);
 
         // Quest slot
         m_world.AddComponent<QuestComponent>(m_playerID);
@@ -126,11 +127,15 @@ bool GameRuntime::Init()
     // begin IDLE and must wander/chase before reaching the player.  The AI
     // system will transition IDLE → WANDERING within a few seconds, providing
     // observable state changes for the m8_gameplay acceptance test.
-
-    const std::pair<std::string, engine::math::Vec3> kEnemySpawns[] = {
-        { "Goblin",     { kCentreX + TILE_SIZE * 10, 0.0f, kCentreZ + TILE_SIZE * 5  } },
-        { "Niffin",     { kCentreX - TILE_SIZE * 8,  0.0f, kCentreZ - TILE_SIZE * 6  } },
-        { "Anak Calf",  { kCentreX + TILE_SIZE * 5,  0.0f, kCentreZ - TILE_SIZE * 10 } },
+    //
+    // We use the global Vec3 (from Types.hpp) here because CreateEnemy takes
+    // const Vec3& — the game-layer Vec3, not engine::math::Vec3.  Both types
+    // share the same {x,y,z} layout; the distinction exists only for namespace
+    // separation between the game layer and the engine math library.
+    const std::pair<std::string, Vec3> kEnemySpawns[] = {
+        { "Goblin",     Vec3{ kCentreX + TILE_SIZE * 10, 0.0f, kCentreZ + TILE_SIZE * 5  } },
+        { "Niffin",     Vec3{ kCentreX - TILE_SIZE * 8,  0.0f, kCentreZ - TILE_SIZE * 6  } },
+        { "Anak Calf",  Vec3{ kCentreX + TILE_SIZE * 5,  0.0f, kCentreZ - TILE_SIZE * 10 } },
     };
 
     for (const auto& [name, pos] : kEnemySpawns)

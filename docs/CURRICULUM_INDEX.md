@@ -6,36 +6,40 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1237 across 42 subsystems.
+**Total lessons:** 1297 across 46 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (53 lessons)
-- [ci/workflows](#ciworkflows) (41 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (54 lessons)
+- [ci/workflows](#ciworkflows) (42 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
 - [engine/core](#enginecore) (50 lessons)
-- [engine/ecs](#engineecs) (35 lessons)
+- [engine/ecs](#engineecs) (37 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (215 lessons)
+- [engine/rendering](#enginerendering) (221 lessons)
+- [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
+- [engine/ui](#engineui) (6 lessons)
 - [engine/world](#engineworld) (56 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
-- [game/systems](#gamesystems) (85 lessons)
+- [game/systems](#gamesystems) (99 lessons)
 - [game/world](#gameworld) (88 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (14 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (31 lessons)
+- [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (9 lessons)
+- [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (2 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (34 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -600,11 +604,28 @@ src/game/world/Zone.cpp
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
 src/game/world/GameStreamingManager.cpp
+
+### M8 Gameplay Integration: new systems.
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L662) (line 662)
+
+game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
+input_mapper.cpp reads Win32 key state → ECS components.
+dialogue_system.cpp tracks NPC dialogue interaction state.
+camera_system.cpp computes view/proj matrices for the D3D11 renderer.
+hud.cpp extracts HudState snapshots from the ECS World.
+save_system.cpp serialises/deserialises the ECS World to JSON save files.
+src/sandbox/game_runtime.cpp
+src/game/systems/input_mapper.cpp
+src/game/systems/dialogue_system.cpp
+src/engine/rendering/camera_system.cpp
+src/engine/ui/hud.cpp
+src/engine/save/save_system.cpp
 )
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L683) (line 683)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L696) (line 696)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -616,7 +637,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L692) (line 692)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L705) (line 705)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -625,7 +646,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L702) (line 702)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L715) (line 715)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -637,7 +658,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L711) (line 711)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L724) (line 724)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -647,7 +668,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L721) (line 721)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L734) (line 734)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -656,7 +677,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L727) (line 727)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L740) (line 740)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -665,7 +686,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L732) (line 732)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L745) (line 745)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -676,7 +697,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L748) (line 748)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L761) (line 761)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -687,7 +708,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L769) (line 769)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -697,7 +718,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L768) (line 768)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L781) (line 781)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -731,7 +752,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L800) (line 800)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L813) (line 813)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -746,7 +767,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L815) (line 815)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L828) (line 828)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -761,7 +782,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L857) (line 857)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L870) (line 870)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -784,7 +805,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L878) (line 878)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L891) (line 891)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -805,7 +826,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L895) (line 895)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L908) (line 908)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -816,7 +837,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L918) (line 918)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L931) (line 931)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -838,7 +859,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L937) (line 937)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L950) (line 950)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -849,7 +870,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L945) (line 945)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L958) (line 958)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -859,7 +880,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L975) (line 975)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L988) (line 988)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -868,7 +889,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L982) (line 982)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L995) (line 995)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1201,9 +1222,23 @@ std::mutex, std::condition_variable — all in the C++17 standard library.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_load
 shell: cmd
 
+### M8.9 CI Acceptance Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L191) (line 191)
+
+This scene runs all gameplay systems (Combat, AI, Quest, Weather) in
+the headless D3D11 sandbox and asserts three conditions:
+  1. Player HP unchanged after 60 frames (enemies too far to reach).
+  2. At least 1 AI state transition (IDLE → WANDERING within 1 s).
+  3. Quest objective registered on the player entity.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M8 — m8_gameplay)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_gameplay
+shell: cmd
+
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L205) (line 205)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L219) (line 219)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1229,7 +1264,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L244) (line 244)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L258) (line 258)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1255,7 +1290,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L278) (line 278)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L292) (line 292)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1276,7 +1311,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L302) (line 302)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L316) (line 316)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1289,7 +1324,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L315) (line 315)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L329) (line 329)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1320,7 +1355,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L343) (line 343)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L357) (line 357)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1329,7 +1364,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L365) (line 365)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L379) (line 379)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1357,7 +1392,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L400) (line 400)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L414) (line 414)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1366,7 +1401,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L414) (line 414)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L428) (line 428)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1388,7 +1423,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L439) (line 439)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L453) (line 453)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1402,7 +1437,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L463) (line 463)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L477) (line 477)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1420,7 +1455,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L488) (line 488)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L502) (line 502)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1431,7 +1466,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L499) (line 499)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L513) (line 513)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1446,7 +1481,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L521) (line 521)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L535) (line 535)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -7059,9 +7094,49 @@ target) or entities that are purely a trigger zone (no rigid body needed).
 
 ============================================================================
 
+### Camera Component Design
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1776) (line 1776)
+
+============================================================================
+A camera is represented as an ECS component on a dedicated "camera entity"
+(or on the player entity directly).  This keeps camera state explicit and
+queryable by any system:
+
+  • The CameraSystem reads the TARGET entity's TransformComponent to compute
+    where the camera should be this frame.
+  • The renderer reads viewMatrix / projMatrix each frame to set up the GPU
+    transform constants.
+  • The HUD system reads the camera entity to decide what to overlay.
+
+This matches how real engines work:  Unreal Engine stores camera state in
+UCameraComponent; Unity stores it in Camera.  Separating data (component)
+from logic (CameraSystem) is the ECS principle applied consistently.
+
+─── Third-Person Follow Camera ─────────────────────────────────────────────
+The follow camera sits at:
+
+  cameraPos = targetPos + offset  (in view-space, rotated by pitch/yaw)
+
+At yaw=0, pitch=0.2 rad (≈11°), the default offset is:
+  { 0, 3, -7 }  →  3 units above and 7 units behind the target.
+
+The view matrix is then lookAt(cameraPos, targetPos, worldUp).
+
+─── Output Matrices ─────────────────────────────────────────────────────────
+CameraSystem writes viewMatrix and projMatrix each frame.  These 4×4
+row-major matrices are ready to upload directly to a D3D11 constant buffer:
+
+  cbuffer CameraCB : register(b1) {
+      float4x4 g_view;    // view (world→camera)
+      float4x4 g_proj;    // projection (camera→clip)
+  }
+
+============================================================================
+
 ### Facade Pattern
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1778) (line 1778)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1879) (line 1879)
 
 ────────────────────────────────
 The World class is a *facade*: it provides a simple unified API over the
@@ -7080,7 +7155,7 @@ all entities, components, and systems cleanly.
 
 ### Variadic Templates
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1992) (line 1992)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2093) (line 2093)
 
 ────────────────────────────────────
 `template<typename... Components>` accepts any number of type arguments.
@@ -7093,7 +7168,7 @@ Fold expressions were introduced in C++17:
 
 ### Update Order
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2039) (line 2039)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2140) (line 2140)
 
 ──────────────────────────────
 Systems are updated in the order they were registered.  Order matters:
@@ -7106,7 +7181,7 @@ Systems are updated in the order they were registered.  Order matters:
 
 ### View Pattern / Query
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2066) (line 2066)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2167) (line 2167)
 
 ──────────────────────────────────────
 A "view" is an on-demand filter over living entities.  It avoids
@@ -7123,7 +7198,7 @@ Example usage:
 
 ### `if constexpr` and Fold Expressions
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2080) (line 2080)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2181) (line 2181)
 
 ──────────────────────────────────────────────────────
 The implementation uses parameter pack expansion to call HasComponent<C>
@@ -7132,7 +7207,7 @@ a single boolean.
 
 ### Factory Methods
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2136) (line 2136)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2237) (line 2237)
 
 ─────────────────────────────────
 Rather than calling AddComponent 10 times at every call site, a factory
@@ -7144,7 +7219,7 @@ individual components afterwards.
 
 ### static_cast vs dynamic_cast
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2220) (line 2220)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2321) (line 2321)
 
 ─────────────────────────────────────────────
 dynamic_cast performs a runtime type check (RTTI) and returns nullptr
@@ -7160,7 +7235,7 @@ fine; using it on user-supplied pointers would be dangerous.
 
 ### Why a free function?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2297) (line 2297)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2398) (line 2398)
 
 ───────────────────────────────────────
 Putting registration in a free function keeps the World constructor clean
@@ -7169,6 +7244,18 @@ This follows the Open-Closed Principle: open for extension, closed for
 modification.
 
 @param world  The World to register components with.
+
+### M4 / M5 / M8.3 components registered here.
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2429) (line 2429)
+
+AnimatorComponent, RigidBodyComponent, ColliderComponent are gated by
+their respective subsystems in engine code but must be registered with
+the World so ECS pools exist for them at runtime.
+world.RegisterComponent<AnimatorComponent>();       // 21
+world.RegisterComponent<RigidBodyComponent>();      // 22
+world.RegisterComponent<ColliderComponent>();       // 23
+world.RegisterComponent<CameraComponent>();         // 24
 
 ---
 
@@ -9919,6 +10006,159 @@ inline RendererBackend ParseRendererBackend(const std::string& s)
 {
 if (s == "vulkan") return RendererBackend::Vulkan;
 if (s == "d3d11")  return RendererBackend::D3D11;
+
+### Finding the active camera via World::View()
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L68) (line 68)
+
+──────────────────────────────────────────────────────────────
+World::View<CameraComponent>() iterates ALL entities that have a
+CameraComponent.  We take the first one with isActive=true.  In a
+production engine you might maintain a "primary camera" pointer, but
+iterating a small set of cameras is cheap and keeps this system
+self-contained.
+
+### Two Vec3 types coexist in this codebase:
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L97) (line 97)
+
+the global Vec3 in Types.hpp (used by game-layer components
+like TransformComponent::position) and engine::math::Vec3 in
+math_types.hpp (used by the engine rendering/camera maths).
+We bridge them here by copying x/y/z manually; no implicit
+conversion exists between the two distinct types.
+const auto& p = world.GetComponent<TransformComponent>(
+cam.targetEntityID).position;
+targetPos = Vec3{ p.x, p.y, p.z };
+}
+
+### Orbit Camera Math
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L108) (line 108)
+
+──────────────────────────────────
+We parameterise the camera's position in *spherical coordinates*
+around the target:
+
+  yaw   = horizontal rotation (left/right in the XZ plane)
+  pitch = vertical tilt        (up/down angle from horizontal)
+
+The camera "arm" vector (in world space) is:
+
+  armX = |offset.z| * sin(yaw)
+  armY = |offset.z| * sin(pitch) + offset.y   ← fixed height
+  armZ = |offset.z| * cos(yaw) * cos(pitch)
+
+We clamp pitch to [-π/3, π/3] to prevent the camera flipping.
+
+### Row-Major View Matrix: basis vectors in COLUMNS
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L179) (line 179)
+
+──────────────────────────────────────────────────────────────────
+In D3D11 we multiply: transformedPos = mul(float4(pos,1), viewMatrix)
+(row-vector × matrix convention).  For this multiplication form,
+"camera-space X of a world position" requires:
+
+  clip.x = pos.x * m[0][0] + pos.y * m[1][0] + pos.z * m[2][0] + m[3][0]
+         = dot(right, pos) - dot(right, eye)   = dot(right, pos - eye) ✓
+
+This means right.xyz must appear in the FIRST COLUMN (m[*][0]), not the
+first row.  The same logic applies to up (column 1) and forward (column 2).
+
+Contrast with model/world matrices: there the convention is ROWS = axes
+(see math_types.hpp Mat4 note).  The view matrix is the inverse of the
+camera's world matrix; for an orthonormal matrix the inverse equals the
+transpose, so world-matrix rows become view-matrix columns.
+
+Steps:
+  1. forward = normalize(target - eye)
+  2. right   = normalize(cross(forward, up))
+  3. newUp   = cross(right, forward)     ← orthogonalise up
+  4. Translation = -dot(right/newUp/forward, eye)
+
+### D3D11 Perspective Projection (Row-Major)
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L243) (line 243)
+
+─────────────────────────────────────────────────────────
+D3D11's clip-space depth range is [0, 1] (not OpenGL's [-1, 1]).
+The perspective division maps:
+  near  →  0
+  far   →  1
+
+The matrix (column vector form, but stored row-major here):
+
+  [ f/a   0    0              0   ]
+  [  0    f    0              0   ]
+  [  0    0  far/(far-near)   1   ]   ← row 2, col 3 = 1 (not -1)
+  [  0    0  -near*far/(far-near) 0 ]
+
+where  f = 1/tan(fovY/2),  a = aspectRatio.
+
+### Camera System Architecture
+
+**Source:** [`src/engine/rendering/camera_system.hpp`](src/engine/rendering/camera_system.hpp#L6) (line 6)
+
+============================================================================
+The CameraSystem is the bridge between gameplay (entity positions) and
+rendering (view/projection matrices uploaded to the GPU).
+
+Design responsibilities:
+  1. Find the active CameraComponent in the ECS World each frame.
+  2. Read the target entity's TransformComponent for the "look-at" point.
+  3. Compute the camera's world position from target + orbit offset.
+  4. Build the view matrix: lookAt(cameraPos, targetPos, worldUp).
+  5. Build the projection matrix: perspective(fov, aspect, near, far).
+  6. Write both matrices back into CameraComponent for the renderer.
+
+─── Third-Person Follow Camera ─────────────────────────────────────────────
+A third-person camera sits behind and above the player.  In Final Fantasy XV
+the camera trails Noctis as he runs, orbits when the player rotates the
+stick, and auto-centers after a few seconds of inactivity.  Here we
+implement the simplest version: a fixed-offset orbiting follow camera with
+yaw (horizontal) and pitch (vertical) control.
+
+Camera world position:
+  right   = { cos(yaw),  0, -sin(yaw) }   (horizontal orbit axis)
+  up      = { 0, 1, 0 }                   (world up)
+  back    = { sin(yaw), -sin(pitch), cos(yaw)*cos(pitch) } (behind-and-up)
+  camPos  = targetPos + right*offset.x + worldUp*offset.y + back*|offset.z|
+
+View matrix = lookAt(camPos, targetPos, worldUp).
+
+─── LookAt Matrix (Row-Major, D3D11 convention) ────────────────────────────
+The view matrix transforms world coordinates into camera space.  In D3D11
+(row-major, left-multiply) it is built from three basis vectors:
+
+  forward = normalize(target - eye)
+  right   = normalize(cross(worldUp, forward))
+  up      = cross(forward, right)
+
+  V = | right.x   right.y   right.z  -dot(right,  eye) |
+      | up.x      up.y      up.z     -dot(up,     eye) |
+      | forward.x forward.y forward.z -dot(forward,eye) |
+      | 0         0         0          1                |
+
+─── Perspective Projection ─────────────────────────────────────────────────
+Maps the view frustum to the canonical clip cube [-1,1]×[-1,1]×[0,1].
+(D3D11 uses a 0-to-1 depth range, unlike OpenGL's -1-to-1.)
+
+  f  = 1 / tan(fov/2)           (focal length)
+  P[0][0] = f / aspect
+  P[1][1] = f
+  P[2][2] = far / (far - near)
+  P[2][3] = 1
+  P[3][2] = -near*far / (far - near)
+  (all other entries = 0)
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows (engine_sandbox)
 
 ### D3D11 Initialisation Sequence
 
@@ -12794,6 +13034,271 @@ end of Create() to avoid holding onto them unnecessarily.
 
 ---
 
+## engine/save
+
+### Why Versioning Save Files?
+
+**Source:** [`src/engine/save/save_schema.hpp`](src/engine/save/save_schema.hpp#L6) (line 6)
+
+============================================================================
+Every time the game ships an update that changes which ECS components are
+stored (or changes a component's fields), old save files may fail to load.
+Save-file versioning solves this by embedding a format version number in
+every save file.  The load path can then detect old versions and migrate
+them forward:
+
+  "version": "1.0.0"  →  load normally
+  "version": "0.9.0"  →  run migration: add new field with default value
+  "version": "0.8.0"  →  run 0.8 → 0.9 migration, then 0.9 → 1.0 migration
+
+This is called a "migration chain" or "upgrade ladder".
+
+### Semantic Versioning for Save Formats
+
+**Source:** [`src/engine/save/save_schema.hpp`](src/engine/save/save_schema.hpp#L20) (line 20)
+
+─────────────────────────────────────────────────────
+We use SemVer (MAJOR.MINOR.PATCH) where:
+
+  MAJOR — breaking change: old save files CANNOT be loaded without migration.
+           Example: renaming a required field, removing a component.
+
+  MINOR — additive change: new fields added with default values.
+           Old saves load fine (new fields get defaults); new saves can't
+           be read by old game versions.
+
+  PATCH — bug fix to the save/load path that doesn't change the file layout.
+           Old and new files are fully interchangeable.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0.0
+@date    2025
+
+### Build-time JSON gate
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L5) (line 5)
+
+──────────────────────────────────────
+All nlohmann/json calls live inside #ifdef ENGINE_ENABLE_JSON blocks.
+When vcpkg is not configured the entire save/load path falls back to a
+stub that logs a friendly message and returns false.  The game still runs.
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+
+### slot 15 = auto-save; slots 0–14 = numbered saves.
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L85) (line 85)
+
+const std::string name = (slot == kAutoSaveSlot)
+? "save_auto.json"
+: ("save_" + std::to_string(slot) + ".json");
+return m_saveDir + name;
+}
+
+### Graceful degradation without JSON support.
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L134) (line 134)
+
+LOG_WARN("SaveSystem::Save: ENGINE_ENABLE_JSON not defined. "
+"Build with nlohmann/json via vcpkg to enable saving.");
+return false;
+else
+-----------------------------------------------------------------------
+Create the save directory if it doesn't exist.
+-----------------------------------------------------------------------
+std::error_code ec;
+fs::create_directories(m_saveDir, ec);
+if (ec)
+{
+LOG_ERROR("SaveSystem: cannot create save directory '"
+<< m_saveDir << "': " << ec.message());
+return false;
+}
+
+### Iterating ALL living entities.
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L161) (line 161)
+
+-----------------------------------------------------------------------
+We use GetEntityManager().GetLivingEntities() to iterate EVERY live
+entity and conditionally serialise each component if present.  This
+ensures entities without a TransformComponent (e.g. a camera entity
+that only carries CameraComponent) are also persisted.
+
+### Why we omit the runtime entity ID
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L168) (line 168)
+
+ECS entity IDs are ephemeral process-local handles.  Re-creating
+entities during Load() produces NEW IDs, so a saved ID cannot be
+safely restored (it might collide with an already-living entity).
+Until Load-side ID remapping is implemented we omit the id field
+entirely to avoid implying a round-trip guarantee we do not provide.
+
+### Persist AI state so enemies resume patrol/chase
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L300) (line 300)
+
+after loading.  We only save the minimal fields needed to restore
+behaviour; runtime-computed lists (path cache, etc.) are omitted.
+if (world.HasComponent<AIComponent>(eid))
+{
+const auto& ai = world.GetComponent<AIComponent>(eid);
+json c;
+c["currentState"] = static_cast<int>(ai.currentState);
+c["sightRange"]   = ai.sightRange;
+c["hearRange"]    = ai.hearRange;
+c["attackRange"]  = ai.attackRange;
+c["isNocturnal"]  = ai.isNocturnal;
+comps[std::string(kTagAI)] = c;
+}
+
+### CameraComponent is not renderable but carries user-
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L329) (line 329)
+
+tuned FOV / orbit parameters that should survive save/load.
+if (world.HasComponent<CameraComponent>(eid))
+{
+const auto& cam = world.GetComponent<CameraComponent>(eid);
+json c;
+c["fovDegrees"]   = cam.fovDegrees;
+c["nearPlane"]    = cam.nearPlane;
+c["farPlane"]     = cam.farPlane;
+c["pitchRadians"] = cam.pitchRadians;
+c["yawRadians"]   = cam.yawRadians;
+c["offsetX"]      = cam.offset.x;
+c["offsetY"]      = cam.offset.y;
+c["offsetZ"]      = cam.offset.z;
+c["isActive"]     = cam.isActive;
+comps[std::string(kTagCamera)] = c;
+}
+
+### Version check and migration ladder.
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L430) (line 430)
+
+-----------------------------------------------------------------------
+Compare stored version against the current format version.
+Future migrations would be: if (storedVersion == "0.9.0") { ... }.
+For now at version 1.0.0 there are no older versions to migrate from.
+
+### Snapshot load strategy
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L450) (line 450)
+
+We use GetEntityManager().GetLivingEntities() to enumerate all alive
+entities in a single pass (no duplicate-detection needed).  Then we
+destroy them in a second pass to avoid modifying the live-set while
+iterating it (undefined behaviour).
+
+### Defensive JSON access
+
+**Source:** [`src/engine/save/save_system.cpp`](src/engine/save/save_system.cpp#L466) (line 466)
+
+nlohmann::json operator[] throws std::out_of_range on missing keys for
+const references.  We validate required top-level arrays with contains()
+before indexing so that malformed or truncated saves produce a clear
+error message instead of an uncaught exception.
+if (!root.contains("entities") || !root["entities"].is_array())
+{
+LOG_ERROR("SaveSystem::Load: save file missing required array 'entities'.");
+return false;
+}
+
+### Save System Architecture
+
+**Source:** [`src/engine/save/save_system.hpp`](src/engine/save/save_system.hpp#L6) (line 6)
+
+============================================================================
+A save system needs to solve three problems:
+
+  1. SERIALISATION   — Convert runtime ECS World state to storable bytes.
+  2. STORAGE         — Where do the bytes go? (file, cloud, memory card).
+  3. VERSIONING      — Detect format mismatches and migrate old saves.
+
+─── Serialisation Strategy ─────────────────────────────────────────────────
+We walk every living entity in the World and for each one, inspect which
+components it has.  Each component is serialised to JSON using nlohmann/json.
+
+The JSON schema for one save file:
+
+  {
+    "version": "1.0.0",
+    "savedAt": "2025-01-15T12:34:56Z",
+    "gameTimeSecs": 3600.5,
+    "entities": [
+      {
+        "id": 1,
+        "components": {
+          "Transform": { "px": 3200.0, "py": 0.0, "pz": 3200.0 },
+          "Health":    { "hp": 450, "maxHp": 500, "mp": 120, "maxMp": 150 },
+          "Quest":     { "quests": [...] }
+        }
+      },
+      …
+    ]
+  }
+
+─── Storage Strategy ───────────────────────────────────────────────────────
+Files are written to a "SavedGames/" subdirectory next to the executable.
+
+  SavedGames/save_0.json      ← slot 0
+  SavedGames/save_14.json     ← slot 14
+  SavedGames/save_auto.json   ← auto-save
+
+─── Versioning / Migration ─────────────────────────────────────────────────
+When loading, the "version" field is compared to kSaveFormatVersion.
+If they differ, a migration table is consulted.  Migrations are simple
+lambdas that transform the JSON blob before component deserialisation.
+
+─── Build-time Gate ─────────────────────────────────────────────────────────
+All JSON code is gated by ENGINE_ENABLE_JSON (requires nlohmann/json via
+vcpkg).  When not available, Save() and Load() return false with a message.
+This matches the pattern used by SceneSerialiser (M6).
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+
+### Lazy Loading
+
+**Source:** [`src/engine/save/save_system.hpp`](src/engine/save/save_system.hpp#L81) (line 81)
+
+──────────────────────────────
+Loading a full World state can be expensive (many entities, large maps).
+The load-game menu only needs a brief summary: player name, game time, date.
+SaveMetadata lets us load just that header from the file without parsing the
+full entity list.
+
+### ENGINE_ENABLE_JSON gate
+
+**Source:** [`src/engine/save/save_system.hpp`](src/engine/save/save_system.hpp#L169) (line 169)
+
+──────────────────────────────────────────
+All nlohmann/json calls are inside #ifdef ENGINE_ENABLE_JSON.
+When the macro is not defined (vcpkg not configured), Save() returns
+false and logs a message — the game still runs, just without saves.
+
+### Load = Destroy + Recreate
+
+**Source:** [`src/engine/save/save_system.hpp`](src/engine/save/save_system.hpp#L201) (line 201)
+
+──────────────────────────────────────────
+Rather than patching an existing World in-place (complicated and fragile),
+we start fresh: destroy all entities, then recreate each entity from the
+JSON data.  This is safe because the World's component pools are reset
+to zero, guaranteeing a clean baseline.
+
+---
+
 ## engine/scene
 
 ### Separating Interface from Implementation
@@ -13618,6 +14123,109 @@ This is zero-overhead compared to a runtime `if`.
 
 std::is_same_v<T, int> is true only when T == int exactly.
 std::is_integral_v<T> is true for int, long, short, char, bool, etc.
+
+---
+
+## engine/ui
+
+### ATB gauge via attack cooldown
+
+**Source:** [`src/engine/ui/hud.cpp`](src/engine/ui/hud.cpp#L43) (line 43)
+
+The CombatComponent stores attackCooldown (time until next action).
+ATB fullness = 1 - (cooldown / baseCooldown).  When cooldown = 0,
+atbGauge = 1.0 (action ready).
+if (world.HasComponent<CombatComponent>(playerID))
+{
+const auto& cb   = world.GetComponent<CombatComponent>(playerID);
+state.isInCombat = cb.isInCombat;
+
+### equippedSpell is a uint32_t spell ID.
+
+**Source:** [`src/engine/ui/hud.cpp`](src/engine/ui/hud.cpp#L62) (line 62)
+
+The HUD converts it to a human-readable string.  0 means no spell;
+any other ID is displayed as "Spell #N" until a GameDatabase lookup
+is wired in to resolve IDs → names.
+if (mg.equippedSpell == 0)
+state.equippedSpell = "(none)";
+else
+state.equippedSpell = "Spell #" + std::to_string(mg.equippedSpell);
+}
+
+### std::fixed / std::setprecision for readable floats
+
+**Source:** [`src/engine/ui/hud.cpp`](src/engine/ui/hud.cpp#L148) (line 148)
+
+Without these manipulators std::cout would print long decimal strings
+like "0.71999998" instead of "0.72".
+std::ostringstream oss;
+oss << "[HUD] Frame=" << state.frameCount
+<< " HP="  << state.playerHp  << "/" << state.playerMaxHp
+<< " MP="  << state.playerMp  << "/" << state.playerMaxMp
+<< " ATB=" << std::fixed << std::setprecision(2) << state.atbGauge
+<< " Combat=" << (state.isInCombat ? "yes" : "no")
+<< " Enemies=" << state.activeEnemies;
+
+### HUD Architecture
+
+**Source:** [`src/engine/ui/hud.hpp`](src/engine/ui/hud.hpp#L6) (line 6)
+
+============================================================================
+The HUD (Heads-Up Display) shows the player all game-critical information
+without obscuring gameplay.  In FF15:
+
+  • HP/MP bars + ATB gauge (combat readiness)
+  • Equipped magic flask icon
+  • Party member portraits with HP bars
+  • Active quest objective text (top-right)
+  • Button prompts (context-sensitive, near NPCs etc.)
+
+─── Data vs Rendering Separation ────────────────────────────────────────────
+HudState is a PURE DATA struct: it contains no rendering code and no
+Win32/ImGui headers.  The rendering layer (D3D11Renderer or editor ImGui
+overlay) reads HudState and draws it however it likes.
+
+This separation means:
+  • The HUD works in headless CI mode (prints to stdout).
+  • Adding a new renderer (Vulkan) doesn't change any gameplay code.
+  • The HUD can be unit-tested by checking HudState fields directly.
+
+─── ImGui Overlay (windowed D3D11) ─────────────────────────────────────────
+When ENGINE_ENABLE_IMGUI is defined (future: imgui linked to engine_sandbox),
+Hud::Render() draws a proper ImGui overlay with progress bars and icons.
+Until then, Hud::PrintDebug() writes a compact status line to stdout every
+N frames so CI logs show live game state.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+
+### Why a Snapshot?
+
+**Source:** [`src/engine/ui/hud.hpp`](src/engine/ui/hud.hpp#L75) (line 75)
+
+─────────────────────────────────
+Rather than passing the entire ECS World to the renderer, we extract a
+compact snapshot each frame.  This has several advantages:
+
+  1. The renderer is decoupled from ECS — it doesn't need to know about
+     component types or World queries.
+  2. The snapshot can be captured on the game thread and handed to a
+     render thread without locking (immutable after capture).
+  3. It is trivially serialisable for replay recording.
+
+### ATB (Active Time Battle)
+
+**Source:** [`src/engine/ui/hud.hpp`](src/engine/ui/hud.hpp#L99) (line 99)
+
+ATB is a timer that fills over time.  When it reaches 1.0 the player
+can perform an action.  FF15 uses a real-time variant called the
+"Armiger chain meter" that fills as the player deals damage.
+Here we use the simpler classic ATB: 0 = empty, 1 = full / action ready.
 
 ---
 
@@ -16694,6 +17302,235 @@ probabilities.  This gives organic-feeling variation:
 
 Adjusting the probabilities is the core of weather "feel" tuning.
 
+### Proximity check for interactable NPCs.
+
+**Source:** [`src/game/systems/dialogue_system.cpp`](src/game/systems/dialogue_system.cpp#L54) (line 54)
+
+We iterate all entities with both a DialogueComponent and a
+TransformComponent.  This is an O(entities) scan — acceptable for
+< 200 NPCs per zone.  For massive crowds, maintain a spatial hash.
+
+### Dialogue System Architecture
+
+**Source:** [`src/game/systems/dialogue_system.hpp`](src/game/systems/dialogue_system.hpp#L6) (line 6)
+
+============================================================================
+A dialogue system is a STATE MACHINE over conversation nodes, driven by
+player input and game state conditions.  This implementation is a stub
+that correctly tracks component state and can be extended into a full
+branching dialogue tree.
+
+─── Minimal Viable Dialogue Flow ────────────────────────────────────────────
+
+  Player approaches NPC → DialogueComponent.interactRange check → OPEN state
+  Player presses INTERACT → advance currentNodeID → show text
+  End of tree → CLOSED state
+
+─── DialogueComponent fields (in ECS.hpp) ───────────────────────────────────
+
+  dialogueTreeID  — asset GUID for the JSON dialogue tree (not yet loaded)
+  currentNodeID   — which node in the tree is active (0 = start)
+  isInteractable  — true if the player is in range
+  interactRange   — world-space trigger radius in tiles
+
+─── Full Implementation (post-M8) ───────────────────────────────────────────
+A complete dialogue system would:
+  1. Load dialogue trees from JSON (keyed by dialogueTreeID GUID).
+  2. Implement branching choices (QTE, affinity gates, item checks).
+  3. Play voice-over audio via AudioSystem.
+  4. Drive facial animation via AnimationSystem.
+  5. Show subtitles via HUD.
+  6. Fire quest events when certain nodes are reached.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+
+### Tree vs Linear Dialogue
+
+**Source:** [`src/game/systems/dialogue_system.hpp`](src/game/systems/dialogue_system.hpp#L63) (line 63)
+
+─────────────────────────────────────────
+Simple RPGs (classic Final Fantasy) use *linear* dialogue: one NPC says
+one thing in sequence.  FF15 style uses *branching trees*: the player
+picks a response from a menu and different branches play out.
+
+We model both as the same tree structure — a linear sequence is just a tree
+with one child per node.  Branching is optional (choices.size() > 1).
+
+### Event-Driven UI
+
+**Source:** [`src/game/systems/dialogue_system.hpp`](src/game/systems/dialogue_system.hpp#L95) (line 95)
+
+────────────────────────────────
+The HUD subscribes to DialogueEvent to show / hide the text box without
+knowing about DialogueSystem internals.  This is the Observer pattern:
+  Publisher: DialogueSystem
+  Observer:  HUD (subscribes to EventBus<DialogueEvent>)
+
+### Platform-gated keyboard sampling
+
+**Source:** [`src/game/systems/input_mapper.cpp`](src/game/systems/input_mapper.cpp#L16) (line 16)
+
+GetAsyncKeyState lives in <windows.h>.  On Linux / headless CI this
+translation unit still compiles — the #ifdef bodies simply become no-ops,
+leaving m_forceMoveForward / m_forceAttack as the only input channels.
+ifdef _WIN32
+  ifndef WIN32_LEAN_AND_MEAN
+      define WIN32_LEAN_AND_MEAN
+  endif
+  ifndef NOMINMAX
+      define NOMINMAX
+  endif
+  include <windows.h>
+endif
+
+### Guard: dead or invalid player
+
+**Source:** [`src/game/systems/input_mapper.cpp`](src/game/systems/input_mapper.cpp#L52) (line 52)
+
+The player may not exist yet (e.g. during the first few frames of Init)
+or may have died.  A simple IsAlive() check prevents crashes.
+if (playerID == NULL_ENTITY || !world.IsAlive(playerID))
+return;
+
+### Determine move speed
+
+**Source:** [`src/game/systems/input_mapper.cpp`](src/game/systems/input_mapper.cpp#L66) (line 66)
+
+Sprint (SHIFT held) doubles move speed.  We read the MovementComponent's
+moveSpeed rather than hardcoding a constant so the component can be
+tweaked at runtime without recompiling.
+-------------------------------------------------------------------------
+const bool sprinting = KeyHeld(VK_SHIFT);
+const float speed    = sprinting ? mv.sprintSpeed : mv.moveSpeed;
+
+### Velocity vs position
+
+**Source:** [`src/game/systems/input_mapper.cpp`](src/game/systems/input_mapper.cpp#L77) (line 77)
+
+We set velocity on the TransformComponent rather than moving position
+directly.  Velocity is later consumed by a MovementSystem (or
+integrated here with * dt) so physics and AI can observe/override it.
+
+For this implementation we integrate immediately (position += vel * dt)
+because a dedicated MovementSystem is not yet created (planned for M8.4).
+-------------------------------------------------------------------------
+const bool moveForward  = KeyHeld('W')      || KeyHeld(VK_UP)    || m_forceMoveForward;
+const bool moveBackward = KeyHeld('S')      || KeyHeld(VK_DOWN);
+const bool moveLeft     = KeyHeld('A')      || KeyHeld(VK_LEFT);
+const bool moveRight    = KeyHeld('D')      || KeyHeld(VK_RIGHT);
+
+### Intent flags vs direct system calls
+
+**Source:** [`src/game/systems/input_mapper.cpp`](src/game/systems/input_mapper.cpp#L115) (line 115)
+
+This mapper marks the player as engaged (isInCombat) and gates against
+the local cooldown to avoid spamming.  The GameRuntime Update() step
+that runs after InputMapper translates isInCombat + currentTarget into
+explicit CombatSystem::PlayerAttack() / PlayerCastSpell() calls.
+InputMapper is intentionally kept decoupled from CombatSystem so it can
+be unit-tested without a full CombatSystem instance.
+-------------------------------------------------------------------------
+if (world.HasComponent<CombatComponent>(playerID))
+{
+auto& cb  = world.GetComponent<CombatComponent>(playerID);
+const bool attackRequested = KeyHeld(VK_SPACE) || KeyHeld('J') || m_forceAttack;
+
+### attackCooldown is reset here to a base value;
+
+**Source:** [`src/game/systems/input_mapper.cpp`](src/game/systems/input_mapper.cpp#L132) (line 132)
+
+CombatSystem will refine it based on stats.
+cb.attackCooldown = 1.0f / std::max(0.1f, cb.attackRate);
+}
+}
+
+### Unconditional force-flag reset.
+
+**Source:** [`src/game/systems/input_mapper.cpp`](src/game/systems/input_mapper.cpp#L138) (line 138)
+
+m_forceMoveForward and m_forceAttack are test-injection flags set by
+unit tests or CI harnesses before a single Update() call.  We reset
+them unconditionally every frame so injected inputs fire exactly once,
+regardless of whether they were set.  This guarantees deterministic
+CI behaviour without requiring callers to manually clear the flags.
+m_forceMoveForward = false;
+m_forceAttack      = false;
+}
+
+### Input Mapping Architecture
+
+**Source:** [`src/game/systems/input_mapper.hpp`](src/game/systems/input_mapper.hpp#L6) (line 6)
+
+============================================================================
+"Input mapping" is the layer that sits between raw hardware events and game
+logic.  Its job is to translate physical device state into logical game
+actions that live in ECS components:
+
+  Hardware layer:   "W key is held down"
+      ↓ InputMapper
+  ECS layer:        TransformComponent::velocity.z += moveSpeed
+
+Separating these two layers is important because:
+
+  1. PORTABILITY — The game logic only knows about ECS components, not about
+     GetAsyncKeyState or XInput.  Swapping the input backend (keyboard →
+     gamepad → touch) doesn't touch the gameplay code.
+
+  2. REBINDING — The mapping between physical keys and logical actions can
+     be stored in a data file and changed by the player at runtime without
+     modifying the gameplay systems.
+
+  3. TESTING — In headless CI the InputMapper produces NO input by default.
+     Tests can inject artificial input via ForceMoveForward() etc.
+
+─── Win32 Input Reading ────────────────────────────────────────────────────
+We use GetAsyncKeyState() which samples the keyboard state at the moment of
+the call.  The high bit of the return value is set if the key is currently
+held down:
+
+  bool held = (GetAsyncKeyState(VK_UP) & 0x8000) != 0;
+
+GetAsyncKeyState() is thread-safe and does NOT require a window focus check.
+However it reflects the state of the *entire system*, so if another window
+has focus it still returns input.  For a game loop running the main window
+this is fine.
+
+### Windows Virtual Key Codes (VK_*)
+
+**Source:** [`src/game/systems/input_mapper.hpp`](src/game/systems/input_mapper.hpp#L41) (line 41)
+
+────────────────────────────────────────────────────
+Win32 uses integer "virtual key codes" (VKs) rather than physical scan codes:
+  VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN  — arrow keys
+  'A', 'D', 'W', 'S'                 — letter keys (must be uppercase)
+  VK_SPACE                            — space bar
+  VK_SHIFT                            — shift
+  VK_LBUTTON                          — left mouse button
+
+============================================================================
+
+### Headless / CI Guard
+
+**Source:** [`src/game/systems/input_mapper.hpp`](src/game/systems/input_mapper.hpp#L51) (line 51)
+
+============================================================================
+GetAsyncKeyState is only available on Windows.  When compiled for Linux or
+in a build that doesn't define _WIN32, the InputMapper simply does nothing.
+This lets the same GameRuntime.cpp compile on Linux for CI.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows (engine_sandbox); no-op on Linux (CI safe)
+
 ---
 
 ## game/world
@@ -18296,6 +19133,185 @@ print(f"\n  Registry written: {REGISTRY_FILE.name}  ({len(registry)} assets)")
 
 ---
 
+## sandbox/game_runtime.cpp
+
+### Component registration must happen before entity creation.
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L45) (line 45)
+
+RegisterAllComponents() sets up one typed pool per component type in the
+World.  Attempting to AddComponent<T> without registering T first would
+assert in debug builds.
+-----------------------------------------------------------------------
+RegisterAllComponents(m_world);
+
+### Open-world navigation grid.
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L53) (line 53)
+
+The terminal AISystem uses a TileMap for A* pathfinding.  For the 3D
+open world we create a 100×100 all-floor "flat plain" so enemies can
+navigate freely without modification to AISystem.
+
+100 tiles × TILE_SIZE(64) = 6400 world units per axis.
+The player starts at the centre tile (50,50) → position (3200, 0, 3200).
+-----------------------------------------------------------------------
+m_tileMap.GenerateEmptyRoom(100, 100);
+LOG_INFO("GameRuntime: navigation grid 100×100 tiles (all floor).");
+
+### Enemy spawn positions
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L125) (line 125)
+
+Each enemy is placed at a different tile offset from the centre so they
+begin IDLE and must wander/chase before reaching the player.  The AI
+system will transition IDLE → WANDERING within a few seconds, providing
+observable state changes for the m8_gameplay acceptance test.
+
+We use the global Vec3 (from Types.hpp) here because CreateEnemy takes
+const Vec3& — the game-layer Vec3, not engine::math::Vec3.  Both types
+share the same {x,y,z} layout; the distinction exists only for namespace
+separation between the game layer and the engine math library.
+const std::pair<std::string, Vec3> kEnemySpawns[] = {
+{ "Goblin",     Vec3{ kCentreX + TILE_SIZE * 10, 0.0f, kCentreZ + TILE_SIZE * 5  } },
+{ "Niffin",     Vec3{ kCentreX - TILE_SIZE * 8,  0.0f, kCentreZ - TILE_SIZE * 6  } },
+{ "Anak Calf",  Vec3{ kCentreX + TILE_SIZE * 5,  0.0f, kCentreZ - TILE_SIZE * 10 } },
+};
+
+### AISystem compares TileDistance (distance / TILE_SIZE)
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L150) (line 150)
+
+against these fields, so they must stay in TILE units.  Do NOT
+multiply by TILE_SIZE here; doing so would make ranges ~64× too large
+(enemies would aggro from across the whole map).
+auto& ai = m_world.GetComponent<AIComponent>(eid);
+ai.sightRange  = 15.0f;   // 15 tiles  ≈ 960 world units
+ai.hearRange   =  8.0f;   //  8 tiles  ≈ 512 world units
+ai.attackRange =  1.5f;   //  1.5 tiles ≈  96 world units
+
+### QuestSystem::AcceptQuest()
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L181) (line 181)
+
+This wires the player into the quest system.  The QuestComponent on
+playerID is updated with the quest entry.  Objective progress is later
+incremented by CombatSystem when enemies are killed.
+if (m_quests->AcceptQuest(m_playerID, 1))
+{
+LOG_INFO("GameRuntime: quest 1 'The Road to Dawn' accepted.");
+}
+
+### System update order (see header for rationale).
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L214) (line 214)
+
+1. Input — read keyboard state and write into player components.
+m_inputMapper.Update(m_world, m_playerID, dt);
+
+### CombatSystem is stateful: Update() only does meaningful
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L231) (line 231)
+
+work after StartCombat() has been called, and player actions must be
+forwarded via explicit CombatSystem entry points (PlayerAttack /
+PlayerCastSpell).  GameRuntime is the integration layer that observes
+ECS state set by InputMapper and AISystem, then bridges those observations
+into the imperative CombatSystem API.
+if (!m_combat->IsActive())
+{
+Start an encounter the first frame any enemy enters ATTACK state
+(i.e. they have closed to within attackRange of the player).
+bool anyEnemyAttacking = false;
+for (const auto& [eid, prevState] : m_prevAIStates)
+{
+(void)prevState;
+if (!m_world.IsAlive(eid)) continue;
+if (!m_world.HasComponent<AIComponent>(eid)) continue;
+if (m_world.GetComponent<AIComponent>(eid).currentState
+== AIComponent::State::ATTACK)
+{
+anyEnemyAttacking = true;
+break;
+}
+}
+
+### Encoding game state in the clear colour.
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L345) (line 345)
+
+We modulate a base sky colour with gameplay conditions so the CI
+log output and the headless D3D11 back buffer both reflect live state.
+
+### Transition detection via state comparison.
+
+**Source:** [`src/sandbox/game_runtime.cpp`](src/sandbox/game_runtime.cpp#L383) (line 383)
+
+We store each enemy's previous AI state and compare each frame.
+A difference means a state transition occurred.
+
+---
+
+## sandbox/game_runtime.hpp
+
+### GameRuntime Architecture
+
+**Source:** [`src/sandbox/game_runtime.hpp`](src/sandbox/game_runtime.hpp#L6) (line 6)
+
+============================================================================
+GameRuntime is the M8 replacement for the terminal-only `Game` class.
+It owns all gameplay systems (Combat, AI, Quest, Weather, Magic, etc.) and
+drives them from the D3D11 `engine_sandbox` main loop.
+
+Design goals:
+  1. INDEPENDENCE — GameRuntime does NOT depend on any renderer type.
+     main.cpp creates a GameRuntime alongside the renderer and calls both
+     independently.  This mirrors how a real engine separates game thread
+     from render thread.
+
+  2. SAME SYSTEMS — All terminal game systems (CombatSystem, AISystem,
+     WeatherSystem, QuestSystem, etc.) run here unchanged.  The only
+     difference from the terminal game is that rendering output goes to
+     D3D11 instead of ncurses.
+
+  3. HEADLESS SAFE — GameRuntime::Init() and Update() do not call any
+     Win32 API or D3D11 API.  They are pure ECS + game logic.  This means
+     the m8_gameplay acceptance test can run in headless CI mode.
+
+─── System Update Order (per frame) ────────────────────────────────────────
+  1. InputMapper     — keyboard state → ECS component flags
+  2. WeatherSystem   — advance day/night cycle
+  3. AISystem        — enemy FSM + A* pathfinding
+  4. CombatSystem    — ATB timers, attack resolution, damage
+  5. QuestSystem     — objective progress checks
+  6. CameraSystem    — update view/proj matrices
+  7. Hud             — extract HudState snapshot
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows (engine_sandbox); headless safe.
+
+### Render feedback without direct renderer coupling
+
+**Source:** [`src/sandbox/game_runtime.hpp`](src/sandbox/game_runtime.hpp#L133) (line 133)
+
+─────────────────────────────────────────────────────────────────
+GameRuntime communicates with the renderer through a single colour tuple
+rather than holding a pointer to IRenderer.  This keeps the game layer
+decoupled from the graphics layer.
+
+The colour encodes game state visually:
+  Dawn / day  — warm orange tint   (r↑ g↑ b↓)
+  Night       — deep blue          (r↓ g↓ b↑)
+  Combat      — red pulse          (r↑ g↓ b↓)
+  Idle        — neutral near-black (r≈ g≈ b≈)
+
+---
+
 ## sandbox/main.cpp
 
 ### What is engine_sandbox?
@@ -18378,6 +19394,8 @@ Usage:
   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
   engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
+  engine_sandbox.exe --scene game                         # M8 full gameplay windowed (D3D11)
+  engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
 
 ============================================================================
 
@@ -18389,7 +19407,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L89) (line 89)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L91) (line 91)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -18409,7 +19427,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L107) (line 107)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L109) (line 109)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -18425,9 +19443,24 @@ include "engine/world/world_streaming.hpp"
 include "engine/world/world_partition.hpp"
 include "engine/world/async_loader.hpp"
 
+### M8 Gameplay Integration headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L125) (line 125)
+
+---------------------------------------------------------------------------
+The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
+in the D3D11 engine_sandbox without a real window.  It:
+  1. Spawns player + 3 enemies via GameRuntime::Init().
+  2. Runs 60 fixed-dt frames (≈ 1 simulated second).
+  3. Asserts: player HP unchanged (enemies haven't reached melee range).
+  4. Asserts: ≥ 1 AI state transition (IDLE → WANDERING within 1 s).
+  5. Asserts: quest objective registered for player.
+---------------------------------------------------------------------------
+include "sandbox/game_runtime.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L131) (line 131)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L146) (line 146)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -18444,7 +19477,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L146) (line 146)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L161) (line 161)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -18461,7 +19494,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L159) (line 159)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L174) (line 174)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -18473,7 +19506,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L181) (line 181)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -18492,7 +19525,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L211) (line 211)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -18505,7 +19538,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L209) (line 209)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L224) (line 224)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -18516,7 +19549,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L238) (line 238)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L253) (line 253)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -18531,7 +19564,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L263) (line 263)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L278) (line 278)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -18541,7 +19574,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L293) (line 293)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L308) (line 308)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -18557,7 +19590,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L342) (line 342)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L357) (line 357)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -18582,7 +19615,7 @@ else if (scene == "textured_quad" || scene == "skinned_mesh")
 
 ### Headless Scene Validation (M3 / M4b)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L363) (line 363)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L378) (line 378)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -18609,7 +19642,7 @@ else if (scene == "physics_test")
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L386) (line 386)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L401) (line 401)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -18634,7 +19667,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L507) (line 507)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L522) (line 522)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -18655,7 +19688,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L591) (line 591)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L606) (line 606)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -18673,7 +19706,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L605) (line 605)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L620) (line 620)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -18691,7 +19724,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L638) (line 638)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L653) (line 653)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -18717,7 +19750,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L689) (line 689)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L704) (line 704)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -18739,7 +19772,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L708) (line 708)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L723) (line 723)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -18762,7 +19795,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L789) (line 789)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L804) (line 804)
 
 -----------------------------------------------------------
 Verifies that:
@@ -18782,7 +19815,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L806) (line 806)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L821) (line 821)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -18802,7 +19835,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L849) (line 849)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L864) (line 864)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -18816,9 +19849,43 @@ budgetExceeded = true;
 }
 }
 
+### M8 Gameplay Integration headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L906) (line 906)
+
+-----------------------------------------------------------
+This acceptance scene validates that ALL gameplay systems
+(Combat, AI, Quest, Weather, etc.) run correctly together
+in the D3D11 sandbox without a real renderer or window.
+
+The three acceptance criteria match the M8.9 plan:
+
+  1. PLAYER HP UNCHANGED — Running 60 frames (1 simulated
+     second) at 1/60 s dt.  Enemies spawn 10–10 tiles away
+     from the player; the AISystem cannot move them to
+     melee range in 1 s, so the player takes no damage.
+
+  2. AI STATE TRANSITION — At minimum, every IDLE enemy
+     should wander within 1 second (wanderTimer expires).
+     The GameRuntime counts transitions each frame.
+
+  3. QUEST OBJECTIVE REGISTERED — GameRuntime::Init()
+     calls QuestSystem::AcceptQuest(playerID, 1) which
+     adds a QuestEntry to the player's QuestComponent.
+     We verify activeCount > 0 to confirm.
+-----------------------------------------------------------
+sandbox::GameRuntime gameRuntime;
+if (!gameRuntime.Init())
+{
+std::cout << "[FAIL] m8_gameplay: GameRuntime::Init() failed.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L904) (line 904)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1039) (line 1039)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -18828,7 +19895,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L912) (line 912)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1047) (line 1047)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -18856,9 +19923,32 @@ return 1;
 }
 }
 
+### M8 GameRuntime in the windowed render loop
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1075) (line 1075)
+
+-----------------------------------------------------------------------
+When --scene game is specified, GameRuntime drives all gameplay
+systems.  The clear colour is taken from GetClearColour() which
+encodes time-of-day and combat state, giving a real-time visual
+reflection of the running game world.
+-----------------------------------------------------------------------
+std::unique_ptr<sandbox::GameRuntime> gameRuntime;
+if (scene == "game" || scene == "m8_gameplay")
+{
+gameRuntime = std::make_unique<sandbox::GameRuntime>();
+if (!gameRuntime->Init())
+{
+std::cerr << "[FAIL] GameRuntime::Init() returned false.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+}
+
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L966) (line 966)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1128) (line 1128)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -18871,7 +19961,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L982) (line 982)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1144) (line 1144)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -18986,7 +20076,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L179) (line 179)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L185) (line 185)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -19002,19 +20092,19 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L281) (line 281)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L287) (line 287)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L323) (line 323)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L329) (line 329)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L403) (line 403)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L409) (line 409)
 
 ### skip_dirs excludes build artefacts and third-party sources.
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L440) (line 440)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L446) (line 446)
 
 "Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
 source that intentionally has no TEACHING NOTE blocks and may be large.

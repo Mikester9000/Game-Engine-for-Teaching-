@@ -59,9 +59,14 @@ HudState Hud::ReadFromWorld(World& world, EntityID playerID,
     if (world.HasComponent<MagicComponent>(playerID))
     {
         const auto& mg = world.GetComponent<MagicComponent>(playerID);
-        // TEACHING NOTE — equippedSpell is stored as a spell ID string.
-        // The HUD shows a human-readable name; for now it shows the raw ID.
-        state.equippedSpell = mg.equippedSpell.empty() ? "(none)" : mg.equippedSpell;
+        // TEACHING NOTE — equippedSpell is a uint32_t spell ID.
+        // The HUD converts it to a human-readable string.  0 means no spell;
+        // any other ID is displayed as "Spell #N" until a GameDatabase lookup
+        // is wired in to resolve IDs → names.
+        if (mg.equippedSpell == 0)
+            state.equippedSpell = "(none)";
+        else
+            state.equippedSpell = "Spell #" + std::to_string(mg.equippedSpell);
     }
 
     // ---- Active enemies in world --------------------------------------------

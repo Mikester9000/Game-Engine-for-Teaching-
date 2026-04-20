@@ -606,7 +606,7 @@ bool SaveSystem::Load(World& world, int slot)
         {
             const auto& c = comps[std::string(kTagMagic)];
             auto& mg = world.AddComponent<MagicComponent>(eid);
-            mg.equippedSpell = c.value("equippedSpell", "");
+            mg.equippedSpell = c.value("equippedSpell", 0u);
         }
 
         // ---- AI -----------------------------------------------------------
