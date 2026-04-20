@@ -65,9 +65,9 @@
  *   engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
  *   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
  *   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
- *   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 4 cells
- *   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict 1 cell
- *   engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing
+ *   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
+ *   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
+ *   engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
  *
  * ============================================================================
  *
