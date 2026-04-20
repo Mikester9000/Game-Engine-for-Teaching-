@@ -30,6 +30,7 @@
 #endif
 
 #include <algorithm>   // std::remove_if (future use)
+#include <cstdio>      // std::snprintf (used in DrawDebugOverlay)
 #include <utility>     // std::move
 
 namespace engine {
@@ -299,18 +300,26 @@ void WorldStreamingManager::EvictCells(const std::vector<uint32_t>& cellIds)
 
         if (it->second == CellState::Loading)
         {
-            // TEACHING NOTE — M7.3: Cancel in-flight loads
-            // ──────────────────────────────────────────────
+            // TEACHING NOTE — M7.3: Cancel in-flight loads + notify subclass
+            // ─────────────────────────────────────────────────────────────────
             // When a cell moves out of range while still loading, call
             // CancelJob() to set its cancellation flag.  The worker will
             // skip executing the job (or discard its result if already
             // running).  We immediately mark the cell as Unloaded here —
             // no completion callback will fire for this cell.
+            //
+            // We ALSO call OnEvictCell() so that game-layer subclasses
+            // (e.g. GameStreamingManager) can clean up any per-cell staging
+            // data written by OnLoadCell() on the worker thread.  Without
+            // this hook, pending data in maps like m_pendingData would
+            // leak until the entry was overwritten by a future load.
+            const CellCoord coord = CellCoordFromId(id);
             m_loader.CancelJob(id);
+            OnEvictCell(id, coord);
             m_cellStates.erase(it);
 
             LOG_INFO("WorldStreamingManager: cancelled in-flight load for cell "
-                     << id);
+                     << coord.cx << "," << coord.cz);
             continue;
         }
 

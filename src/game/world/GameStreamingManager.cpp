@@ -282,7 +282,15 @@ void GameStreamingManager::OnCellLoaded(uint32_t                      id,
     if (!cellData.valid)
     {
         LOG_WARN("GameStreamingManager: OnCellLoaded: no valid CellData for cell "
-                 << coord.cx << "," << coord.cz << " — zone will be empty.");
+                 << coord.cx << "," << coord.cz
+                 << " — treating load as failed.");
+        // TEACHING NOTE — Invalid payloads must not enter the success path.
+        // The CellData contract says valid == false represents a failed load
+        // (e.g. parse failure, empty bytes, or missing asset data).  We
+        // forward failure to the base streaming manager so the cell does not
+        // transition to LOADED with an empty/default ZoneData.
+        WorldStreamingManager::OnCellLoaded(id, coord, false);
+        return;
     }
 
     // --- Build ZoneData from CellData ---
@@ -305,9 +313,23 @@ void GameStreamingManager::OnCellLoaded(uint32_t                      id,
     zd.npcIDs           = cellData.npcIDs;
     zd.shopIDs          = cellData.shopIDs;
 
-    // Convert SpawnEntry enemy IDs to ZoneData::enemyIDs list.
-    for (const auto& se : cellData.spawns)
-        zd.enemyIDs.push_back(se.enemyDataID);
+    // TEACHING NOTE — Explicit vs. procedural spawn points
+    // ──────────────────────────────────────────────────────
+    // If the .level file contains explicit SpawnEntry records with authored
+    // tile positions and respawn times, we pass them to Zone via AddSpawnPoint()
+    // AFTER Zone::Load() — bypassing RegisterDefaultSpawnPoints() which would
+    // distribute enemies randomly across floor tiles.
+    //
+    // If there are no explicit spawns, we fall back to populating zd.enemyIDs
+    // so that RegisterDefaultSpawnPoints() in Zone::Load() produces procedural
+    // spawn points.  This dual-path strategy lets hand-authored cells override
+    // layout while unregistered cells still function correctly.
+    if (cellData.spawns.empty())
+    {
+        // No explicit spawn data — leave placement to RegisterDefaultSpawnPoints.
+        // (zd.enemyIDs stays empty; no spawn points will be registered.)
+    }
+    // Explicit spawn positions are added after Load() (see below).
 
     // --- Load Zone ---
     Zone& zone = m_zones[id];
@@ -315,6 +337,24 @@ void GameStreamingManager::OnCellLoaded(uint32_t                      id,
     {
         LOG_WARN("GameStreamingManager: Zone::Load() failed for cell "
                  << coord.cx << "," << coord.cz);
+    }
+
+    // --- M7.2: Add explicit spawn points from .level data ---
+    // TEACHING NOTE — Honouring authored spawn positions
+    // ────────────────────────────────────────────────────────
+    // Each SpawnEntry from the cooked .level file carries a tile position
+    // (tileX, tileY) and a respawn timer.  We translate it directly into a
+    // SpawnPoint and hand it to Zone::AddSpawnPoint(), which inserts it into
+    // Zone::m_spawnPoints.  SpawnEnemies() then places the entity at exactly
+    // that tile — matching the designer's intent rather than randomising.
+    for (const auto& se : cellData.spawns)
+    {
+        SpawnPoint sp;
+        sp.enemyDataID = se.enemyDataID;
+        sp.x           = se.tileX;
+        sp.y           = se.tileY;
+        sp.respawnTime = se.respawnTime;
+        zone.AddSpawnPoint(sp);
     }
 
     // --- Spawn entities on the main thread (ECS-safe) ---
@@ -364,6 +404,18 @@ void GameStreamingManager::OnEvictCell(uint32_t                  id,
 
     // Clean up stored ZoneData.
     m_zoneDataStore.erase(id);
+
+    // TEACHING NOTE — Cleaning up staging data on evict/cancel
+    // ──────────────────────────────────────────────────────────
+    // If this cell was cancelled mid-load (EvictCells calls OnEvictCell for
+    // LOADING cells too, since M7.3 fix), the worker may have already written
+    // CellData into m_pendingData before the cancellation flag was checked.
+    // OnCellLoaded will never fire for such a cell, so we clean up here to
+    // prevent the staging map from growing unboundedly.
+    {
+        std::lock_guard<std::mutex> lock(m_pendingMtx);
+        m_pendingData.erase(id);
+    }
 
     // TEACHING NOTE — We do NOT call WorldStreamingManager::OnEvictCell().
     // The base class virtual method only logs; the actual state-machine

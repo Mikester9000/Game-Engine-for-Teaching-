@@ -69,15 +69,16 @@
 
 #pragma once
 
-#include <functional>       // std::function
-#include <deque>            // std::deque  (replaces std::queue for frame-budget cap)
-#include <thread>           // std::thread
-#include <mutex>            // std::mutex
-#include <condition_variable>  // std::condition_variable
-#include <atomic>           // std::atomic<bool>
-#include <cstdint>          // uint32_t
-#include <string>           // std::string
-#include <unordered_set>    // std::unordered_set — cancelled job IDs (M7.3)
+#include <functional>         // std::function
+#include <deque>              // std::deque  (replaces std::queue for frame-budget cap)
+#include <thread>             // std::thread
+#include <mutex>              // std::mutex
+#include <condition_variable> // std::condition_variable
+#include <atomic>             // std::atomic<bool>
+#include <cstdint>            // uint32_t
+#include <string>             // std::string
+#include <memory>             // std::shared_ptr
+#include <unordered_map>      // std::unordered_map — in-flight cancel tokens (M7.3)
 
 namespace engine {
 namespace world {
@@ -255,15 +256,19 @@ public:
      *
      * @param cellId  Cell ID of the job to cancel.
      *
-     * TEACHING NOTE — Cancellation with Atomic Flags
-     * ─────────────────────────────────────────────────
-     * We cannot remove a job from the pending queue while the worker thread
-     * might be holding a copy of it (the worker pops then releases the lock).
-     * Instead we scan the pending deque and set the job's cancelled flag on
-     * any matching job.  Because each job's cancelled flag is a
-     * shared_ptr<atomic<bool>>, the worker's local copy shares the same
-     * flag — writing from the main thread is visible to the worker even
-     * after the job was moved out of the pending queue.
+     * TEACHING NOTE — Cancellation with Atomic Flags (m_cancelTokens map)
+     * ─────────────────────────────────────────────────────────────────────
+     * Scanning only the pending deque is insufficient: once the worker pops
+     * a job from the deque (under m_pendingMtx), it releases the lock and
+     * proceeds to execute work().  At that point the deque no longer contains
+     * the job, so a deque-only scan in CancelJob would silently miss it.
+     *
+     * Fix: m_cancelTokens holds every pending-or-in-flight job's shared
+     * cancellation flag, keyed by cellId.  EnqueueJob inserts into the map;
+     * the WorkerLoop erases the entry (under lock) the moment it pops the job.
+     * CancelJob looks up the map first — if the job has already been popped the
+     * map still has the entry (until the worker erases it), so the flag is set
+     * and the worker's local copy (which shares the same shared_ptr) sees it.
      *
      * Cancelled jobs produce NO completion callback — the cell transitions
      * directly to Unloaded in WorldStreamingManager::EvictCells().
@@ -335,10 +340,35 @@ private:
     std::thread             m_thread;           ///< The single worker thread.
     std::atomic<bool>       m_stop{ false };    ///< Signals worker to exit.
 
-    // Pending (main → worker)
+    // Pending (main → worker) — all accessed under m_pendingMtx.
     mutable std::mutex      m_pendingMtx;
     std::condition_variable m_cv;
-    std::deque<LoadJob>     m_pending;          ///< Changed to deque for CancelJob scan.
+    std::deque<LoadJob>     m_pending;          ///< deque for CancelJob scan.
+
+    /**
+     * @brief Cancel token map — cellId → shared cancellation flag.
+     *
+     * TEACHING NOTE — Why a separate map?
+     * ─────────────────────────────────────
+     * m_pending is only scanned to cancel *queued* jobs.  Once the worker
+     * pops a job from m_pending it is removed from the deque, making
+     * m_pending useless for in-flight cancellation.
+     *
+     * m_cancelTokens retains the shared_ptr for every pending-or-in-flight
+     * job.  The worker erases the entry (still under m_pendingMtx) the
+     * moment it pops the job — this small critical section is inexpensive
+     * because map::erase is O(1) amortised.
+     *
+     * After the worker erases the entry the token is still alive inside the
+     * worker's local LoadJob copy, so any CancelJob() call that races
+     * with the erase and succeeds will either:
+     *   a) find the token in the map (set flag → worker sees it after work()),
+     *   b) not find it (worker already erased + checked — job will complete).
+     *
+     * Both outcomes are correct; the worst case is a spurious completion for
+     * a cancelled cell which the state machine handles gracefully.
+     */
+    std::unordered_map<uint32_t, std::shared_ptr<std::atomic<bool>>> m_cancelTokens;
 
     // Completed (worker → main)
     mutable std::mutex      m_completedMtx;

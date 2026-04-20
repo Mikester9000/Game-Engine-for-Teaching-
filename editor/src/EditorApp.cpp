@@ -108,18 +108,17 @@ void EditorApp::Render()
     }
 
     // ---- M7.5: World Streaming debug overlay -------------------------------
-    // TEACHING NOTE — Streaming minimap overlay
-    // ────────────────────────────────────────────
-    // When the user enables View → World Streaming Overlay, we draw a 2D grid
-    // of cell state rectangles as a transparent overlay window.  The overlay
-    // does NOT dock (NoDecoration + NoMove) so it floats in the viewport corner.
+    // TEACHING NOTE — Streaming minimap reference panel
+    // ────────────────────────────────────────────────────
+    // This floating window shows the colour legend for the streaming debug
+    // minimap that WorldStreamingManager::DrawDebugOverlay() produces.
     //
-    // WorldStreamingManager::DrawDebugOverlay() is called with the ImDrawList
-    // for the overlay window; it draws the coloured cell rectangles and legend.
-    //
-    // For now, we display a stub overlay since WorldStreamingManager is not
-    // wired to the editor's scene camera yet.  A full M8 integration would
-    // pass the actual camera position and use GameStreamingManager.
+    // In M7.5 the overlay is a reference panel only: the editor does not own
+    // a live WorldStreamingManager instance (that lives in the game runtime).
+    // To see the actual cell-state grid, call DrawDebugOverlay() from your
+    // game loop and pass the ImDrawList + camera position.  Full editor
+    // integration (live cell grid inside the editor viewport) is planned for
+    // M8.7 when GameStreamingManager is wired to the D3D11 runtime.
     if (m_showStreamingOverlay)
     {
         ImGuiIO& imguiIO = ImGui::GetIO();
@@ -140,10 +139,12 @@ void EditorApp::Render()
         {
             ImGui::TextUnformatted("World Streaming (M7.5)");
             ImGui::Separator();
-            ImGui::TextUnformatted("Enable in your game loop:");
-            ImGui::TextUnformatted("  mgr.DrawDebugOverlay(");
-            ImGui::TextUnformatted("    drawList, x, y, 20.f,");
-            ImGui::TextUnformatted("    cameraPos);");
+            // TEACHING NOTE — DrawDebugOverlay usage
+            // ────────────────────────────────────────
+            // Call from your D3D11 game loop (M8.7):
+            //   mgr.DrawDebugOverlay(ImGui::GetWindowDrawList(),
+            //                        originX, originY, 20.f, cameraPos);
+            ImGui::TextUnformatted("Legend (DrawDebugOverlay):");
             ImGui::Spacing();
 
             // Legend swatches

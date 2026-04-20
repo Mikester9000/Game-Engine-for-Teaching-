@@ -1,10 +1,10 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-20T14:14:27Z",
+  "generatedAt": "2026-04-20T15:15:37Z",
   "assets": [
     {
-      "id": "ed58b9d5-e362-4a11-9e30-4763a533383a",
+      "id": "3009e677-5e6e-4c3e-8f65-6f9a6b2a60a6",
       "type": "scene",
       "name": "MainTown",
       "source": "Maps/MainTown.scene.json",
@@ -17,7 +17,7 @@
       ]
     },
     {
-      "id": "97c924d3-2e56-4978-991a-2c2567166f21",
+      "id": "d95d437d-6173-48f2-9cfa-f8279e25f7a7",
       "type": "level",
       "name": "cell_0_0",
       "source": "Levels/cell_0_0.cell.json",

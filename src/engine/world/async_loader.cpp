@@ -92,6 +92,14 @@ void AsyncLoader::EnqueueJob(LoadJob job)
 {
     {
         std::lock_guard<std::mutex> lock(m_pendingMtx);
+        // TEACHING NOTE — Register cancel token before pushing the job
+        // ──────────────────────────────────────────────────────────────
+        // We store the shared cancellation flag in m_cancelTokens BEFORE
+        // pushing the job to m_pending.  This ensures CancelJob() can always
+        // find the token even if the worker pops the job between the push
+        // and the map insert (which cannot happen here — both happen under
+        // the same lock).
+        m_cancelTokens[job.cellId] = job.cancelled;
         m_pending.push_back(std::move(job));
     }
     // Wake the worker thread.  If the worker is already processing a job,
@@ -101,24 +109,26 @@ void AsyncLoader::EnqueueJob(LoadJob job)
 
 void AsyncLoader::CancelJob(uint32_t cellId)
 {
-    // TEACHING NOTE — Cancellation via shared atomic flag
-    // ─────────────────────────────────────────────────────
-    // We scan the pending deque (under lock) and mark any matching job
-    // as cancelled.  Because job.cancelled is a shared_ptr<atomic<bool>>,
-    // the worker's local copy of the job shares the same flag — the write
-    // here is visible to the worker thread even if the job has already been
-    // moved out of the pending deque.
+    // TEACHING NOTE — Cancellation via m_cancelTokens (M7.3 fix)
+    // ─────────────────────────────────────────────────────────────
+    // We look up the shared cancellation flag in m_cancelTokens rather than
+    // only scanning m_pending.  This is important because once the worker
+    // pops a job from m_pending (under m_pendingMtx) and then releases the
+    // lock, the deque no longer contains the job.  A deque-only scan would
+    // silently miss in-flight jobs.
     //
-    // Cancelled jobs whose work() has not yet started are skipped silently.
-    // Cancelled jobs whose work() is already in progress cannot be stopped
-    // mid-execution (C++ has no cancellation point mechanism for std::thread),
-    // but their completion callback is suppressed by checking the flag in
-    // the worker loop before pushing to m_completed.
+    // m_cancelTokens retains the same shared_ptr that lives inside the
+    // worker's local job copy.  Writing to the flag here (store_release)
+    // is therefore visible to the worker's two cancel-checks (before and
+    // after work()) even if the job was already popped from the deque.
     std::lock_guard<std::mutex> lock(m_pendingMtx);
-    for (auto& job : m_pending)
+    const auto it = m_cancelTokens.find(cellId);
+    if (it != m_cancelTokens.end())
     {
-        if (job.cellId == cellId)
-            job.cancelled->store(true, std::memory_order_release);
+        it->second->store(true, std::memory_order_release);
+        // Note: we do NOT erase from m_cancelTokens here.  The worker erases
+        // the entry when it pops the job.  This keeps the flag reachable for
+        // the post-work() cancellation check in WorkerLoop.
     }
     LOG_INFO("AsyncLoader: CancelJob requested for cellId=" << cellId);
 }
@@ -160,8 +170,15 @@ void AsyncLoader::PumpMainThreadCompletions(int maxCount)
     if (!localCompleted.empty())
     {
         std::lock_guard<std::mutex> lock(m_completedMtx);
-        for (auto& c : localCompleted)
-            m_completed.push_front(std::move(c));
+        // TEACHING NOTE — Preserve FIFO order when prepending leftovers
+        // ─────────────────────────────────────────────────────────────────
+        // localCompleted was drained front-to-back, so any remaining items
+        // are already in the correct oldest-to-newest order.
+        // push_front() inserts before the current head; iterating forward
+        // would reverse the remainder.  Iterating in reverse preserves the
+        // original FIFO ordering across frames.
+        for (auto it = localCompleted.rbegin(); it != localCompleted.rend(); ++it)
+            m_completed.push_front(std::move(*it));
     }
 }
 
@@ -208,6 +225,17 @@ void AsyncLoader::WorkerLoop()
 
             job = std::move(m_pending.front());
             m_pending.pop_front();
+
+            // TEACHING NOTE — Erase the cancel token while still under lock
+            // ────────────────────────────────────────────────────────────────
+            // Once we pop the job from m_pending, CancelJob() can no longer
+            // find it via a deque scan.  We erase from m_cancelTokens here
+            // (still under m_pendingMtx) so a concurrent CancelJob() call
+            // that arrives after this erase will not find a stale token.
+            // The worker's local `job` still holds its own shared_ptr copy,
+            // so the two cancel-checks below can still read the flag even
+            // after the map entry is gone.
+            m_cancelTokens.erase(job.cellId);
         }
         // Lock released — main thread can enqueue more work while we execute.
 

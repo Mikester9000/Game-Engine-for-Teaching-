@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1228 across 42 subsystems.
+**Total lessons:** 1237 across 42 subsystems.
 
 ---
 
@@ -15,7 +15,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [CMakeLists.txt](#cmakelists.txt) (53 lessons)
 - [ci/workflows](#ciworkflows) (41 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
-- [editor/src](#editorsrc) (101 lessons)
+- [editor/src](#editorsrc) (102 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
@@ -28,12 +28,12 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/rendering](#enginerendering) (215 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
-- [engine/world](#engineworld) (52 lessons)
+- [engine/world](#engineworld) (56 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
 - [game/systems](#gamesystems) (85 lessons)
-- [game/world](#gameworld) (84 lessons)
+- [game/world](#gameworld) (88 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (14 lessons)
 - [sandbox/main.cpp](#sandboxmain.cpp) (31 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
@@ -1852,30 +1852,40 @@ ImGui::CloseCurrentPopup();
 ImGui::EndPopup();
 }
 
-### Streaming minimap overlay
+### Streaming minimap reference panel
 
 **Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L111) (line 111)
 
-────────────────────────────────────────────
-When the user enables View → World Streaming Overlay, we draw a 2D grid
-of cell state rectangles as a transparent overlay window.  The overlay
-does NOT dock (NoDecoration + NoMove) so it floats in the viewport corner.
+────────────────────────────────────────────────────
+This floating window shows the colour legend for the streaming debug
+minimap that WorldStreamingManager::DrawDebugOverlay() produces.
 
-WorldStreamingManager::DrawDebugOverlay() is called with the ImDrawList
-for the overlay window; it draws the coloured cell rectangles and legend.
-
-For now, we display a stub overlay since WorldStreamingManager is not
-wired to the editor's scene camera yet.  A full M8 integration would
-pass the actual camera position and use GameStreamingManager.
+In M7.5 the overlay is a reference panel only: the editor does not own
+a live WorldStreamingManager instance (that lives in the game runtime).
+To see the actual cell-state grid, call DrawDebugOverlay() from your
+game loop and pass the ImDrawList + camera position.  Full editor
+integration (live cell grid inside the editor viewport) is planned for
+M8.7 when GameStreamingManager is wired to the D3D11 runtime.
 if (m_showStreamingOverlay)
 {
 ImGuiIO& imguiIO = ImGui::GetIO();
 const float overlayX = imguiIO.DisplaySize.x - 240.0f;
 const float overlayY = 40.0f;
 
+### DrawDebugOverlay usage
+
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L142) (line 142)
+
+────────────────────────────────────────
+Call from your D3D11 game loop (M8.7):
+  mgr.DrawDebugOverlay(ImGui::GetWindowDrawList(),
+                       originX, originY, 20.f, cameraPos);
+ImGui::TextUnformatted("Legend (DrawDebugOverlay):");
+ImGui::Spacing();
+
 ### ImGui Menu Bar
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L188) (line 188)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L189) (line 189)
 
 ImGui::BeginMainMenuBar() / EndMainMenuBar() create a menu bar anchored to
 the top of the main viewport (not inside any ImGui window).
@@ -1889,7 +1899,7 @@ return;
 
 ### Load Scene (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L228) (line 228)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L229) (line 229)
 
 Mirrors "Save Scene" but in the other direction: shows a file open
 dialog, then calls SceneEditorPanel::LoadScene() to parse the JSON.
@@ -1914,7 +1924,7 @@ m_statusTimer   = 5.f;
 
 ### Posting WM_QUIT from within ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L282) (line 282)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L283) (line 283)
 
 PostQuitMessage(0) posts a WM_QUIT to the Win32 message queue.
 The main loop detects this and sets done = true, triggering cleanup.
@@ -1923,7 +1933,7 @@ PostQuitMessage(0);
 
 ### ShellExecuteW to run the cook script
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L303) (line 303)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L304) (line 304)
 
 ShellExecuteW launches an external process using the Windows
 shell.  "open" + a .py file invokes the system Python interpreter.
@@ -1940,7 +1950,7 @@ m_statusTimer   = 4.f;
 
 ### Play in Engine (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L319) (line 319)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L320) (line 320)
 
 "Play in Engine" saves the current scene to a temp .scene.json file
 and launches engine_sandbox.exe with --scene pointing to that file.
@@ -1956,7 +1966,7 @@ LaunchPlayInEngine();
 
 ### M7.5: View menu with streaming overlay toggle
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L343) (line 343)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L344) (line 344)
 
 ──────────────────────────────────────────────────────────────
 The View menu controls optional debug visualisations.  Adding toggles
@@ -1980,7 +1990,7 @@ ImGui::EndMenu();
 
 ### WideCharToMultiByte for UTF-8 conversion
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L379) (line 379)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L380) (line 380)
 
 Windows internally uses UTF-16 (wide char) for all API strings.
 Our public API uses std::string (UTF-8), which is the cross-platform norm.
@@ -2001,7 +2011,7 @@ return s;
 
 ### Play in Engine implementation
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L401) (line 401)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L402) (line 402)
 
 Steps:
   1. Write the scene to a well-known temp path (%TEMP%\editor_scene.scene.json).
@@ -2024,7 +2034,7 @@ tempScene += L"editor_preview.scene.json";
 
 ### ShellExecuteExW vs CreateProcessW
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L443) (line 443)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L444) (line 444)
 
 ShellExecuteExW is simpler but does not let us capture the output.
 CreateProcessW gives full control (redirect stdout/stderr, wait for exit).
@@ -2041,7 +2051,7 @@ sei.nShow       = SW_SHOWNORMAL;
 
 ### Simulating a Status Bar with ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L475) (line 475)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L476) (line 476)
 
 ImGui has no built-in "status bar" widget.  We simulate one by creating
 a small window pinned to the bottom of the viewport with no decorations.
@@ -2054,7 +2064,7 @@ constexpr float barHeight     = 22.f;
 
 ### IFileOpenDialog (modern Windows folder picker)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L526) (line 526)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L527) (line 527)
 
 The classic SHBrowseForFolderW dialog is old (Windows 3.1 era).
 The modern alternative is IFileOpenDialog with FOS_PICKFOLDERS set --
@@ -2067,7 +2077,7 @@ IFileOpenDialog* pFolderDialog = nullptr;
 
 ### GetSaveFileName (classic Win32 save dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L575) (line 575)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L576) (line 576)
 
 GetSaveFileNameW shows the standard "Save As" dialog. The filter string
 uses pairs of "Description\0*.ext\0" terminated by an extra \0.
@@ -2084,7 +2094,7 @@ filterLen += 2;  // trailing double-NUL
 
 ### GetOpenFileName (classic Win32 open dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L620) (line 620)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L621) (line 621)
 
 Mirrors PickSaveFile but uses OFN_FILEMUSTEXIST instead of OFN_OVERWRITEPROMPT.
 This is the standard "Open File" dialog used in all Win32 applications.
@@ -13670,34 +13680,54 @@ m_stop.store(true, std::memory_order_release);
 }
 m_cv.notify_one();
 
-### Cancellation via shared atomic flag
+### Register cancel token before pushing the job
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L104) (line 104)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L95) (line 95)
 
-─────────────────────────────────────────────────────
-We scan the pending deque (under lock) and mark any matching job
-as cancelled.  Because job.cancelled is a shared_ptr<atomic<bool>>,
-the worker's local copy of the job shares the same flag — the write
-here is visible to the worker thread even if the job has already been
-moved out of the pending deque.
+──────────────────────────────────────────────────────────────
+We store the shared cancellation flag in m_cancelTokens BEFORE
+pushing the job to m_pending.  This ensures CancelJob() can always
+find the token even if the worker pops the job between the push
+and the map insert (which cannot happen here — both happen under
+the same lock).
+m_cancelTokens[job.cellId] = job.cancelled;
+m_pending.push_back(std::move(job));
+}
+Wake the worker thread.  If the worker is already processing a job,
+it will pick this one up after finishing the current one.
+m_cv.notify_one();
+}
 
-Cancelled jobs whose work() has not yet started are skipped silently.
-Cancelled jobs whose work() is already in progress cannot be stopped
-mid-execution (C++ has no cancellation point mechanism for std::thread),
-but their completion callback is suppressed by checking the flag in
-the worker loop before pushing to m_completed.
+### Cancellation via m_cancelTokens (M7.3 fix)
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L112) (line 112)
+
+─────────────────────────────────────────────────────────────
+We look up the shared cancellation flag in m_cancelTokens rather than
+only scanning m_pending.  This is important because once the worker
+pops a job from m_pending (under m_pendingMtx) and then releases the
+lock, the deque no longer contains the job.  A deque-only scan would
+silently miss in-flight jobs.
+
+m_cancelTokens retains the same shared_ptr that lives inside the
+worker's local job copy.  Writing to the flag here (store_release)
+is therefore visible to the worker's two cancel-checks (before and
+after work()) even if the job was already popped from the deque.
 std::lock_guard<std::mutex> lock(m_pendingMtx);
-for (auto& job : m_pending)
+const auto it = m_cancelTokens.find(cellId);
+if (it != m_cancelTokens.end())
 {
-if (job.cellId == cellId)
-job.cancelled->store(true, std::memory_order_release);
+it->second->store(true, std::memory_order_release);
+Note: we do NOT erase from m_cancelTokens here.  The worker erases
+the entry when it pops the job.  This keeps the flag reachable for
+the post-work() cancellation check in WorkerLoop.
 }
 LOG_INFO("AsyncLoader: CancelJob requested for cellId=" << cellId);
 }
 
 ### Swap-and-drain with optional frame-budget cap (M7.4)
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L128) (line 128)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L138) (line 138)
 
 ─────────────────────────────────────────────────────────────────────
 Steps:
@@ -13714,9 +13744,24 @@ std::lock_guard<std::mutex> lock(m_completedMtx);
 std::swap(m_completed, localCompleted);
 }
 
+### Preserve FIFO order when prepending leftovers
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L173) (line 173)
+
+─────────────────────────────────────────────────────────────────
+localCompleted was drained front-to-back, so any remaining items
+are already in the correct oldest-to-newest order.
+push_front() inserts before the current head; iterating forward
+would reverse the remainder.  Iterating in reverse preserves the
+original FIFO ordering across frames.
+for (auto it = localCompleted.rbegin(); it != localCompleted.rend(); ++it)
+m_completed.push_front(std::move(*it));
+}
+}
+
 ### Condition variable wait loop pattern
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L180) (line 180)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L197) (line 197)
 
 ──────────────────────────────────────────────────────
 The canonical wait-loop guards against spurious wakeups:
@@ -13730,9 +13775,25 @@ is equivalent to:
 The predicate checks BOTH that there is work AND that we should not stop.
 We wake up when m_pending is non-empty OR m_stop is set.
 
+### Erase the cancel token while still under lock
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L229) (line 229)
+
+────────────────────────────────────────────────────────────────
+Once we pop the job from m_pending, CancelJob() can no longer
+find it via a deque scan.  We erase from m_cancelTokens here
+(still under m_pendingMtx) so a concurrent CancelJob() call
+that arrives after this erase will not find a stale token.
+The worker's local `job` still holds its own shared_ptr copy,
+so the two cancel-checks below can still read the flag even
+after the map entry is gone.
+m_cancelTokens.erase(job.cellId);
+}
+Lock released — main thread can enqueue more work while we execute.
+
 ### Early-out on cancellation
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L215) (line 215)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L243) (line 243)
 
 ──────────────────────────────────────────
 The main thread may have called CancelJob() between the time this
@@ -13750,7 +13811,7 @@ continue;
 
 ### Catching exceptions on the worker thread
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L237) (line 237)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L265) (line 265)
 
 ──────────────────────────────────────────────────────────
 If job.work() throws, we catch it here and report failure via
@@ -13781,7 +13842,7 @@ success = true;
 
 ### Double-check after execution
 
-**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L269) (line 269)
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L297) (line 297)
 
 ──────────────────────────────────────────────
 CancelJob() may have been called WHILE work() was executing.
@@ -13863,7 +13924,7 @@ Platform: All (std::thread is available on Windows, Linux, macOS)
 
 ### std::function as a generic callable
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L92) (line 92)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L93) (line 93)
 
 ────────────────────────────────────────────────────
 std::function<void()> can hold any callable: a plain function pointer, a
@@ -13881,7 +13942,7 @@ inside the lambda — e.g.:
 
 ### std::atomic<bool> for Lock-Free Cancel
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L118) (line 118)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L119) (line 119)
 
 ────────────────────────────────────────────────────────
 Because the worker thread reads this flag WITHOUT holding any mutex,
@@ -13895,7 +13956,7 @@ queue and into the worker thread's local copy.
 
 ### Returning bool vs. throwing exceptions
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L141) (line 141)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L142) (line 142)
 
 ────────────────────────────────────────────────────────
 We return bool rather than throw so that the worker thread never sees an
@@ -13904,7 +13965,7 @@ via the onComplete(false) callback instead.
 
 ### Main-thread safety
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L154) (line 154)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L155) (line 155)
 
 ─────────────────────────────────────
 All ECS writes, rendering-state changes, and audio events must happen
@@ -13914,7 +13975,7 @@ engine API.
 
 ### RAII and Lifecycle
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L191) (line 191)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L192) (line 192)
 
 ────────────────────────────────────
 Start()/Stop() are explicit rather than constructor/destructor because the
@@ -13924,7 +13985,7 @@ the thread would spin up before the owning object finished constructing.
 
 ### Graceful shutdown
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L228) (line 228)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L229) (line 229)
 
 ────────────────────────────────────
 We set m_stop = true then notify the condition variable.  The worker
@@ -13932,25 +13993,29 @@ thread checks m_stop after each job and exits cleanly.  We then call
 m_thread.join() to wait for it.  This avoids std::terminate() being
 called if the thread is still running at destruction.
 
-### Cancellation with Atomic Flags
+### Cancellation with Atomic Flags (m_cancelTokens map)
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L258) (line 258)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L259) (line 259)
 
-─────────────────────────────────────────────────
-We cannot remove a job from the pending queue while the worker thread
-might be holding a copy of it (the worker pops then releases the lock).
-Instead we scan the pending deque and set the job's cancelled flag on
-any matching job.  Because each job's cancelled flag is a
-shared_ptr<atomic<bool>>, the worker's local copy shares the same
-flag — writing from the main thread is visible to the worker even
-after the job was moved out of the pending queue.
+─────────────────────────────────────────────────────────────────────
+Scanning only the pending deque is insufficient: once the worker pops
+a job from the deque (under m_pendingMtx), it releases the lock and
+proceeds to execute work().  At that point the deque no longer contains
+the job, so a deque-only scan in CancelJob would silently miss it.
+
+Fix: m_cancelTokens holds every pending-or-in-flight job's shared
+cancellation flag, keyed by cellId.  EnqueueJob inserts into the map;
+the WorkerLoop erases the entry (under lock) the moment it pops the job.
+CancelJob looks up the map first — if the job has already been popped the
+map still has the entry (until the worker erases it), so the flag is set
+and the worker's local copy (which shares the same shared_ptr) sees it.
 
 Cancelled jobs produce NO completion callback — the cell transitions
 directly to Unloaded in WorldStreamingManager::EvictCells().
 
 ### Swap-and-drain with budget cap
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L283) (line 283)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L288) (line 288)
 
 ─────────────────────────────────────────────────
 1. Lock m_completedMtx briefly.
@@ -13962,7 +14027,7 @@ directly to Unloaded in WorldStreamingManager::EvictCells().
 
 ### Why deque instead of queue?
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L292) (line 292)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L297) (line 297)
 
 ─────────────────────────────────────────────
 std::deque supports efficient push_back AND iteration, letting us
@@ -13971,7 +14036,7 @@ but does not expose direct iteration — we use deque directly here.
 
 ### Worker loop pattern
 
-**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L315) (line 315)
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L320) (line 320)
 
 ─────────────────────────────────────
 The worker sits in a wait loop:
@@ -13985,6 +14050,29 @@ The worker sits in a wait loop:
 
 Releasing the pending lock BEFORE executing work() is important:
 it lets the main thread enqueue more jobs while the worker is busy.
+
+### Why a separate map?
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L351) (line 351)
+
+─────────────────────────────────────
+m_pending is only scanned to cancel *queued* jobs.  Once the worker
+pops a job from m_pending it is removed from the deque, making
+m_pending useless for in-flight cancellation.
+
+m_cancelTokens retains the shared_ptr for every pending-or-in-flight
+job.  The worker erases the entry (still under m_pendingMtx) the
+moment it pops the job — this small critical section is inexpensive
+because map::erase is O(1) amortised.
+
+After the worker erases the entry the token is still alive inside the
+worker's local LoadJob copy, so any CancelJob() call that races
+with the erase and succeeds will either:
+  a) find the token in the map (set flag → worker sees it after work()),
+  b) not find it (worker already erased + checked — job will complete).
+
+Both outcomes are correct; the worst case is a spurious completion for
+a cancelled cell which the state machine handles gracefully.
 
 ### Data Transfer Objects (DTOs) in a Pipeline
 
@@ -14223,7 +14311,7 @@ M7.5: DrawDebugOverlay (BUILD_EDITOR only) draws a cell-state minimap.
 
 ### Shutdown order
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L87) (line 87)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L88) (line 88)
 
 ─────────────────────────────────
 We stop the loader BEFORE evicting cells because:
@@ -14234,7 +14322,7 @@ once more, then we evict all loaded cells in deterministic order.
 
 ### Frame budget cap
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L119) (line 119)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L120) (line 120)
 
 ─────────────────────────────────
 PumpMainThreadCompletions(m_maxCompletionsPerFrame) stops draining
@@ -14245,7 +14333,7 @@ m_loader.PumpMainThreadCompletions(m_maxCompletionsPerFrame);
 
 ### Stub implementation
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L193) (line 193)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L194) (line 194)
 
 ─────────────────────────────────────
 The base-class stub returns true immediately so the state machine can
@@ -14264,7 +14352,7 @@ return true;
 
 ### Stub implementation
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L211) (line 211)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L212) (line 212)
 
 ─────────────────────────────────────
 GameStreamingManager overrides this to call:
@@ -14289,7 +14377,7 @@ m_cellStates[id] = CellState::Unloaded;
 
 ### Stub implementation
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L235) (line 235)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L236) (line 236)
 
 ─────────────────────────────────────
 GameStreamingManager overrides this to call:
@@ -14301,7 +14389,7 @@ LOG_INFO("WorldStreamingManager: OnEvictCell — cell "
 
 ### Capturing by value in the lambda
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L262) (line 262)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L263) (line 263)
 
 ──────────────────────────────────────────────────
 The lambda captures id and coord by VALUE (not by reference) because
@@ -14309,22 +14397,30 @@ these stack variables will be gone by the time the worker thread
 executes the job.  Capturing by reference would be a dangling-reference
 bug — one of the most common threading mistakes in C++.
 
-### M7.3: Cancel in-flight loads
+### M7.3: Cancel in-flight loads + notify subclass
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L302) (line 302)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L303) (line 303)
 
-──────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────
 When a cell moves out of range while still loading, call
 CancelJob() to set its cancellation flag.  The worker will
 skip executing the job (or discard its result if already
 running).  We immediately mark the cell as Unloaded here —
 no completion callback will fire for this cell.
+
+We ALSO call OnEvictCell() so that game-layer subclasses
+(e.g. GameStreamingManager) can clean up any per-cell staging
+data written by OnLoadCell() on the worker thread.  Without
+this hook, pending data in maps like m_pendingData would
+leak until the entry was overwritten by a future load.
+const CellCoord coord = CellCoordFromId(id);
 m_loader.CancelJob(id);
+OnEvictCell(id, coord);
 m_cellStates.erase(it);
 
 ### Streaming Debug Minimap
 
-**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L347) (line 347)
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L356) (line 356)
 
 ─────────────────────────────────────────
 This overlay draws a 2D grid of cells as coloured rectangles, where
@@ -16746,9 +16842,21 @@ It is safe to:
 
 Do NOT call this from the worker thread.
 
+### Invalid payloads must not enter the success path.
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L287) (line 287)
+
+The CellData contract says valid == false represents a failed load
+(e.g. parse failure, empty bytes, or missing asset data).  We
+forward failure to the base streaming manager so the cell does not
+transition to LOADED with an empty/default ZoneData.
+WorldStreamingManager::OnCellLoaded(id, coord, false);
+return;
+}
+
 ### ZoneData lifetime
 
-**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L289) (line 289)
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L297) (line 297)
 
 ───────────────────────────────────
 Zone stores a const ZoneData* pointer.  We MUST keep the ZoneData alive
@@ -16768,9 +16876,65 @@ zd.dangerLevel      = cellData.dangerLevel;
 zd.npcIDs           = cellData.npcIDs;
 zd.shopIDs          = cellData.shopIDs;
 
+### Explicit vs. procedural spawn points
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L316) (line 316)
+
+──────────────────────────────────────────────────────
+If the .level file contains explicit SpawnEntry records with authored
+tile positions and respawn times, we pass them to Zone via AddSpawnPoint()
+AFTER Zone::Load() — bypassing RegisterDefaultSpawnPoints() which would
+distribute enemies randomly across floor tiles.
+
+If there are no explicit spawns, we fall back to populating zd.enemyIDs
+so that RegisterDefaultSpawnPoints() in Zone::Load() produces procedural
+spawn points.  This dual-path strategy lets hand-authored cells override
+layout while unregistered cells still function correctly.
+if (cellData.spawns.empty())
+{
+No explicit spawn data — leave placement to RegisterDefaultSpawnPoints.
+(zd.enemyIDs stays empty; no spawn points will be registered.)
+}
+Explicit spawn positions are added after Load() (see below).
+
+### Honouring authored spawn positions
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L343) (line 343)
+
+────────────────────────────────────────────────────────
+Each SpawnEntry from the cooked .level file carries a tile position
+(tileX, tileY) and a respawn timer.  We translate it directly into a
+SpawnPoint and hand it to Zone::AddSpawnPoint(), which inserts it into
+Zone::m_spawnPoints.  SpawnEnemies() then places the entity at exactly
+that tile — matching the designer's intent rather than randomising.
+for (const auto& se : cellData.spawns)
+{
+SpawnPoint sp;
+sp.enemyDataID = se.enemyDataID;
+sp.x           = se.tileX;
+sp.y           = se.tileY;
+sp.respawnTime = se.respawnTime;
+zone.AddSpawnPoint(sp);
+}
+
+### Cleaning up staging data on evict/cancel
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L408) (line 408)
+
+──────────────────────────────────────────────────────────
+If this cell was cancelled mid-load (EvictCells calls OnEvictCell for
+LOADING cells too, since M7.3 fix), the worker may have already written
+CellData into m_pendingData before the cancellation flag was checked.
+OnCellLoaded will never fire for such a cell, so we clean up here to
+prevent the staging map from growing unboundedly.
+{
+std::lock_guard<std::mutex> lock(m_pendingMtx);
+m_pendingData.erase(id);
+}
+
 ### We do NOT call WorldStreamingManager::OnEvictCell().
 
-**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L368) (line 368)
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L420) (line 420)
 
 The base class virtual method only logs; the actual state-machine
 transition (erasing from m_cellStates + m_loadedCells) is done by the
