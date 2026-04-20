@@ -156,10 +156,11 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     "src/sandbox/test_world.cpp":
         "TestWorld integration scene — M3 system verification; exercises CombatSystem, AISystem, WeatherSystem, QuestSystem, InventorySystem, ShopSystem, CampSystem, and AudioSystem together",
     # main.cpp: engine_sandbox entry point — wires all startup paths (headless,
-    # windowed, scenes, validate-project, physics_test).  Size is justified by the
-    # number of distinct modes and the TEACHING NOTE comments on each path.
+    # windowed, scenes, validate-project, physics_test, and M7 streaming tests).
+    # Size is justified by the number of distinct modes and the TEACHING NOTE
+    # comments on each path.
     "src/sandbox/main.cpp":
-        "engine_sandbox entry point — integrates headless, windowed, validate-project, and M5 physics_test; each path has TEACHING NOTEs",
+        "engine_sandbox entry point — integrates headless, windowed, validate-project, M5 physics_test, and M7 streaming tests; each path has TEACHING NOTEs",
     # physics_world.cpp: M5 Jolt Physics wrapper — teaching notes cover Jolt init
     # sequence (allocator, factory, types, job system, physics system), object layer
     # setup, body factory helpers, raycast, and shutdown order.

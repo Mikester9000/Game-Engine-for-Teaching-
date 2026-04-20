@@ -599,6 +599,28 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     )
 
     # -----------------------------------------------------------------------
+    # World streaming sources (M7 — async loader + spatial partition).
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — M7 World Streaming Source Strategy
+    # ─────────────────────────────────────────────────────
+    # The three world-streaming modules are pure C++17 with no platform or
+    # graphics-API dependency.  They compile on Windows (engine_sandbox) and
+    # will later compile on Linux as well when the terminal game is wired up
+    # in M8.  They are always included in the sandbox build so the headless
+    # streaming acceptance tests (--scene streaming_load / streaming_evict /
+    # streaming_async) are always available.
+    #
+    # async_loader.cpp   — std::thread worker + job queue.
+    # world_partition.cpp — spatial grid coordinate conversion + neighbour query.
+    # world_streaming.cpp — delta-based load/evict coordinator.
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/engine/world/async_loader.cpp
+        src/engine/world/world_partition.cpp
+        src/engine/world/world_streaming.cpp
+    )
+
+    # -----------------------------------------------------------------------
     # LuaEngine sources (optional — only when bundled Lua headers are present).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Conditional Scripting in engine_sandbox
