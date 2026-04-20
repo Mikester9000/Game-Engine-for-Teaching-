@@ -133,7 +133,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming) is ✅ complete. Next: M8 Gameplay Integration.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. Next: M8 Gameplay Integration.
 
 ---
 
@@ -196,11 +196,15 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 |------|--------|-------|
 | Tile-based `Zone` / `TileMap` | ✅ | `src/game/world/Zone.hpp/.cpp`, `TileMap.hpp/.cpp` |
 | `WorldMap` (multi-zone container) | ✅ | `src/game/world/WorldMap.hpp/.cpp` |
-| `world_streaming` (proximity-based) | ✅ | `src/engine/world/world_streaming.hpp/.cpp` — delta load/evict coordinator; `WorldStreamingManager` |
+| `world_streaming` (proximity-based) | ✅ | `src/engine/world/world_streaming.hpp/.cpp` — delta load/evict coordinator; `WorldStreamingManager`; `SetMaxCompletionsPerFrame(n)` frame-budget cap; `DrawDebugOverlay(ImDrawList*)` minimap |
 | `world_partition` (spatial grid) | ✅ | `src/engine/world/world_partition.hpp/.cpp` — `CellCoord`, `CellIdFromCoord`, `GetCellsNearPosition` |
-| `async_loader` (worker thread) | ✅ | `src/engine/world/async_loader.hpp/.cpp` — single worker thread + job queue; swap-and-drain completions |
+| `async_loader` (worker thread) | ✅ | `src/engine/world/async_loader.hpp/.cpp` — single worker thread + job queue; `CancelJob(cellId)` cancellation token (`shared_ptr<atomic<bool>>`); `PumpMainThreadCompletions(maxCount)` |
+| `cell_data.hpp` | ✅ | `src/engine/world/cell_data.hpp` — `CellData` + `SpawnEntry` POD structs; worker↔main transfer type |
+| `GameStreamingManager` (Zone wiring) | ✅ | `src/game/world/GameStreamingManager.hpp/.cpp` — game-layer subclass; `OnLoadCell` calls `AssetLoader::LoadRaw` + deserialises JSON; `OnCellLoaded` calls `Zone::SpawnEnemies/SpawnNPCs`; `OnEvictCell` calls `Zone::Unload` |
+| Sample `.level` cooked data | ✅ | `samples/vertical_slice_project/Content/Levels/cell_0_0.cell.json` + `Cooked/Levels/cell_0_0.level`; `cook_assets.py` gains `cook_levels()` |
+| ImGui streaming debug overlay | ✅ | `WorldStreamingManager::DrawDebugOverlay` — colour-coded cell grid (grey/yellow/green/red + white camera outline); editor View menu toggle |
 
-**M7 is ✅ complete.** `WorldStreamingManager` + `WorldPartition` + `AsyncLoader` implemented. Three headless acceptance tests (`streaming_load`, `streaming_evict`, `streaming_async`) run in CI. **Next step (M8):** Wire all gameplay systems (combat, AI, quests, etc.) into the D3D11 runtime.
+**M7 is ✅ complete (all sub-milestones M7.1–M7.5).** `WorldStreamingManager` + `WorldPartition` + `AsyncLoader` + Zone lifecycle wiring + AssetLoader `.level` integration + cancellation tokens + frame-budget cap + ImGui debug overlay. Three CI acceptance scenes (`streaming_load`, `streaming_evict`, `streaming_async`). **Next step (M8):** Wire all gameplay systems (combat, AI, quests, etc.) into the D3D11 runtime.
 
 ---
 
@@ -255,17 +259,37 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M7 ✅ complete (World Streaming: WorldStreamingManager, WorldPartition, AsyncLoader, 3 CI acceptance scenes). Next: M8 Gameplay Integration.**
+> **Current position: M7 ✅ complete (all sub-milestones M7.1–M7.5: Zone wiring, AssetLoader `.level` integration, cancellation tokens, frame-budget cap, ImGui debug overlay). Next: M8 Gameplay Integration.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
 | ~~**1**~~ | ~~**M6: Editor**~~ | ✅ done — SceneHierarchyPanel, InspectorPanel, SceneSerialiser, Play-in-Engine, asset drag-drop |
-| ~~**2**~~ | ~~**M7: World streaming**~~ | ✅ done — WorldStreamingManager, WorldPartition, AsyncLoader, CI streaming tests |
+| ~~**2**~~ | ~~**M7: World streaming**~~ | ✅ done — WorldStreamingManager + Zone wiring (M7.1), AssetLoader `.level` (M7.2), cancellation tokens (M7.3), frame-budget cap (M7.4), ImGui debug overlay (M7.5) |
 | **1 — Now** | **M8: Gameplay integration** | All gameplay systems (combat, AI, quests, etc.) wired into **D3D11** runtime |
 | **2** | **Post-M8** | Cinematics, vehicle physics, D3D11 ImGui HUD, D3D11 PBR, dynamic sky, production save system (15 slots), PAK packager, behaviour tree, nav-mesh, dialogue |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
+
+---
+
+### M8.0 — Gameplay Integration Plan (D3D11 Runtime)
+
+> **Goal:** Wire all terminal-only gameplay systems into the D3D11 `engine_sandbox` runtime so the vertical-slice project runs as a real-time 3D game on Windows.
+
+Implementation order within M8:
+
+| Sub-milestone | Deliverable | Key files |
+|---------------|-------------|-----------|
+| **M8.1 — D3D11 game loop** | Replace terminal `Game` main-loop driver with a D3D11-backed `GameRuntime` that ticks all ECS systems (Combat, AI, Quest, Weather, Magic, Shop, Camp) from `engine_sandbox` | `src/sandbox/game_runtime.hpp/.cpp`; wire into `main.cpp --scene game` |
+| **M8.2 — Player entity + input** | Spawn player entity with `TransformComponent` + `HealthComponent` + `StatsComponent` + `MovementComponent` + `CombatComponent`; map Win32 keyboard events via `InputMapper` to component state | `src/game/systems/input_mapper.hpp/.cpp`; `Win32Window` key callback wired to `InputMapper` |
+| **M8.3 — Camera system** | Third-person follow camera: `CameraComponent` + `CameraSystem`; outputs view/proj matrices consumed by `D3D11Renderer`; supports manual orbit via mouse drag | `src/engine/rendering/camera_system.hpp/.cpp`; `CameraComponent` added to ECS |
+| **M8.4 — Enemy AI in 3D** | Port `AISystem` (FSM + A*) to work on 3D world positions (not 2D tile coords); adapt `TileMap` pathfinding grid to be generated from `WorldPartition` cell data | `src/game/systems/AISystem.cpp` — replace `TileCoord` with `Vec3` nav grid |
+| **M8.5 — Combat HUD (ImGui)** | D3D11 ImGui overlay showing HP/MP bars, ATB gauge, equipped spell, party member icons; driven by ECS component reads on the player + party | `src/engine/ui/hud.hpp/.cpp`; wired in `D3D11Renderer::DrawFrame` after scene pass |
+| **M8.6 — Quest + dialogue** | Implement `DialogueSystem` (missing stub); wire `QuestSystem` objective complete → HUD notification; add sample quest + NPC to vertical-slice cell | `src/game/systems/dialogue_system.hpp/.cpp`; update `cell_0_0.cell.json` |
+| **M8.7 — Zone streaming → D3D11** | Replace stub `GameStreamingManager` test data with real vertical-slice cells; `GameStreamingManager` spawns `AnimatorComponent`-bearing NPCs + enemies whose meshes are rendered by D3D11 skinned-mesh pass | Update `AssetRegistry.json`; wire `GameStreamingManager` into `game_runtime` |
+| **M8.8 — Save/load (15 slots)** | Production `SaveSystem`: JSON serialise full ECS `World` state, 15 numbered slots + auto-save slot; migration via `"version"` field; wired to CampSystem auto-save hook | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` |
+| **M8.9 — CI acceptance scene** | `--scene m8_gameplay` headless run: spawn player + 3 enemies; tick 60 frames; assert player HP unchanged (no bugs), at least 1 AI state transition, quest objective registered | `main.cpp --scene m8_gameplay`; `build-windows.yml` job |
 
 ---
 
@@ -767,8 +791,13 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M4b | IK solver + D3D11 GPU skinning CB | ✅ |
 | M5 | Jolt Physics | ✅ |
 | M6 | Editor inspector + Play-in-Engine | ✅ |
-| M7 | World streaming | ✅ |
-| M8 | Wire all gameplay into D3D11 runtime | ⬜ |
+| M7 | World streaming (WorldStreamingManager, WorldPartition, AsyncLoader) | ✅ |
+| M7.1 | Zone ↔ WorldStreamingManager wiring (`GameStreamingManager`) | ✅ |
+| M7.2 | AssetLoader `.level` cooked cell integration | ✅ |
+| M7.3 | Cancellation token in `AsyncLoader` (`CancelJob`) | ✅ |
+| M7.4 | Frame-budget cap (`SetMaxCompletionsPerFrame`) | ✅ |
+| M7.5 | ImGui streaming debug overlay + editor View menu toggle | ✅ |
+| M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | ⬜ |
 | Post-M8 | Vulkan catch-up (resume all DEFERRED Vulkan items) | ⬜ |
 
 ---
