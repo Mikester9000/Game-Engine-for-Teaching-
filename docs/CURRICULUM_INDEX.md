@@ -1735,12 +1735,14 @@ ImGuiDockNodeFlags_PassthruCentralNode lets the game/editor background
 Without this flag the dockspace paints an opaque background over the
 central region even when no window is docked there.
 
-### DockSpaceOverViewport API change (imgui >= 1.89.4)
+### DockSpaceOverViewport API change (imgui 1.89.4+)
 
 **Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L56) (line 56)
 
-The first argument changed from (const ImGuiViewport*) to (ImGuiID).
-Pass 0 to let ImGui auto-assign a stable ID based on the viewport.
+In imgui 1.89.4 the signature changed: the first argument switched from
+(const ImGuiViewport*) to (ImGuiID dockspace_id).  The viewport moved to
+the second argument.  vcpkg tag 2024.12.16 ships imgui 1.91.5, which uses
+this newer signature.  Pass 0 to let ImGui auto-assign a stable ID.
 ImGui::DockSpaceOverViewport(
 0,
 ImGui::GetMainViewport(),
@@ -1749,7 +1751,7 @@ ImGuiDockNodeFlags_PassthruCentralNode
 
 ### M6 new panels
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L72) (line 72)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L74) (line 74)
 
 These two panels share state with m_sceneEditor via the pointer set in
 the constructor.  They are separate dockable ImGui windows -- the user
@@ -1759,7 +1761,7 @@ m_inspector.Render();
 
 ### ImGui Modal Popups
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L83) (line 83)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L85) (line 85)
 
 OpenPopup() marks a popup as "open"; BeginPopupModal() renders it.
 The popup blocks interaction with windows behind it (modal behaviour).
@@ -1786,7 +1788,7 @@ ImGui::EndPopup();
 
 ### ImGui Menu Bar
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L124) (line 124)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L126) (line 126)
 
 ImGui::BeginMainMenuBar() / EndMainMenuBar() create a menu bar anchored to
 the top of the main viewport (not inside any ImGui window).
@@ -1800,7 +1802,7 @@ return;
 
 ### Load Scene (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L164) (line 164)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L166) (line 166)
 
 Mirrors "Save Scene" but in the other direction: shows a file open
 dialog, then calls SceneEditorPanel::LoadScene() to parse the JSON.
@@ -1825,7 +1827,7 @@ m_statusTimer   = 5.f;
 
 ### Posting WM_QUIT from within ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L218) (line 218)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L220) (line 220)
 
 PostQuitMessage(0) posts a WM_QUIT to the Win32 message queue.
 The main loop detects this and sets done = true, triggering cleanup.
@@ -1834,7 +1836,7 @@ PostQuitMessage(0);
 
 ### ShellExecuteW to run the cook script
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L239) (line 239)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L241) (line 241)
 
 ShellExecuteW launches an external process using the Windows
 shell.  "open" + a .py file invokes the system Python interpreter.
@@ -1851,7 +1853,7 @@ m_statusTimer   = 4.f;
 
 ### Play in Engine (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L255) (line 255)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L257) (line 257)
 
 "Play in Engine" saves the current scene to a temp .scene.json file
 and launches engine_sandbox.exe with --scene pointing to that file.
@@ -1867,7 +1869,7 @@ LaunchPlayInEngine();
 
 ### WideCharToMultiByte for UTF-8 conversion
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L293) (line 293)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L295) (line 295)
 
 Windows internally uses UTF-16 (wide char) for all API strings.
 Our public API uses std::string (UTF-8), which is the cross-platform norm.
@@ -1888,7 +1890,7 @@ return s;
 
 ### Play in Engine implementation
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L315) (line 315)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L317) (line 317)
 
 Steps:
   1. Write the scene to a well-known temp path (%TEMP%\editor_scene.scene.json).
@@ -1911,7 +1913,7 @@ tempScene += L"editor_preview.scene.json";
 
 ### ShellExecuteExW vs CreateProcessW
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L357) (line 357)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L359) (line 359)
 
 ShellExecuteExW is simpler but does not let us capture the output.
 CreateProcessW gives full control (redirect stdout/stderr, wait for exit).
@@ -1928,7 +1930,7 @@ sei.nShow       = SW_SHOWNORMAL;
 
 ### Simulating a Status Bar with ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L389) (line 389)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L391) (line 391)
 
 ImGui has no built-in "status bar" widget.  We simulate one by creating
 a small window pinned to the bottom of the viewport with no decorations.
@@ -1941,7 +1943,7 @@ constexpr float barHeight     = 22.f;
 
 ### IFileOpenDialog (modern Windows folder picker)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L440) (line 440)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L442) (line 442)
 
 The classic SHBrowseForFolderW dialog is old (Windows 3.1 era).
 The modern alternative is IFileOpenDialog with FOS_PICKFOLDERS set --
@@ -1954,7 +1956,7 @@ IFileOpenDialog* pFolderDialog = nullptr;
 
 ### GetSaveFileName (classic Win32 save dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L489) (line 489)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L491) (line 491)
 
 GetSaveFileNameW shows the standard "Save As" dialog. The filter string
 uses pairs of "Description\0*.ext\0" terminated by an extra \0.
@@ -1971,7 +1973,7 @@ filterLen += 2;  // trailing double-NUL
 
 ### GetOpenFileName (classic Win32 open dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L534) (line 534)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L536) (line 536)
 
 Mirrors PickSaveFile but uses OFN_FILEMUSTEXIST instead of OFN_OVERWRITEPROMPT.
 This is the standard "Open File" dialog used in all Win32 applications.
