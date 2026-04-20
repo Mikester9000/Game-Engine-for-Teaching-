@@ -122,8 +122,8 @@ void EditorApp::Render()
     // pass the actual camera position and use GameStreamingManager.
     if (m_showStreamingOverlay)
     {
-        ImGuiIO& io2 = ImGui::GetIO();
-        const float overlayX = io2.DisplaySize.x - 240.0f;
+        ImGuiIO& imguiIO = ImGui::GetIO();
+        const float overlayX = imguiIO.DisplaySize.x - 240.0f;
         const float overlayY = 40.0f;
 
         ImGui::SetNextWindowPos(ImVec2(overlayX, overlayY), ImGuiCond_Always);

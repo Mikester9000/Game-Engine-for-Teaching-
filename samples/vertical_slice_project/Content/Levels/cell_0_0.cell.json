@@ -1,5 +1,4 @@
 {
-  "$schema": "../../shared/schemas/asset_registry.schema.json",
   "zoneName": "Duscae Grasslands — Cell 0,0",
   "tileWidth": 40,
   "tileHeight": 40,

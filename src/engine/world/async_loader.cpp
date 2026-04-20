@@ -117,7 +117,7 @@ void AsyncLoader::CancelJob(uint32_t cellId)
     std::lock_guard<std::mutex> lock(m_pendingMtx);
     for (auto& job : m_pending)
     {
-        if (job.cellId == cellId && job.cancelled)
+        if (job.cellId == cellId)
             job.cancelled->store(true, std::memory_order_release);
     }
     LOG_INFO("AsyncLoader: CancelJob requested for cellId=" << cellId);

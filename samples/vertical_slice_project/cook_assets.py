@@ -405,7 +405,12 @@ def cook_levels(registry: list[dict]) -> int:
     count = 0
     for src in sorted(levels_src.glob("**/*.cell.json")):
         rel = src.relative_to(levels_src)            # relative to Levels/
-        dst = levels_dst / rel.with_suffix(".level")  # rename .cell.json → .level
+        # TEACHING NOTE — Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
+        # Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
+        # leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
+        # All files matched by **/*.cell.json are guaranteed to end in ".cell.json".
+        cooked_name = src.name[: -len(".cell.json")] + ".level"
+        dst = levels_dst / rel.parent / cooked_name
         dst.parent.mkdir(parents=True, exist_ok=True)
 
         # Validate the source JSON has required fields before cooking.
@@ -425,7 +430,7 @@ def cook_levels(registry: list[dict]) -> int:
         registry.append({
             "id":     new_guid(),
             "type":   "level",
-            "name":   src.stem.replace(".cell", ""),
+            "name":   src.name[: -len(".cell.json")],  # "cell_0_0.cell.json" → "cell_0_0"
             "source": "Levels/" + str(rel),
             "cooked": str(dst.relative_to(SCRIPT_DIR)),
             "hash":   sha256_file(src),

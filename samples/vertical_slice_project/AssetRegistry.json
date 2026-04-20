@@ -1,10 +1,10 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-20T11:12:01Z",
+  "generatedAt": "2026-04-20T14:14:27Z",
   "assets": [
     {
-      "id": "f8f26246-d69f-4e50-b79b-d5e0e5ed9e51",
+      "id": "ed58b9d5-e362-4a11-9e30-4763a533383a",
       "type": "scene",
       "name": "MainTown",
       "source": "Maps/MainTown.scene.json",
@@ -17,12 +17,12 @@
       ]
     },
     {
-      "id": "b4a3c2d1-e5f6-4789-8012-a3b4c5d6e7f8",
+      "id": "97c924d3-2e56-4978-991a-2c2567166f21",
       "type": "level",
-      "name": "DuscaeGrasslands_Cell_0_0",
+      "name": "cell_0_0",
       "source": "Levels/cell_0_0.cell.json",
       "cooked": "Cooked/Levels/cell_0_0.level",
-      "hash": "",
+      "hash": "c80490bcddefefabbab828b7b1548e46e196146b6243c37c779dd8dbf1ebcc2a",
       "dependencies": [],
       "tags": [
         "level",
