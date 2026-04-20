@@ -281,15 +281,15 @@ Implementation order within M8:
 
 | Sub-milestone | Deliverable | Key files |
 |---------------|-------------|-----------|
-| **M8.1 — D3D11 game loop** | Replace terminal `Game` main-loop driver with a D3D11-backed `GameRuntime` that ticks all ECS systems (Combat, AI, Quest, Weather, Magic, Shop, Camp) from `engine_sandbox` | `src/sandbox/game_runtime.hpp/.cpp`; wire into `main.cpp --scene game` |
-| **M8.2 — Player entity + input** | Spawn player entity with `TransformComponent` + `HealthComponent` + `StatsComponent` + `MovementComponent` + `CombatComponent`; map Win32 keyboard events via `InputMapper` to component state | `src/game/systems/input_mapper.hpp/.cpp`; `Win32Window` key callback wired to `InputMapper` |
-| **M8.3 — Camera system** | Third-person follow camera: `CameraComponent` + `CameraSystem`; outputs view/proj matrices consumed by `D3D11Renderer`; supports manual orbit via mouse drag | `src/engine/rendering/camera_system.hpp/.cpp`; `CameraComponent` added to ECS |
-| **M8.4 — Enemy AI in 3D** | Port `AISystem` (FSM + A*) to work on 3D world positions (not 2D tile coords); adapt `TileMap` pathfinding grid to be generated from `WorldPartition` cell data | `src/game/systems/AISystem.cpp` — replace `TileCoord` with `Vec3` nav grid |
-| **M8.5 — Combat HUD (ImGui)** | D3D11 ImGui overlay showing HP/MP bars, ATB gauge, equipped spell, party member icons; driven by ECS component reads on the player + party | `src/engine/ui/hud.hpp/.cpp`; wired in `D3D11Renderer::DrawFrame` after scene pass |
-| **M8.6 — Quest + dialogue** | Implement `DialogueSystem` (missing stub); wire `QuestSystem` objective complete → HUD notification; add sample quest + NPC to vertical-slice cell | `src/game/systems/dialogue_system.hpp/.cpp`; update `cell_0_0.cell.json` |
+| **M8.1 — D3D11 game loop** ✅ | Replace terminal `Game` main-loop driver with a D3D11-backed `GameRuntime` that ticks all ECS systems (Combat, AI, Quest, Weather, Magic, Shop, Camp) from `engine_sandbox` | `src/sandbox/game_runtime.hpp/.cpp`; wire into `main.cpp --scene game` |
+| **M8.2 — Player entity + input** ✅ | Spawn player entity with `TransformComponent` + `HealthComponent` + `StatsComponent` + `MovementComponent` + `CombatComponent`; map Win32 keyboard events via `InputMapper` to component state | `src/game/systems/input_mapper.hpp/.cpp`; `Win32Window` key callback wired to `InputMapper` |
+| **M8.3 — Camera system** ✅ | Third-person follow camera: `CameraComponent` + `CameraSystem`; outputs view/proj matrices consumed by `D3D11Renderer`; supports manual orbit via mouse drag | `src/engine/rendering/camera_system.hpp/.cpp`; `CameraComponent` added to ECS |
+| **M8.4 — Enemy AI in 3D** ✅ | Port `AISystem` (FSM + A*) to work on 3D world positions (not 2D tile coords); adapt `TileMap` pathfinding grid to be generated from `WorldPartition` cell data | `src/game/systems/AISystem.cpp` — replace `TileCoord` with `Vec3` nav grid |
+| **M8.5 — Combat HUD (ImGui)** ✅ | D3D11 ImGui overlay showing HP/MP bars, ATB gauge, equipped spell, party member icons; driven by ECS component reads on the player + party | `src/engine/ui/hud.hpp/.cpp`; wired in `D3D11Renderer::DrawFrame` after scene pass |
+| **M8.6 — Quest + dialogue** ✅ | Implement `DialogueSystem` (missing stub); wire `QuestSystem` objective complete → HUD notification; add sample quest + NPC to vertical-slice cell | `src/game/systems/dialogue_system.hpp/.cpp`; update `cell_0_0.cell.json` |
 | **M8.7 — Zone streaming → D3D11** | Replace stub `GameStreamingManager` test data with real vertical-slice cells; `GameStreamingManager` spawns `AnimatorComponent`-bearing NPCs + enemies whose meshes are rendered by D3D11 skinned-mesh pass | Update `AssetRegistry.json`; wire `GameStreamingManager` into `game_runtime` |
-| **M8.8 — Save/load (15 slots)** | Production `SaveSystem`: JSON serialise full ECS `World` state, 15 numbered slots + auto-save slot; migration via `"version"` field; wired to CampSystem auto-save hook | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` |
-| **M8.9 — CI acceptance scene** | `--scene m8_gameplay` headless run: spawn player + 3 enemies; tick 60 frames; assert player HP unchanged (no bugs), at least 1 AI state transition, quest objective registered | `main.cpp --scene m8_gameplay`; `build-windows.yml` job |
+| **M8.8 — Save/load (15 slots)** ✅ | Production `SaveSystem`: JSON serialise full ECS `World` state, 15 numbered slots + auto-save slot; migration via `"version"` field; wired to CampSystem auto-save hook | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` |
+| **M8.9 — CI acceptance scene** ✅ | `--scene m8_gameplay` headless run: spawn player + 3 enemies; tick 60 frames; assert player HP unchanged (no bugs), at least 1 AI state transition, quest objective registered | `main.cpp --scene m8_gameplay`; `build-windows.yml` job |
 
 ---
 
@@ -797,7 +797,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M7.3 | Cancellation token in `AsyncLoader` (`CancelJob`) | ✅ |
 | M7.4 | Frame-budget cap (`SetMaxCompletionsPerFrame`) | ✅ |
 | M7.5 | ImGui streaming debug overlay + editor View menu toggle | ✅ |
-| M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | ⬜ |
+| M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | 🔨 |
 | Post-M8 | Vulkan catch-up (resume all DEFERRED Vulkan items) | ⬜ |
 
 ---

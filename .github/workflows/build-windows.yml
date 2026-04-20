@@ -186,6 +186,20 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M8 — Gameplay Integration acceptance test
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M8.9 CI Acceptance Test
+      # This scene runs all gameplay systems (Combat, AI, Quest, Weather) in
+      # the headless D3D11 sandbox and asserts three conditions:
+      #   1. Player HP unchanged after 60 frames (enemies too far to reach).
+      #   2. At least 1 AI state transition (IDLE → WANDERING within 1 s).
+      #   3. Quest objective registered on the player entity.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M8 — m8_gameplay)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_gameplay
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # 6. Cook the vertical slice sample project.
       # -----------------------------------------------------------------------
       - name: Cook vertical slice project

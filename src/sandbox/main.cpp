@@ -68,6 +68,8 @@
  *   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
  *   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
  *   engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
+ *   engine_sandbox.exe --scene game                         # M8 full gameplay windowed (D3D11)
+ *   engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
  *
  * ============================================================================
  *
@@ -118,6 +120,19 @@
 #include "engine/world/world_streaming.hpp"
 #include "engine/world/world_partition.hpp"
 #include "engine/world/async_loader.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M8 Gameplay Integration headless test
+// ---------------------------------------------------------------------------
+// The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
+// in the D3D11 engine_sandbox without a real window.  It:
+//   1. Spawns player + 3 enemies via GameRuntime::Init().
+//   2. Runs 60 fixed-dt frames (≈ 1 simulated second).
+//   3. Asserts: player HP unchanged (enemies haven't reached melee range).
+//   4. Asserts: ≥ 1 AI state transition (IDLE → WANDERING within 1 s).
+//   5. Asserts: quest objective registered for player.
+// ---------------------------------------------------------------------------
+#include "sandbox/game_runtime.hpp"
 
 #include <iostream>
 #include <exception>
@@ -885,6 +900,137 @@ int main(int argc, char* argv[])
                           << worstFrameMs << " ms over "
                           << kFrames << " frames (cap=" << kMaxPerFrame << "/frame).\n";
             }
+            else if (scene == "m8_gameplay")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — M8 Gameplay Integration headless test
+                // -----------------------------------------------------------
+                // This acceptance scene validates that ALL gameplay systems
+                // (Combat, AI, Quest, Weather, etc.) run correctly together
+                // in the D3D11 sandbox without a real renderer or window.
+                //
+                // The three acceptance criteria match the M8.9 plan:
+                //
+                //   1. PLAYER HP UNCHANGED — Running 60 frames (1 simulated
+                //      second) at 1/60 s dt.  Enemies spawn 10–10 tiles away
+                //      from the player; the AISystem cannot move them to
+                //      melee range in 1 s, so the player takes no damage.
+                //
+                //   2. AI STATE TRANSITION — At minimum, every IDLE enemy
+                //      should wander within 1 second (wanderTimer expires).
+                //      The GameRuntime counts transitions each frame.
+                //
+                //   3. QUEST OBJECTIVE REGISTERED — GameRuntime::Init()
+                //      calls QuestSystem::AcceptQuest(playerID, 1) which
+                //      adds a QuestEntry to the player's QuestComponent.
+                //      We verify activeCount > 0 to confirm.
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Heap-allocate GameRuntime
+                // ──────────────────────────────────────────
+                // GameRuntime contains a value-type ECS World.  World's
+                // EntityManager holds std::array<Signature, MAX_ENTITIES>
+                // (65 536 × 8 bytes ≈ 512 KB).  MSVC reserves the full
+                // stack frame for ALL local variables in main() at function
+                // entry, so a stack-allocated GameRuntime would push the
+                // frame well over the 1 MB Windows default stack limit even
+                // when this branch is never taken (e.g., --headless with no
+                // --scene arg).  Using make_unique puts the data on the heap
+                // and avoids the stack overflow.
+                auto gameRuntime = std::make_unique<sandbox::GameRuntime>();
+                if (!gameRuntime->Init())
+                {
+                    std::cout << "[FAIL] m8_gameplay: GameRuntime::Init() failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+
+                constexpr float kDt     = 1.0f / 60.0f;
+                constexpr int   kFrames = 60;
+                const int playerHpBefore = gameRuntime->GetWorld().HasComponent<HealthComponent>(
+                    gameRuntime->GetPlayerID())
+                    ? gameRuntime->GetWorld().GetComponent<HealthComponent>(
+                        gameRuntime->GetPlayerID()).hp
+                    : -1;
+
+                for (int f = 0; f < kFrames; ++f)
+                    gameRuntime->Update(kDt);
+
+                int testsFailed = 0;
+
+                // --- Test 1: Player HP unchanged ---
+                {
+                    const EntityID pid = gameRuntime->GetPlayerID();
+                    const int hpAfter  = gameRuntime->GetWorld().HasComponent<HealthComponent>(pid)
+                        ? gameRuntime->GetWorld().GetComponent<HealthComponent>(pid).hp
+                        : -1;
+
+                    if (hpAfter != playerHpBefore)
+                    {
+                        std::cout << "[FAIL] m8_gameplay/player_hp: "
+                                  << "HP changed from " << playerHpBefore
+                                  << " to " << hpAfter << " (enemies reached player too fast).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] m8_gameplay/player_hp: "
+                                  << "HP=" << hpAfter << " (no damage taken in 1 s).\n";
+                    }
+                }
+
+                // --- Test 2: At least 1 AI state transition ---
+                {
+                    const int transitions = gameRuntime->GetAIStateTransitionCount();
+                    if (transitions < 1)
+                    {
+                        std::cout << "[FAIL] m8_gameplay/ai_transition: "
+                                  << "0 AI state transitions observed in "
+                                  << kFrames << " frames.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] m8_gameplay/ai_transition: "
+                                  << transitions << " AI state transition(s) observed.\n";
+                    }
+                }
+
+                // --- Test 3: Quest objective registered ---
+                {
+                    const EntityID pid = gameRuntime->GetPlayerID();
+                    bool questOk = false;
+                    if (gameRuntime->GetWorld().HasComponent<QuestComponent>(pid))
+                    {
+                        const auto& qc = gameRuntime->GetWorld()
+                                            .GetComponent<QuestComponent>(pid);
+                        questOk = (qc.activeCount > 0);
+                    }
+                    if (!questOk)
+                    {
+                        std::cout << "[FAIL] m8_gameplay/quest: "
+                                  << "no active quest found on player entity.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] m8_gameplay/quest: "
+                                  << "quest objective registered on player.\n";
+                    }
+                }
+
+                gameRuntime->Shutdown();
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] m8_gameplay: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] m8_gameplay: all 3 acceptance tests passed.\n";
+            }
             else
             {
                 // M0 baseline: device init succeeded.
@@ -936,6 +1082,27 @@ int main(int argc, char* argv[])
             }
         }
 
+        // -----------------------------------------------------------------------
+        // TEACHING NOTE — M8 GameRuntime in the windowed render loop
+        // -----------------------------------------------------------------------
+        // When --scene game is specified, GameRuntime drives all gameplay
+        // systems.  The clear colour is taken from GetClearColour() which
+        // encodes time-of-day and combat state, giving a real-time visual
+        // reflection of the running game world.
+        // -----------------------------------------------------------------------
+        std::unique_ptr<sandbox::GameRuntime> gameRuntime;
+        if (scene == "game" || scene == "m8_gameplay")
+        {
+            gameRuntime = std::make_unique<sandbox::GameRuntime>();
+            if (!gameRuntime->Init())
+            {
+                std::cerr << "[FAIL] GameRuntime::Init() returned false.\n";
+                renderer->Shutdown();
+                window.Shutdown();
+                return 1;
+            }
+        }
+
         while (window.IsRunning())
         {
             // Poll Win32 messages (resize, keyboard, close, etc.)
@@ -959,6 +1126,12 @@ int main(int argc, char* argv[])
                 // -- TestWorld mode: update all game systems, map state to colour.
                 testWorld->Update(static_cast<float>(dt));
                 testWorld->GetClearColour(clearR, clearG, clearB);
+            }
+            else if (gameRuntime)
+            {
+                // -- GameRuntime mode: full M8 gameplay, map state to clear colour.
+                gameRuntime->Update(static_cast<float>(dt));
+                gameRuntime->GetClearColour(clearR, clearG, clearB);
             }
             else
             {

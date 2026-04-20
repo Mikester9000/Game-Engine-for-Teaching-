@@ -170,6 +170,12 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     # step-up, slope handling, gravity integration, and pImpl pattern with Jolt.
     "src/engine/physics/character_controller.cpp":
         "CharacterController Jolt wrapper — M5 physics milestone; TEACHING NOTEs cover CharacterVirtual update, gravity, step-up, and pImpl with Jolt types",
+    # save_system.cpp: M8 SaveSystem — serialises/deserialises all registered ECS
+    # components (Transform, Health, Stats, Name, Combat, AI, Camera, etc.).
+    # Size is justified by the component coverage: each component has a save block
+    # and a matching load block, and every block has TEACHING NOTEs.
+    "src/engine/save/save_system.cpp":
+        "SaveSystem M8 — full ECS round-trip; one save+load block per component with TEACHING NOTEs",
 }
 
 # ---------------------------------------------------------------------------
