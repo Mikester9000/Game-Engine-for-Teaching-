@@ -11,8 +11,10 @@
 #include "game/GameData.hpp"
 #include "engine/core/Logger.hpp"
 
+#include <algorithm> // std::min, std::max, std::move
 #include <iostream>  // std::cout (CI acceptance output)
 #include <cmath>     // std::sin, std::cos
+#include <vector>    // std::vector (combat bridging)
 
 namespace sandbox {
 
@@ -140,11 +142,14 @@ bool GameRuntime::Init()
             continue;
         }
 
-        // Give each enemy a bit more range so they detect the player from a distance.
+        // TEACHING NOTE — AISystem compares TileDistance (distance / TILE_SIZE)
+        // against these fields, so they must stay in TILE units.  Do NOT
+        // multiply by TILE_SIZE here; doing so would make ranges ~64× too large
+        // (enemies would aggro from across the whole map).
         auto& ai = m_world.GetComponent<AIComponent>(eid);
-        ai.sightRange  = TILE_SIZE * 15.0f;
-        ai.hearRange   = TILE_SIZE * 8.0f;
-        ai.attackRange = TILE_SIZE * 1.5f;
+        ai.sightRange  = 15.0f;   // 15 tiles  ≈ 960 world units
+        ai.hearRange   =  8.0f;   //  8 tiles  ≈ 512 world units
+        ai.attackRange =  1.5f;   //  1.5 tiles ≈  96 world units
 
         // Track initial AI states for transition detection.
         m_prevAIStates.push_back({ eid, static_cast<int>(ai.currentState) });
@@ -215,20 +220,100 @@ void GameRuntime::Update(float dt)
     // 4. Track AI state transitions (for acceptance test).
     TrackAITransitions();
 
-    // 5. Combat — process ATB timers and attacks.
+    // 5. Combat bridging — start encounter when enemies aggro; route player
+    //    attack/spell intent from ECS component state into CombatSystem API.
+    //
+    // TEACHING NOTE — CombatSystem is stateful: Update() only does meaningful
+    // work after StartCombat() has been called, and player actions must be
+    // forwarded via explicit CombatSystem entry points (PlayerAttack /
+    // PlayerCastSpell).  GameRuntime is the integration layer that observes
+    // ECS state set by InputMapper and AISystem, then bridges those observations
+    // into the imperative CombatSystem API.
+    if (!m_combat->IsActive())
+    {
+        // Start an encounter the first frame any enemy enters ATTACK state
+        // (i.e. they have closed to within attackRange of the player).
+        bool anyAttacking = false;
+        for (const auto& [eid, prevState] : m_prevAIStates)
+        {
+            (void)prevState;
+            if (!m_world.IsAlive(eid)) continue;
+            if (!m_world.HasComponent<AIComponent>(eid)) continue;
+            if (m_world.GetComponent<AIComponent>(eid).currentState
+                    == AIComponent::State::ATTACK)
+            {
+                anyAttacking = true;
+                break;
+            }
+        }
+
+        if (anyAttacking)
+        {
+            // Collect all still-living enemy IDs for the encounter.
+            std::vector<EntityID> livingEnemies;
+            for (const auto& [eid, prevState] : m_prevAIStates)
+            {
+                (void)prevState;
+                if (m_world.IsAlive(eid))
+                    livingEnemies.push_back(eid);
+            }
+            if (!livingEnemies.empty())
+                m_combat->StartCombat(m_playerID, std::move(livingEnemies));
+        }
+    }
+    else if (m_world.HasComponent<CombatComponent>(m_playerID))
+    {
+        // Combat is active — forward player attack/spell intent to CombatSystem.
+        auto& playerCombat = m_world.GetComponent<CombatComponent>(m_playerID);
+
+        // Assign nearest living enemy as target if none is set.
+        if (playerCombat.currentTarget == NULL_ENTITY
+            || !m_world.IsAlive(playerCombat.currentTarget))
+        {
+            for (const auto& [eid, prevState] : m_prevAIStates)
+            {
+                (void)prevState;
+                if (m_world.IsAlive(eid))
+                {
+                    playerCombat.currentTarget = eid;
+                    break;
+                }
+            }
+        }
+
+        if (playerCombat.isInCombat
+            && playerCombat.currentTarget != NULL_ENTITY
+            && m_world.IsAlive(playerCombat.currentTarget))
+        {
+            if (m_world.HasComponent<MagicComponent>(m_playerID)
+                && m_world.GetComponent<MagicComponent>(m_playerID).isCasting)
+            {
+                // Spell ID 1 = Firaga (the sample project's equipped spell).
+                m_combat->PlayerCastSpell(1, playerCombat.currentTarget);
+            }
+            else
+            {
+                m_combat->PlayerAttack(playerCombat.currentTarget);
+            }
+            // Clear intent flag; CombatSystem will enforce its own cooldown.
+            playerCombat.isInCombat = false;
+        }
+    }
+
+    // 6. CombatSystem tick — processes ATB timers, status effects, deaths.
     m_combat->Update(dt);
 
-    // 6. Dialogue — update NPC interaction ranges.
+    // 7. Dialogue — update NPC interaction ranges.
     m_dialogue->Update(m_world, m_playerID, dt);
 
-    // 7. Camera — compute view/proj matrices.
+    // 8. Camera — compute view/proj matrices.
     m_camera.Update(m_world, m_backBufferW, m_backBufferH);
 
-    // 8. HUD snapshot — extract game state for the renderer overlay.
+    // 9. HUD snapshot — extract game state for the renderer overlay.
     m_lastHudState = m_hud.ReadFromWorld(m_world, m_playerID,
                                           m_frameCount, m_gameTime);
 
-    // 9. Print debug every 60 frames (CI log output).
+    // 10. Print debug every 60 frames (CI log output).
     m_hud.PrintDebug(m_lastHudState, 60);
 }
 

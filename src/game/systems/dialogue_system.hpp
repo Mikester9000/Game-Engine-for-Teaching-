@@ -43,6 +43,7 @@
 #pragma once
 
 #include <string>
+#include <utility>  // std::pair — used by DialogueNode::choices
 #include <vector>
 #include <cstdint>
 

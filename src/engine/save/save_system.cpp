@@ -21,7 +21,7 @@
 #include <sstream>
 #include <chrono>
 #include <ctime>
-#include <unordered_set> // std::unordered_set — O(1) duplicate detection on Load()
+#include <vector>       // std::vector — entity enumeration on Load()
 
 #ifdef ENGINE_ENABLE_JSON
 #   include <nlohmann/json.hpp>
@@ -158,139 +158,199 @@ bool SaveSystem::Save(World& world, EntityID playerID,
     root["locationName"] = locationName;
 
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — Iterating living entities.
+    // TEACHING NOTE — Iterating ALL living entities.
     // -----------------------------------------------------------------------
-    // We query every entity that has at least a TransformComponent (the most
-    // fundamental component), then check for each other component individually.
-    // This means entities with NO TransformComponent are NOT saved — that is
-    // intentional; pure "controller" entities (e.g. a camera without a body)
-    // don't need to be persisted.
+    // We use GetEntityManager().GetLivingEntities() to iterate EVERY live
+    // entity and conditionally serialise each component if present.  This
+    // ensures entities without a TransformComponent (e.g. a camera entity
+    // that only carries CameraComponent) are also persisted.
+    //
+    // TEACHING NOTE — Why we omit the runtime entity ID
+    // ECS entity IDs are ephemeral process-local handles.  Re-creating
+    // entities during Load() produces NEW IDs, so a saved ID cannot be
+    // safely restored (it might collide with an already-living entity).
+    // Until Load-side ID remapping is implemented we omit the id field
+    // entirely to avoid implying a round-trip guarantee we do not provide.
 
     json entities = json::array();
 
-    world.View<TransformComponent>(
-        [&](EntityID eid, TransformComponent& tf)
+    std::vector<EntityID> livingEntities;
+    world.GetEntityManager().GetLivingEntities(livingEntities);
+
+    for (EntityID eid : livingEntities)
+    {
+        json ent;
+        json comps;
+
+        // ---- Transform (conditional) --------------------------------------
+        if (world.HasComponent<TransformComponent>(eid))
         {
-            json ent;
-            ent["id"] = static_cast<uint32_t>(eid);
+            const auto& tf = world.GetComponent<TransformComponent>(eid);
+            json c;
+            c["px"] = tf.position.x;  c["py"] = tf.position.y;  c["pz"] = tf.position.z;
+            c["rx"] = tf.rotation.x;  c["ry"] = tf.rotation.y;  c["rz"] = tf.rotation.z;
+            c["sx"] = tf.scale.x;     c["sy"] = tf.scale.y;     c["sz"] = tf.scale.z;
+            comps[std::string(kTagTransform)] = c;
+        }
 
-            json comps;
+        // ---- Health -------------------------------------------------------
+        if (world.HasComponent<HealthComponent>(eid))
+        {
+            const auto& h = world.GetComponent<HealthComponent>(eid);
+            json c;
+            c["hp"] = h.hp;  c["maxHp"] = h.maxHp;
+            c["mp"] = h.mp;  c["maxMp"] = h.maxMp;
+            comps[std::string(kTagHealth)] = c;
+        }
 
-            // ---- Transform ------------------------------------------------
+        // ---- Stats --------------------------------------------------------
+        if (world.HasComponent<StatsComponent>(eid))
+        {
+            const auto& s = world.GetComponent<StatsComponent>(eid);
+            json c;
+            c["strength"] = s.strength; c["defence"] = s.defence;
+            c["magic"]    = s.magic;    c["spirit"]  = s.spirit;
+            c["speed"]    = s.speed;    c["luck"]    = s.luck;
+            comps[std::string(kTagStats)] = c;
+        }
+
+        // ---- Name ---------------------------------------------------------
+        if (world.HasComponent<NameComponent>(eid))
+        {
+            const auto& n = world.GetComponent<NameComponent>(eid);
+            json c;
+            c["name"]       = n.name;
+            c["internalID"] = n.internalID;
+            c["title"]      = n.title;
+            comps[std::string(kTagName)] = c;
+        }
+
+        // ---- Movement -----------------------------------------------------
+        if (world.HasComponent<MovementComponent>(eid))
+        {
+            const auto& m = world.GetComponent<MovementComponent>(eid);
+            json c;
+            c["moveSpeed"]   = m.moveSpeed;
+            c["sprintSpeed"] = m.sprintSpeed;
+            comps[std::string(kTagMovement)] = c;
+        }
+
+        // ---- Combat -------------------------------------------------------
+        if (world.HasComponent<CombatComponent>(eid))
+        {
+            const auto& cb = world.GetComponent<CombatComponent>(eid);
+            json c;
+            c["isInCombat"]   = cb.isInCombat;
+            c["attackRate"]   = cb.attackRate;
+            c["xpReward"]     = cb.xpReward;
+            c["gilReward"]    = cb.gilReward;
+            comps[std::string(kTagCombat)] = c;
+        }
+
+        // ---- Level --------------------------------------------------------
+        if (world.HasComponent<LevelComponent>(eid))
+        {
+            const auto& lv = world.GetComponent<LevelComponent>(eid);
+            json c;
+            c["level"]     = lv.level;
+            c["currentXP"] = lv.currentXP;
+            comps[std::string(kTagLevel)] = c;
+        }
+
+        // ---- Currency -----------------------------------------------------
+        if (world.HasComponent<CurrencyComponent>(eid))
+        {
+            const auto& cur = world.GetComponent<CurrencyComponent>(eid);
+            json c;
+            c["gil"]         = static_cast<uint64_t>(cur.gil);
+            c["crownTokens"] = static_cast<uint32_t>(cur.crownTokens);
+            comps[std::string(kTagCurrency)] = c;
+        }
+
+        // ---- Quest --------------------------------------------------------
+        if (world.HasComponent<QuestComponent>(eid))
+        {
+            const auto& qc = world.GetComponent<QuestComponent>(eid);
+            json questsArr = json::array();
+            for (uint32_t q = 0; q < qc.activeCount; ++q)
             {
-                json c;
-                c["px"] = tf.position.x;  c["py"] = tf.position.y;  c["pz"] = tf.position.z;
-                c["rx"] = tf.rotation.x;  c["ry"] = tf.rotation.y;  c["rz"] = tf.rotation.z;
-                c["sx"] = tf.scale.x;     c["sy"] = tf.scale.y;     c["sz"] = tf.scale.z;
-                comps[std::string(kTagTransform)] = c;
+                const auto& qe = qc.quests[q];
+                json qj;
+                qj["questID"]    = qe.questID;
+                qj["objective"]  = qe.objective;
+                qj["progress"]   = qe.progress;
+                qj["required"]   = qe.required;
+                qj["isComplete"] = qe.isComplete;
+                qj["isFailed"]   = qe.isFailed;
+                questsArr.push_back(qj);
             }
+            comps[std::string(kTagQuest)] = questsArr;
+        }
 
-            // ---- Health ---------------------------------------------------
-            if (world.HasComponent<HealthComponent>(eid))
-            {
-                const auto& h = world.GetComponent<HealthComponent>(eid);
-                json c;
-                c["hp"] = h.hp;  c["maxHp"] = h.maxHp;
-                c["mp"] = h.mp;  c["maxMp"] = h.maxMp;
-                comps[std::string(kTagHealth)] = c;
-            }
+        // ---- Magic --------------------------------------------------------
+        if (world.HasComponent<MagicComponent>(eid))
+        {
+            const auto& mg = world.GetComponent<MagicComponent>(eid);
+            json c;
+            c["equippedSpell"] = mg.equippedSpell;
+            comps[std::string(kTagMagic)] = c;
+        }
 
-            // ---- Stats ----------------------------------------------------
-            if (world.HasComponent<StatsComponent>(eid))
-            {
-                const auto& s = world.GetComponent<StatsComponent>(eid);
-                json c;
-                c["strength"] = s.strength; c["defence"] = s.defence;
-                c["magic"]    = s.magic;    c["spirit"]  = s.spirit;
-                c["speed"]    = s.speed;    c["luck"]    = s.luck;
-                comps[std::string(kTagStats)] = c;
-            }
+        // ---- AI -----------------------------------------------------------
+        // TEACHING NOTE — Persist AI state so enemies resume patrol/chase
+        // after loading.  We only save the minimal fields needed to restore
+        // behaviour; runtime-computed lists (path cache, etc.) are omitted.
+        if (world.HasComponent<AIComponent>(eid))
+        {
+            const auto& ai = world.GetComponent<AIComponent>(eid);
+            json c;
+            c["currentState"] = static_cast<int>(ai.currentState);
+            c["sightRange"]   = ai.sightRange;
+            c["hearRange"]    = ai.hearRange;
+            c["attackRange"]  = ai.attackRange;
+            c["isNocturnal"]  = ai.isNocturnal;
+            comps[std::string(kTagAI)] = c;
+        }
 
-            // ---- Name -----------------------------------------------------
-            if (world.HasComponent<NameComponent>(eid))
-            {
-                const auto& n = world.GetComponent<NameComponent>(eid);
-                json c;
-                c["name"]       = n.name;
-                c["internalID"] = n.internalID;
-                c["title"]      = n.title;
-                comps[std::string(kTagName)] = c;
-            }
+        // ---- Equipment ----------------------------------------------------
+        if (world.HasComponent<EquipmentComponent>(eid))
+        {
+            const auto& eq = world.GetComponent<EquipmentComponent>(eid);
+            json c;
+            c["weaponID"]  = eq.weaponID;
+            c["offhandID"] = eq.offhandID;
+            c["headID"]    = eq.headID;
+            c["bodyID"]    = eq.bodyID;
+            c["legsID"]    = eq.legsID;
+            comps[std::string(kTagEquipment)] = c;
+        }
 
-            // ---- Movement -------------------------------------------------
-            if (world.HasComponent<MovementComponent>(eid))
-            {
-                const auto& m = world.GetComponent<MovementComponent>(eid);
-                json c;
-                c["moveSpeed"]   = m.moveSpeed;
-                c["sprintSpeed"] = m.sprintSpeed;
-                comps[std::string(kTagMovement)] = c;
-            }
+        // ---- Camera -------------------------------------------------------
+        // TEACHING NOTE — CameraComponent is not renderable but carries user-
+        // tuned FOV / orbit parameters that should survive save/load.
+        if (world.HasComponent<CameraComponent>(eid))
+        {
+            const auto& cam = world.GetComponent<CameraComponent>(eid);
+            json c;
+            c["fovDegrees"]   = cam.fovDegrees;
+            c["nearPlane"]    = cam.nearPlane;
+            c["farPlane"]     = cam.farPlane;
+            c["pitchRadians"] = cam.pitchRadians;
+            c["yawRadians"]   = cam.yawRadians;
+            c["offsetX"]      = cam.offset.x;
+            c["offsetY"]      = cam.offset.y;
+            c["offsetZ"]      = cam.offset.z;
+            c["isActive"]     = cam.isActive;
+            comps[std::string(kTagCamera)] = c;
+        }
 
-            // ---- Combat ---------------------------------------------------
-            if (world.HasComponent<CombatComponent>(eid))
-            {
-                const auto& cb = world.GetComponent<CombatComponent>(eid);
-                json c;
-                c["isInCombat"]   = cb.isInCombat;
-                c["attackRate"]   = cb.attackRate;
-                c["xpReward"]     = cb.xpReward;
-                c["gilReward"]    = cb.gilReward;
-                comps[std::string(kTagCombat)] = c;
-            }
-
-            // ---- Level ----------------------------------------------------
-            if (world.HasComponent<LevelComponent>(eid))
-            {
-                const auto& lv = world.GetComponent<LevelComponent>(eid);
-                json c;
-                c["level"]     = lv.level;
-                c["currentXP"] = lv.currentXP;
-                comps[std::string(kTagLevel)] = c;
-            }
-
-            // ---- Currency -------------------------------------------------
-            if (world.HasComponent<CurrencyComponent>(eid))
-            {
-                const auto& cur = world.GetComponent<CurrencyComponent>(eid);
-                json c;
-                c["gil"]         = static_cast<uint64_t>(cur.gil);
-                c["crownTokens"] = static_cast<uint32_t>(cur.crownTokens);
-                comps[std::string(kTagCurrency)] = c;
-            }
-
-            // ---- Quest ----------------------------------------------------
-            if (world.HasComponent<QuestComponent>(eid))
-            {
-                const auto& qc = world.GetComponent<QuestComponent>(eid);
-                json questsArr = json::array();
-                for (uint32_t q = 0; q < qc.activeCount; ++q)
-                {
-                    const auto& qe = qc.quests[q];
-                    json qj;
-                    qj["questID"]    = qe.questID;
-                    qj["objective"]  = qe.objective;
-                    qj["progress"]   = qe.progress;
-                    qj["required"]   = qe.required;
-                    qj["isComplete"] = qe.isComplete;
-                    qj["isFailed"]   = qe.isFailed;
-                    questsArr.push_back(qj);
-                }
-                comps[std::string(kTagQuest)] = questsArr;
-            }
-
-            // ---- Magic ----------------------------------------------------
-            if (world.HasComponent<MagicComponent>(eid))
-            {
-                const auto& mg = world.GetComponent<MagicComponent>(eid);
-                json c;
-                c["equippedSpell"] = mg.equippedSpell;
-                comps[std::string(kTagMagic)] = c;
-            }
-
+        // Only persist entities that have at least one component worth saving.
+        if (!comps.empty())
+        {
             ent["components"] = comps;
             entities.push_back(ent);
-        });
+        }
+    }
 
     root["entities"] = entities;
 
@@ -388,40 +448,47 @@ bool SaveSystem::Load(World& world, int slot)
     // Destroy all existing entities and reset the World.
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Snapshot load strategy
-    // We collect all living entity IDs first (modifying a collection you are
-    // iterating is undefined behaviour), then destroy them in a second pass.
+    // We use GetEntityManager().GetLivingEntities() to enumerate all alive
+    // entities in a single pass (no duplicate-detection needed).  Then we
+    // destroy them in a second pass to avoid modifying the live-set while
+    // iterating it (undefined behaviour).
 
-    // TEACHING NOTE — O(1) duplicate detection for entity collection.
-    // We use an unordered_set for O(1) membership tests when merging two
-    // View<> results.  A linear std::find would be O(n²) for large worlds.
-    // Save/load is already infrequent, but we avoid the O(n²) pattern as
-    // good practice — it also makes the intent explicit.
-    std::unordered_set<EntityID> seen;
-
-    world.View<TransformComponent>(
-        [&](EntityID eid, TransformComponent&) {
-            if (seen.insert(eid).second)
-                livingNow.push_back(eid);
-        });
-
-    // Also catch entities without TransformComponent.
-    // Since ECS does not have a "get all entities" API, we approximate by
-    // collecting from a broad second component view.
-    world.View<NameComponent>(
-        [&](EntityID eid, NameComponent&) {
-            if (seen.insert(eid).second)
-                livingNow.push_back(eid);
-        });
-
-    for (EntityID eid : livingNow)
-        world.DestroyEntity(eid);
+    {
+        std::vector<EntityID> livingNow;
+        world.GetEntityManager().GetLivingEntities(livingNow);
+        for (EntityID eid : livingNow)
+            world.DestroyEntity(eid);
+    }
 
     // -----------------------------------------------------------------------
     // Recreate entities from JSON.
     // -----------------------------------------------------------------------
+    // TEACHING NOTE — Defensive JSON access
+    // nlohmann::json operator[] throws std::out_of_range on missing keys for
+    // const references.  We validate required top-level arrays with contains()
+    // before indexing so that malformed or truncated saves produce a clear
+    // error message instead of an uncaught exception.
+    if (!root.contains("entities") || !root["entities"].is_array())
+    {
+        LOG_ERROR("SaveSystem::Load: save file missing required array 'entities'.");
+        return false;
+    }
+
     const auto& entities = root["entities"];
     for (const auto& entJson : entities)
     {
+        if (!entJson.is_object())
+        {
+            LOG_WARN("SaveSystem::Load: skipping non-object entity entry.");
+            continue;
+        }
+
+        if (!entJson.contains("components") || !entJson["components"].is_object())
+        {
+            LOG_WARN("SaveSystem::Load: entity missing required object 'components', skipping.");
+            continue;
+        }
+
         EntityID eid = world.CreateEntity();
         if (eid == NULL_ENTITY)
         {
@@ -540,6 +607,47 @@ bool SaveSystem::Load(World& world, int slot)
             const auto& c = comps[std::string(kTagMagic)];
             auto& mg = world.AddComponent<MagicComponent>(eid);
             mg.equippedSpell = c.value("equippedSpell", "");
+        }
+
+        // ---- AI -----------------------------------------------------------
+        if (comps.contains(std::string(kTagAI)))
+        {
+            const auto& c = comps[std::string(kTagAI)];
+            auto& ai = world.AddComponent<AIComponent>(eid);
+            ai.currentState = static_cast<AIComponent::State>(
+                c.value("currentState", static_cast<int>(AIComponent::State::IDLE)));
+            ai.sightRange   = c.value("sightRange",   10.0f);
+            ai.hearRange    = c.value("hearRange",     6.0f);
+            ai.attackRange  = c.value("attackRange",   2.0f);
+            ai.isNocturnal  = c.value("isNocturnal",  false);
+        }
+
+        // ---- Equipment ----------------------------------------------------
+        if (comps.contains(std::string(kTagEquipment)))
+        {
+            const auto& c = comps[std::string(kTagEquipment)];
+            auto& eq = world.AddComponent<EquipmentComponent>(eid);
+            eq.weaponID  = c.value("weaponID",  0u);
+            eq.offhandID = c.value("offhandID", 0u);
+            eq.headID    = c.value("headID",    0u);
+            eq.bodyID    = c.value("bodyID",    0u);
+            eq.legsID    = c.value("legsID",    0u);
+        }
+
+        // ---- Camera -------------------------------------------------------
+        if (comps.contains(std::string(kTagCamera)))
+        {
+            const auto& c = comps[std::string(kTagCamera)];
+            auto& cam = world.AddComponent<CameraComponent>(eid);
+            cam.fovDegrees   = c.value("fovDegrees",   60.0f);
+            cam.nearPlane    = c.value("nearPlane",      0.1f);
+            cam.farPlane     = c.value("farPlane",    2000.0f);
+            cam.pitchRadians = c.value("pitchRadians",   0.2f);
+            cam.yawRadians   = c.value("yawRadians",     0.0f);
+            cam.offset = { c.value("offsetX", 0.0f),
+                           c.value("offsetY", 3.0f),
+                           c.value("offsetZ", -7.0f) };
+            cam.isActive = c.value("isActive", true);
         }
     }
 

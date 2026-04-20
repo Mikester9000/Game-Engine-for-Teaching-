@@ -10,6 +10,9 @@
 #include "game/systems/input_mapper.hpp"
 #include "engine/core/Logger.hpp"
 
+#include <algorithm> // std::max
+#include <cmath>     // std::sqrt
+
 // TEACHING NOTE — Platform-gated keyboard sampling
 // GetAsyncKeyState lives in <windows.h>.  On Linux / headless CI this
 // translation unit still compiles — the #ifdef bodies simply become no-ops,
@@ -109,11 +112,13 @@ void InputMapper::Update(World& world, EntityID playerID, float dt)
     // -------------------------------------------------------------------------
     // SPACE / J key → melee attack request
     //
-    // TEACHING NOTE — Requesting actions via component flags
-    // Rather than calling CombatSystem::PlayerAttack() directly we set a flag
-    // on the CombatComponent.  The CombatSystem checks this flag each Update()
-    // and executes the attack.  This keeps the input mapper decoupled from the
-    // combat system entirely.
+    // TEACHING NOTE — Intent flags vs direct system calls
+    // This mapper marks the player as engaged (isInCombat) and gates against
+    // the local cooldown to avoid spamming.  The GameRuntime Update() step
+    // that runs after InputMapper translates isInCombat + currentTarget into
+    // explicit CombatSystem::PlayerAttack() / PlayerCastSpell() calls.
+    // InputMapper is intentionally kept decoupled from CombatSystem so it can
+    // be unit-tested without a full CombatSystem instance.
     // -------------------------------------------------------------------------
     if (world.HasComponent<CombatComponent>(playerID))
     {

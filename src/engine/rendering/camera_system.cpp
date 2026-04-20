@@ -10,7 +10,8 @@
 #include "engine/rendering/camera_system.hpp"
 #include "engine/core/Logger.hpp"
 
-#include <cmath>    // std::sin, std::cos, std::tan, std::sqrt
+#include <algorithm> // std::max, std::min
+#include <cmath>     // std::sin, std::cos, std::tan, std::sqrt, std::abs
 #include <array>
 
 namespace engine {
@@ -168,19 +169,28 @@ void CameraSystem::ApplyOrbitDelta(World& world,
 // ===========================================================================
 Mat4 CameraSystem::BuildLookAt(const Vec3& eye, const Vec3& target, const Vec3& up)
 {
-    // TEACHING NOTE — Row-Major LookAt Construction
-    // ──────────────────────────────────────────────
+    // TEACHING NOTE — Row-Major View Matrix: basis vectors in COLUMNS
+    // ──────────────────────────────────────────────────────────────────
     // In D3D11 we multiply: transformedPos = mul(float4(pos,1), viewMatrix)
-    // This means the matrix is transposed relative to the OpenGL convention.
-    // The basis vectors are stored in the ROWS of the matrix.
+    // (row-vector × matrix convention).  For this multiplication form,
+    // "camera-space X of a world position" requires:
+    //
+    //   clip.x = pos.x * m[0][0] + pos.y * m[1][0] + pos.z * m[2][0] + m[3][0]
+    //          = dot(right, pos) - dot(right, eye)   = dot(right, pos - eye) ✓
+    //
+    // This means right.xyz must appear in the FIRST COLUMN (m[*][0]), not the
+    // first row.  The same logic applies to up (column 1) and forward (column 2).
+    //
+    // Contrast with model/world matrices: there the convention is ROWS = axes
+    // (see math_types.hpp Mat4 note).  The view matrix is the inverse of the
+    // camera's world matrix; for an orthonormal matrix the inverse equals the
+    // transpose, so world-matrix rows become view-matrix columns.
     //
     // Steps:
-    //   1. forward = normalize(target - eye)   ← camera looks toward target
-    //   2. right   = normalize(cross(up, forward))
-    //   3. newUp   = cross(forward, right)     ← orthogonalise up
+    //   1. forward = normalize(target - eye)
+    //   2. right   = normalize(cross(forward, up))
+    //   3. newUp   = cross(right, forward)     ← orthogonalise up
     //   4. Translation = -dot(right/newUp/forward, eye)
-    //
-    // The resulting matrix brings world-space vectors into camera-space.
 
     const Vec3 forward = Normalize(target - eye);
     const Vec3 right   = Normalize(Cross(forward, up));

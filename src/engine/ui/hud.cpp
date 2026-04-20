@@ -10,6 +10,7 @@
 #include "engine/ui/hud.hpp"
 #include "engine/core/Logger.hpp"
 #include "game/GameData.hpp"       // GameDatabase::FindQuest — for quest titles
+#include <algorithm> // std::max, std::min
 #include <iostream>
 #include <iomanip>
 #include <sstream>
