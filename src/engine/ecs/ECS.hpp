@@ -1764,6 +1764,107 @@ struct ColliderComponent
     uint32_t   layerMask    = 0xFFFFFFFFu;          ///< Bitmask of layers this collider tests.
 };
 
+// ===========================================================================
+// Component 24 — CameraComponent (M8.3 Camera System)
+// ===========================================================================
+
+/**
+ * @struct CameraComponent
+ * @brief Describes a third-person follow camera attached to an entity.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Camera Component Design
+ * ============================================================================
+ * A camera is represented as an ECS component on a dedicated "camera entity"
+ * (or on the player entity directly).  This keeps camera state explicit and
+ * queryable by any system:
+ *
+ *   • The CameraSystem reads the TARGET entity's TransformComponent to compute
+ *     where the camera should be this frame.
+ *   • The renderer reads viewMatrix / projMatrix each frame to set up the GPU
+ *     transform constants.
+ *   • The HUD system reads the camera entity to decide what to overlay.
+ *
+ * This matches how real engines work:  Unreal Engine stores camera state in
+ * UCameraComponent; Unity stores it in Camera.  Separating data (component)
+ * from logic (CameraSystem) is the ECS principle applied consistently.
+ *
+ * ─── Third-Person Follow Camera ─────────────────────────────────────────────
+ * The follow camera sits at:
+ *
+ *   cameraPos = targetPos + offset  (in view-space, rotated by pitch/yaw)
+ *
+ * At yaw=0, pitch=0.2 rad (≈11°), the default offset is:
+ *   { 0, 3, -7 }  →  3 units above and 7 units behind the target.
+ *
+ * The view matrix is then lookAt(cameraPos, targetPos, worldUp).
+ *
+ * ─── Output Matrices ─────────────────────────────────────────────────────────
+ * CameraSystem writes viewMatrix and projMatrix each frame.  These 4×4
+ * row-major matrices are ready to upload directly to a D3D11 constant buffer:
+ *
+ *   cbuffer CameraCB : register(b1) {
+ *       float4x4 g_view;    // view (world→camera)
+ *       float4x4 g_proj;    // projection (camera→clip)
+ *   }
+ *
+ * ============================================================================
+ */
+struct CameraComponent
+{
+    // -----------------------------------------------------------------------
+    // Target entity — camera follows this entity's TransformComponent.
+    // -----------------------------------------------------------------------
+
+    /// Entity to follow.  NULL_ENTITY = unattached (camera stays at its
+    /// last computed position).
+    EntityID targetEntityID = NULL_ENTITY;
+
+    // -----------------------------------------------------------------------
+    // Camera orbit parameters
+    // -----------------------------------------------------------------------
+
+    /// World-space offset from the target in camera-local space (x=right,
+    /// y=up, z=back from target).  Default: 3 units up, 7 units behind.
+    engine::math::Vec3 offset { 0.0f, 3.0f, -7.0f };
+
+    float pitchRadians = 0.2f;  ///< Downward tilt (positive = camera looks down).
+    float yawRadians   = 0.0f;  ///< Horizontal orbit angle (radians).
+
+    // -----------------------------------------------------------------------
+    // Projection parameters
+    // -----------------------------------------------------------------------
+
+    float fovDegrees = 60.0f;   ///< Vertical field-of-view in degrees.
+    float nearPlane  = 0.1f;    ///< Near clip plane distance (m).
+    float farPlane   = 2000.0f; ///< Far clip plane distance (m).
+
+    /// Aspect ratio (width/height).  CameraSystem updates this from the
+    /// renderer's back-buffer size each frame.
+    float aspectRatio = 16.0f / 9.0f;
+
+    // -----------------------------------------------------------------------
+    // Active flag
+    // -----------------------------------------------------------------------
+
+    /// Only ONE camera with isActive=true should exist at a time.
+    /// CameraSystem uses the first active camera it finds.
+    bool isActive = true;
+
+    // -----------------------------------------------------------------------
+    // Output — written by CameraSystem, read by renderer each frame.
+    // -----------------------------------------------------------------------
+
+    /// View matrix (world→camera), row-major for D3D11.
+    engine::math::Mat4 viewMatrix  = engine::math::Mat4::Identity();
+
+    /// Projection matrix (camera→clip), row-major for D3D11.
+    engine::math::Mat4 projMatrix  = engine::math::Mat4::Identity();
+
+    /// World position of the camera this frame (derived from target + offset).
+    engine::math::Vec3 worldPosition;
+};
+
 /** @} */ // end of Components
 
 
@@ -2304,27 +2405,35 @@ private:
  * @param world  The World to register components with.
  */
 inline void RegisterAllComponents(World& world) {
-    world.RegisterComponent<TransformComponent>();
-    world.RegisterComponent<HealthComponent>();
-    world.RegisterComponent<StatsComponent>();
-    world.RegisterComponent<NameComponent>();
-    world.RegisterComponent<RenderComponent>();
-    world.RegisterComponent<MovementComponent>();
-    world.RegisterComponent<CombatComponent>();
-    world.RegisterComponent<InventoryComponent>();
-    world.RegisterComponent<QuestComponent>();
-    world.RegisterComponent<DialogueComponent>();
-    world.RegisterComponent<AIComponent>();
-    world.RegisterComponent<PartyComponent>();
-    world.RegisterComponent<MagicComponent>();
-    world.RegisterComponent<EquipmentComponent>();
-    world.RegisterComponent<StatusEffectsComponent>();
-    world.RegisterComponent<LevelComponent>();
-    world.RegisterComponent<CurrencyComponent>();
-    world.RegisterComponent<SkillsComponent>();
-    world.RegisterComponent<CampComponent>();
-    world.RegisterComponent<VehicleComponent>();
-    world.RegisterComponent<AudioSourceComponent>();
+    world.RegisterComponent<TransformComponent>();      // 0
+    world.RegisterComponent<HealthComponent>();         // 1
+    world.RegisterComponent<StatsComponent>();          // 2
+    world.RegisterComponent<NameComponent>();           // 3
+    world.RegisterComponent<RenderComponent>();         // 4
+    world.RegisterComponent<MovementComponent>();       // 5
+    world.RegisterComponent<CombatComponent>();         // 6
+    world.RegisterComponent<InventoryComponent>();      // 7
+    world.RegisterComponent<QuestComponent>();          // 8
+    world.RegisterComponent<DialogueComponent>();       // 9
+    world.RegisterComponent<AIComponent>();             // 10
+    world.RegisterComponent<PartyComponent>();          // 11
+    world.RegisterComponent<MagicComponent>();          // 12
+    world.RegisterComponent<EquipmentComponent>();      // 13
+    world.RegisterComponent<StatusEffectsComponent>();  // 14
+    world.RegisterComponent<LevelComponent>();          // 15
+    world.RegisterComponent<CurrencyComponent>();       // 16
+    world.RegisterComponent<SkillsComponent>();         // 17
+    world.RegisterComponent<CampComponent>();           // 18
+    world.RegisterComponent<VehicleComponent>();        // 19
+    world.RegisterComponent<AudioSourceComponent>();    // 20
+    // TEACHING NOTE — M4 / M5 / M8.3 components registered here.
+    // AnimatorComponent, RigidBodyComponent, ColliderComponent are gated by
+    // their respective subsystems in engine code but must be registered with
+    // the World so ECS pools exist for them at runtime.
+    world.RegisterComponent<AnimatorComponent>();       // 21
+    world.RegisterComponent<RigidBodyComponent>();      // 22
+    world.RegisterComponent<ColliderComponent>();       // 23
+    world.RegisterComponent<CameraComponent>();         // 24
 
-    LOG_INFO("All 21 component types registered with World");
+    LOG_INFO("All 25 component types registered with World");
 }

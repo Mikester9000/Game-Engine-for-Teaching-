@@ -659,6 +659,19 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         # WorldStreamingManager.  Compiled alongside Zone.cpp so that
         # OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
         src/game/world/GameStreamingManager.cpp
+        # TEACHING NOTE — M8 Gameplay Integration: new systems.
+        # game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
+        # input_mapper.cpp reads Win32 key state → ECS components.
+        # dialogue_system.cpp tracks NPC dialogue interaction state.
+        # camera_system.cpp computes view/proj matrices for the D3D11 renderer.
+        # hud.cpp extracts HudState snapshots from the ECS World.
+        # save_system.cpp serialises/deserialises the ECS World to JSON save files.
+        src/sandbox/game_runtime.cpp
+        src/game/systems/input_mapper.cpp
+        src/game/systems/dialogue_system.cpp
+        src/engine/rendering/camera_system.cpp
+        src/engine/ui/hud.cpp
+        src/engine/save/save_system.cpp
     )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})
