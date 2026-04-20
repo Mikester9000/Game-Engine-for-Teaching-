@@ -6,13 +6,13 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1146 across 41 subsystems.
+**Total lessons:** 1190 across 42 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (51 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (52 lessons)
 - [ci/workflows](#ciworkflows) (40 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (98 lessons)
@@ -28,13 +28,14 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/rendering](#enginerendering) (215 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
+- [engine/world](#engineworld) (38 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
 - [game/systems](#gamesystems) (85 lessons)
 - [game/world](#gameworld) (70 lessons)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (11 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (24 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (29 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -534,9 +535,31 @@ list(APPEND SANDBOX_SOURCES
 src/engine/scene/scene_serialiser.cpp
 )
 
-### Conditional Scripting in engine_sandbox
+### M7 World Streaming Source Strategy
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L604) (line 604)
+
+─────────────────────────────────────────────────────
+The three world-streaming modules are pure C++17 with no platform or
+graphics-API dependency.  They compile on Windows (engine_sandbox) and
+will later compile on Linux as well when the terminal game is wired up
+in M8.  They are always included in the sandbox build so the headless
+streaming acceptance tests (--scene streaming_load / streaming_evict /
+streaming_async) are always available.
+
+async_loader.cpp   — std::thread worker + job queue.
+world_partition.cpp — spatial grid coordinate conversion + neighbour query.
+world_streaming.cpp — delta-based load/evict coordinator.
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/engine/world/async_loader.cpp
+src/engine/world/world_partition.cpp
+src/engine/world/world_streaming.cpp
+)
+
+### Conditional Scripting in engine_sandbox
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L626) (line 626)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -549,7 +572,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L617) (line 617)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L639) (line 639)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -573,7 +596,7 @@ src/game/world/Zone.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L657) (line 657)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L679) (line 679)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -585,7 +608,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L666) (line 666)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L688) (line 688)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -594,7 +617,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L676) (line 676)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L698) (line 698)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -606,7 +629,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L685) (line 685)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L707) (line 707)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -616,7 +639,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L695) (line 695)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L717) (line 717)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -625,7 +648,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L701) (line 701)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L723) (line 723)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -634,7 +657,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L706) (line 706)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L728) (line 728)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -645,7 +668,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L722) (line 722)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L744) (line 744)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -656,7 +679,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L730) (line 730)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L752) (line 752)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -666,7 +689,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L742) (line 742)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L764) (line 764)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -700,7 +723,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L774) (line 774)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L796) (line 796)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -715,7 +738,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L789) (line 789)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L811) (line 811)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -730,7 +753,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L831) (line 831)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L853) (line 853)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -753,7 +776,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L852) (line 852)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L874) (line 874)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -774,7 +797,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L869) (line 869)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L891) (line 891)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -785,7 +808,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L892) (line 892)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L914) (line 914)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -807,7 +830,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L911) (line 911)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L933) (line 933)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -818,7 +841,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L919) (line 919)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L941) (line 941)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -828,7 +851,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L949) (line 949)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L971) (line 971)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -837,7 +860,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L956) (line 956)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L978) (line 978)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -13501,6 +13524,662 @@ std::is_integral_v<T> is true for int, long, short, char, bool, etc.
 
 ---
 
+## engine/world
+
+### Implementation file responsibilities
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L6) (line 6)
+
+============================================================================
+This file contains the definitions of every method declared in
+async_loader.hpp.  The header is the "contract" (what you can do);
+this file is the "implementation" (how it is done).
+
+By keeping Jolt/platform/engine-specific code OUT of the header, any file
+that #includes async_loader.hpp only pays for a lightweight recompile if
+this .cpp changes — not the other way around.
+
+============================================================================
+
+### Safe destruction
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L33) (line 33)
+
+─────────────────────────────────
+If Stop() was not called before the destructor (e.g. due to an exception
+in the owning class), we call it here to avoid std::terminate() being
+triggered by destroying a joinable thread.
+if (m_thread.joinable())
+{
+LOG_WARN("AsyncLoader: destroyed without calling Stop() — stopping now.");
+Stop();
+}
+}
+
+### std::atomic initialisation
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L51) (line 51)
+
+────────────────────────────────────────────
+m_stop is a std::atomic<bool> so both the main thread and worker thread
+can read/write it without a data race.  We reset it to false here in
+case Start() is called after a previous Stop().
+m_stop.store(false, std::memory_order_relaxed);
+
+### Graceful shutdown sequence
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L67) (line 67)
+
+───────────────────────────────────────────
+1. Set the stop flag under the pending mutex so the worker cannot miss
+   the notification (avoids the classic "signal before wait" race).
+2. Notify the CV to wake the worker immediately.
+3. Join the thread (wait for WorkerLoop to return).
+{
+std::lock_guard<std::mutex> lock(m_pendingMtx);
+m_stop.store(true, std::memory_order_release);
+}
+m_cv.notify_one();
+
+### Swap-and-drain pattern (see header for explanation)
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L102) (line 102)
+
+─────────────────────────────────────────────────────────────────────
+std::queue<CompletedJob> localCompleted;
+{
+std::lock_guard<std::mutex> lock(m_completedMtx);
+std::swap(m_completed, localCompleted);
+}
+No lock held during callback invocation.
+while (!localCompleted.empty())
+{
+CompletedJob& c = localCompleted.front();
+if (c.job.onComplete)
+c.job.onComplete(c.success);
+localCompleted.pop();
+}
+}
+
+### Condition variable wait loop pattern
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L131) (line 131)
+
+──────────────────────────────────────────────────────
+The canonical wait-loop guards against spurious wakeups:
+
+  m_cv.wait(lock, predicate)
+
+is equivalent to:
+
+  while (!predicate()) m_cv.wait(lock);
+
+The predicate checks BOTH that there is work AND that we should not stop.
+We wake up when m_pending is non-empty OR m_stop is set.
+
+### Catching exceptions on the worker thread
+
+**Source:** [`src/engine/world/async_loader.cpp`](src/engine/world/async_loader.cpp#L172) (line 172)
+
+──────────────────────────────────────────────────────────
+If job.work() throws, we catch it here and report failure via
+the completion callback.  An uncaught exception on a std::thread
+calls std::terminate(), killing the entire process.
+try
+{
+success = job.work();
+}
+catch (const std::exception& ex)
+{
+LOG_ERROR("AsyncLoader: job '" << job.label
+<< "' threw exception: " << ex.what());
+success = false;
+}
+catch (...)
+{
+LOG_ERROR("AsyncLoader: job '" << job.label
+<< "' threw unknown exception.");
+success = false;
+}
+}
+else
+{
+No work function provided — treat as success (no-op job).
+success = true;
+}
+
+### Why an Async Loader?
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L6) (line 6)
+
+============================================================================
+Loading a world cell involves reading kilobytes–megabytes of data from disk
+and constructing ECS entities.  If done on the main thread, the player sees
+a frame spike (or a full loading screen) every time the camera crosses a
+cell boundary.  Final Fantasy XV famously eliminated loading screens for
+the open world by streaming cells asynchronously while the player runs.
+
+The AsyncLoader splits loading into two phases:
+
+  1. ENQUEUE  (main thread, cheap)
+     Post a LoadJob to a thread-safe queue.  Returns immediately.
+
+  2. EXECUTE  (worker thread, expensive)
+     The background thread picks up jobs from the queue, executes the
+     supplied callable (e.g. Zone::Load), and places the result in a
+     "completed" queue.
+
+  3. PUMP     (main thread, cheap)
+     Once per frame, call PumpMainThreadCompletions().  This drains the
+     completed queue and invokes each completion callback on the main
+     thread — safe to update ECS or rendering state here.
+
+─── Threading Model ────────────────────────────────────────────────────────
+
+ Main thread          │  Worker thread
+ ─────────────────────┼──────────────────────────────────────
+ EnqueueJob()         │
+   lock m_pendingMtx  │
+   push to m_pending  │
+   notify m_cv        │
+                      │  (wakes up)
+                      │  pop from m_pending
+                      │  execute job.work()
+                      │  lock m_completedMtx
+                      │  push result to m_completed
+ PumpMainThreadCompletions()
+   lock m_completedMtx
+   swap m_completed → local
+   invoke callbacks (main thread, safe for ECS writes)
+
+─── Design Choice: One Worker Thread ───────────────────────────────────────
+A single worker thread is used in this skeleton to keep the code simple and
+teachable.  A production loader (like in FF15) uses a thread pool with
+priority lanes (streaming IO vs. texture decompression).  Once the single-
+thread design is understood, extending to a pool is a natural exercise.
+
+─── TODO (M7 full implementation) ──────────────────────────────────────────
+  • Replace std::mutex + condition_variable with a lock-free SPSC queue for
+    even lower latency between EnqueueJob and worker wake-up.
+  • Add a priority field to LoadJob (HIGH = immediate vicinity, LOW = prefetch).
+  • Add a cancellation token so in-flight jobs for evicted cells can be
+    discarded rather than completed and immediately destroyed.
+  • Integrate with the AssetLoader (M2) to read cooked cell data from disk.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: All (std::thread is available on Windows, Linux, macOS)
+
+### std::function as a generic callable
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L91) (line 91)
+
+────────────────────────────────────────────────────
+std::function<void()> can hold any callable: a plain function pointer, a
+lambda, or a bound member function.  Using it here means LoadJob has no
+dependency on the concrete Zone type, keeping async_loader.hpp decoupled
+from the game-layer Zone system.
+
+The caller (WorldStreamingManager) captures whatever context it needs
+inside the lambda — e.g.:
+
+  job.work = [zonePtr, &world]() { zonePtr->Load(data); };
+  job.onComplete = [zonePtr, &world](bool ok) {
+      if (ok) zonePtr->SpawnEnemies(world);
+  };
+
+### Returning bool vs. throwing exceptions
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L123) (line 123)
+
+────────────────────────────────────────────────────────
+We return bool rather than throw so that the worker thread never sees an
+unhandled exception terminate the whole process.  Errors are propagated
+via the onComplete(false) callback instead.
+
+### Main-thread safety
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L136) (line 136)
+
+─────────────────────────────────────
+All ECS writes, rendering-state changes, and audio events must happen
+on the main thread.  By invoking onComplete from PumpMainThreadCompletions()
+(which is called on the main thread), the callback is safe to call any
+engine API.
+
+### RAII and Lifecycle
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L173) (line 173)
+
+────────────────────────────────────
+Start()/Stop() are explicit rather than constructor/destructor because the
+loader is often a member of WorldStreamingManager, which itself has an
+explicit Init()/Shutdown() lifecycle.  If Start() were in the constructor,
+the thread would spin up before the owning object finished constructing.
+
+### Graceful shutdown
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L210) (line 210)
+
+────────────────────────────────────
+We set m_stop = true then notify the condition variable.  The worker
+thread checks m_stop after each job and exits cleanly.  We then call
+m_thread.join() to wait for it.  This avoids std::terminate() being
+called if the thread is still running at destruction.
+
+### Swap-and-drain pattern
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L239) (line 239)
+
+─────────────────────────────────────────
+Rather than holding the completion mutex while invoking callbacks
+(which could re-enqueue jobs, causing a deadlock), we:
+  1. Lock m_completedMtx briefly.
+  2. Swap m_completed into a local queue.
+  3. Unlock m_completedMtx.
+  4. Iterate the local queue and invoke callbacks with NO lock held.
+This minimises lock contention and eliminates deadlock risk.
+
+### Worker loop pattern
+
+**Source:** [`src/engine/world/async_loader.hpp`](src/engine/world/async_loader.hpp#L266) (line 266)
+
+─────────────────────────────────────
+The worker sits in a wait loop:
+  1. Acquire m_pendingMtx.
+  2. Wait on m_cv until m_pending is non-empty OR m_stop is true.
+  3. Pop one job, release the lock.
+  4. Execute job.work().
+  5. Lock m_completedMtx, push result, unlock.
+  6. Repeat until m_stop && m_pending is empty.
+
+Releasing the pending lock BEFORE executing work() is important:
+it lets the main thread enqueue more jobs while the worker is busy.
+
+### Keeping math in the .cpp
+
+**Source:** [`src/engine/world/world_partition.cpp`](src/engine/world/world_partition.cpp#L6) (line 6)
+
+============================================================================
+The formulas in this file are short but non-obvious (floor division for
+negative coordinates; Chebyshev radius enumeration).  Placing them here
+keeps the header clean and the logic documented in one place.
+============================================================================
+
+### Defensive defaults
+
+**Source:** [`src/engine/world/world_partition.cpp`](src/engine/world/world_partition.cpp#L30) (line 30)
+
+────────────────────────────────────
+Guard against nonsensical inputs without throwing exceptions.  A cell
+size of 0 would cause division-by-zero in WorldToCell(); clamp to 1.
+if (m_cellSize <= 0.0f)
+m_cellSize = 1.0f;
+if (m_streamRadius < 0)
+m_streamRadius = 0;
+}
+
+### Correct grid quantisation
+
+**Source:** [`src/engine/world/world_partition.cpp`](src/engine/world/world_partition.cpp#L46) (line 46)
+
+───────────────────────────────────────────
+Dividing by cellSize and truncating (int cast) works for positive X/Z
+but breaks for negatives:
+  (int)(-0.001f / 256.0f) == 0    ← WRONG, should be cell -1
+  (int)(-256.5f / 256.0f) == -1   ← accidentally correct
+  (int)(-257.0f / 256.0f) == -1   ← WRONG, should be cell -2
+
+std::floor() handles all cases correctly:
+  floor(-0.001f / 256.0f)  == -1  ← correct
+  floor(-256.5f / 256.0f)  == -2  ← correct
+
+The cast to int32_t is safe because world coordinates are expected to
+be within ±8 million metres (8388607 cells), well within int32_t range.
+
+### Chebyshev (square) neighbourhood
+
+**Source:** [`src/engine/world/world_partition.cpp`](src/engine/world/world_partition.cpp#L86) (line 86)
+
+──────────────────────────────────────────────────
+For streaming radius R, the desired set is every cell (cx, cz) such that
+  max(|origin.cx - cx|, |origin.cz - cz|) <= R
+
+That gives (2R+1)² cells:
+  R=0 →  1 cell   (just the origin)
+  R=1 →  9 cells  (3×3 patch)
+  R=2 → 25 cells  (5×5 patch)
+
+We iterate (origin.cx − R) .. (origin.cx + R) in X
+and       (origin.cz − R) .. (origin.cz + R) in Z.
+
+### What is World Partitioning?
+
+**Source:** [`src/engine/world/world_partition.hpp`](src/engine/world/world_partition.hpp#L6) (line 6)
+
+============================================================================
+An open world is too large to keep entirely in memory.  Game engines divide
+the world into a regular grid of rectangular "cells".  At any moment only
+the cells near the camera are loaded; cells that are far away are evicted.
+
+This technique is called *World Partitioning* (or "streaming grid").
+Final Fantasy XV divides Lucis into cells of roughly 256 × 256 metres.
+The active set is typically a 3×3 block of cells centred on the player —
+nine cells total, loaded asynchronously as the player moves.
+
+─── Vocabulary ─────────────────────────────────────────────────────────────
+  CellCoord  — 2D integer address in the grid, e.g. (0,0), (1,-2).
+  CellId     — Linearised uint32_t key derived from a CellCoord.  Suitable
+               as a hash-map key or array index.
+  CellSize   — World-space side length of one cell (default: 256 m).
+  StreamRadius — How many cell-widths around the viewpoint to consider
+                 "in range" (default: 1, giving a 3×3 block).
+
+─── Coordinate System ──────────────────────────────────────────────────────
+The grid is axis-aligned with the XZ plane (Y is up, same as the rest of
+the engine).  Cell (cx, cz) covers the world-space square:
+
+  x ∈ [cx * CellSize, (cx+1) * CellSize)
+  z ∈ [cz * CellSize, (cz+1) * CellSize)
+
+─── TODO (M7 full implementation) ──────────────────────────────────────────
+  • Frustum cull: discard cells outside the camera frustum before handing
+    them to the streaming manager.  Reduces unnecessary loads when the
+    camera looks away from certain directions.
+  • Variable cell sizes: allow larger cells for distant LODs.
+  • Query variant that accepts a bounding sphere instead of a point.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: All
+
+### Signed integers for cell coordinates
+
+**Source:** [`src/engine/world/world_partition.hpp`](src/engine/world/world_partition.hpp#L65) (line 65)
+
+─────────────────────────────────────────────────────
+We use int32_t (not uint32_t) so negative coordinates are natural.
+A world origin at (0,0) lets cells extend in all four directions:
+(-1,-1) is south-west of origin, (1,1) is north-east, etc.
+
+### Packing two int16_t values into a uint32_t
+
+**Source:** [`src/engine/world/world_partition.hpp`](src/engine/world/world_partition.hpp#L94) (line 94)
+
+──────────────────────────────────────────────────────────────
+We store the upper 16 bits as cx and the lower 16 bits as cz.
+This works for worlds up to ±32 767 cells in any direction
+(≈ 8 388 km at 256 m/cell — far larger than any practical game world).
+
+Shifting and masking is preferred over bit-fields because the bit layout
+is explicit and portable across compilers.
+
+@param coord  The cell coordinate to encode.
+@return       A unique 32-bit key for the cell.
+
+### Single Responsibility Principle
+
+**Source:** [`src/engine/world/world_partition.hpp`](src/engine/world/world_partition.hpp#L142) (line 142)
+
+─────────────────────────────────────────────────
+WorldPartition knows only about the grid geometry: sizes, coordinates, and
+neighbours.  It has no knowledge of Zone, AsyncLoader, or ECS.  This keeps
+it easy to test in isolation — no renderer or ECS World is needed.
+
+### floor() for correct handling of negative coordinates
+
+**Source:** [`src/engine/world/world_partition.hpp`](src/engine/world/world_partition.hpp#L181) (line 181)
+
+─────────────────────────────────────────────────────────────────────
+Dividing by cellSize and truncating with (int) works for positive values
+but gives wrong results for negatives: (int)(-0.5f) == 0, not -1.
+std::floor() handles both correctly.
+
+### Chebyshev distance
+
+**Source:** [`src/engine/world/world_partition.hpp`](src/engine/world/world_partition.hpp#L219) (line 219)
+
+─────────────────────────────────────
+We use the Chebyshev (∞-norm) metric: max(|Δcx|, |Δcz|) ≤ radius.
+This produces a square patch of cells — simpler and cheaper than a
+circular (Euclidean) query, and standard in streaming engines.
+
+### Separation of concerns in M7
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L6) (line 6)
+
+============================================================================
+This file wires together the two subsystems:
+
+  WorldPartition   — "which cells should be loaded right now?"
+  AsyncLoader      — "load them without blocking the main thread"
+
+WorldStreamingManager is deliberately thin in this skeleton: it delegates
+geometry queries to WorldPartition and I/O to AsyncLoader.  The real logic
+lives in the delta computation (RequestCells / EvictCells) and the virtual
+OnLoadCell / OnCellLoaded / OnEvictCell hooks.
+
+When M7 reaches full implementation, the hooks will call:
+  • AssetLoader::LoadRaw() to read cooked .level data from disk.
+  • Zone::Load()          to build the TileMap and register spawn points.
+  • Zone::SpawnEnemies()  to create ECS entities on the main thread.
+  • Zone::Unload()        to destroy ECS entities on eviction.
+
+============================================================================
+
+### Shutdown order
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L83) (line 83)
+
+─────────────────────────────────
+We stop the loader BEFORE evicting cells because:
+  1. New load completions after Stop() would add to m_loadedCells.
+  2. Evicting while new completions arrive is a TOCTOU race.
+After Stop() returns, the completion queue is drained by pumping
+once more, then we evict all loaded cells in deterministic order.
+
+### Stub implementation
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L173) (line 173)
+
+─────────────────────────────────────
+In the full M7 implementation this will:
+  1. Determine the cooked .level file path from the cell ID.
+  2. Call AssetLoader::LoadRaw(guid) to read the file bytes.
+  3. Deserialise the entity/tile data.
+  4. Return true on success.
+
+For now, log and return true so the test harness can exercise the
+state machine without real I/O.
+LOG_INFO("WorldStreamingManager: OnLoadCell stub — cell "
+<< coord.cx << "," << coord.cz
+<< " (id=" << id << ") [TODO: real I/O]");
+return true;
+}
+
+### Stub implementation
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L191) (line 191)
+
+─────────────────────────────────────
+Full M7 implementation will call:
+  zone.SpawnEnemies(world);
+  zone.SpawnNPCs(world);
+if (success)
+{
+LOG_INFO("WorldStreamingManager: OnCellLoaded — cell "
+<< coord.cx << "," << coord.cz
+<< " (id=" << id << ") [TODO: spawn entities]");
+m_cellStates[id] = CellState::Loaded;
+m_loadedCells.insert(id);
+}
+else
+{
+LOG_ERROR("WorldStreamingManager: OnCellLoaded — cell "
+<< coord.cx << "," << coord.cz
+<< " FAILED to load.");
+m_cellStates[id] = CellState::Unloaded;
+}
+}
+
+### Stub implementation
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L215) (line 215)
+
+─────────────────────────────────────
+Full M7 implementation will call:
+  zone.Unload(world);
+LOG_INFO("WorldStreamingManager: OnEvictCell — cell "
+<< coord.cx << "," << coord.cz
+<< " (id=" << id << ") [TODO: destroy entities]");
+}
+
+### Capturing by value in the lambda
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L242) (line 242)
+
+──────────────────────────────────────────────────
+The lambda captures id and coord by VALUE (not by reference) because
+these stack variables will be gone by the time the worker thread
+executes the job.  Capturing by reference would be a dangling-reference
+bug — one of the most common threading mistakes in C++.
+
+### Eviction guard
+
+**Source:** [`src/engine/world/world_streaming.cpp`](src/engine/world/world_streaming.cpp#L280) (line 280)
+
+────────────────────────────────
+We only evict cells that are fully LOADED.  Evicting a LOADING cell
+would require cancellation support in AsyncLoader (a TODO item).
+For now, if a cell is still loading when it goes out of range, we
+leave it to finish loading and evict it on the next Update() call.
+if (it->second != CellState::Loaded)
+{
+LOG_INFO("WorldStreamingManager: cell " << id
+<< " is not LOADED — skipping eviction (state="
+<< static_cast<int>(it->second) << ")");
+continue;
+}
+
+### World Streaming Architecture
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L6) (line 6)
+
+============================================================================
+WorldStreamingManager is the top-level controller for M7.  It owns:
+
+  1. A WorldPartition  — the spatial grid that answers "which cells are
+                         near the camera?" (pure geometry, no I/O).
+  2. An AsyncLoader    — the worker thread that performs actual I/O without
+                         blocking the main thread.
+
+Every frame (Update call), the manager:
+  a. Queries the partition for the desired set of cells.
+  b. Computes the DELTA: newly-required cells (→ enqueue load) and
+     cells that are now too far away (→ enqueue evict / unload).
+  c. Pumps the AsyncLoader's completion queue so callbacks (Zone spawn,
+     ECS creation) execute safely on the main thread.
+
+─── State Machine per Cell ──────────────────────────────────────────────────
+
+  UNLOADED ──EnqueueLoad()──► LOADING ──onComplete(ok)──► LOADED
+     ▲                           │                           │
+     └──── onComplete(!ok) ◄─────┘                           │
+     └─────────────────────────────── EvictCells() ──────────┘
+
+  LOADING → EVICTING is not implemented in this skeleton (it would require
+  a cancellation token in AsyncLoader).  TODO for full M7 implementation.
+
+─── Thread Safety ───────────────────────────────────────────────────────────
+All public methods of WorldStreamingManager MUST be called from the main
+thread.  The AsyncLoader handles its own internal locking.
+
+─── TODO (M7 full implementation) ──────────────────────────────────────────
+  • Wire real Zone::Load / Zone::Unload calls inside the job lambdas.
+  • Integrate AssetLoader to read cooked cell data (.level files).
+  • Add cancellation: if a cell becomes irrelevant while in LOADING state,
+    the completion callback should discard the result instead of spawning.
+  • Add frame budget cap: limit PumpMainThreadCompletions to ≤ N completions
+    per frame so ECS spawning never exceeds 2 ms per the M7 spec.
+  • Add debug overlay (ImGui): draw loaded/loading/evicting cells as a 2D
+    minimap for visual debugging during development.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: All (no platform-specific code; async_loader uses std::thread)
+
+### State Machine Enum
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L76) (line 76)
+
+────────────────────────────────────
+Tracking per-cell state prevents duplicate loads (enqueuing LOADING cells
+again) and dangling evictions (evicting cells that are still loading).
+Using a named enum (rather than raw booleans) makes intent explicit and
+debugging straightforward.
+
+### Composition over inheritance
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L111) (line 111)
+
+──────────────────────────────────────────────
+WorldStreamingManager OWNS (as members) a WorldPartition and an AsyncLoader.
+It does NOT inherit from them.  Composition gives more flexibility: the
+streaming behaviour can be changed by swapping implementations without
+altering the public API or breaking callers.
+
+### Delta computation
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L159) (line 159)
+
+────────────────────────────────────
+Each frame we compare:
+  • desired set = GetCellsNearPosition(viewPos)
+  • current set = m_loadedCells
+
+  toLoad  = desired − current  (new cells that have come in range)
+  toEvict = current − desired  (cells that have gone out of range)
+
+Set subtraction on unordered_sets is O(N) where N is the streaming
+radius squared — typically ≤ 25 cells, so negligible CPU cost.
+
+### Callback vs. virtual method
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L211) (line 211)
+
+────────────────────────────────────────────
+We expose this as a public virtual method (and also via SetLoadCallback)
+so the class can be extended in two ways:
+  1. Subclass and override (OOP / polymorphism approach).
+  2. Set a std::function callback (functional / composition approach).
+Both are valid; the callback approach is used in the skeleton to avoid
+a forced inheritance hierarchy before M7 is complete.
+
+TODO: wire real Zone::Load + AssetLoader calls here.
+
+### Guard against duplicate enqueue
+
+**Source:** [`src/engine/world/world_streaming.hpp`](src/engine/world/world_streaming.hpp#L265) (line 265)
+
+─────────────────────────────────────────────────
+We only enqueue a cell if its current state is Unloaded.  If it is
+already Loading or Loaded, we skip it silently.  This prevents sending
+two load jobs for the same cell (which would spawn entities twice).
+
+---
+
 ## game/Game.cpp
 
 ### Dependency Injection via Constructor
@@ -16928,6 +17607,9 @@ Usage:
   engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
+  engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 4 cells
+  engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict 1 cell
+  engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing
 
 ============================================================================
 
@@ -16939,7 +17621,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L86) (line 86)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L89) (line 89)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -16957,9 +17639,27 @@ ifdef ENGINE_ENABLE_PHYSICS
  include "engine/physics/hit_volume.hpp"
 endif
 
+### M7 World Streaming headless tests
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L107) (line 107)
+
+---------------------------------------------------------------------------
+The streaming_load / streaming_evict / streaming_async scenes exercise the
+M7 World Streaming infrastructure without requiring a renderer, physics, or
+any file I/O.  They are always available in the build (no compile gate).
+
+Three acceptance criteria from docs/PROJECT_MILESTONES.md §M7:
+  streaming_load  — Load 4 adjacent cells; no duplicates; entity count = N.
+  streaming_evict — Evict 1 cell; loaded-cell count decreases by 1; no dangling refs.
+  streaming_async — Main-thread update stays under 2 ms while cells load async.
+---------------------------------------------------------------------------
+include "engine/world/world_streaming.hpp"
+include "engine/world/world_partition.hpp"
+include "engine/world/async_loader.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L112) (line 112)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L131) (line 131)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -16976,7 +17676,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L127) (line 127)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L146) (line 146)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -16993,7 +17693,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L140) (line 140)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L159) (line 159)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -17005,7 +17705,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L162) (line 162)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L181) (line 181)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -17024,7 +17724,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L177) (line 177)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -17037,7 +17737,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L190) (line 190)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L209) (line 209)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -17048,7 +17748,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L219) (line 219)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L238) (line 238)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -17063,7 +17763,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L244) (line 244)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L263) (line 263)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -17073,7 +17773,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L274) (line 274)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L293) (line 293)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -17089,7 +17789,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L323) (line 323)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L342) (line 342)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -17114,7 +17814,7 @@ else if (scene == "textured_quad" || scene == "skinned_mesh")
 
 ### Headless Scene Validation (M3 / M4b)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L344) (line 344)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L363) (line 363)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -17141,7 +17841,7 @@ else if (scene == "physics_test")
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L367) (line 367)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L386) (line 386)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -17166,7 +17866,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L488) (line 488)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L507) (line 507)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -17187,7 +17887,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L572) (line 572)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L591) (line 591)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -17205,7 +17905,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L586) (line 586)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L605) (line 605)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -17221,9 +17921,113 @@ window.Shutdown();
 return 1;
 }
 
+### M7 streaming_load acceptance test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L638) (line 638)
+
+-----------------------------------------------------------
+Verifies that WorldStreamingManager can load adjacent
+cells without duplicates:
+
+  1. Init manager (radius=1 → 3×3 = 9 cells).
+  2. Update at origin → requests all 9 cells.
+  3. Pump completions for up to 120 frames (2 s).
+  4. Assert LoadedCellCount() == expected count.
+
+The stub implementation of OnLoadCell returns true
+immediately on the worker thread, so cells transition to
+LOADED on the next PumpMainThreadCompletions().
+
+TODO (full M7): replace OnLoadCell stub with real I/O;
+     assert entity counts match cell content.
+-----------------------------------------------------------
+engine::world::WorldStreamingManager mgr;
+if (!mgr.Init(256.0f, /*streamRadius=*/1))
+{
+std::cout << "[FAIL] streaming_load: WorldStreamingManager::Init() failed.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+
+### M7 streaming_evict acceptance test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L692) (line 692)
+
+-----------------------------------------------------------
+Verifies that cells going out of streaming range are evicted:
+
+  1. Init manager (radius=1).
+  2. Update at origin → 9 cells loaded.
+  3. Move view far away (>2 cells) → origin cells evicted.
+  4. Assert LoadedCellCount() decreased.
+
+Note: cells in LOADING state are not evicted synchronously
+in this skeleton (cancellation is a TODO).  To get clean
+eviction, we wait for all loads to complete before moving.
+
+TODO (full M7): verify no dangling ECS entity refs after eviction.
+-----------------------------------------------------------
+engine::world::WorldStreamingManager mgr;
+if (!mgr.Init(256.0f, /*streamRadius=*/1))
+{
+std::cout << "[FAIL] streaming_evict: WorldStreamingManager::Init() failed.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+
+### M7 streaming_async acceptance test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L753) (line 753)
+
+-----------------------------------------------------------
+Verifies that Update() never blocks the main thread for more
+than 2 ms while async cell loads are in progress.
+
+Method:
+  1. Init manager (radius=1).
+  2. For 120 frames, call Update() and measure wall-clock time.
+  3. Report worst-frame time; pass if all frames < 2 ms.
+
+PumpMainThreadCompletions() drains the completion queue in
+O(N) where N = completions this frame.  For 9 cells this
+is always very small.
+
+The actual cell I/O (OnLoadCell stub) runs on the worker
+thread — zero cost to the main-thread measurement.
+
+TODO (full M7): repeat with real Zone::Load file I/O and
+     assert the 2 ms budget still holds.
+-----------------------------------------------------------
+engine::world::WorldStreamingManager mgr;
+if (!mgr.Init(256.0f, /*streamRadius=*/1))
+{
+std::cout << "[FAIL] streaming_async: WorldStreamingManager::Init() failed.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+
+### Soft vs. hard failure for timing tests
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L802) (line 802)
+
+─────────────────────────────────────────────────────────
+OS schedulers can preempt the process and inflate frame
+times spuriously on CI.  We log a warning per-frame
+but do NOT fail immediately — the [PASS]/[FAIL] verdict
+is printed after all frames are measured.
+std::cout << "[WARN] streaming_async: frame " << f
+<< " Update() took " << ms
+<< " ms (budget=" << kBudgetMs << " ms).\n";
+budgetExceeded = true;
+}
+}
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L632) (line 632)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L843) (line 843)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -17233,7 +18037,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L640) (line 640)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L851) (line 851)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -17263,7 +18067,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L694) (line 694)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L905) (line 905)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -17276,7 +18080,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L710) (line 710)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L921) (line 921)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -17391,7 +18195,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L178) (line 178)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L179) (line 179)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -17407,19 +18211,19 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L280) (line 280)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L281) (line 281)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L322) (line 322)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L323) (line 323)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L402) (line 402)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L403) (line 403)
 
 ### skip_dirs excludes build artefacts and third-party sources.
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L439) (line 439)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L440) (line 440)
 
 "Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
 source that intentionally has no TEACHING NOTE blocks and may be large.
