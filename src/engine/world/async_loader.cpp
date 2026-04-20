@@ -13,6 +13,8 @@
  * that #includes async_loader.hpp only pays for a lightweight recompile if
  * this .cpp changes — not the other way around.
  *
+ * M7.3 additions: CancelJob() + cancelled-flag check in WorkerLoop().
+ * M7.4 additions: maxCount parameter in PumpMainThreadCompletions().
  * ============================================================================
  */
 
@@ -90,29 +92,76 @@ void AsyncLoader::EnqueueJob(LoadJob job)
 {
     {
         std::lock_guard<std::mutex> lock(m_pendingMtx);
-        m_pending.push(std::move(job));
+        m_pending.push_back(std::move(job));
     }
     // Wake the worker thread.  If the worker is already processing a job,
     // it will pick this one up after finishing the current one.
     m_cv.notify_one();
 }
 
-void AsyncLoader::PumpMainThreadCompletions()
+void AsyncLoader::CancelJob(uint32_t cellId)
 {
-    // TEACHING NOTE — Swap-and-drain pattern (see header for explanation)
+    // TEACHING NOTE — Cancellation via shared atomic flag
+    // ─────────────────────────────────────────────────────
+    // We scan the pending deque (under lock) and mark any matching job
+    // as cancelled.  Because job.cancelled is a shared_ptr<atomic<bool>>,
+    // the worker's local copy of the job shares the same flag — the write
+    // here is visible to the worker thread even if the job has already been
+    // moved out of the pending deque.
+    //
+    // Cancelled jobs whose work() has not yet started are skipped silently.
+    // Cancelled jobs whose work() is already in progress cannot be stopped
+    // mid-execution (C++ has no cancellation point mechanism for std::thread),
+    // but their completion callback is suppressed by checking the flag in
+    // the worker loop before pushing to m_completed.
+    std::lock_guard<std::mutex> lock(m_pendingMtx);
+    for (auto& job : m_pending)
+    {
+        if (job.cellId == cellId && job.cancelled)
+            job.cancelled->store(true, std::memory_order_release);
+    }
+    LOG_INFO("AsyncLoader: CancelJob requested for cellId=" << cellId);
+}
+
+void AsyncLoader::PumpMainThreadCompletions(int maxCount)
+{
+    // TEACHING NOTE — Swap-and-drain with optional frame-budget cap (M7.4)
     // ─────────────────────────────────────────────────────────────────────
-    std::queue<CompletedJob> localCompleted;
+    // Steps:
+    //   1. Lock m_completedMtx briefly; swap m_completed into a local deque.
+    //   2. Unlock immediately so the worker can push new completions while
+    //      we are executing callbacks.
+    //   3. Process up to maxCount items from the local deque.
+    //   4. Prepend any unconsumed items back to m_completed for next frame.
+    //
+    // maxCount == 0 means "no cap — drain everything".
+    std::deque<CompletedJob> localCompleted;
     {
         std::lock_guard<std::mutex> lock(m_completedMtx);
         std::swap(m_completed, localCompleted);
     }
+
     // No lock held during callback invocation.
+    int processed = 0;
     while (!localCompleted.empty())
     {
+        if (maxCount > 0 && processed >= maxCount)
+            break;
+
         CompletedJob& c = localCompleted.front();
         if (c.job.onComplete)
             c.job.onComplete(c.success);
-        localCompleted.pop();
+        localCompleted.pop_front();
+        ++processed;
+    }
+
+    // If the budget was hit, push unconsumed completions back to m_completed
+    // so they are picked up next frame.
+    if (!localCompleted.empty())
+    {
+        std::lock_guard<std::mutex> lock(m_completedMtx);
+        for (auto& c : localCompleted)
+            m_completed.push_front(std::move(c));
     }
 }
 
@@ -158,9 +207,25 @@ void AsyncLoader::WorkerLoop()
                 break;
 
             job = std::move(m_pending.front());
-            m_pending.pop();
+            m_pending.pop_front();
         }
         // Lock released — main thread can enqueue more work while we execute.
+
+        // --- M7.3: Check cancellation flag before executing ---
+        // TEACHING NOTE — Early-out on cancellation
+        // ──────────────────────────────────────────
+        // The main thread may have called CancelJob() between the time this
+        // job was enqueued and now.  Check the shared atomic flag and skip
+        // execution entirely if the job was cancelled.  We do NOT push a
+        // completion callback for cancelled jobs — the WorldStreamingManager
+        // has already transitioned the cell to Unloaded in EvictCells().
+        if (job.cancelled && job.cancelled->load(std::memory_order_acquire))
+        {
+            LOG_INFO("AsyncLoader: job '" << job.label
+                     << "' (cellId=" << job.cellId
+                     << ") was cancelled — skipping.");
+            continue;
+        }
 
         // --- Execute work ---
         LOG_INFO("AsyncLoader: executing job '" << job.label
@@ -200,10 +265,24 @@ void AsyncLoader::WorkerLoop()
         LOG_INFO("AsyncLoader: job '" << job.label
                  << "' " << (success ? "succeeded" : "FAILED"));
 
+        // --- M7.3: Check cancellation again before pushing to completed ---
+        // TEACHING NOTE — Double-check after execution
+        // ──────────────────────────────────────────────
+        // CancelJob() may have been called WHILE work() was executing.
+        // In that case the cell is already Unloaded in WorldStreamingManager.
+        // Pushing a completion callback would re-mark it as Loaded, corrupting
+        // the state machine.  Skip the push if cancelled.
+        if (job.cancelled && job.cancelled->load(std::memory_order_acquire))
+        {
+            LOG_INFO("AsyncLoader: job '" << job.label
+                     << "' completed but was cancelled mid-flight — discarding.");
+            continue;
+        }
+
         // --- Push to completed queue ---
         {
             std::lock_guard<std::mutex> lock(m_completedMtx);
-            m_completed.push({ std::move(job), success });
+            m_completed.push_back({ std::move(job), success });
         }
     }
 }

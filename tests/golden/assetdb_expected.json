@@ -1,6 +1,7 @@
 {
   "version": "1.0.0",
   "assets": [
-    { "id": "e39a044c-ed6a-4c01-8224-fd276e845cec", "cookedPath": "Cooked/Maps/MainTown.scene.json" }
+    { "id": "e39a044c-ed6a-4c01-8224-fd276e845cec", "cookedPath": "Cooked/Maps/MainTown.scene.json" },
+    { "id": "b4a3c2d1-e5f6-4789-8012-a3b4c5d6e7f8", "cookedPath": "Cooked/Levels/cell_0_0.level" }
   ]
 }

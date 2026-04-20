@@ -15,6 +15,19 @@
         "scene",
         "map"
       ]
+    },
+    {
+      "id": "b4a3c2d1-e5f6-4789-8012-a3b4c5d6e7f8",
+      "type": "level",
+      "name": "DuscaeGrasslands_Cell_0_0",
+      "source": "Levels/cell_0_0.cell.json",
+      "cooked": "Cooked/Levels/cell_0_0.level",
+      "hash": "",
+      "dependencies": [],
+      "tags": [
+        "level",
+        "streaming-cell"
+      ]
     }
   ]
 }

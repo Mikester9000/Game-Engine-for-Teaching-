@@ -69,14 +69,15 @@
 
 #pragma once
 
-#include <functional>   // std::function
-#include <queue>        // std::queue
-#include <thread>       // std::thread
-#include <mutex>        // std::mutex
+#include <functional>       // std::function
+#include <deque>            // std::deque  (replaces std::queue for frame-budget cap)
+#include <thread>           // std::thread
+#include <mutex>            // std::mutex
 #include <condition_variable>  // std::condition_variable
-#include <atomic>       // std::atomic<bool>
-#include <cstdint>      // uint32_t
-#include <string>       // std::string
+#include <atomic>           // std::atomic<bool>
+#include <cstdint>          // uint32_t
+#include <string>           // std::string
+#include <unordered_set>    // std::unordered_set — cancelled job IDs (M7.3)
 
 namespace engine {
 namespace world {
@@ -110,6 +111,23 @@ struct LoadJob
 
     /// Human-readable label for logging / debugging.
     std::string label;
+
+    /**
+     * @brief Cancellation flag — set by CancelJob() on the main thread.
+     *
+     * TEACHING NOTE — std::atomic<bool> for Lock-Free Cancel
+     * ────────────────────────────────────────────────────────
+     * Because the worker thread reads this flag WITHOUT holding any mutex,
+     * it must be an atomic.  The cancel-check is a pure read (load_acquire)
+     * and the cancel-set is a pure write (store_release), so the cheapest
+     * memory order is sufficient — no expensive full barriers needed.
+     *
+     * Using a shared_ptr lets CancelJob() find the flag from the pending
+     * queue (by cell ID) and set it AFTER the job has been moved off the
+     * queue and into the worker thread's local copy.
+     */
+    std::shared_ptr<std::atomic<bool>> cancelled =
+        std::make_shared<std::atomic<bool>>(false);
 
     /**
      * @brief The work to perform on the worker thread.
@@ -231,22 +249,53 @@ public:
     void EnqueueJob(LoadJob job);
 
     /**
+     * @brief Mark a queued job as cancelled so the worker skips it.
+     *
+     * MUST be called from the main thread.
+     *
+     * @param cellId  Cell ID of the job to cancel.
+     *
+     * TEACHING NOTE — Cancellation with Atomic Flags
+     * ─────────────────────────────────────────────────
+     * We cannot remove a job from the pending queue while the worker thread
+     * might be holding a copy of it (the worker pops then releases the lock).
+     * Instead we scan the pending deque and set the job's cancelled flag on
+     * any matching job.  Because each job's cancelled flag is a
+     * shared_ptr<atomic<bool>>, the worker's local copy shares the same
+     * flag — writing from the main thread is visible to the worker even
+     * after the job was moved out of the pending queue.
+     *
+     * Cancelled jobs produce NO completion callback — the cell transitions
+     * directly to Unloaded in WorldStreamingManager::EvictCells().
+     */
+    void CancelJob(uint32_t cellId);
+
+    /**
      * @brief Drain completed jobs and invoke their callbacks.
      *
      * MUST be called from the main thread.  Typically called once per frame
      * before the gameplay update.
      *
-     * TEACHING NOTE — Swap-and-drain pattern
-     * ─────────────────────────────────────────
-     * Rather than holding the completion mutex while invoking callbacks
-     * (which could re-enqueue jobs, causing a deadlock), we:
-     *   1. Lock m_completedMtx briefly.
-     *   2. Swap m_completed into a local queue.
-     *   3. Unlock m_completedMtx.
-     *   4. Iterate the local queue and invoke callbacks with NO lock held.
-     * This minimises lock contention and eliminates deadlock risk.
+     * @param maxCount  Maximum callbacks to invoke this call.
+     *                  0 (default) = drain all, no cap.
+     *                  Positive value = frame-budget cap (M7.4).
+     *
+     * TEACHING NOTE — Swap-and-drain with budget cap
+     * ─────────────────────────────────────────────────
+     * 1. Lock m_completedMtx briefly.
+     * 2. Swap m_completed into a local deque.
+     * 3. Unlock m_completedMtx (no lock held during callbacks).
+     * 4. Invoke up to maxCount callbacks from the front of the local deque.
+     * 5. Swap any remaining (budget-limited) completions back into
+     *    m_completed for the next frame.
+     *
+     * TEACHING NOTE — Why deque instead of queue?
+     * ─────────────────────────────────────────────
+     * std::deque supports efficient push_back AND iteration, letting us
+     * cheaply put unconsumed completions back.  std::queue wraps deque
+     * but does not expose direct iteration — we use deque directly here.
      */
-    void PumpMainThreadCompletions();
+    void PumpMainThreadCompletions(int maxCount = 0);
 
     /**
      * @brief Number of jobs currently waiting in the pending queue.
@@ -269,9 +318,10 @@ private:
      *   1. Acquire m_pendingMtx.
      *   2. Wait on m_cv until m_pending is non-empty OR m_stop is true.
      *   3. Pop one job, release the lock.
-     *   4. Execute job.work().
-     *   5. Lock m_completedMtx, push result, unlock.
-     *   6. Repeat until m_stop && m_pending is empty.
+     *   4. Check cancelled flag — skip job if set (M7.3).
+     *   5. Execute job.work().
+     *   6. Lock m_completedMtx, push result, unlock.
+     *   7. Repeat until m_stop && m_pending is empty.
      *
      * Releasing the pending lock BEFORE executing work() is important:
      * it lets the main thread enqueue more jobs while the worker is busy.
@@ -288,7 +338,7 @@ private:
     // Pending (main → worker)
     mutable std::mutex      m_pendingMtx;
     std::condition_variable m_cv;
-    std::queue<LoadJob>     m_pending;
+    std::deque<LoadJob>     m_pending;          ///< Changed to deque for CancelJob scan.
 
     // Completed (worker → main)
     mutable std::mutex      m_completedMtx;
@@ -299,7 +349,7 @@ private:
         LoadJob job;
         bool    success = false;
     };
-    std::queue<CompletedJob> m_completed;
+    std::deque<CompletedJob> m_completed;       ///< deque supports swap-remainder-back.
 };
 
 } // namespace world

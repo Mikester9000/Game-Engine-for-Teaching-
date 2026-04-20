@@ -113,5 +113,13 @@ private:
     std::string  m_statusMessage;    ///< Bottom status bar text
     float        m_statusTimer = 0;  ///< Seconds remaining to show transient status
 
-    bool         m_showAbout  = false;  ///< Show the About popup this frame
+    bool         m_showAbout             = false;   ///< Show the About popup this frame
+
+    // TEACHING NOTE — M7.5: World Streaming debug overlay toggle
+    // ────────────────────────────────────────────────────────────
+    // The streaming overlay draws a 2D minimap of cell states (grey=Unloaded,
+    // yellow=Loading, green=Loaded, red=Evicting) over the SceneEditorPanel
+    // canvas.  Toggled from the View menu.  Only available when
+    // ENGINE_ENABLE_D3D11 and BUILD_EDITOR are both defined.
+    bool         m_showStreamingOverlay  = false;   ///< Streaming debug minimap
 };

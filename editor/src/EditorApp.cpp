@@ -89,7 +89,7 @@ void EditorApp::Render()
     if (ImGui::BeginPopupModal("About##popup", &m_showAbout,
                                ImGuiWindowFlags_AlwaysAutoResize))
     {
-        ImGui::TextUnformatted("Creation Suite Editor  v1.0  (M6)");
+        ImGui::TextUnformatted("Creation Suite Editor  v1.0  (M7)");
         ImGui::Separator();
         ImGui::TextUnformatted("Part of the Game Engine for Teaching monorepo.");
         ImGui::TextUnformatted("Dear ImGui (MIT) for UI.");
@@ -97,6 +97,7 @@ void EditorApp::Render()
         ImGui::TextUnformatted("nlohmann-json (MIT) for scene files.");
         ImGui::Spacing();
         ImGui::TextUnformatted("M6 panels: Scene Hierarchy, Inspector, Play-in-Engine.");
+        ImGui::TextUnformatted("M7.5: World Streaming debug overlay (View menu).");
         ImGui::Spacing();
         if (ImGui::Button("Close", ImVec2(120, 0)))
         {
@@ -104,6 +105,67 @@ void EditorApp::Render()
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
+    }
+
+    // ---- M7.5: World Streaming debug overlay -------------------------------
+    // TEACHING NOTE — Streaming minimap overlay
+    // ────────────────────────────────────────────
+    // When the user enables View → World Streaming Overlay, we draw a 2D grid
+    // of cell state rectangles as a transparent overlay window.  The overlay
+    // does NOT dock (NoDecoration + NoMove) so it floats in the viewport corner.
+    //
+    // WorldStreamingManager::DrawDebugOverlay() is called with the ImDrawList
+    // for the overlay window; it draws the coloured cell rectangles and legend.
+    //
+    // For now, we display a stub overlay since WorldStreamingManager is not
+    // wired to the editor's scene camera yet.  A full M8 integration would
+    // pass the actual camera position and use GameStreamingManager.
+    if (m_showStreamingOverlay)
+    {
+        ImGuiIO& io2 = ImGui::GetIO();
+        const float overlayX = io2.DisplaySize.x - 240.0f;
+        const float overlayY = 40.0f;
+
+        ImGui::SetNextWindowPos(ImVec2(overlayX, overlayY), ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.75f);
+        ImGui::SetNextWindowSize(ImVec2(230.0f, 200.0f), ImGuiCond_Always);
+
+        const ImGuiWindowFlags kOverlayFlags =
+            ImGuiWindowFlags_NoDecoration     |
+            ImGuiWindowFlags_NoMove           |
+            ImGuiWindowFlags_NoSavedSettings  |
+            ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+        if (ImGui::Begin("##StreamingOverlay", nullptr, kOverlayFlags))
+        {
+            ImGui::TextUnformatted("World Streaming (M7.5)");
+            ImGui::Separator();
+            ImGui::TextUnformatted("Enable in your game loop:");
+            ImGui::TextUnformatted("  mgr.DrawDebugOverlay(");
+            ImGui::TextUnformatted("    drawList, x, y, 20.f,");
+            ImGui::TextUnformatted("    cameraPos);");
+            ImGui::Spacing();
+
+            // Legend swatches
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            const ImVec2 p = ImGui::GetCursorScreenPos();
+            float ly = p.y;
+            const float sw = 12.0f;
+
+            auto swatch = [&](ImU32 col, const char* label)
+            {
+                dl->AddRectFilled(ImVec2(p.x, ly), ImVec2(p.x + sw, ly + sw), col);
+                ImGui::SetCursorScreenPos(ImVec2(p.x + sw + 4.0f, ly));
+                ImGui::TextUnformatted(label);
+                ly += 16.0f;
+            };
+
+            swatch(IM_COL32(128,128,128,200), "Unloaded");
+            swatch(IM_COL32(255,220,  0,200), "Loading");
+            swatch(IM_COL32(  0,192, 64,200), "Loaded");
+            swatch(IM_COL32(255, 64, 64,200), "Evicting");
+        }
+        ImGui::End();
     }
 
     // ---- Status bar --------------------------------------------------------
@@ -274,6 +336,28 @@ void EditorApp::RenderMenuBar()
                 "engine_sandbox.exe must be in the same folder as editor.exe.");
         }
 
+        ImGui::EndMenu();
+    }
+
+    // ---- View menu ---------------------------------------------------------
+    // TEACHING NOTE — M7.5: View menu with streaming overlay toggle
+    // ──────────────────────────────────────────────────────────────
+    // The View menu controls optional debug visualisations.  Adding toggles
+    // here (rather than hardcoding them) makes it easy to add more overlays
+    // in future milestones (e.g. physics bounding boxes, nav-mesh, AI states).
+    //
+    // ImGui::MenuItem with a bool* reference automatically renders a check-mark
+    // next to the label when the value is true, and toggles it on click.
+    if (ImGui::BeginMenu("View"))
+    {
+        ImGui::MenuItem("World Streaming Overlay", nullptr, &m_showStreamingOverlay);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Show the world streaming debug minimap.\n"
+                "Cells: grey=Unloaded, yellow=Loading, green=Loaded, red=Evicting.\n"
+                "White outline = camera's current cell.");
+        }
         ImGui::EndMenu();
     }
 
