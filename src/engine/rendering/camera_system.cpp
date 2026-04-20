@@ -186,7 +186,9 @@ Mat4 CameraSystem::BuildLookAt(const Vec3& eye, const Vec3& target, const Vec3& 
     const Vec3 right   = Normalize(Cross(forward, up));
     const Vec3 newUp   = Cross(right, forward);
 
-    Mat4 m = Mat4::Identity();
+    // All 16 elements are explicitly assigned below; no need to start from
+    // Identity() — zero-initialize instead to make the assignment self-evident.
+    Mat4 m{};
 
     // Row 0 — right axis
     m.m[0][0] =  right.x;

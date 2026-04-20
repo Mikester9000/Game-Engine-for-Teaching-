@@ -130,7 +130,12 @@ void InputMapper::Update(World& world, EntityID playerID, float dt)
         }
     }
 
-    // One-shot forceMoveForward flag: reset after applying.
+    // TEACHING NOTE — Unconditional force-flag reset.
+    // m_forceMoveForward and m_forceAttack are test-injection flags set by
+    // unit tests or CI harnesses before a single Update() call.  We reset
+    // them unconditionally every frame so injected inputs fire exactly once,
+    // regardless of whether they were set.  This guarantees deterministic
+    // CI behaviour without requiring callers to manually clear the flags.
     m_forceMoveForward = false;
     m_forceAttack      = false;
 }

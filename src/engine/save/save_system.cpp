@@ -21,6 +21,7 @@
 #include <sstream>
 #include <chrono>
 #include <ctime>
+#include <unordered_set> // std::unordered_set — O(1) duplicate detection on Load()
 
 #ifdef ENGINE_ENABLE_JSON
 #   include <nlohmann/json.hpp>
@@ -390,16 +391,25 @@ bool SaveSystem::Load(World& world, int slot)
     // We collect all living entity IDs first (modifying a collection you are
     // iterating is undefined behaviour), then destroy them in a second pass.
 
-    std::vector<EntityID> livingNow;
+    // TEACHING NOTE — O(1) duplicate detection for entity collection.
+    // We use an unordered_set for O(1) membership tests when merging two
+    // View<> results.  A linear std::find would be O(n²) for large worlds.
+    // Save/load is already infrequent, but we avoid the O(n²) pattern as
+    // good practice — it also makes the intent explicit.
+    std::unordered_set<EntityID> seen;
+
     world.View<TransformComponent>(
-        [&](EntityID eid, TransformComponent&) { livingNow.push_back(eid); });
+        [&](EntityID eid, TransformComponent&) {
+            if (seen.insert(eid).second)
+                livingNow.push_back(eid);
+        });
 
     // Also catch entities without TransformComponent.
     // Since ECS does not have a "get all entities" API, we approximate by
-    // collecting from a broad component + the above.
+    // collecting from a broad second component view.
     world.View<NameComponent>(
         [&](EntityID eid, NameComponent&) {
-            if (std::find(livingNow.begin(), livingNow.end(), eid) == livingNow.end())
+            if (seen.insert(eid).second)
                 livingNow.push_back(eid);
         });
 
