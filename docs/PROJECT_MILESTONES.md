@@ -385,11 +385,65 @@ engine_sandbox.exe --headless --scene m8_streaming
 
 ---
 
-## Future Milestones (Post-M8)
+## Milestone M9 — PBR Rendering (Cook-Torrance BRDF)
+
+**Goal:** Implement a physically-based rendering pipeline for D3D11 featuring the
+full Cook-Torrance BRDF (metallic-roughness workflow), demonstrating the core
+mathematics of modern AAA rendering.
+
+**Deliverables:**
+- `shaders/pbr_mesh.vs.hlsl` — SM 4.0 vertex shader: model→world→clip transforms,
+  inverse-transpose normal transform (for non-uniform scale correctness).
+- `shaders/pbr_mesh.ps.hlsl` — SM 4.0 pixel shader: GGX NDF, Smith geometry,
+  Schlick Fresnel, energy-conserving kD/kS split, Lambertian diffuse,
+  Reinhard tone mapping, gamma correction.  Fully annotated with TEACHING NOTEs
+  explaining each BRDF term.
+- `D3D11Renderer::PBRScene` struct — holds VS, PS, input layout, VB (UV sphere),
+  IB, three constant buffers (perFrameCB b0, lightCB b1, materialCB b2),
+  and a cull-none rasterizer state.
+- `D3D11Renderer::LoadScene("pbr_mesh")` — compiles HLSL at runtime, generates a
+  UV sphere (16×16 stacks/slices, 289 verts, 1536 indices), uploads all GPU
+  resources, initialises light (warm directional sun) and material (gold-like).
+- `D3D11Renderer::DrawPBRMesh()` — updates perFrameCB with a slowly-rotating world
+  matrix each frame; builds LookAt + perspective projection matrices inline with
+  TEACHING NOTE derivations.
+- `--scene pbr_mesh` in `engine_sandbox` — windowed demo (rotating PBR sphere)
+  and `--headless --scene pbr_mesh` CI validation.
+- CI step in `build-windows.yml` — WARP headless smoke test.
+
+**What M9 does NOT include (deferred to future milestones):**
+- Image-Based Lighting (IBL) cubemaps (irradiance + prefiltered specular + BRDF LUT).
+- Directional shadow maps.
+- Bloom / post-processing.
+- PBR textures (albedo map, metallic-roughness map, normal map, AO map).
+- Vulkan PBR pipeline.
+
+| Sub-task | Description | Status |
+|---|---|---|
+| M9.1 | `pbr_mesh.vs.hlsl` — SM 4.0 PBR vertex shader | ✅ |
+| M9.2 | `pbr_mesh.ps.hlsl` — full Cook-Torrance BRDF pixel shader | ✅ |
+| M9.3 | `PBRScene` struct + D3D11 resource creation in D3D11Renderer | ✅ |
+| M9.4 | UV sphere geometry generation (16×16 stacks/slices) | ✅ |
+| M9.5 | Per-frame LookAt + perspective projection matrices in DrawPBRMesh | ✅ |
+| M9.6 | `--scene pbr_mesh` and `--headless --scene pbr_mesh` in main.cpp | ✅ |
+| M9.7 | CI acceptance step: `build-windows.yml` headless WARP run | ✅ |
+
+**CI validation command:**
+```
+engine_sandbox.exe --headless --scene pbr_mesh
+```
+Expected output: `[PASS] pbr_mesh scene pipeline OK (WARP headless).`
+
+**Done means:** `--headless --scene pbr_mesh` exits 0 in CI (WARP software rasteriser);
+all three constant buffers mapped correctly; sphere geometry drawn without D3D11 errors.
+
+---
+
+## Future Milestones (Post-M9)
 
 | ID | Name | Key deliverable |
 |---|---|---|
-| M9 | PBR Rendering | IBL + directional shadows + bloom + tonemap (D3D11 first, then Vulkan catch-up) |
+| M9 | PBR Rendering | ✅ Cook-Torrance BRDF + metallic-roughness + UV sphere (D3D11) |
 | M10 | Dynamic Sky | Procedural time-of-day + weather VFX (rain, fog) |
 | M11 | Vehicle Physics | Wheel-ray suspension + chase camera + `VehicleComponent` |
 | M12 | Behaviour Tree AI | Boss patterns; formation system; nav-mesh baker |
@@ -413,3 +467,4 @@ engine_sandbox.exe --headless --scene m8_streaming
 | M6 | Editor shell | ✅ Complete |
 | M7 | World streaming | ✅ Complete |
 | M8 | Gameplay integration | ✅ Complete |
+| M9 | PBR Rendering (Cook-Torrance BRDF) | ✅ Complete |

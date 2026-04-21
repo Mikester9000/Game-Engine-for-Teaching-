@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1308 across 46 subsystems.
+**Total lessons:** 1335 across 46 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (54 lessons)
-- [ci/workflows](#ciworkflows) (43 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (55 lessons)
+- [ci/workflows](#ciworkflows) (44 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
@@ -25,7 +25,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (221 lessons)
+- [engine/rendering](#enginerendering) (242 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -35,11 +35,11 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
 - [game/systems](#gamesystems) (99 lessons)
-- [game/world](#gameworld) (89 lessons)
-- [samples/vertical_slice_project](#samplesvertical_slice_project) (14 lessons)
+- [game/world](#gameworld) (90 lessons)
+- [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (39 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (40 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -833,11 +833,23 @@ skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
 skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 "${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.vs.hlsl"
 "${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.ps.hlsl"
+
+### M9: PBR Cook-Torrance HLSL shaders.
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L914) (line 914)
+
+pbr_mesh.vs.hlsl transforms vertices to world/clip space and
+  computes world-space normals via the inverse-transpose matrix.
+pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
+  GGX NDF + Smith geometry + Schlick Fresnel + Reinhard tonemap
+  + gamma correction.  Metallic-roughness material workflow.
+"${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.vs.hlsl"
+"${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.ps.hlsl"
 )
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L931) (line 931)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L939) (line 939)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -859,7 +871,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L950) (line 950)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L958) (line 958)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -870,7 +882,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L958) (line 958)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L966) (line 966)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -880,7 +892,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L988) (line 988)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L996) (line 996)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -889,7 +901,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L995) (line 995)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1003) (line 1003)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1236,9 +1248,33 @@ the headless D3D11 sandbox and asserts three conditions:
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_gameplay
 shell: cmd
 
+### M9 PBR CI Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L205) (line 205)
+
+This step validates the full PBR rendering pipeline against the WARP
+software rasteriser:
+  1. LoadScene("pbr_mesh") compiles pbr_mesh.vs.hlsl + pbr_mesh.ps.hlsl
+     at runtime via D3DCompileFromFile (SM 4.0, D3DCOMPILE_ENABLE_STRICTNESS).
+  2. A UV sphere (16×16 stacks/slices, 289 verts, 1536 indices) is
+     uploaded to an immutable VB + IB.
+  3. Three constant buffers are created and uploaded:
+       b0 perFrameCB (256 bytes) — world, worldInvTrans, view, proj
+       b1 lightCB   (48 bytes)  — directional light dir, color, intensity
+       b2 materialCB (32 bytes) — albedo, metallic, roughness, ao
+  4. RecordHeadlessFrame() binds a 64×64 off-screen RGBA8 RTV, renders
+     one frame through the Cook-Torrance BRDF, then flushes.
+  5. Exit 0 = pass.  Exit non-zero or "[FAIL]" in stdout = failure.
+
+No physical GPU required: WARP executes all SM 4.0 shader instructions.
+-----------------------------------------------------------------------
+- name: Run headless validation (M9 — pbr_mesh scene)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_mesh
+shell: cmd
+
 ### M8.7 Streaming Integration Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L219) (line 219)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L243) (line 243)
 
 This scene validates the complete M8.7 pipeline that wires the world
 streaming system into the D3D11 GameRuntime:
@@ -1257,7 +1293,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L238) (line 238)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L262) (line 262)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1283,7 +1319,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L277) (line 277)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L301) (line 301)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1309,7 +1345,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L311) (line 311)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L335) (line 335)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1330,7 +1366,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L335) (line 335)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L359) (line 359)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1343,7 +1379,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L348) (line 348)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L372) (line 372)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1374,7 +1410,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L376) (line 376)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L400) (line 400)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1383,7 +1419,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L398) (line 398)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L422) (line 422)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1411,7 +1447,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L433) (line 433)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L457) (line 457)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1420,7 +1456,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L471) (line 471)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1442,7 +1478,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L472) (line 472)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L496) (line 496)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1456,7 +1492,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L496) (line 496)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L520) (line 520)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1474,7 +1510,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L521) (line 521)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L545) (line 545)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1485,7 +1521,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L532) (line 532)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L556) (line 556)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1500,7 +1536,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L554) (line 554)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L578) (line 578)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -10570,14 +10606,15 @@ DrawTexturedQuad();
 **Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L553) (line 553)
 
 m_sceneTime accumulates real elapsed time (seconds) and is used by
-DrawSkinnedMesh() to compute a sinusoidal joint rotation angle.
+DrawSkinnedMesh() to compute a sinusoidal joint rotation angle, and by
+DrawPBRMesh() to animate the sphere's Y-axis rotation.
 We advance it unconditionally so LoadScene("skinned_mesh") can start
 animating immediately.
 m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
 
 ### Present interval
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L564) (line 564)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L569) (line 569)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -10589,7 +10626,7 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L582) (line 582)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L587) (line 587)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -10598,7 +10635,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L631) (line 631)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L636) (line 636)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -10623,7 +10660,7 @@ return false;
 
 ### COM Reference Counting
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L680) (line 680)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L685) (line 685)
 
 COM objects are reference-counted.  CreateRenderTargetView internally
 calls AddRef on the texture, so the texture stays alive even after we
@@ -10638,7 +10675,7 @@ return false;
 
 ### Validating the Scene Pipeline in Headless Mode (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L697) (line 697)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L702) (line 702)
 
 -----------------------------------------------------------------------
 If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
@@ -10657,7 +10694,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the GPU skinning scene (M4b).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L717) (line 717)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L722) (line 722)
 
 We bind the off-screen RTV, set a matching 64×64 viewport, and call
 DrawSkinnedMesh() once.  This validates that the skinned mesh pipeline
@@ -10671,9 +10708,27 @@ vp.Height   = 64.0f;
 vp.MaxDepth = 1.0f;
 m_context->RSSetViewports(1, &vp);
 
+### Headless validation for the PBR scene (M9).
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L739) (line 739)
+
+Same pattern as skinned_mesh: bind the 64×64 off-screen RTV, set the
+matching viewport, and call DrawPBRMesh() once.  This validates that
+the PBR pipeline (Cook-Torrance shaders, sphere VB/IB, all three
+constant buffers, rasterizer state) compiles and executes correctly
+under the WARP software renderer, confirming the full PBR path works
+without a physical GPU or display.
+if (m_pbrScene.loaded && m_currentScene == "pbr_mesh")
+{
+D3D11_VIEWPORT vp = {};
+vp.Width    = 64.0f;
+vp.Height   = 64.0f;
+vp.MaxDepth = 1.0f;
+m_context->RSSetViewports(1, &vp);
+
 ### C++ requires functions to be declared before use.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L744) (line 744)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L768) (line 768)
 
 LoadSkinnedMeshScene is a file-scope static helper defined later in this
 translation unit.  Rather than move the entire 300-line function above
@@ -10685,7 +10740,7 @@ D3D11Renderer::SkinnedMeshScene& scene);
 
 ### Runtime HLSL Compilation with D3DCompileFromFile
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L797) (line 797)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L840) (line 840)
 
 -----------------------------------------------------------------------
 D3D11 shaders are written in HLSL and can be compiled either:
@@ -10708,7 +10763,7 @@ Windows filesystem API uses UTF-16 internally.
 
 ### Embedded Fallback HLSL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L823) (line 823)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L866) (line 866)
 
 -----------------------------------------------------------------------
 If the .hlsl files are not present on disk (e.g. a minimal CI run that
@@ -10726,7 +10781,7 @@ static const char* kVsFallback =
 
 ### std::wstring for Win32 wide-char path
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L857) (line 857)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L900) (line 900)
 
 D3DCompileFromFile requires a LPCWSTR (wide string) path.
 std::filesystem::path::wstring() gives us that on MSVC.
@@ -10746,7 +10801,7 @@ D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
 
 ### Creating Shader Objects
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L937) (line 937)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L980) (line 980)
 
 -----------------------------------------------------------------------
 D3D11 separates shader compilation (→ bytecode blob) from shader object
@@ -10760,7 +10815,7 @@ nullptr, &m_quadScene.vs);
 
 ### Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L969) (line 969)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1012) (line 1012)
 
 -----------------------------------------------------------------------
 The Input Assembler (IA) stage needs to know how the raw bytes in the
@@ -10783,7 +10838,7 @@ D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 ### Vertex and Index Buffers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1005) (line 1005)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1048) (line 1048)
 
 -----------------------------------------------------------------------
 D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
@@ -10804,7 +10859,7 @@ bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
 
 ### Texture Loading vs Fallback
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1054) (line 1054)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1097) (line 1097)
 
 -----------------------------------------------------------------------
 We look for a test DDS texture in the shaderDir's parent (project root)
@@ -10823,7 +10878,7 @@ ddsPath = ddsPath.lexically_normal();
 
 ### Procedural 1×1 White Fallback Texture
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1080) (line 1080)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1123) (line 1123)
 
 -----------------------------------------------------------------------
 When no DDS file is present we create a 1×1 RGBA8 white texture
@@ -10834,7 +10889,7 @@ std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n
 
 ### LoadScene_SkinnedMesh (private helper — inlined in LoadScene)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1160) (line 1160)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1203) (line 1203)
 
 We use a local lambda at file scope to keep the main LoadScene() readable.
 All resource creation follows the same pattern as the textured quad:
@@ -10842,7 +10897,7 @@ All resource creation follows the same pattern as the textured quad:
 
 ### Fallback HLSL for the skinned mesh vertex shader.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1173) (line 1173)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1216) (line 1216)
 
 -----------------------------------------------------------------------
 This is a minimal version of skinned_mesh.vs.hlsl that performs linear
@@ -10867,7 +10922,7 @@ static const char* kSkinnedVsFallback =
 
 ### SkinnedVertex Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1280) (line 1280)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1323) (line 1323)
 
 The D3D11_INPUT_ELEMENT_DESC array must exactly match the SkinnedVertex
 struct defined at the top of this file (field order and byte offsets).
@@ -10890,7 +10945,7 @@ D3D11_INPUT_ELEMENT_DESC layout[] =
 
 ### Why cull-none for the skinning demo?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1353) (line 1353)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1396) (line 1396)
 
 The strip starts facing the camera but rotates 360° as bone 1 oscillates.
 With the default back-face culling the strip disappears every 180°.
@@ -10913,7 +10968,7 @@ return false;
 
 ### The D3D11 Draw Call Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1385) (line 1385)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1428) (line 1428)
 
 -----------------------------------------------------------------------
 Every draw call in D3D11 requires the full pipeline state to be set:
@@ -10928,7 +10983,7 @@ We set IA, VS, and PS here for the quad draw call.
 
 ### PSSetShaderResources / PSSetSamplers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1397) (line 1397)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1440) (line 1440)
 
 These calls bind texture resources and sampler states to HLSL registers.
 register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
@@ -10937,7 +10992,7 @@ register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
 
 ### Constructing the Skin Matrices for the 2-Joint Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1453) (line 1453)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1496) (line 1496)
 
 -----------------------------------------------------------------------
 The demo skeleton has two joints:
@@ -10963,7 +11018,7 @@ const float angle = std::sin(m_sceneTime * 1.5f) * (kPi * 0.25f);  // ±45°
 
 ### Input Assembler (IA) Stage Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1488) (line 1488)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1531) (line 1531)
 
 -----------------------------------------------------------------------
 We set the same four IA parameters as any other draw call:
@@ -10977,7 +11032,7 @@ m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 ### DrawIndexed
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1512) (line 1512)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1555) (line 1555)
 
 -----------------------------------------------------------------------
 DrawIndexed(indexCount, startIndex, baseVertex):
@@ -10989,7 +11044,7 @@ m_context->DrawIndexed(static_cast<UINT>(m_skinnedScene.indexCount), 0, 0);
 
 ### Release Order (LIFO vs Creation Order)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1534) (line 1534)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1577) (line 1577)
 
 COM objects must be released in reverse-creation order when one object
 holds a reference to another.  For independent scene objects (shaders,
@@ -10998,7 +11053,7 @@ reverse makes intent clear.
 
 ### Release order: state objects first (they don't depend on
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1564) (line 1564)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1607) (line 1607)
 
 shaders), then shaders, then geometry buffers, then the CB.
 if (m_skinnedScene.rastState)   { m_skinnedScene.rastState->Release();   m_skinnedScene.rastState   = nullptr; }
@@ -11007,6 +11062,405 @@ if (m_skinnedScene.vs)          { m_skinnedScene.vs->Release();          m_skinn
 if (m_skinnedScene.inputLayout) { m_skinnedScene.inputLayout->Release(); m_skinnedScene.inputLayout = nullptr; }
 if (m_skinnedScene.indexBuf)    { m_skinnedScene.indexBuf->Release();    m_skinnedScene.indexBuf    = nullptr; }
 if (m_skinnedScene.vertexBuf)   { m_skinnedScene.vertexBuf->Release();   m_skinnedScene.vertexBuf   = nullptr; }
+
+### Release in reverse creation order (LIFO):
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1621) (line 1621)
+
+state objects first (no dependents), then shaders, then buffers.
+if (m_pbrScene.rastState)   { m_pbrScene.rastState->Release();   m_pbrScene.rastState   = nullptr; }
+if (m_pbrScene.materialCB)  { m_pbrScene.materialCB->Release();  m_pbrScene.materialCB  = nullptr; }
+if (m_pbrScene.lightCB)     { m_pbrScene.lightCB->Release();     m_pbrScene.lightCB     = nullptr; }
+if (m_pbrScene.perFrameCB)  { m_pbrScene.perFrameCB->Release();  m_pbrScene.perFrameCB  = nullptr; }
+if (m_pbrScene.ps)          { m_pbrScene.ps->Release();          m_pbrScene.ps          = nullptr; }
+if (m_pbrScene.vs)          { m_pbrScene.vs->Release();          m_pbrScene.vs          = nullptr; }
+if (m_pbrScene.inputLayout) { m_pbrScene.inputLayout->Release(); m_pbrScene.inputLayout = nullptr; }
+if (m_pbrScene.indexBuf)    { m_pbrScene.indexBuf->Release();    m_pbrScene.indexBuf    = nullptr; }
+if (m_pbrScene.vertexBuf)   { m_pbrScene.vertexBuf->Release();   m_pbrScene.vertexBuf   = nullptr; }
+m_pbrScene.indexCount = 0;
+m_pbrScene.loaded     = false;
+
+### PBR Per-Frame Constant Buffer Update
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1648) (line 1648)
+
+-----------------------------------------------------------------------
+The world matrix changes every frame (the sphere rotates slowly around
+the Y axis).  We therefore update the perFrameCB each call using
+Map/Unmap on a D3D11_USAGE_DYNAMIC buffer.
+
+For the worldInvTrans: our world matrix is a pure rotation (orthogonal),
+so its inverse-transpose equals itself.  We upload the same matrix for
+both slots.  The pixel shader still benefits from the explicit slot
+because if the object were non-uniformly scaled in a future milestone,
+only worldInvTrans would need to change — no shader recompile needed.
+
+View matrix: camera at (0, 0, 4) looking at the origin (RH convention).
+Proj matrix: FovY=60°, aspect from current back-buffer, near=0.1, far=100.
+-----------------------------------------------------------------------
+
+### LookAt matrix (Right-Handed, row-major D3D11)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1671) (line 1671)
+
+-----------------------------------------------------------------------
+We build the view matrix manually to show the derivation:
+
+  zAxis = normalize(eye - target)      // camera "back" direction (RH)
+  xAxis = normalize(up × zAxis)        // camera "right"
+  yAxis = zAxis × xAxis                // camera "up" (re-orthogonalised)
+
+For row-vector × matrix multiplication (D3D11 convention):
+  View[row][col]:
+    rows 0..2 encode the x, y, z camera axes (transposed from column-major)
+    row 3     encodes -dot(axis, eye) (translation to camera origin)
+-----------------------------------------------------------------------
+Vec3 eye    = { 0.0f, 0.5f, 4.0f };  // slightly above centre for a natural look
+Vec3 target = { 0.0f, 0.0f, 0.0f };
+Vec3 up     = { 0.0f, 1.0f, 0.0f };
+
+### Perspective Projection (Right-Handed, D3D11 Z=[0,1])
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1699) (line 1699)
+
+-----------------------------------------------------------------------
+D3D11 maps view-space z ∈ [-near, -far] to NDC z ∈ [0, 1].
+
+For row-vector × matrix multiplication, the projection matrix is:
+  proj[row][col]:
+    [0][0] = f/aspect,  [1][1] = f
+    [2][2] = -far/(far-near),    [2][3] = -1    (w_clip = -z_view)
+    [3][2] = -near*far/(far-near)                (z_clip offset)
+
+where f = cot(FovY/2) = 1/tan(FovY/2).
+
+After perspective divide (NDC = clip/w):
+  NDC_z = 0 at z_view = -near   (near plane)
+  NDC_z = 1 at z_view = -far    (far plane)
+-----------------------------------------------------------------------
+const float kFovY   = 3.14159265f / 3.0f;   // 60 degrees
+const float kNear   = 0.1f;
+const float kFar    = 100.0f;
+float aspect = (m_height > 0) ? (static_cast<float>(m_width) / static_cast<float>(m_height)) : 1.0f;
+float f      = 1.0f / std::tan(kFovY * 0.5f);   // cot(FovY/2)
+
+### Map / Unmap for DYNAMIC buffers.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1732) (line 1732)
+
+D3D11_MAP_WRITE_DISCARD tells the driver "discard the old contents and
+give me a new pointer to write into".  This avoids GPU/CPU stalls: the
+driver allocates a new backing page for this frame and the GPU keeps
+reading from the old one.  The alternative, UpdateSubresource, is
+simpler but can cause pipeline stalls on some drivers.
+struct alignas(16) PerFrameCBData
+{
+float world[4][4];
+float worldInvTrans[4][4];
+float view[4][4];
+float proj[4][4];
+} pfData;
+std::memcpy(pfData.world,        worldMat.Data(), 64);
+std::memcpy(pfData.worldInvTrans, worldMat.Data(), 64);  // rotation-only: invT == M
+std::memcpy(pfData.view,         viewMat.Data(),  64);
+std::memcpy(pfData.proj,         projMat.Data(),  64);
+
+### Input Assembler (IA) stage setup.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1761) (line 1761)
+
+We must set:
+  1. The primitive topology (triangles, lines, etc.).
+  2. The vertex buffer (stride = bytes per vertex).
+  3. The index buffer (UINT16 indices here).
+  4. The input layout (describes how to decode each vertex element).
+Without all four, the draw call reads garbage or produces no output.
+-----------------------------------------------------------------------
+UINT stride = sizeof(float) * 8;   // pos(3) + normal(3) + uv(2) = 8 floats
+UINT offset = 0;
+m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+m_context->IASetVertexBuffers(0, 1, &m_pbrScene.vertexBuf, &stride, &offset);
+m_context->IASetIndexBuffer(m_pbrScene.indexBuf, DXGI_FORMAT_R16_UINT, 0);
+m_context->IASetInputLayout(m_pbrScene.inputLayout);
+
+### Embedded PBR Shader Fallbacks
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1811) (line 1811)
+
+-----------------------------------------------------------------------
+As with the textured_quad and skinned_mesh scenes, we include minimal
+inline HLSL strings as fallbacks in case the .hlsl files are absent
+(e.g. a clean build before POST_BUILD copies shaders to the output dir).
+
+The fallbacks are deliberately short — they omit the full Cook-Torrance
+BRDF to stay below the constant-string-literal size limit on some
+compilers.  The on-disk .hlsl files contain the full annotated versions.
+-----------------------------------------------------------------------
+static const char* kPBRVsFallback =
+"cbuffer PerFrameCB:register(b0){"
+"float4x4 g_world;float4x4 g_worldInvTrans;float4x4 g_view;float4x4 g_proj;};"
+"struct VSIn{float3 pos:POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;};"
+"struct PSIn{float4 cp:SV_POSITION;float3 wp:TEXCOORD1;float3 wn:NORMAL;float2 uv:TEXCOORD0;};"
+"PSIn main(VSIn i){"
+"PSIn o;"
+"float4 wp=mul(float4(i.pos,1),g_world);o.wp=wp.xyz;"
+"o.cp=mul(mul(wp,g_view),g_proj);"
+"o.wn=normalize(mul(i.n,(float3x3)g_worldInvTrans));"
+"o.uv=i.uv;return o;}";
+
+### kPi for the UV sphere generation inside LoadPBRMeshScene.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1845) (line 1845)
+
+math_types.hpp defines engine::math::kPi, but that name requires the
+engine::math namespace which is not open at file scope here.  We declare a
+local constant so the geometry generation code reads cleanly without a
+using-namespace directive that would pollute the global scope.
+-----------------------------------------------------------------------
+static constexpr float kPi = 3.14159265358979323846f;
+
+### Same compile helper pattern as the skinned mesh scene.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1863) (line 1863)
+
+We attempt to compile from the .hlsl file on disk; if that fails (file
+missing, syntax error) we fall back to the embedded string.  This
+guarantees the scene always loads even in a minimal environment.
+-----------------------------------------------------------------------
+auto compile = [&](const fs::path& path, const char* fallback,
+const char* entry, const char* target) -> ID3DBlob*
+{
+ID3DBlob* code   = nullptr;
+ID3DBlob* errors = nullptr;
+HRESULT   hr     = E_FAIL;
+
+### D3D11 Input Layout
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1931) (line 1931)
+
+The input layout maps each field of the C++ vertex struct to a
+semantic name in the HLSL VSInput struct.  We have three fields:
+  POSITION  — float3 model-space position
+  NORMAL    — float3 model-space normal
+  TEXCOORD0 — float2 UV coordinates
+
+The byte offsets (AlignedByteOffset) accumulate: 0, 12, 24.
+DXGI_FORMAT_R32G32B32_FLOAT = three 32-bit floats (12 bytes).
+DXGI_FORMAT_R32G32_FLOAT    = two   32-bit floats  (8 bytes).
+-----------------------------------------------------------------------
+const D3D11_INPUT_ELEMENT_DESC kPBRLayout[] =
+{
+{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+};
+hr = device->CreateInputLayout(kPBRLayout, 3,
+vsBlob->GetBufferPointer(),
+vsBlob->GetBufferSize(),
+&scene.inputLayout);
+vsBlob->Release();
+psBlob->Release();
+if (FAILED(hr)) {
+scene.vs->Release(); scene.ps->Release();
+std::cerr << "[D3D11Renderer] PBR input layout creation failed.\n";
+return false;
+}
+
+### UV Sphere Parametric Generation
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1963) (line 1963)
+
+A UV sphere is generated by sweeping a circle (latitude) around the
+Y axis (longitude).  Parameters:
+
+  phi   (φ) = latitude  ∈ [0, π]       0 = north pole, π = south pole
+  theta (θ) = longitude ∈ [0, 2π]
+
+Vertex position on unit sphere:
+  x = sin(φ) · cos(θ)
+  y = cos(φ)
+  z = sin(φ) · sin(θ)
+
+For a unit sphere the normal is equal to the position (outward-facing).
+
+UV mapping:
+  U = θ / (2π)    → 0 at θ=0, 1 at θ=2π  (wraps around the equator)
+  V = φ / π       → 0 at north pole, 1 at south pole
+
+We duplicate the vertices at the seam (θ=0 and θ=2π) so that UV
+coordinates remain continuous — necessary for correct texture mapping
+in a future milestone.
+
+Winding: CW when viewed from outside (D3D11 default front-face), but
+we use a cull-none rasterizer state so winding order doesn't matter
+for the sphere demo (it lets students orbit without culling artefacts).
+-----------------------------------------------------------------------
+constexpr int N_STACKS = 16;
+constexpr int N_SLICES = 16;
+
+### Triangle winding (clockwise from outside of sphere).
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2037) (line 2037)
+
+Triangle 1: top-left, bottom-left, top-right
+Triangle 2: top-right, bottom-left, bottom-right
+(We use cull-none so this choice is cosmetic for the demo.)
+indices[iIdx++] = v0;
+indices[iIdx++] = v2;
+indices[iIdx++] = v1;
+
+### IMMUTABLE vs DYNAMIC buffers for geometry.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2055) (line 2055)
+
+The sphere geometry never changes, so we use D3D11_USAGE_IMMUTABLE:
+  • GPU-only access (no CPU write after creation).
+  • Optimal for static meshes — the driver can place the data in
+    the fastest GPU memory without reserving a CPU-accessible mapping.
+Compare to the perFrameCB which must be DYNAMIC (CPU writes each frame).
+-----------------------------------------------------------------------
+{
+D3D11_BUFFER_DESC vbd = {};
+vbd.ByteWidth      = static_cast<UINT>(nVerts * sizeof(PBRVertex));
+vbd.Usage          = D3D11_USAGE_IMMUTABLE;
+vbd.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
+D3D11_SUBRESOURCE_DATA vsd = {};
+vsd.pSysMem = verts.data();
+hr = device->CreateBuffer(&vbd, &vsd, &scene.vertexBuf);
+}
+if (FAILED(hr)) {
+scene.vs->Release(); scene.ps->Release(); scene.inputLayout->Release();
+std::cerr << "[D3D11Renderer] PBR VB creation failed.\n";
+return false;
+}
+
+### D3D11 Constant Buffer Size Rules.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2096) (line 2096)
+
+A D3D11 constant buffer must be a MULTIPLE of 16 bytes.
+The perFrameCB holds four 4×4 float matrices = 4 × 64 = 256 bytes. ✓
+The lightCB holds three float3 (+ padding) = 48 bytes. ✓
+The materialCB holds float3+float+float+float+float2 = 32 bytes. ✓
+
+We use D3D11_USAGE_DYNAMIC + D3D11_CPU_ACCESS_WRITE for all three so
+the CPU can update them via Map/Unmap at runtime:
+  perFrameCB — updated every frame (rotating world matrix).
+  lightCB    — only written once here (constant light direction).
+  materialCB — only written once here (single-material demo).
+-----------------------------------------------------------------------
+auto makeDynCB = [&](UINT byteWidth) -> ID3D11Buffer*
+{
+D3D11_BUFFER_DESC cbd = {};
+cbd.ByteWidth      = byteWidth;
+cbd.Usage          = D3D11_USAGE_DYNAMIC;
+cbd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+ID3D11Buffer* buf  = nullptr;
+device->CreateBuffer(&cbd, nullptr, &buf);
+return buf;
+};
+
+### Uploading data to a DYNAMIC constant buffer at init.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2132) (line 2132)
+
+For the very first upload we use D3D11_MAP_WRITE_DISCARD (same as the
+per-frame update).  The resource has never been used by the GPU, so
+"discarding" its previous contents is safe (there are none).
+-----------------------------------------------------------------------
+
+### Light direction points TOWARD the light (toward the source),
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2139) (line 2139)
+
+so the dot product N·L is positive for surfaces facing the light.
+struct alignas(16) LightData {
+float cameraWorldPos[3]; float lightIntensity;
+float lightDir[3];       float padL;
+float lightColor[3];     float padL2;
+} lightData;
+lightData.cameraWorldPos[0] = 0.0f;
+lightData.cameraWorldPos[1] = 0.5f;
+lightData.cameraWorldPos[2] = 4.0f;
+lightData.lightIntensity    = 3.0f;
+Light direction: from lower-left-back toward upper-right-front (normalised).
+{
+float lx = 0.5f, ly = 1.0f, lz = -0.5f;
+float len = std::sqrt(lx*lx + ly*ly + lz*lz);
+lightData.lightDir[0] = lx / len;
+lightData.lightDir[1] = ly / len;
+lightData.lightDir[2] = lz / len;
+}
+lightData.padL            = 0.0f;
+lightData.lightColor[0]   = 1.0f;   // warm-white sunlight
+lightData.lightColor[1]   = 0.98f;
+lightData.lightColor[2]   = 0.90f;
+lightData.padL2           = 0.0f;
+
+### Workaround: use device->GetImmediateContext to get
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2170) (line 2170)
+
+a context pointer for the one-time init upload.  In a production
+engine the context would be passed as a parameter.
+ID3D11DeviceContext* ctx = nullptr;
+device->GetImmediateContext(&ctx);
+if (ctx)
+{
+if (SUCCEEDED(ctx->Map(scene.lightCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+{
+std::memcpy(mapped.pData, &lightData, sizeof(lightData));
+ctx->Unmap(scene.lightCB, 0);
+}
+ctx->Release();
+}
+}
+
+### Material Parameters for a Gold-like Surface:
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2187) (line 2187)
+
+albedo   = warm orange-gold (reflected tint for metals = albedo)
+  metallic = 0.9  (mostly metallic; a small dielectric contribution
+                   simulates a light layer of surface oxidation)
+  roughness = 0.25 (relatively smooth — visible sharp-ish specular)
+  ao       = 1.0   (no occlusion on a standalone sphere)
+struct alignas(16) MaterialData {
+float albedo[3]; float metallic;
+float roughness; float ao;      float matPad[2];
+} matData;
+matData.albedo[0] = 1.00f;   // gold-orange
+matData.albedo[1] = 0.71f;
+matData.albedo[2] = 0.29f;
+matData.metallic  = 0.9f;
+matData.roughness = 0.25f;
+matData.ao        = 1.0f;
+matData.matPad[0] = matData.matPad[1] = 0.0f;
+
+### Cull-None for the PBR Demo Sphere.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2223) (line 2223)
+
+The default D3D11 rasterizer state back-face culls (removes triangles
+whose vertices wind clockwise from the camera's perspective).  For a
+closed sphere mesh viewed from outside, back-face culling is correct
+and efficient.
+
+We disable culling here for two pedagogical reasons:
+  1. Students orbiting the camera inside the sphere can still see the
+     inner surface, which helps visualise the sphere geometry.
+  2. It means the winding order of the generated sphere is not critical,
+     making the geometry generation code easier to understand.
+-----------------------------------------------------------------------
+{
+D3D11_RASTERIZER_DESC rd = {};
+rd.FillMode = D3D11_FILL_SOLID;
+rd.CullMode = D3D11_CULL_NONE;
+rd.FrontCounterClockwise = FALSE;
+rd.DepthClipEnable       = TRUE;
+device->CreateRasterizerState(&rd, &scene.rastState);
+}
 
 ### Why Direct3D 11?
 
@@ -11105,14 +11559,14 @@ D3D11Renderer();
 
 ### COM pointer naming convention
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L165) (line 165)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L168) (line 168)
 
 We prefix all COM interface pointers with m_ (member) and use the
 interface name as the type hint.  e.g. m_device is an ID3D11Device*.
 
 ### Storing Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L177) (line 177)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L180) (line 180)
 
 -----------------------------------------------------------------------
 We cache the current back-buffer size so that DrawFrame can set the
@@ -11126,7 +11580,7 @@ uint32_t                m_height        = 0;
 
 ### Public Scene-Resource Structs
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L193) (line 193)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L196) (line 196)
 
 -----------------------------------------------------------------------
 These inner structs are public to allow static helper functions in the
@@ -11137,6 +11591,45 @@ making them public does not expose any hidden invariants.
 TexturedQuadScene (M3): resources for the UV-mapped quad.
 SkinnedMeshScene  (M4b): resources for the GPU-skinned strip.
 -----------------------------------------------------------------------
+
+### PBRScene (M9: Physically Based Rendering)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L240) (line 240)
+
+-----------------------------------------------------------------------
+PBRScene holds every Direct3D 11 resource required to render a
+physically-based (Cook-Torrance BRDF) sphere under a directional light.
+
+Resources:
+  vs / ps          — HLSL vertex + pixel shaders (SM 4.0).
+  inputLayout      — describes each vertex attribute to the IA stage.
+  vertexBuf        — UV sphere geometry (pos + normal + uv per vertex).
+  indexBuf         — triangle list indices for the sphere.
+  perFrameCB (b0)  — per-frame transform matrices (world, view, proj).
+  lightCB    (b1)  — directional light and camera world position.
+  materialCB (b2)  — albedo, metallic, roughness, ambient-occlusion.
+  rastState        — cull-none so both faces of the sphere are visible
+                     from any camera angle without winding-order issues.
+
+Constant buffer update frequency:
+  perFrameCB  — every frame  (world matrix rotates with m_sceneTime).
+  lightCB     — once on load  (light direction does not change).
+  materialCB  — once on load  (single material sphere demo).
+-----------------------------------------------------------------------
+struct PBRScene
+{
+ID3D11VertexShader*    vs          = nullptr;
+ID3D11PixelShader*     ps          = nullptr;
+ID3D11InputLayout*     inputLayout = nullptr;
+ID3D11Buffer*          vertexBuf   = nullptr;
+ID3D11Buffer*          indexBuf    = nullptr;
+ID3D11Buffer*          perFrameCB  = nullptr;   ///< b0 (VS): world, worldInvTrans, view, proj
+ID3D11Buffer*          lightCB     = nullptr;   ///< b1 (PS): camera pos, light dir/color/intensity
+ID3D11Buffer*          materialCB  = nullptr;   ///< b2 (PS): albedo, metallic, roughness, ao
+ID3D11RasterizerState* rastState   = nullptr;
+int                    indexCount  = 0;
+bool                   loaded      = false;
+};
 
 ### DDS Parsing without a Third-Party Library
 
@@ -17773,9 +18266,27 @@ sp.respawnTime = se.respawnTime;
 zone.AddSpawnPoint(sp);
 }
 
-### M8.7: AnimatorComponent for D3D11 skinned-mesh pass
+### M8.7: Apply per-cell world-space origin offset
 
 **Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L366) (line 366)
+
+─────────────────────────────────────────────────────────────────
+Zone::SpawnOneEnemy() places entities at tile-local world positions:
+  position = Vec3(sp.x * TILE_SIZE, 0, sp.y * TILE_SIZE)
+This is correct for cell (0,0), but for any other cell the entities
+all stack near the origin.  We must add the cell's world-space origin:
+  cellOrigin = Vec3(coord.cx * CellSize, 0, coord.cz * CellSize)
+
+This mirrors how FF15's Luminous Engine applies a "cell offset matrix"
+when loading a streaming cell, so that each cell occupies its distinct
+region of the world grid.
+const float cellSize    = Partition().CellSize();
+const float cellOriginX = static_cast<float>(coord.cx) * cellSize;
+const float cellOriginZ = static_cast<float>(coord.cz) * cellSize;
+
+### M8.7: AnimatorComponent for D3D11 skinned-mesh pass
+
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L397) (line 397)
 
 ─────────────────────────────────────────────────────────────────────
 The D3D11 skinned-mesh vertex shader (skinned_mesh.vs.hlsl) reads a
@@ -17813,7 +18324,7 @@ anim.isPlaying    = true;
 
 ### Cleaning up staging data on evict/cancel
 
-**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L445) (line 445)
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L476) (line 476)
 
 ──────────────────────────────────────────────────────────
 If this cell was cancelled mid-load (EvictCells calls OnEvictCell for
@@ -17828,7 +18339,7 @@ m_pendingData.erase(id);
 
 ### We do NOT call WorldStreamingManager::OnEvictCell().
 
-**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L457) (line 457)
+**Source:** [`src/game/world/GameStreamingManager.cpp`](src/game/world/GameStreamingManager.cpp#L488) (line 488)
 
 The base class virtual method only logs; the actual state-machine
 transition (erasing from m_cellStates + m_loadedCells) is done by the
@@ -19070,9 +19581,28 @@ for chunk in iter(lambda: f.read(65536), b""):
 h.update(chunk)
 return h.hexdigest()
 
+### Stable GUIDs across cook runs
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L117) (line 117)
+
+──────────────────────────────────────────────
+A GUID is *stable* if it never changes once assigned — even when the cook
+tool is re-run, files are moved, or the engine is rebuilt.  Stable GUIDs
+are essential because C++ runtime code (game_runtime.cpp, main.cpp) and the
+golden-file contract test all hardcode the GUID of specific assets.
+
+### Incremental cook / GUID stability
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L151) (line 151)
+
+──────────────────────────────────────────────────
+Use this instead of new_guid() whenever you register an asset entry that
+has a 'source' path.  The lookup is O(1) (dict) and handles the case where
+the registry does not yet contain an entry for the asset (first cook run).
+
 ### Texture Cooking (Stub)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L116) (line 116)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L179) (line 179)
 
 A real cook step would:
 1. Decode the PNG with Pillow or stb_image.
@@ -19087,7 +19617,7 @@ ensure_dir(texture_dst)
 
 ### Audio Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L156) (line 156)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L219) (line 219)
 
 When the  tools/audio_authoring  package is installed, this function uses
 the  audio_engine.dsp  module to normalise each WAV file (target LUFS,
@@ -19096,7 +19626,7 @@ true-peak ceiling) before writing to Cooked/Audio/.  It also writes a
 
 ### Why normalise at cook time?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L165) (line 165)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L228) (line 228)
 
 Normalising audio during the cook step (not at runtime) means:
 1. The runtime doesn't waste CPU cycles on DSP during gameplay.
@@ -19110,7 +19640,7 @@ ensure_dir(audio_dst)
 
 ### Scene Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L258) (line 258)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L321) (line 321)
 
 For simple JSON scenes, cooking is mostly a copy + validation step.
 A real cook might:
@@ -19124,7 +19654,7 @@ ensure_dir(maps_dst)
 
 ### Animation Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L295) (line 295)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L358) (line 358)
 
 When the  tools/anim_authoring  package is installed, this function uses
 the  AnimAssetPipeline  class from  animation_engine.integration  to
@@ -19133,11 +19663,11 @@ the cooked .skelc / .animc files.
 
 ### M7.2: Level / Streaming Cell Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L378) (line 378)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L443) (line 443)
 
 ### Why .level instead of keeping .cell.json?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L396) (line 396)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L461) (line 461)
 
 Renaming to .level makes it explicit that this is a COOKED, runtime-ready
 file — not a raw source file.  The extension signals the content pipeline
@@ -19149,7 +19679,7 @@ ensure_dir(levels_dst)
 
 ### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L408) (line 408)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L473) (line 473)
 
 Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
 leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -19160,7 +19690,7 @@ dst.parent.mkdir(parents=True, exist_ok=True)
 
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L451) (line 451)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L516) (line 516)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -19173,7 +19703,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L465) (line 465)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L530) (line 530)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
@@ -19528,6 +20058,8 @@ Usage:
   engine_sandbox.exe --headless --scene textured_quad  # M3 D3D11 texture CI
   engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
+  engine_sandbox.exe --scene pbr_mesh             # M9 PBR Cook-Torrance sphere (windowed)
+  engine_sandbox.exe --headless --scene pbr_mesh  # M9 PBR Cook-Torrance CI
   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
@@ -19546,7 +20078,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L92) (line 92)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L94) (line 94)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -19566,7 +20098,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L110) (line 110)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L112) (line 112)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -19584,7 +20116,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L126) (line 126)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L128) (line 128)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -19599,14 +20131,16 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L139) (line 139)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L141) (line 141)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
   1. Loads assetdb.json produced by cook.exe.
-  2. Inits a GameStreamingManager with a real AssetLoader.
-  3. Registers the cell_0_0 GUID for world cell (0,0).
-  4. Runs 200 Update() calls so the async worker can complete.
+  2. Inits a GameStreamingManager with cell size TILE_SIZE*40 = 2560 world
+     units (same as GameRuntime, same coordinate mapping path).
+  3. Registers the cell_0_0 GUID for world cell (1,1) — matching the
+     GameRuntime mapping (player starts in cell (1,1) at 2560-unit cells).
+  4. Runs 200 Update() calls at position (3840, 0, 3840) — centre of (1,1).
   5. Asserts: at least 1 cell reached the LOADED state.
 
 Run AFTER cook.exe — the test exits with [FAIL] if assetdb.json is absent.
@@ -19617,7 +20151,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L163) (line 163)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -19634,7 +20168,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L178) (line 178)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L182) (line 182)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -19651,7 +20185,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L191) (line 191)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L195) (line 195)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -19663,7 +20197,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L213) (line 213)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L217) (line 217)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -19682,7 +20216,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L228) (line 228)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L232) (line 232)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -19695,7 +20229,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L241) (line 241)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L245) (line 245)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -19706,7 +20240,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L270) (line 270)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L274) (line 274)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -19721,7 +20255,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L295) (line 295)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L299) (line 299)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -19731,7 +20265,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L325) (line 325)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L329) (line 329)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -19747,7 +20281,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L374) (line 374)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L378) (line 378)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -19766,13 +20300,14 @@ return 1;
 }
 std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
 }
-else if (scene == "textured_quad" || scene == "skinned_mesh")
+else if (scene == "textured_quad" || scene == "skinned_mesh" ||
+scene == "pbr_mesh")
 {
 -----------------------------------------------------------
 
-### Headless Scene Validation (M3 / M4b)
+### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L395) (line 395)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L400) (line 400)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -19783,6 +20318,8 @@ on the WARP software rasteriser without errors.
 
 "textured_quad": exercises D3D11 texture + HLSL pipeline.
 "skinned_mesh":  exercises GPU skinning CB + HLSL skinning VS.
+"pbr_mesh":      exercises Cook-Torrance PBR shaders + sphere
+                 geometry + three constant buffers (M9).
 -----------------------------------------------------------
 if (!renderer->RecordHeadlessFrame())
 {
@@ -19799,7 +20336,7 @@ else if (scene == "physics_test")
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L418) (line 418)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L425) (line 425)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -19824,7 +20361,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L539) (line 539)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L546) (line 546)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -19845,7 +20382,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L623) (line 623)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L630) (line 630)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -19863,7 +20400,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L637) (line 637)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L644) (line 644)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -19881,7 +20418,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L670) (line 670)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L677) (line 677)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -19907,7 +20444,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L721) (line 721)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L728) (line 728)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -19929,7 +20466,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L740) (line 740)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L747) (line 747)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -19952,7 +20489,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L821) (line 821)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L828) (line 828)
 
 -----------------------------------------------------------
 Verifies that:
@@ -19972,7 +20509,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L838) (line 838)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L845) (line 845)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -19992,7 +20529,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L881) (line 881)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L888) (line 888)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -20008,7 +20545,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L923) (line 923)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L930) (line 930)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -20034,7 +20571,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L945) (line 945)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L952) (line 952)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -20057,7 +20594,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1054) (line 1054)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1061) (line 1061)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -20066,22 +20603,25 @@ This acceptance scene validates the complete M8.7 pipeline:
      Exits [FAIL] if the file is missing (cook.exe must run
      before this scene is invoked, as enforced in CI).
 
-  2. STREAMING INIT — Create a GameStreamingManager with the
-     real AssetLoader and ECS World.
+  2. STREAMING INIT — Create a GameStreamingManager with cell
+     size TILE_SIZE * 40 = 2560 world units — matching the
+     shipped GameRuntime (same coordinate mapping path).
 
   3. GUID REGISTRATION — Register the stable GUID
-     "5db40c3b-…" (cell_0_0) for world cell (0,0).
+     "5db40c3b-…" (cell_0_0) for world cell (1,1), mirroring
+     GameRuntime (player starts at tile 50,50 = world 3200,3200
+     which lies in cell (1,1) at 2560-unit cell size).
 
   4. UPDATE LOOP — Run 200 Update() calls at position
-     (128, 0, 128), which lies in cell (0,0) when cell size
-     is 256 world units.  The async worker has enough calls
-     to complete the load and trigger PumpCompletions().
+     (3840, 0, 3840) — the centre of cell (1,1) at 2560 cell
+     size.  The async worker has enough calls to complete the
+     load and trigger PumpCompletions().
 
   5. LOADED COUNT — Assert ≥ 1 cell reached LOADED state.
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1075) (line 1075)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1085) (line 1085)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -20092,14 +20632,31 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1098) (line 1098)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1108) (line 1108)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
+### Keep this acceptance-test cell size matched to
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1113) (line 1113)
+
+GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
+Using a smaller test-only value exercises a different
+world-position → cell-coordinate mapping path and can hide
+boundary bugs that would appear in the shipped runtime.
+constexpr float kStreamCellSize = TILE_SIZE * 40.0f;  // 2560 world units
+if (!streamMgr->Init(*streamWorld, &streamLoader, kStreamCellSize, 1))
+{
+std::cout << "[FAIL] m8_streaming: GameStreamingManager::Init failed.\n";
+renderer->Shutdown();
+window.Shutdown();
+return 1;
+}
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1154) (line 1154)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1174) (line 1174)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -20109,7 +20666,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1162) (line 1162)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1182) (line 1182)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -20139,7 +20696,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1190) (line 1190)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1210) (line 1210)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -20162,7 +20719,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1243) (line 1243)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1263) (line 1263)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -20175,7 +20732,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1259) (line 1259)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1279) (line 1279)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

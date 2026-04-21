@@ -64,6 +64,8 @@
  *   engine_sandbox.exe --headless --scene textured_quad  # M3 D3D11 texture CI
  *   engine_sandbox.exe --scene skinned_mesh         # M4b GPU skinning demo (windowed)
  *   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
+ *   engine_sandbox.exe --scene pbr_mesh             # M9 PBR Cook-Torrance sphere (windowed)
+ *   engine_sandbox.exe --headless --scene pbr_mesh  # M9 PBR Cook-Torrance CI
  *   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
  *   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
  *   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
@@ -391,10 +393,11 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
             }
-            else if (scene == "textured_quad" || scene == "skinned_mesh")
+            else if (scene == "textured_quad" || scene == "skinned_mesh" ||
+                     scene == "pbr_mesh")
             {
                 // -----------------------------------------------------------
-                // TEACHING NOTE — Headless Scene Validation (M3 / M4b)
+                // TEACHING NOTE — Headless Scene Validation (M3 / M4b / M9)
                 // -----------------------------------------------------------
                 // RecordHeadlessFrame() creates a 64×64 off-screen render
                 // target, binds it, draws the scene once, then flushes.
@@ -404,6 +407,8 @@ int main(int argc, char* argv[])
                 //
                 // "textured_quad": exercises D3D11 texture + HLSL pipeline.
                 // "skinned_mesh":  exercises GPU skinning CB + HLSL skinning VS.
+                // "pbr_mesh":      exercises Cook-Torrance PBR shaders + sphere
+                //                  geometry + three constant buffers (M9).
                 // -----------------------------------------------------------
                 if (!renderer->RecordHeadlessFrame())
                 {
