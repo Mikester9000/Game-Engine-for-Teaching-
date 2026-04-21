@@ -180,17 +180,53 @@ backend.
 
 ---
 
-## Post-M8 Work
+## Post-M8 Work — Completed
 
-- PBR rendering (IBL + directional shadows + bloom + tonemap) — D3D11 first, then Vulkan
-- Dynamic sky / procedural time-of-day + weather VFX
-- Vehicle physics (`VehicleComponent` + wheel-ray suspension)
-- Behaviour tree AI (`src/engine/ai/behaviour_tree.hpp/.cpp`)
-- Formation system (`src/engine/ai/formation_system.hpp/.cpp`)
-- Cinematic sequencer + camera rig
-- Vulkan catch-up: all DEFERRED items (vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning)
-- Nav-mesh generation + runtime pathfinding
-- PAK file packager
+- ✅ PBR rendering (Cook-Torrance BRDF, UV sphere, 3 CBs, Reinhard tonemap) — D3D11 (M9)
+- ✅ Dynamic sky + weather VFX (SkyRenderer, WeatherFx, sky.vs.hlsl, sky.ps.hlsl) — D3D11 (M10)
+
+## Post-M10 Work (remaining)
+
+- Vehicle physics (`VehicleComponent` + wheel-ray suspension + chase camera) — M11
+- Behaviour tree AI (`src/engine/ai/behaviour_tree.hpp/.cpp`) + formation system — M12
+- Cinematics (`CinematicSequencer` + camera rig + cut-scene editor panel) — M13
+- Vulkan catch-up: all DEFERRED items (vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning) — M14
+- Nav-mesh baker + runtime pathfinding
+- PAK file packager (`src/tools/pak/pak_main.cpp`) — M15
+
+---
+
+## Milestone 9 — PBR Rendering (Cook-Torrance BRDF) ✅ *(complete)*
+
+**Goal:** Physically-based rendering pipeline for D3D11 — the same Cook-Torrance
+BRDF class used in Final Fantasy XV's Luminous engine.
+
+| Item | Status |
+|------|--------|
+| `shaders/pbr_mesh.vs.hlsl` — SM 4.0 vertex shader (model→world→clip, inverse-transpose normal) | ✅ Done |
+| `shaders/pbr_mesh.ps.hlsl` — GGX NDF + Smith geometry + Schlick Fresnel + Reinhard tonemap + gamma | ✅ Done |
+| `D3D11Renderer::PBRScene` struct + `LoadScene("pbr_mesh")` + `DrawPBRMesh()` | ✅ Done |
+| UV sphere geometry (16×16 stacks/slices, 289 verts, 1536 indices) | ✅ Done |
+| 3 constant buffers: perFrameCB (b0), lightCB (b1), materialCB (b2) | ✅ Done |
+| `--scene pbr_mesh` in `engine_sandbox`; `--headless --scene pbr_mesh` CI | ✅ Done |
+| CI: `build-windows.yml` WARP headless smoke test | ✅ Done |
+
+---
+
+## Milestone 10 — Dynamic Sky + Weather VFX ✅ *(complete)*
+
+**Goal:** Procedural time-of-day sky with weather effects (fog, rain, cloud cover)
+matching the visual fidelity of FF15's Duscae region outdoor lighting.
+
+| Item | Status |
+|------|--------|
+| `src/engine/rendering/sky_renderer.hpp/.cpp` — time-of-day clock, sun direction, zenith/horizon colour phases, sunset/sunrise tint, cloud darkening | ✅ Done |
+| `src/engine/rendering/weather_fx.hpp/.cpp` — `WeatherType` (Clear/Cloudy/Rain/Storm), `WeatherFxState`, smooth lerp transitions | ✅ Done |
+| `shaders/sky.vs.hlsl` — SV_VertexID full-screen triangle (no VB needed) | ✅ Done |
+| `shaders/sky.ps.hlsl` — exponential gradient + sun disc + glow + fog + rain darkening + Reinhard + gamma (SM 4.0) | ✅ Done |
+| `D3D11Renderer::SkyScene` + `LoadSkyScene()` + `DrawSky()` + `RecordHeadlessFrame()` sky path | ✅ Done |
+| `--scene dynamic_sky` in `engine_sandbox`; 3-test headless validation | ✅ Done |
+| CI: `build-windows.yml` — `dynamic_sky` WARP headless acceptance (Test 1: GPU pipeline; Test 2: sun elevation; Test 3: fog delta) | ✅ Done |
 
 ---
 

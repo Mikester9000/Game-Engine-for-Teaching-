@@ -52,6 +52,9 @@
 │      │   ├─ EntityManager                                │
 │      │   └─ ComponentPool<T>[N]                          │
 │      ├─ D3D11Renderer        ← IRenderer interface       │
+│      │   ├─ PBR pipeline     ← M9: Cook-Torrance BRDF     │
+│      │   ├─ SkyRenderer      ← M10: time-of-day sky       │
+│      │   └─ WeatherFx        ← M10: fog/rain/cloud        │
 │      ├─ GameRuntime (M8)     ← drives all gameplay       │
 │      │   ├─ CombatSystem     ← ATB + damage              │
 │      │   ├─ AISystem         ← FSM + A* pathfinding      │
@@ -131,6 +134,7 @@ QuestSystem; it just emits a CombatEvent and QuestSystem subscribes.
 - **Windows (default):** D3D11 (`src/engine/rendering/d3d11/D3D11Renderer.hpp/.cpp`).
   Win32 window + D3D11 device + swapchain + per-frame clear.  Runs on GT610-era GPUs.
   Uses D3D11 WARP (CPU software rasteriser) in headless CI mode — no GPU driver needed.
+  Scenes: `textured_quad`, `skinned_mesh`, `pbr_mesh` (M9 Cook-Torrance BRDF), `dynamic_sky` (M10).
 - **Windows (optional):** Vulkan (`src/engine/rendering/vulkan/VulkanRenderer.hpp/.cpp`).
   High-end modern API; requires Vulkan SDK.  Select with `--renderer vulkan`.
 - **Linux:** ncurses ASCII renderer (`src/engine/rendering/Renderer.hpp`).
@@ -138,6 +142,19 @@ QuestSystem; it just emits a CombatEvent and QuestSystem subscribes.
 Both Windows backends implement `IRenderer` (`src/engine/rendering/IRenderer.hpp`).
 `RendererFactory` (`src/engine/rendering/RendererFactory.hpp`) selects the backend via
 the `--renderer d3d11|vulkan` runtime flag.
+
+### SkyRenderer + WeatherFx (M10)
+
+`src/engine/rendering/sky_renderer.hpp/.cpp` — procedural time-of-day sky:
+- Drives a 24-hour clock (60× compressed for demo use).
+- Computes sun direction from `sin/cos` on a shifted arc.
+- Outputs `SkyShaderConstants` (zenith colour, horizon colour, sun direction, fog, time).
+- Delegates weather state to `WeatherFx`.
+
+`src/engine/rendering/weather_fx.hpp/.cpp` — weather effects:
+- `WeatherType` enum: `Clear / Cloudy / Rain / Storm`.
+- Smooth lerp of fog density, rain intensity, and cloud cover across transitions.
+- `WeatherFxState` struct maps directly to the sky PS cbuffer fog/rain fields.
 
 ### LuaEngine (`src/engine/scripting/LuaEngine.hpp`)
 
@@ -295,6 +312,10 @@ Study files in this order:
 18. `src/engine/world/async_loader.hpp` — M7: worker-thread job queue + cancellation tokens
 19. `src/game/world/GameStreamingManager.*` — M8.7: Zone lifecycle wired into streaming
 20. `src/sandbox/game_runtime.*` — M8: D3D11 gameplay integration (all systems wired)
-21. `tools/audio_authoring/audio_engine/engine.py` — Python façade pattern
-22. `tools/anim_authoring/animation_engine/` — animation data model
-23. `samples/vertical_slice_project/cook_assets.py` — scripted pipeline
+21. `shaders/pbr_mesh.vs.hlsl` + `pbr_mesh.ps.hlsl` — M9: Cook-Torrance BRDF (GGX NDF, Smith G, Schlick F)
+22. `src/engine/rendering/sky_renderer.hpp/.cpp` — M10: time-of-day clock, sun direction, colour phases
+23. `src/engine/rendering/weather_fx.hpp/.cpp` — M10: WeatherType FSM, fog/rain/cloud lerp transitions
+24. `shaders/sky.vs.hlsl` + `sky.ps.hlsl` — M10: SV_VertexID full-screen triangle; exponential sky gradient
+25. `tools/audio_authoring/audio_engine/engine.py` — Python façade pattern
+26. `tools/anim_authoring/animation_engine/` — animation data model
+27. `samples/vertical_slice_project/cook_assets.py` — scripted pipeline
