@@ -101,9 +101,11 @@ struct SkyShaderConstants
     float _pad2         = 0.0f;
 };
 
-// Compile-time guard: sizeof must be a multiple of 16 for D3D11 CB alignment.
-static_assert(sizeof(SkyShaderConstants) % 16 == 0,
-    "SkyShaderConstants must be 16-byte aligned for HLSL constant buffer");
+// Compile-time guard: sizeof must be exactly 80 bytes (5 × 16) for D3D11 CB alignment.
+// Each float4 block is 4 × 4 = 16 bytes; 5 blocks × 16 = 80 bytes total.
+// The explicit _pad0/_pad1/_pad2 fields ensure no hidden compiler padding is inserted.
+static_assert(sizeof(SkyShaderConstants) == 80,
+    "SkyShaderConstants must be exactly 80 bytes (5 × float4) for HLSL constant buffer");
 
 // ---------------------------------------------------------------------------
 // SkyRenderer — drives the procedural sky simulation.

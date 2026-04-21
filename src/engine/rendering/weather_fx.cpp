@@ -104,10 +104,10 @@ void WeatherFx::Update(::WeatherType type, float dt)
         break;
 
     case WeatherType::FOG:
-        // TEACHING NOTE — FOG as a rendering state
-        // FOG is a gameplay type (halves enemy detection range).
-        // Visually we render it as maximum fog density + light rain,
-        // similar to heavy cloud cover without the full storm.
+        // TEACHING NOTE — Rendering WeatherType::FOG
+        // FOG maps to maximum fog density + light rain + heavy cloud cover.
+        // Visually this produces a dense, low-visibility atmosphere without
+        // the driving rain of a full storm.
         targetFog   = kStormFog;
         targetRain  = kCloudyRain;
         targetCloud = kRainCloud;
