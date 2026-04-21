@@ -135,7 +135,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** **Post-M10 Vehicle Physics is ✅ complete.** **Post-M10 Behaviour Tree AI is ✅ complete:** `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard` (engine/ai/behaviour_tree); `FormationSystem` (LINE/V_SHAPE/CIRCLE slot layouts, greedy assignment, world-space transform); grid `NavMesh` (BakeFromGrid, A* FindPath, obstacle routing); `--scene bt_test` 4-test headless CI. Next: cinematics, Vulkan catch-up.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** **Post-M10 Vehicle Physics is ✅ complete.** **Post-M10 Behaviour Tree AI is ✅ complete:** `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard` (engine/ai/behaviour_tree); `FormationSystem` (LINE/V_SHAPE/CIRCLE slot layouts, greedy assignment, world-space transform); grid `NavMesh` (BakeFromGrid, A* FindPath, obstacle routing); `--scene bt_test` 4-test headless CI. **Post-M10 SDF Font Renderer is ✅ complete:** `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI). **`pak.exe` PAK1 packager is ✅ complete:** `src/tools/pak/pak_main.cpp` (PAK1 format, `--input`/`--list`/`--extract`, CI test). Next: cinematics, Vulkan catch-up.
 
 ---
 
@@ -182,6 +182,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | `tools/validate-assets.py` | ✅ | Schema validation against `assets/schema/asset-manifest.schema.json` |
 | `cook_assets.py` (Python stubs) | 🔨 | Copies files; texture/audio/anim cook steps are stubs |
 | `cook.exe` (C++ standalone cooker) | ✅ | `src/tools/cook/cook_main.cpp` (504 lines); reads `AssetRegistry.json`, copies source → `Cooked/`, writes `Cooked/assetdb.json`; uses nlohmann/json via vcpkg |
+| `pak.exe` (C++ PAK1 packager) | ✅ | `src/tools/pak/pak_main.cpp`; PAK1 binary format (magic+TOC+blobs); `--input`/`--list`/`--extract`; CI acceptance test in build-windows.yml |
 | `AssetDB` runtime (C++) | ✅ | `src/engine/assets/asset_db.hpp/.cpp` (268 lines); GUID → absolute cooked path; `Load()`, `GetCookedPath()`, `Has()`, `All()` |
 | `AssetLoader` (C++) | ✅ | `src/engine/assets/asset_loader.hpp/.cpp`; synchronous `LoadRaw(id)` → `std::vector<uint8_t>`; async deferred to M7 |
 | Golden files + contract tests | ✅ | `tests/golden/assetdb_expected.json`; `tests/cook/test_cook_pipeline.py` (13 pytest); `.github/workflows/contract-tests.yml` |
@@ -228,9 +229,9 @@ Acceptance: save → load → component data matches byte-for-byte.
 | Area | Status | Notes |
 |------|--------|-------|
 | Terminal UI (ncurses) | ✅ | Part of `TerminalRenderer` + `Game` render methods |
-| D3D11 ImGui HUD / menu stack | ⬜ | `src/engine/ui/ui_system.hpp/.cpp`, `hud.hpp/.cpp`, `menu_stack.hpp/.cpp` — D3D11 path using imgui dx11-binding |
+| D3D11 ImGui HUD / menu stack | ✅ | `src/engine/ui/hud.hpp/.cpp`, `menu_stack.hpp/.cpp` — HUD (HP/MP/ATB), menu push/pop stack, `--scene menu_stack_test` CI |
 | **Vulkan HUD / menu stack** | **(DEFERRED)** | Vulkan imgui binding — implement when Vulkan work resumes |
-| Font renderer | ⬜ | `src/engine/ui/font_renderer.hpp/.cpp` — SDF font atlas |
+| Font renderer | ✅ | `src/engine/ui/font_renderer.hpp/.cpp` — SDF atlas (96 glyphs, 8×8 bitmap→SDF), R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI |
 
 ---
 
@@ -261,7 +262,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: Post-M10 Behaviour Tree AI ✅ complete (BehaviourTree + FormationSystem + NavMesh + bt_test CI). Next: cinematics, Vulkan catch-up.**
+> **Current position: Post-M10 SDF Font Renderer ✅ complete + pak.exe ✅ complete. Next: cinematics, Vulkan catch-up.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -274,6 +275,7 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | ~~**1 — Now**~~ | ~~**M10: Dynamic sky**~~ | ✅ done — SkyRenderer + WeatherFx + sky.vs.hlsl + sky.ps.hlsl + D3D11 SkyScene + 3 headless acceptance tests |
 | ~~**1 — Now**~~ | ~~**Post-M10: Vehicle physics**~~ | ✅ done — `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steering), `WheelState` × 4, vehicle chase camera in CameraSystem, `--scene vehicle_test` CI |
 | ~~**1 — Now**~~ | ~~**Post-M10: Behaviour tree AI**~~ | ✅ done — `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard`; `FormationSystem` (LINE/V_SHAPE/CIRCLE); grid `NavMesh` (BakeFromGrid, A* with obstacle routing); `--scene bt_test` CI |
+| ~~**1 — Now**~~ | ~~**Post-M10: SDF Font Renderer + pak.exe**~~ | ✅ done — `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI); `pak.exe` (PAK1 format, `--input`/`--list`/`--extract`, CI test) |
 | **1 — Now** | **Post-M10: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
@@ -808,6 +810,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M10 | Dynamic sky + weather VFX (SkyRenderer, WeatherFx, sky.vs.hlsl, sky.ps.hlsl, 3-test headless CI) | ✅ |
 | Post-M10 | Vehicle physics | ✅ |
 | Post-M10 | Behaviour tree AI (BtTree, FormationSystem, NavMesh, bt_test CI) | ✅ |
+| Post-M10 | SDF Font Renderer (FontRenderer, sdf_text.vs/ps.hlsl, font_test CI) + pak.exe (PAK1 packager) | ✅ |
 | Post-M10 | Cinematics, Vulkan catch-up | ⬜ |
 
 ---

@@ -273,10 +273,11 @@ log, dialogue box, and shop.  FF15 uses a clean minimal HUD that scales to 4K.
 |---|---|
 | **Runtime component(s)** | `src/engine/ui/hud.hpp/.cpp` — HP/MP/ATB bars, mini-map overlay ✅ (M8.5) |
 | | `src/engine/ui/menu_stack.hpp/.cpp` — push/pop screen navigation (`MenuStack`, `MenuScreen` enum, 9 screen types) ✅ (Post-M10) |
-| | `src/engine/ui/font_renderer.hpp/.cpp` — font atlas, signed distance field text ⬜ |
+| | `src/engine/ui/font_renderer.hpp/.cpp` — SDF font atlas, D3D11 R8_UNORM text rendering ✅ (Post-M10) |
 | **Tool component(s)** | `tools/creation_engine.py` — font atlas baker, UI layout export |
 | **Data formats** | Source: `ui/*.ui.json`; Cooked: `cooked/ui/<id>.ui`; Font: `cooked/fonts/<id>.font` |
 | **Acceptance tests** | `--headless --scene menu_stack_test`: 6 tests — push/pop/size, restore/floor, PopToBase, Contains, callback, dup-push guard ✅ |
+| | `--headless --scene font_test`: 3 tests — Init (SDF atlas+D3D11 resources), RenderText (no crash), Shutdown (COM release) ✅ |
 | | Render HUD headlessly; assert no GPU validation errors (Vulkan validation layers) — deferred |
 
 ---
@@ -303,7 +304,7 @@ auto-save at camp.
 
 ## 13. Build / Release Pipeline
 
-**Status:** ✅ (validate-assets CI ✅, cook.exe ✅, contract CI ✅, headless validation ✅) · ⬜ (PAK packager)
+**Status:** ✅ Complete (validate-assets CI ✅, cook.exe ✅, contract CI ✅, headless validation ✅, pak.exe ✅)
 
 **Purpose:** A one-command build that produces a shippable directory: engine +
 tools + cooked assets + sample project.  FF15 ships a 100 GB PAK set; ours is a
@@ -326,7 +327,7 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-> **Last updated: 2026-04-21 — after Post-M10 (Cinematics + Vehicle Physics + Behaviour Tree AI + UI Menu Stack) completion.**
+> **Last updated: 2025-07 — after Post-M10 (SDF Font Renderer + pak.exe) completion.**
 > Update each cell as subsystem code is committed and tests pass.
 > The project is complete when every cell shows ✅.
 
@@ -342,8 +343,8 @@ teaching slice but must follow the same pipeline shape.
 | 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + AudioSourceComponent ✅ (M3) |
 | 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
 | 10 | Physics | ✅ | ✅ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent`; 3 headless CI tests (M5) |
-| 11 | UI | 🔨 | ⬜ | ✅ | D3D11 ImGui HUD (HP/MP bars, ATB) ✅ (M8.5); `MenuStack` push/pop navigation + 6-test CI ✅ (Post-M10); font renderer ⬜ |
+| 11 | UI | ✅ | ⬜ | ✅ | D3D11 ImGui HUD (HP/MP bars, ATB) ✅ (M8.5); `MenuStack` push/pop navigation + 6-test CI ✅ (Post-M10); `FontRenderer` SDF text + `--scene font_test` CI ✅ (Post-M10) |
 | 12 | Save system | ✅ | ✅ | ✅ | `SaveSystem`: 15 slots + auto-save + `"version"` migration field; JSON ECS snapshot ✅ (M8.8) |
-| 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI ✅; `pak.exe` ⬜ |
+| 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI ✅; `pak.exe` PAK1 packager ✅ (Post-M10) |
 
 ✅ complete · 🔨 in progress / partial · ⬜ not yet started
