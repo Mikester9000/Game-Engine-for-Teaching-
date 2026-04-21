@@ -200,6 +200,30 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M9 — PBR Cook-Torrance sphere headless validation
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M9 PBR CI Test
+      # This step validates the full PBR rendering pipeline against the WARP
+      # software rasteriser:
+      #   1. LoadScene("pbr_mesh") compiles pbr_mesh.vs.hlsl + pbr_mesh.ps.hlsl
+      #      at runtime via D3DCompileFromFile (SM 4.0, D3DCOMPILE_ENABLE_STRICTNESS).
+      #   2. A UV sphere (16×16 stacks/slices, 289 verts, 1536 indices) is
+      #      uploaded to an immutable VB + IB.
+      #   3. Three constant buffers are created and uploaded:
+      #        b0 perFrameCB (256 bytes) — world, worldInvTrans, view, proj
+      #        b1 lightCB   (48 bytes)  — directional light dir, color, intensity
+      #        b2 materialCB (32 bytes) — albedo, metallic, roughness, ao
+      #   4. RecordHeadlessFrame() binds a 64×64 off-screen RGBA8 RTV, renders
+      #      one frame through the Cook-Torrance BRDF, then flushes.
+      #   5. Exit 0 = pass.  Exit non-zero or "[FAIL]" in stdout = failure.
+      #
+      # No physical GPU required: WARP executes all SM 4.0 shader instructions.
+      # -----------------------------------------------------------------------
+      - name: Run headless validation (M9 — pbr_mesh scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_mesh
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # 6. Cook the vertical slice sample project.
       # -----------------------------------------------------------------------
       - name: Cook vertical slice project

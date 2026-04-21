@@ -62,7 +62,8 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | **Vulkan textures (DDS/BC7)** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` — implement when Vulkan work resumes |
 | **Vulkan descriptor sets** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — implement when Vulkan work resumes |
 | D3D11 textured quad scene | ✅ | HLSL shaders `shaders/textured_quad.vs.hlsl` + `textured_quad.ps.hlsl`; `LoadScene("textured_quad")` + `DrawTexturedQuad()` + `UnloadScene()` in D3D11Renderer; 1×1 white fallback if no DDS |
-| **PBR shading (IBL + directional light)** | **(DEFERRED)** | D3D11: HLSL PBR pixel shader + CB; Vulkan: `pbr_pipeline.hpp/.cpp` — deferred |
+| D3D11 PBR rendering (M9) | ✅ | `shaders/pbr_mesh.vs.hlsl` + `pbr_mesh.ps.hlsl` (SM 4.0); GGX NDF + Smith G + Schlick F + Reinhard tonemap + gamma; `LoadScene("pbr_mesh")`; UV sphere 16×16; 3 CBs (perFrameCB/lightCB/materialCB); `--headless --scene pbr_mesh` CI |
+| **PBR: IBL + shadow maps + bloom** | **(DEFERRED)** | Full IBL cubemaps, directional shadow map, bloom post-processing — deferred to M10+ |
 | **Directional shadow map** | **(DEFERRED)** | Shadow pass render target + shadow sampling |
 | **Post-processing (bloom + tonemap)** | **(DEFERRED)** | Full-screen pass pipeline |
 | **Dynamic sky / procedural time-of-day** | **(DEFERRED)** | `src/engine/rendering/sky_renderer.hpp/.cpp` |
@@ -133,7 +134,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **Next: Post-M8 (PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up).**
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M9 (PBR Cook-Torrance BRDF, all sub-milestones M9.1–M9.7) is ✅ complete.** Next: M10 (Dynamic Sky + weather VFX), vehicle physics, behaviour tree, cinematics, Vulkan catch-up.
 
 ---
 
@@ -259,7 +260,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M8 ✅ complete (all sub-milestones M8.1–M8.9: GameRuntime, InputMapper, CameraSystem, HUD, DialogueSystem, Zone streaming → D3D11, SaveSystem, m8_gameplay CI scene, m8_streaming CI scene). Next: Post-M8 (PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up).**
+> **Current position: M9 ✅ complete (Cook-Torrance PBR BRDF: GGX NDF + Smith G + Schlick F + Reinhard tonemap + gamma, UV sphere, 3 CBs, `pbr_mesh` headless CI). Next: M10 (Dynamic Sky + weather VFX), vehicle physics, behaviour tree, cinematics, Vulkan catch-up.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -268,11 +269,11 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | ~~**1**~~ | ~~**M6: Editor**~~ | ✅ done — SceneHierarchyPanel, InspectorPanel, SceneSerialiser, Play-in-Engine, asset drag-drop |
 | ~~**2**~~ | ~~**M7: World streaming**~~ | ✅ done — WorldStreamingManager + Zone wiring (M7.1), AssetLoader `.level` (M7.2), cancellation tokens (M7.3), frame-budget cap (M7.4), ImGui debug overlay (M7.5) |
 | ~~**3**~~ | ~~**M8: Gameplay integration**~~ | ✅ done — GameRuntime, InputMapper, CameraSystem, HUD, DialogueSystem, Zone streaming → D3D11 (M8.7), SaveSystem, m8_gameplay + m8_streaming CI scenes |
-| **1 — Now** | **Post-M8: PBR rendering** | D3D11 PBR pixel shader (IBL + directional light + shadows + bloom) |
-| **2** | **Post-M8: Dynamic sky** | Procedural time-of-day sky renderer + weather VFX |
-| **3** | **Post-M8: Vehicle physics** | `VehicleComponent` + wheel-ray suspension + chase camera |
-| **4** | **Post-M8: Behaviour tree AI** | Replace/augment FSM with real BT; formation system; nav-mesh baker |
-| **5** | **Post-M8: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
+| ~~**4**~~ | ~~**M9: PBR rendering**~~ | ✅ done — Cook-Torrance BRDF (GGX NDF + Smith G + Schlick F), UV sphere, 3 CBs, Reinhard tonemap, gamma, `pbr_mesh` headless CI |
+| **1 — Now** | **M10: Dynamic sky** | Procedural time-of-day sky renderer + weather VFX (rain, fog) |
+| **2** | **Post-M9: Vehicle physics** | `VehicleComponent` + wheel-ray suspension + chase camera |
+| **3** | **Post-M9: Behaviour tree AI** | Replace/augment FSM with real BT; formation system; nav-mesh baker |
+| **4** | **Post-M9: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
@@ -802,7 +803,8 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M7.4 | Frame-budget cap (`SetMaxCompletionsPerFrame`) | ✅ |
 | M7.5 | ImGui streaming debug overlay + editor View menu toggle | ✅ |
 | M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | ✅ |
-| Post-M8 | PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up | ⬜ |
+| M9 | PBR Cook-Torrance BRDF (D3D11: GGX NDF, Smith G, Schlick F, Reinhard, UV sphere, headless CI) | ✅ |
+| Post-M9 | Dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up | ⬜ |
 
 ---
 

@@ -552,13 +552,18 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
 
     // TEACHING NOTE — Advancing the demo animation timer.
     // m_sceneTime accumulates real elapsed time (seconds) and is used by
-    // DrawSkinnedMesh() to compute a sinusoidal joint rotation angle.
+    // DrawSkinnedMesh() to compute a sinusoidal joint rotation angle, and by
+    // DrawPBRMesh() to animate the sphere's Y-axis rotation.
     // We advance it unconditionally so LoadScene("skinned_mesh") can start
     // animating immediately.
     m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
 
     if (m_skinnedScene.loaded && m_currentScene == "skinned_mesh")
         DrawSkinnedMesh();
+
+    // M9: PBR sphere scene
+    if (m_pbrScene.loaded && m_currentScene == "pbr_mesh")
+        DrawPBRMesh();
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Present interval
@@ -731,6 +736,25 @@ bool D3D11Renderer::RecordHeadlessFrame()
         DrawSkinnedMesh();
     }
 
+    // TEACHING NOTE — Headless validation for the PBR scene (M9).
+    // Same pattern as skinned_mesh: bind the 64×64 off-screen RTV, set the
+    // matching viewport, and call DrawPBRMesh() once.  This validates that
+    // the PBR pipeline (Cook-Torrance shaders, sphere VB/IB, all three
+    // constant buffers, rasterizer state) compiles and executes correctly
+    // under the WARP software renderer, confirming the full PBR path works
+    // without a physical GPU or display.
+    if (m_pbrScene.loaded && m_currentScene == "pbr_mesh")
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = 64.0f;
+        vp.Height   = 64.0f;
+        vp.MaxDepth = 1.0f;
+        m_context->RSSetViewports(1, &vp);
+
+        m_context->OMSetRenderTargets(1, &offscreenRTV, nullptr);
+        DrawPBRMesh();
+    }
+
     // Step 4 — Flush to ensure the GPU (or WARP) processes the work.
     m_context->Flush();
 
@@ -750,6 +774,13 @@ static bool LoadSkinnedMeshScene(
     const std::string&               shaderDir,
     D3D11Renderer::SkinnedMeshScene& scene);
 
+// Forward declaration for the PBR scene builder (M9).
+// Same rationale: defined after LoadScene to keep reading order logical.
+static bool LoadPBRMeshScene(
+    ID3D11Device*              device,
+    const std::string&         shaderDir,
+    D3D11Renderer::PBRScene&   scene);
+
 // ===========================================================================
 // LoadScene — load scene resources (M3+)
 // ===========================================================================
@@ -764,9 +795,10 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
     }
 
     // Unknown scene names are accepted silently — they may be handled by
-    // higher-level systems.  Only "textured_quad" and "skinned_mesh" have
-    // D3D11 implementations.
-    if (sceneName != "textured_quad" && sceneName != "skinned_mesh")
+    // higher-level systems.  Only "textured_quad", "skinned_mesh", and
+    // "pbr_mesh" have D3D11 implementations.
+    if (sceneName != "textured_quad" && sceneName != "skinned_mesh" &&
+        sceneName != "pbr_mesh")
     {
         std::cout << "[D3D11Renderer] LoadScene('" << sceneName
                   << "') — no D3D11 scene handler; accepted as no-op.\n";
@@ -788,6 +820,17 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
             return false;
         }
         m_currentScene = "skinned_mesh";
+        return true;
+    }
+
+    if (sceneName == "pbr_mesh")
+    {
+        if (!LoadPBRMeshScene(m_device, shaderDir, m_pbrScene))
+        {
+            std::cerr << "[D3D11Renderer] LoadScene('pbr_mesh') failed.\n";
+            return false;
+        }
+        m_currentScene = "pbr_mesh";
         return true;
     }
 
@@ -1574,7 +1617,634 @@ void D3D11Renderer::UnloadScene()
     m_skinnedScene.indexCount = 0;
     m_skinnedScene.loaded     = false;
 
+    // --- PBR sphere scene (M9) ---
+    // TEACHING NOTE — Release in reverse creation order (LIFO):
+    // state objects first (no dependents), then shaders, then buffers.
+    if (m_pbrScene.rastState)   { m_pbrScene.rastState->Release();   m_pbrScene.rastState   = nullptr; }
+    if (m_pbrScene.materialCB)  { m_pbrScene.materialCB->Release();  m_pbrScene.materialCB  = nullptr; }
+    if (m_pbrScene.lightCB)     { m_pbrScene.lightCB->Release();     m_pbrScene.lightCB     = nullptr; }
+    if (m_pbrScene.perFrameCB)  { m_pbrScene.perFrameCB->Release();  m_pbrScene.perFrameCB  = nullptr; }
+    if (m_pbrScene.ps)          { m_pbrScene.ps->Release();          m_pbrScene.ps          = nullptr; }
+    if (m_pbrScene.vs)          { m_pbrScene.vs->Release();          m_pbrScene.vs          = nullptr; }
+    if (m_pbrScene.inputLayout) { m_pbrScene.inputLayout->Release(); m_pbrScene.inputLayout = nullptr; }
+    if (m_pbrScene.indexBuf)    { m_pbrScene.indexBuf->Release();    m_pbrScene.indexBuf    = nullptr; }
+    if (m_pbrScene.vertexBuf)   { m_pbrScene.vertexBuf->Release();   m_pbrScene.vertexBuf   = nullptr; }
+    m_pbrScene.indexCount = 0;
+    m_pbrScene.loaded     = false;
+
     m_currentScene.clear();
+}
+
+// ===========================================================================
+// DrawPBRMesh — render the Cook-Torrance PBR sphere (M9)
+// ===========================================================================
+
+void D3D11Renderer::DrawPBRMesh()
+{
+    if (!m_pbrScene.loaded || !m_context)
+        return;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — PBR Per-Frame Constant Buffer Update
+    // -----------------------------------------------------------------------
+    // The world matrix changes every frame (the sphere rotates slowly around
+    // the Y axis).  We therefore update the perFrameCB each call using
+    // Map/Unmap on a D3D11_USAGE_DYNAMIC buffer.
+    //
+    // For the worldInvTrans: our world matrix is a pure rotation (orthogonal),
+    // so its inverse-transpose equals itself.  We upload the same matrix for
+    // both slots.  The pixel shader still benefits from the explicit slot
+    // because if the object were non-uniformly scaled in a future milestone,
+    // only worldInvTrans would need to change — no shader recompile needed.
+    //
+    // View matrix: camera at (0, 0, 4) looking at the origin (RH convention).
+    // Proj matrix: FovY=60°, aspect from current back-buffer, near=0.1, far=100.
+    // -----------------------------------------------------------------------
+
+    using namespace engine::math;
+
+    // Slow Y-axis rotation: 0.5 radians per second.
+    float angle = m_sceneTime * 0.5f;
+    Mat4 worldMat = Mat4::Rotation(Quat::FromAxisAngle(Vec3::Up(), angle));
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — LookAt matrix (Right-Handed, row-major D3D11)
+    // -----------------------------------------------------------------------
+    // We build the view matrix manually to show the derivation:
+    //
+    //   zAxis = normalize(eye - target)      // camera "back" direction (RH)
+    //   xAxis = normalize(up × zAxis)        // camera "right"
+    //   yAxis = zAxis × xAxis                // camera "up" (re-orthogonalised)
+    //
+    // For row-vector × matrix multiplication (D3D11 convention):
+    //   View[row][col]:
+    //     rows 0..2 encode the x, y, z camera axes (transposed from column-major)
+    //     row 3     encodes -dot(axis, eye) (translation to camera origin)
+    // -----------------------------------------------------------------------
+    Vec3 eye    = { 0.0f, 0.5f, 4.0f };  // slightly above centre for a natural look
+    Vec3 target = { 0.0f, 0.0f, 0.0f };
+    Vec3 up     = { 0.0f, 1.0f, 0.0f };
+
+    Vec3 zAxis = (eye - target).Normalized();                  // camera back (RH)
+    Vec3 xAxis = up.Cross(zAxis).Normalized();                 // camera right
+    Vec3 yAxis = zAxis.Cross(xAxis);                           // camera up (derived)
+
+    Mat4 viewMat;
+    viewMat.m[0][0] = xAxis.x;         viewMat.m[0][1] = yAxis.x;         viewMat.m[0][2] = zAxis.x;         viewMat.m[0][3] = 0;
+    viewMat.m[1][0] = xAxis.y;         viewMat.m[1][1] = yAxis.y;         viewMat.m[1][2] = zAxis.y;         viewMat.m[1][3] = 0;
+    viewMat.m[2][0] = xAxis.z;         viewMat.m[2][1] = yAxis.z;         viewMat.m[2][2] = zAxis.z;         viewMat.m[2][3] = 0;
+    viewMat.m[3][0] = -xAxis.Dot(eye); viewMat.m[3][1] = -yAxis.Dot(eye); viewMat.m[3][2] = -zAxis.Dot(eye); viewMat.m[3][3] = 1;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Perspective Projection (Right-Handed, D3D11 Z=[0,1])
+    // -----------------------------------------------------------------------
+    // D3D11 maps view-space z ∈ [-near, -far] to NDC z ∈ [0, 1].
+    //
+    // For row-vector × matrix multiplication, the projection matrix is:
+    //   proj[row][col]:
+    //     [0][0] = f/aspect,  [1][1] = f
+    //     [2][2] = -far/(far-near),    [2][3] = -1    (w_clip = -z_view)
+    //     [3][2] = -near*far/(far-near)                (z_clip offset)
+    //
+    // where f = cot(FovY/2) = 1/tan(FovY/2).
+    //
+    // After perspective divide (NDC = clip/w):
+    //   NDC_z = 0 at z_view = -near   (near plane)
+    //   NDC_z = 1 at z_view = -far    (far plane)
+    // -----------------------------------------------------------------------
+    const float kFovY   = 3.14159265f / 3.0f;   // 60 degrees
+    const float kNear   = 0.1f;
+    const float kFar    = 100.0f;
+    float aspect = (m_height > 0) ? (static_cast<float>(m_width) / static_cast<float>(m_height)) : 1.0f;
+    float f      = 1.0f / std::tan(kFovY * 0.5f);   // cot(FovY/2)
+
+    Mat4 projMat;
+    projMat.m[0][0] = f / aspect;
+    projMat.m[1][1] = f;
+    projMat.m[2][2] = -kFar / (kFar - kNear);
+    projMat.m[2][3] = -1.0f;                              // w_clip = -z_view
+    projMat.m[3][2] = -(kNear * kFar) / (kFar - kNear);
+    // all other elements remain 0.0f (Mat4 default-initialises to zero)
+
+    // -----------------------------------------------------------------------
+    // Upload the per-frame CB.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Map / Unmap for DYNAMIC buffers.
+    // D3D11_MAP_WRITE_DISCARD tells the driver "discard the old contents and
+    // give me a new pointer to write into".  This avoids GPU/CPU stalls: the
+    // driver allocates a new backing page for this frame and the GPU keeps
+    // reading from the old one.  The alternative, UpdateSubresource, is
+    // simpler but can cause pipeline stalls on some drivers.
+    struct alignas(16) PerFrameCBData
+    {
+        float world[4][4];
+        float worldInvTrans[4][4];
+        float view[4][4];
+        float proj[4][4];
+    } pfData;
+    std::memcpy(pfData.world,        worldMat.Data(), 64);
+    std::memcpy(pfData.worldInvTrans, worldMat.Data(), 64);  // rotation-only: invT == M
+    std::memcpy(pfData.view,         viewMat.Data(),  64);
+    std::memcpy(pfData.proj,         projMat.Data(),  64);
+
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    if (SUCCEEDED(m_context->Map(m_pbrScene.perFrameCB, 0,
+                                  D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+    {
+        std::memcpy(mapped.pData, &pfData, sizeof(pfData));
+        m_context->Unmap(m_pbrScene.perFrameCB, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Bind pipeline state.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Input Assembler (IA) stage setup.
+    // We must set:
+    //   1. The primitive topology (triangles, lines, etc.).
+    //   2. The vertex buffer (stride = bytes per vertex).
+    //   3. The index buffer (UINT16 indices here).
+    //   4. The input layout (describes how to decode each vertex element).
+    // Without all four, the draw call reads garbage or produces no output.
+    // -----------------------------------------------------------------------
+    UINT stride = sizeof(float) * 8;   // pos(3) + normal(3) + uv(2) = 8 floats
+    UINT offset = 0;
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_context->IASetVertexBuffers(0, 1, &m_pbrScene.vertexBuf, &stride, &offset);
+    m_context->IASetIndexBuffer(m_pbrScene.indexBuf, DXGI_FORMAT_R16_UINT, 0);
+    m_context->IASetInputLayout(m_pbrScene.inputLayout);
+
+    // Vertex shader + its constant buffer (b0 = per-frame transforms).
+    m_context->VSSetShader(m_pbrScene.vs, nullptr, 0);
+    m_context->VSSetConstantBuffers(0, 1, &m_pbrScene.perFrameCB);
+
+    // Pixel shader + its constant buffers (b1 = light, b2 = material).
+    m_context->PSSetShader(m_pbrScene.ps, nullptr, 0);
+    m_context->PSSetConstantBuffers(1, 1, &m_pbrScene.lightCB);
+    m_context->PSSetConstantBuffers(2, 1, &m_pbrScene.materialCB);
+
+    // Rasterizer state: cull-none so the sphere is visible from any angle.
+    m_context->RSSetState(m_pbrScene.rastState);
+
+    // Draw the sphere.
+    m_context->DrawIndexed(static_cast<UINT>(m_pbrScene.indexCount), 0, 0);
+
+    // Restore default rasterizer state.
+    m_context->RSSetState(nullptr);
+}
+
+// ===========================================================================
+// LoadPBRMeshScene — build the Cook-Torrance PBR sphere scene (M9)
+// ===========================================================================
+// Called from D3D11Renderer::LoadScene() when sceneName == "pbr_mesh".
+//
+// Steps:
+//   1. Compile HLSL shaders from file (or embedded fallback).
+//   2. Create the D3D11 input layout.
+//   3. Generate UV sphere geometry (vertices + indices).
+//   4. Upload VB + IB to the GPU.
+//   5. Create three constant buffers (per-frame, light, material).
+//   6. Upload the static CBs (light, material).
+//   7. Create cull-none rasterizer state.
+// ===========================================================================
+
+// -----------------------------------------------------------------------
+// TEACHING NOTE — Embedded PBR Shader Fallbacks
+// -----------------------------------------------------------------------
+// As with the textured_quad and skinned_mesh scenes, we include minimal
+// inline HLSL strings as fallbacks in case the .hlsl files are absent
+// (e.g. a clean build before POST_BUILD copies shaders to the output dir).
+//
+// The fallbacks are deliberately short — they omit the full Cook-Torrance
+// BRDF to stay below the constant-string-literal size limit on some
+// compilers.  The on-disk .hlsl files contain the full annotated versions.
+// -----------------------------------------------------------------------
+static const char* kPBRVsFallback =
+    "cbuffer PerFrameCB:register(b0){"
+    "float4x4 g_world;float4x4 g_worldInvTrans;float4x4 g_view;float4x4 g_proj;};"
+    "struct VSIn{float3 pos:POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;};"
+    "struct PSIn{float4 cp:SV_POSITION;float3 wp:TEXCOORD1;float3 wn:NORMAL;float2 uv:TEXCOORD0;};"
+    "PSIn main(VSIn i){"
+    "PSIn o;"
+    "float4 wp=mul(float4(i.pos,1),g_world);o.wp=wp.xyz;"
+    "o.cp=mul(mul(wp,g_view),g_proj);"
+    "o.wn=normalize(mul(i.n,(float3x3)g_worldInvTrans));"
+    "o.uv=i.uv;return o;}";
+
+static const char* kPBRPsFallback =
+    "cbuffer LightCB:register(b1){float3 g_cam;float g_li;float3 g_ld;float g_pl;float3 g_lc;float g_pl2;};"
+    "cbuffer MatCB:register(b2){float3 g_alb;float g_met;float g_rgh;float g_ao;float2 g_mp;};"
+    "struct PSIn{float4 cp:SV_POSITION;float3 wp:TEXCOORD1;float3 wn:NORMAL;float2 uv:TEXCOORD0;};"
+    "float4 main(PSIn i):SV_TARGET{"
+    "float3 N=normalize(i.wn);float3 L=normalize(g_ld);"
+    "float ndl=max(dot(N,L),0);"
+    "float3 c=g_alb*(0.03*g_ao+ndl*g_lc*g_li);"
+    "c=c/(c+1);c=pow(max(c,0),0.4545);"
+    "return float4(c,1);}";
+
+// -----------------------------------------------------------------------
+// TEACHING NOTE — kPi for the UV sphere generation inside LoadPBRMeshScene.
+// math_types.hpp defines engine::math::kPi, but that name requires the
+// engine::math namespace which is not open at file scope here.  We declare a
+// local constant so the geometry generation code reads cleanly without a
+// using-namespace directive that would pollute the global scope.
+// -----------------------------------------------------------------------
+static constexpr float kPi = 3.14159265358979323846f;
+
+static bool LoadPBRMeshScene(
+    ID3D11Device*            device,
+    const std::string&       shaderDir,
+    D3D11Renderer::PBRScene& scene)
+{
+    namespace fs = std::filesystem;
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Compile HLSL shaders.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Same compile helper pattern as the skinned mesh scene.
+    // We attempt to compile from the .hlsl file on disk; if that fails (file
+    // missing, syntax error) we fall back to the embedded string.  This
+    // guarantees the scene always loads even in a minimal environment.
+    // -----------------------------------------------------------------------
+    auto compile = [&](const fs::path& path, const char* fallback,
+                       const char* entry, const char* target) -> ID3DBlob*
+    {
+        ID3DBlob* code   = nullptr;
+        ID3DBlob* errors = nullptr;
+        HRESULT   hr     = E_FAIL;
+
+        if (fs::exists(path))
+        {
+            std::wstring wp = path.wstring();
+            hr = D3DCompileFromFile(wp.c_str(), nullptr, nullptr,
+                                    entry, target,
+                                    D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                                    &code, &errors);
+        }
+        if (FAILED(hr))
+        {
+            if (errors) {
+                std::cerr << "[D3D11Renderer] HLSL error ("
+                          << path.filename().string() << "):\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release(); errors = nullptr;
+            }
+            std::cout << "[D3D11Renderer] Using embedded fallback for "
+                      << path.filename().string() << ".\n";
+            hr = D3DCompile(fallback, std::strlen(fallback), nullptr, nullptr, nullptr,
+                            entry, target, D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                            &code, &errors);
+        }
+        if (FAILED(hr)) {
+            if (errors) {
+                std::cerr << "[D3D11Renderer] Fallback HLSL error:\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release();
+            }
+            return nullptr;
+        }
+        if (errors) errors->Release();
+        return code;
+    };
+
+    const fs::path vsPath = fs::path(shaderDir) / "pbr_mesh.vs.hlsl";
+    const fs::path psPath = fs::path(shaderDir) / "pbr_mesh.ps.hlsl";
+
+    ID3DBlob* vsBlob = compile(vsPath, kPBRVsFallback, "main", "vs_4_0");
+    if (!vsBlob) { std::cerr << "[D3D11Renderer] PBR VS compile failed.\n"; return false; }
+
+    ID3DBlob* psBlob = compile(psPath, kPBRPsFallback, "main", "ps_4_0");
+    if (!psBlob) { vsBlob->Release(); std::cerr << "[D3D11Renderer] PBR PS compile failed.\n"; return false; }
+
+    HRESULT hr = device->CreateVertexShader(vsBlob->GetBufferPointer(),
+                                            vsBlob->GetBufferSize(),
+                                            nullptr, &scene.vs);
+    if (FAILED(hr)) { vsBlob->Release(); psBlob->Release(); return false; }
+
+    hr = device->CreatePixelShader(psBlob->GetBufferPointer(),
+                                   psBlob->GetBufferSize(),
+                                   nullptr, &scene.ps);
+    if (FAILED(hr)) { vsBlob->Release(); psBlob->Release(); scene.vs->Release(); return false; }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — Create the input layout.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — D3D11 Input Layout
+    // The input layout maps each field of the C++ vertex struct to a
+    // semantic name in the HLSL VSInput struct.  We have three fields:
+    //   POSITION  — float3 model-space position
+    //   NORMAL    — float3 model-space normal
+    //   TEXCOORD0 — float2 UV coordinates
+    //
+    // The byte offsets (AlignedByteOffset) accumulate: 0, 12, 24.
+    // DXGI_FORMAT_R32G32B32_FLOAT = three 32-bit floats (12 bytes).
+    // DXGI_FORMAT_R32G32_FLOAT    = two   32-bit floats  (8 bytes).
+    // -----------------------------------------------------------------------
+    const D3D11_INPUT_ELEMENT_DESC kPBRLayout[] =
+    {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    };
+    hr = device->CreateInputLayout(kPBRLayout, 3,
+                                   vsBlob->GetBufferPointer(),
+                                   vsBlob->GetBufferSize(),
+                                   &scene.inputLayout);
+    vsBlob->Release();
+    psBlob->Release();
+    if (FAILED(hr)) {
+        scene.vs->Release(); scene.ps->Release();
+        std::cerr << "[D3D11Renderer] PBR input layout creation failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3 — Generate UV sphere geometry.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — UV Sphere Parametric Generation
+    // A UV sphere is generated by sweeping a circle (latitude) around the
+    // Y axis (longitude).  Parameters:
+    //
+    //   phi   (φ) = latitude  ∈ [0, π]       0 = north pole, π = south pole
+    //   theta (θ) = longitude ∈ [0, 2π]
+    //
+    // Vertex position on unit sphere:
+    //   x = sin(φ) · cos(θ)
+    //   y = cos(φ)
+    //   z = sin(φ) · sin(θ)
+    //
+    // For a unit sphere the normal is equal to the position (outward-facing).
+    //
+    // UV mapping:
+    //   U = θ / (2π)    → 0 at θ=0, 1 at θ=2π  (wraps around the equator)
+    //   V = φ / π       → 0 at north pole, 1 at south pole
+    //
+    // We duplicate the vertices at the seam (θ=0 and θ=2π) so that UV
+    // coordinates remain continuous — necessary for correct texture mapping
+    // in a future milestone.
+    //
+    // Winding: CW when viewed from outside (D3D11 default front-face), but
+    // we use a cull-none rasterizer state so winding order doesn't matter
+    // for the sphere demo (it lets students orbit without culling artefacts).
+    // -----------------------------------------------------------------------
+    constexpr int N_STACKS = 16;
+    constexpr int N_SLICES = 16;
+
+    struct PBRVertex { float pos[3]; float normal[3]; float uv[2]; };
+
+    const int nVerts   = (N_STACKS + 1) * (N_SLICES + 1);   // 17 × 17 = 289
+    const int nTris    = N_STACKS * N_SLICES * 2;             // 16 × 16 × 2 = 512
+    const int nIndices = nTris * 3;                           // 1536
+
+    std::vector<PBRVertex>  verts(static_cast<size_t>(nVerts));
+    std::vector<uint16_t>   indices(static_cast<size_t>(nIndices));
+
+    // Build vertices.
+    for (int stack = 0; stack <= N_STACKS; ++stack)
+    {
+        float phi = kPi * static_cast<float>(stack) / static_cast<float>(N_STACKS);
+        float y   = std::cos(phi);
+        float r   = std::sin(phi);   // radius of the latitude circle
+
+        for (int slice = 0; slice <= N_SLICES; ++slice)
+        {
+            float theta = 2.0f * kPi * static_cast<float>(slice) / static_cast<float>(N_SLICES);
+            float x     = r * std::cos(theta);
+            float z     = r * std::sin(theta);
+
+            int idx          = stack * (N_SLICES + 1) + slice;
+            verts[idx].pos[0]    = x;
+            verts[idx].pos[1]    = y;
+            verts[idx].pos[2]    = z;
+            verts[idx].normal[0] = x;   // unit sphere: normal == position
+            verts[idx].normal[1] = y;
+            verts[idx].normal[2] = z;
+            verts[idx].uv[0]     = static_cast<float>(slice) / static_cast<float>(N_SLICES);
+            verts[idx].uv[1]     = static_cast<float>(stack) / static_cast<float>(N_STACKS);
+        }
+    }
+
+    // Build indices (two triangles per quad, CW winding from outside).
+    int iIdx = 0;
+    for (int stack = 0; stack < N_STACKS; ++stack)
+    {
+        for (int slice = 0; slice < N_SLICES; ++slice)
+        {
+            uint16_t v0 = static_cast<uint16_t>( stack      * (N_SLICES + 1) + slice);
+            uint16_t v1 = static_cast<uint16_t>( stack      * (N_SLICES + 1) + (slice + 1));
+            uint16_t v2 = static_cast<uint16_t>((stack + 1) * (N_SLICES + 1) + slice);
+            uint16_t v3 = static_cast<uint16_t>((stack + 1) * (N_SLICES + 1) + (slice + 1));
+
+            // TEACHING NOTE — Triangle winding (clockwise from outside of sphere).
+            // Triangle 1: top-left, bottom-left, top-right
+            // Triangle 2: top-right, bottom-left, bottom-right
+            // (We use cull-none so this choice is cosmetic for the demo.)
+            indices[iIdx++] = v0;
+            indices[iIdx++] = v2;
+            indices[iIdx++] = v1;
+
+            indices[iIdx++] = v1;
+            indices[iIdx++] = v2;
+            indices[iIdx++] = v3;
+        }
+    }
+    scene.indexCount = nIndices;
+
+    // -----------------------------------------------------------------------
+    // Step 4 — Upload VB and IB to the GPU (IMMUTABLE buffers).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — IMMUTABLE vs DYNAMIC buffers for geometry.
+    // The sphere geometry never changes, so we use D3D11_USAGE_IMMUTABLE:
+    //   • GPU-only access (no CPU write after creation).
+    //   • Optimal for static meshes — the driver can place the data in
+    //     the fastest GPU memory without reserving a CPU-accessible mapping.
+    // Compare to the perFrameCB which must be DYNAMIC (CPU writes each frame).
+    // -----------------------------------------------------------------------
+    {
+        D3D11_BUFFER_DESC vbd = {};
+        vbd.ByteWidth      = static_cast<UINT>(nVerts * sizeof(PBRVertex));
+        vbd.Usage          = D3D11_USAGE_IMMUTABLE;
+        vbd.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA vsd = {};
+        vsd.pSysMem = verts.data();
+        hr = device->CreateBuffer(&vbd, &vsd, &scene.vertexBuf);
+    }
+    if (FAILED(hr)) {
+        scene.vs->Release(); scene.ps->Release(); scene.inputLayout->Release();
+        std::cerr << "[D3D11Renderer] PBR VB creation failed.\n";
+        return false;
+    }
+
+    {
+        D3D11_BUFFER_DESC ibd = {};
+        ibd.ByteWidth  = static_cast<UINT>(nIndices * sizeof(uint16_t));
+        ibd.Usage      = D3D11_USAGE_IMMUTABLE;
+        ibd.BindFlags  = D3D11_BIND_INDEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA isd = {};
+        isd.pSysMem = indices.data();
+        hr = device->CreateBuffer(&ibd, &isd, &scene.indexBuf);
+    }
+    if (FAILED(hr)) {
+        scene.vs->Release(); scene.ps->Release(); scene.inputLayout->Release();
+        scene.vertexBuf->Release();
+        std::cerr << "[D3D11Renderer] PBR IB creation failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 5 — Create constant buffers.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — D3D11 Constant Buffer Size Rules.
+    // A D3D11 constant buffer must be a MULTIPLE of 16 bytes.
+    // The perFrameCB holds four 4×4 float matrices = 4 × 64 = 256 bytes. ✓
+    // The lightCB holds three float3 (+ padding) = 48 bytes. ✓
+    // The materialCB holds float3+float+float+float+float2 = 32 bytes. ✓
+    //
+    // We use D3D11_USAGE_DYNAMIC + D3D11_CPU_ACCESS_WRITE for all three so
+    // the CPU can update them via Map/Unmap at runtime:
+    //   perFrameCB — updated every frame (rotating world matrix).
+    //   lightCB    — only written once here (constant light direction).
+    //   materialCB — only written once here (single-material demo).
+    // -----------------------------------------------------------------------
+    auto makeDynCB = [&](UINT byteWidth) -> ID3D11Buffer*
+    {
+        D3D11_BUFFER_DESC cbd = {};
+        cbd.ByteWidth      = byteWidth;
+        cbd.Usage          = D3D11_USAGE_DYNAMIC;
+        cbd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+        cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        ID3D11Buffer* buf  = nullptr;
+        device->CreateBuffer(&cbd, nullptr, &buf);
+        return buf;
+    };
+
+    scene.perFrameCB = makeDynCB(256);   // 4 × mat4 = 256 bytes
+    scene.lightCB    = makeDynCB(48);    // 3 × float4 = 48 bytes
+    scene.materialCB = makeDynCB(32);    // 2 × float4 = 32 bytes
+
+    if (!scene.perFrameCB || !scene.lightCB || !scene.materialCB) {
+        std::cerr << "[D3D11Renderer] PBR constant buffer creation failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 6 — Upload static constant buffer data (light + material).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Uploading data to a DYNAMIC constant buffer at init.
+    // For the very first upload we use D3D11_MAP_WRITE_DISCARD (same as the
+    // per-frame update).  The resource has never been used by the GPU, so
+    // "discarding" its previous contents is safe (there are none).
+    // -----------------------------------------------------------------------
+
+    // Light parameters: warm directional sun from upper-right-front.
+    // TEACHING NOTE — Light direction points TOWARD the light (toward the source),
+    // so the dot product N·L is positive for surfaces facing the light.
+    struct alignas(16) LightData {
+        float cameraWorldPos[3]; float lightIntensity;
+        float lightDir[3];       float padL;
+        float lightColor[3];     float padL2;
+    } lightData;
+    lightData.cameraWorldPos[0] = 0.0f;
+    lightData.cameraWorldPos[1] = 0.5f;
+    lightData.cameraWorldPos[2] = 4.0f;
+    lightData.lightIntensity    = 3.0f;
+    // Light direction: from lower-left-back toward upper-right-front (normalised).
+    {
+        float lx = 0.5f, ly = 1.0f, lz = -0.5f;
+        float len = std::sqrt(lx*lx + ly*ly + lz*lz);
+        lightData.lightDir[0] = lx / len;
+        lightData.lightDir[1] = ly / len;
+        lightData.lightDir[2] = lz / len;
+    }
+    lightData.padL            = 0.0f;
+    lightData.lightColor[0]   = 1.0f;   // warm-white sunlight
+    lightData.lightColor[1]   = 0.98f;
+    lightData.lightColor[2]   = 0.90f;
+    lightData.padL2           = 0.0f;
+
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        // Note: we need a temporary device context here; but LoadPBRMeshScene
+        // is a static function that only has the device.  For one-time uploads
+        // we use D3D11_USAGE_DEFAULT + UpdateSubresource, or we accept that
+        // the per-frame update (DrawPBRMesh) must also upload lightCB once.
+        // TEACHING NOTE — Workaround: use device->GetImmediateContext to get
+        // a context pointer for the one-time init upload.  In a production
+        // engine the context would be passed as a parameter.
+        ID3D11DeviceContext* ctx = nullptr;
+        device->GetImmediateContext(&ctx);
+        if (ctx)
+        {
+            if (SUCCEEDED(ctx->Map(scene.lightCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+            {
+                std::memcpy(mapped.pData, &lightData, sizeof(lightData));
+                ctx->Unmap(scene.lightCB, 0);
+            }
+            ctx->Release();
+        }
+    }
+
+    // Material: shiny gold-like sphere (high metallic, moderate roughness).
+    // TEACHING NOTE — Material Parameters for a Gold-like Surface:
+    //   albedo   = warm orange-gold (reflected tint for metals = albedo)
+    //   metallic = 0.9  (mostly metallic; a small dielectric contribution
+    //                    simulates a light layer of surface oxidation)
+    //   roughness = 0.25 (relatively smooth — visible sharp-ish specular)
+    //   ao       = 1.0   (no occlusion on a standalone sphere)
+    struct alignas(16) MaterialData {
+        float albedo[3]; float metallic;
+        float roughness; float ao;      float matPad[2];
+    } matData;
+    matData.albedo[0] = 1.00f;   // gold-orange
+    matData.albedo[1] = 0.71f;
+    matData.albedo[2] = 0.29f;
+    matData.metallic  = 0.9f;
+    matData.roughness = 0.25f;
+    matData.ao        = 1.0f;
+    matData.matPad[0] = matData.matPad[1] = 0.0f;
+
+    {
+        ID3D11DeviceContext* ctx = nullptr;
+        device->GetImmediateContext(&ctx);
+        if (ctx)
+        {
+            D3D11_MAPPED_SUBRESOURCE mapped = {};
+            if (SUCCEEDED(ctx->Map(scene.materialCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+            {
+                std::memcpy(mapped.pData, &matData, sizeof(matData));
+                ctx->Unmap(scene.materialCB, 0);
+            }
+            ctx->Release();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 7 — Create cull-none rasterizer state.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Cull-None for the PBR Demo Sphere.
+    // The default D3D11 rasterizer state back-face culls (removes triangles
+    // whose vertices wind clockwise from the camera's perspective).  For a
+    // closed sphere mesh viewed from outside, back-face culling is correct
+    // and efficient.
+    //
+    // We disable culling here for two pedagogical reasons:
+    //   1. Students orbiting the camera inside the sphere can still see the
+    //      inner surface, which helps visualise the sphere geometry.
+    //   2. It means the winding order of the generated sphere is not critical,
+    //      making the geometry generation code easier to understand.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_RASTERIZER_DESC rd = {};
+        rd.FillMode = D3D11_FILL_SOLID;
+        rd.CullMode = D3D11_CULL_NONE;
+        rd.FrontCounterClockwise = FALSE;
+        rd.DepthClipEnable       = TRUE;
+        device->CreateRasterizerState(&rd, &scene.rastState);
+    }
+
+    scene.loaded = true;
+    std::cout << "[D3D11Renderer] LoadScene('pbr_mesh') — OK. "
+              << nVerts << " verts, " << nTris << " tris.\n";
+    return true;
 }
 
 } // namespace rendering

@@ -155,6 +155,9 @@ private:
     /** Draw the GPU-skinned mesh scene to the currently bound render target. */
     void DrawSkinnedMesh();
 
+    /** Draw the PBR sphere scene to the currently bound render target (M9). */
+    void DrawPBRMesh();
+
     /** Release all scene resources (called from Shutdown and before LoadScene). */
     void UnloadScene();
 
@@ -233,11 +236,49 @@ public:
         bool loaded     = false;
     };
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — PBRScene (M9: Physically Based Rendering)
+    // -----------------------------------------------------------------------
+    // PBRScene holds every Direct3D 11 resource required to render a
+    // physically-based (Cook-Torrance BRDF) sphere under a directional light.
+    //
+    // Resources:
+    //   vs / ps          — HLSL vertex + pixel shaders (SM 4.0).
+    //   inputLayout      — describes each vertex attribute to the IA stage.
+    //   vertexBuf        — UV sphere geometry (pos + normal + uv per vertex).
+    //   indexBuf         — triangle list indices for the sphere.
+    //   perFrameCB (b0)  — per-frame transform matrices (world, view, proj).
+    //   lightCB    (b1)  — directional light and camera world position.
+    //   materialCB (b2)  — albedo, metallic, roughness, ambient-occlusion.
+    //   rastState        — cull-none so both faces of the sphere are visible
+    //                      from any camera angle without winding-order issues.
+    //
+    // Constant buffer update frequency:
+    //   perFrameCB  — every frame  (world matrix rotates with m_sceneTime).
+    //   lightCB     — once on load  (light direction does not change).
+    //   materialCB  — once on load  (single material sphere demo).
+    // -----------------------------------------------------------------------
+    struct PBRScene
+    {
+        ID3D11VertexShader*    vs          = nullptr;
+        ID3D11PixelShader*     ps          = nullptr;
+        ID3D11InputLayout*     inputLayout = nullptr;
+        ID3D11Buffer*          vertexBuf   = nullptr;
+        ID3D11Buffer*          indexBuf    = nullptr;
+        ID3D11Buffer*          perFrameCB  = nullptr;   ///< b0 (VS): world, worldInvTrans, view, proj
+        ID3D11Buffer*          lightCB     = nullptr;   ///< b1 (PS): camera pos, light dir/color/intensity
+        ID3D11Buffer*          materialCB  = nullptr;   ///< b2 (PS): albedo, metallic, roughness, ao
+        ID3D11RasterizerState* rastState   = nullptr;
+        int                    indexCount  = 0;
+        bool                   loaded      = false;
+    };
+
 private:
     TexturedQuadScene   m_quadScene;
     std::string         m_currentScene;   ///< Name of the active scene, or "".
 
     SkinnedMeshScene    m_skinnedScene;
+    PBRScene            m_pbrScene;
     float               m_sceneTime = 0.0f;  ///< Seconds since last LoadScene call.
 };
 

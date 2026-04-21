@@ -911,6 +911,14 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             # skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
             "${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.vs.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/skinned_mesh.ps.hlsl"
+            # TEACHING NOTE — M9: PBR Cook-Torrance HLSL shaders.
+            # pbr_mesh.vs.hlsl transforms vertices to world/clip space and
+            #   computes world-space normals via the inverse-transpose matrix.
+            # pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
+            #   GGX NDF + Smith geometry + Schlick Fresnel + Reinhard tonemap
+            #   + gamma correction.  Metallic-roughness material workflow.
+            "${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.ps.hlsl"
         )
 
         add_custom_command(TARGET engine_sandbox POST_BUILD
