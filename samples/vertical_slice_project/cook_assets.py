@@ -101,6 +101,69 @@ def new_guid() -> str:
     return str(uuid.uuid4())
 
 
+# ---------------------------------------------------------------------------
+# Stable-GUID helpers
+# ---------------------------------------------------------------------------
+
+# Module-level cache: source-relative-path → existing GUID.
+# Populated by load_existing_guids() early in main() so that every cook
+# step can call stable_guid() and reuse the GUID the asset already has.
+_EXISTING_GUIDS: dict[str, str] = {}
+
+
+def load_existing_guids() -> None:
+    """Load source → GUID mappings from the on-disk AssetRegistry.json.
+
+    TEACHING NOTE — Stable GUIDs across cook runs
+    ──────────────────────────────────────────────
+    A GUID is *stable* if it never changes once assigned — even when the cook
+    tool is re-run, files are moved, or the engine is rebuilt.  Stable GUIDs
+    are essential because C++ runtime code (game_runtime.cpp, main.cpp) and the
+    golden-file contract test all hardcode the GUID of specific assets.
+
+    cook.exe (the C++ production cooker) preserves stability by reading the
+    existing AssetRegistry.json and reusing any 'id' field it finds for a
+    given source path.  cook_assets.py must do the same:
+
+      1. Read AssetRegistry.json if it exists (first cook: file absent → skip).
+      2. Build a { source_rel: id } dict.
+      3. In each cook function, call stable_guid(source_rel) instead of
+         new_guid() directly — it returns the existing ID if known, or a
+         fresh UUID4 for truly new assets.
+    """
+    global _EXISTING_GUIDS
+    if not REGISTRY_FILE.exists():
+        return
+    try:
+        data = json.loads(REGISTRY_FILE.read_text(encoding="utf-8"))
+        for entry in data.get("assets", []):
+            src = entry.get("source", "")
+            gid = entry.get("id", "")
+            if src and gid:
+                _EXISTING_GUIDS[src] = gid
+    except Exception:
+        pass  # If the file is malformed, ignore and generate fresh GUIDs.
+
+
+def stable_guid(source_rel: str) -> str:
+    """Return the existing GUID for *source_rel* if known; else a fresh UUID4.
+
+    TEACHING NOTE — Incremental cook / GUID stability
+    ──────────────────────────────────────────────────
+    Use this instead of new_guid() whenever you register an asset entry that
+    has a 'source' path.  The lookup is O(1) (dict) and handles the case where
+    the registry does not yet contain an entry for the asset (first cook run).
+
+    Args:
+        source_rel: Relative source path as it appears in AssetRegistry.json,
+                    e.g. "Maps/MainTown.scene.json" or "Levels/cell_0_0.cell.json".
+
+    Returns:
+        The existing UUID v4 string for this asset, or a new UUID4.
+    """
+    return _EXISTING_GUIDS.get(source_rel) or new_guid()
+
+
 def ensure_dir(path: Path) -> None:
     """Create a directory and all parents if they don't already exist."""
     path.mkdir(parents=True, exist_ok=True)
@@ -135,7 +198,7 @@ def cook_textures(registry: list[dict]) -> int:
         shutil.copy2(src, dst)
 
         registry.append({
-            "id":     new_guid(),
+            "id":     stable_guid("Textures/" + str(rel)),
             "type":   "texture",
             "name":   src.stem,
             "source": "Textures/" + str(rel),
@@ -212,7 +275,7 @@ def cook_audio(registry: list[dict]) -> int:
             # Path B: simple file copy (stub / fallback)
             shutil.copy2(src, dst)
 
-        clip_id = new_guid()
+        clip_id = stable_guid("Audio/" + str(rel))
         clips.append({
             "id":      clip_id,
             "name":    src.stem,
@@ -226,7 +289,7 @@ def cook_audio(registry: list[dict]) -> int:
         print(f"  [AUD] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     if clips:
-        bank_id = new_guid()
+        bank_id = stable_guid("Content/Audio")
         bank = {
             "$schema": "../../../shared/schemas/audio_bank.schema.json",
             "version":  "1.0.0",
@@ -274,7 +337,7 @@ def cook_scenes(registry: list[dict]) -> int:
         shutil.copy2(src, dst)
 
         registry.append({
-            "id":     new_guid(),
+            "id":     stable_guid("Maps/" + str(rel)),
             "type":   "scene",
             "name":   src.stem.replace(".scene", ""),
             "source": "Maps/" + str(rel),
@@ -321,11 +384,12 @@ def cook_animations(registry: list[dict]) -> int:
         for entry in manifest.skeletons:
             cooked_path = Path(entry["cooked"])
             source_path = Path(entry["source"])
+            src_rel = _try_relative_to(source_path, SCRIPT_DIR)
             registry.append({
-                "id":     new_guid(),
+                "id":     stable_guid(src_rel),
                 "type":   "skeleton",
                 "name":   source_path.stem,
-                "source": _try_relative_to(source_path, SCRIPT_DIR),
+                "source": src_rel,
                 "cooked": _try_relative_to(cooked_path, SCRIPT_DIR),
                 "hash":   sha256_file(source_path) if source_path.exists() else "",
                 "dependencies": [],
@@ -335,11 +399,12 @@ def cook_animations(registry: list[dict]) -> int:
         for entry in manifest.clips:
             cooked_path = Path(entry["cooked"])
             source_path = Path(entry["source"])
+            src_rel = _try_relative_to(source_path, SCRIPT_DIR)
             registry.append({
-                "id":     new_guid(),
+                "id":     stable_guid(src_rel),
                 "type":   "anim_clip",
                 "name":   source_path.stem,
-                "source": _try_relative_to(source_path, SCRIPT_DIR),
+                "source": src_rel,
                 "cooked": _try_relative_to(cooked_path, SCRIPT_DIR),
                 "hash":   sha256_file(source_path) if source_path.exists() else "",
                 "dependencies": [],
@@ -357,7 +422,7 @@ def cook_animations(registry: list[dict]) -> int:
             shutil.copy2(src, dst)  # STUB: copy; real cook converts to binary
 
             registry.append({
-                "id":     new_guid(),
+                "id":     stable_guid("Animations/" + str(rel)),
                 "type":   "anim_clip",
                 "name":   src.stem,
                 "source": "Animations/" + str(rel),
@@ -428,7 +493,7 @@ def cook_levels(registry: list[dict]) -> int:
         shutil.copy2(src, dst)
 
         registry.append({
-            "id":     new_guid(),
+            "id":     stable_guid("Levels/" + str(rel)),
             "type":   "level",
             "name":   src.name[: -len(".cell.json")],  # "cell_0_0.cell.json" → "cell_0_0"
             "source": "Levels/" + str(rel),
@@ -492,6 +557,11 @@ def main() -> int:
 
     # Ensure Cooked/ exists
     ensure_dir(COOKED_DIR)
+
+    # Load existing GUIDs from AssetRegistry.json so cook steps can reuse them.
+    # This ensures GUIDs remain stable across multiple cook runs (the C++ runtime
+    # and CI tests hardcode specific GUIDs for known assets).
+    load_existing_guids()
 
     registry: list[dict] = []
     total = 0

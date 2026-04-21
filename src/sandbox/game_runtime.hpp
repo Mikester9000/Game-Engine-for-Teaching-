@@ -25,13 +25,14 @@
  *      the m8_gameplay acceptance test can run in headless CI mode.
  *
  * ─── System Update Order (per frame) ────────────────────────────────────────
- *   1. InputMapper     — keyboard state → ECS component flags
- *   2. WeatherSystem   — advance day/night cycle
- *   3. AISystem        — enemy FSM + A* pathfinding
- *   4. CombatSystem    — ATB timers, attack resolution, damage
- *   5. QuestSystem     — objective progress checks
- *   6. CameraSystem    — update view/proj matrices
- *   7. Hud             — extract HudState snapshot
+ *   1. InputMapper          — keyboard state → ECS component flags
+ *   2. WeatherSystem        — advance day/night cycle
+ *   3. AISystem             — enemy FSM + A* pathfinding
+ *   4. CombatSystem         — ATB timers, attack resolution, damage
+ *   5. QuestSystem          — objective progress checks
+ *   6. CameraSystem         — update view/proj matrices
+ *   7. Hud                  — extract HudState snapshot
+ *   8. GameStreamingManager — pump async cell load/evict completions (M8.7)
  *
  * ============================================================================
  *
@@ -60,12 +61,15 @@
 
 // ---- World ----
 #include "game/world/TileMap.hpp"
+#include "game/world/GameStreamingManager.hpp"
 
 // ---- Engine systems ----
 #include "engine/rendering/camera_system.hpp"
 #include "engine/ui/hud.hpp"
 #include "engine/save/save_system.hpp"
 #include "engine/core/EventBus.hpp"
+#include "engine/assets/asset_db.hpp"
+#include "engine/assets/asset_loader.hpp"
 
 namespace sandbox {
 
@@ -173,6 +177,18 @@ private:
 
     // ---- Open-world navigation grid (all-floor, 100×100 tiles) ----
     TileMap m_tileMap;
+
+    // ---- World streaming (M8.7) ----
+    // TEACHING NOTE — Streaming integration in GameRuntime
+    // ──────────────────────────────────────────────────────
+    // GameStreamingManager, AssetDB, and AssetLoader are value members so they
+    // share the GameRuntime lifetime.  AssetLoader holds a raw pointer to
+    // AssetDB, so the ordering here (DB before loader) guarantees the DB
+    // outlives the loader.  std::unique_ptr defers AssetLoader construction
+    // until Init() has successfully loaded the database.
+    GameStreamingManager                         m_streamingMgr;
+    engine::assets::AssetDB                      m_assetDB;
+    std::unique_ptr<engine::assets::AssetLoader> m_assetLoader;
 
     // ---- Gameplay systems ----
     std::unique_ptr<CombatSystem>   m_combat;

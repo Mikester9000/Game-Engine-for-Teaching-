@@ -10,6 +10,7 @@
 #include "sandbox/game_runtime.hpp"
 #include "game/GameData.hpp"
 #include "engine/core/Logger.hpp"
+#include "engine/world/world_partition.hpp"  // CellIdFromCoord (M8.7)
 
 #include <algorithm> // std::min, std::max, std::move
 #include <iostream>  // std::cout (CI acceptance output)
@@ -199,6 +200,91 @@ bool GameRuntime::Init()
 
     LOG_INFO("GameRuntime::Init complete — player=" << m_playerID
              << " camera=" << m_cameraID);
+
+    // -----------------------------------------------------------------------
+    // M8.7 — World streaming integration
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Streaming wired into GameRuntime
+    // ─────────────────────────────────────────────────
+    // GameStreamingManager is the game-layer subclass of WorldStreamingManager
+    // (from M7).  Wiring it here completes M8.7:
+    //
+    //   1. We try to load the cooked AssetDB from the vertical slice project.
+    //      If it doesn't exist (e.g. cook.exe hasn't been run yet) we continue
+    //      without file-backed streaming — cells still load with default empty
+    //      data.  This makes the m8_gameplay acceptance test (which runs BEFORE
+    //      cooking in CI) work correctly.
+    //
+    //   2. Cell size = TILE_SIZE × 40 (2 560 world units).
+    //      The player starts at tile (50,50) → world (3 200, 0, 3 200).
+    //      Cell coord = floor(3 200 / 2 560) = 1.  The player is in cell (1,1).
+    //
+    //   3. We register the cooked cell file GUIDs for the four vertical-slice
+    //      cells around the player's starting position.  The GUIDs are stable
+    //      identifiers written into AssetRegistry.json at authoring time and
+    //      preserved unchanged by cook.exe into assetdb.json.
+    // -----------------------------------------------------------------------
+
+    // Try to load AssetDB (graceful: continue if missing before cooking).
+    const std::string kAssetDbPath =
+        "samples/vertical_slice_project/Cooked/assetdb.json";
+    if (m_assetDB.Load(kAssetDbPath))
+    {
+        LOG_INFO("GameRuntime: AssetDB loaded from " << kAssetDbPath);
+        m_assetLoader = std::make_unique<engine::assets::AssetLoader>(&m_assetDB);
+    }
+    else
+    {
+        LOG_INFO("GameRuntime: AssetDB not found at '" << kAssetDbPath
+                 << "' — streaming will use default empty cell data "
+                    "(run cook.exe to enable file-backed streaming).");
+    }
+
+    // Initialise streaming manager.
+    // Cell size: 40 tiles × TILE_SIZE(64) = 2 560 world units.
+    // Stream radius 1 → 3×3 = 9 cells kept loaded around the player.
+    constexpr float kCellSize     = static_cast<float>(TILE_SIZE) * 40.0f;
+    constexpr int   kStreamRadius = 1;
+    if (!m_streamingMgr.Init(m_world, m_assetLoader.get(), kCellSize, kStreamRadius))
+    {
+        LOG_ERROR("GameRuntime::Init: GameStreamingManager::Init() failed.");
+        // Non-fatal: gameplay still works; streaming cells just won't load.
+    }
+
+    // Register stable GUIDs for the four authored vertical-slice cells.
+    // These GUIDs match the 'id' fields in AssetRegistry.json.
+    // They correspond to the cells nearest the player's starting position:
+    //   cell_0_0 → world cell (1,1)  — player's home cell
+    //   cell_0_1 → world cell (0,1)
+    //   cell_1_0 → world cell (1,0)
+    //   cell_1_1 → world cell (0,0)
+    // TEACHING NOTE — Stable GUID mapping
+    // The GUID is the canonical cross-system identifier.  The CellId is a
+    // derived runtime hash that changes if cell coordinates change.  Always
+    // register by (GUID, cellId) so asset references survive grid renames.
+    struct CellReg { int cx; int cz; const char* guid; };
+    constexpr CellReg kCells[] = {
+        { 1, 1, "5db40c3b-a192-4a4c-a1aa-728775cd12fa" },  // cell_0_0
+        { 0, 1, "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011" },  // cell_0_1
+        { 1, 0, "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022" },  // cell_1_0
+        { 0, 0, "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033" },  // cell_1_1
+    };
+    for (const auto& c : kCells)
+    {
+        const uint32_t cellId =
+            engine::world::CellIdFromCoord({ c.cx, c.cz });
+        m_streamingMgr.RegisterCellGuid(cellId, c.guid);
+    }
+
+    // Kick off the first streaming update so cells around the player's
+    // starting position begin loading immediately.
+    {
+        auto& tr = m_world.GetComponent<TransformComponent>(m_playerID);
+        const engine::math::Vec3 startPos{
+            tr.position.x, tr.position.y, tr.position.z };
+        m_streamingMgr.Update(startPos);
+    }
+
     return true;
 }
 
@@ -320,6 +406,24 @@ void GameRuntime::Update(float dt)
 
     // 10. Print debug every 60 frames (CI log output).
     m_hud.PrintDebug(m_lastHudState, 60);
+
+    // 11. World streaming — pump async cell load/evict completions (M8.7).
+    // TEACHING NOTE — Streaming pumped last (after HUD / camera)
+    // ─────────────────────────────────────────────────────────────────
+    // Update() drives the WorldStreamingManager's completion queue:
+    //   a. Queries WorldPartition for cells near the player.
+    //   b. Enqueues load/evict jobs via AsyncLoader.
+    //   c. Calls PumpMainThreadCompletions() to fire OnCellLoaded/OnEvictCell
+    //      callbacks (which spawn/despawn ECS entities) on the main thread.
+    // Placing this last keeps entity spawning out of mid-frame ECS iteration
+    // in steps 3–6, preventing iterator invalidation.
+    if (m_world.HasComponent<TransformComponent>(m_playerID))
+    {
+        const auto& tr = m_world.GetComponent<TransformComponent>(m_playerID);
+        const engine::math::Vec3 playerPos{
+            tr.position.x, tr.position.y, tr.position.z };
+        m_streamingMgr.Update(playerPos);
+    }
 }
 
 // ===========================================================================
@@ -328,11 +432,13 @@ void GameRuntime::Update(float dt)
 
 void GameRuntime::Shutdown()
 {
+    m_streamingMgr.Shutdown();  // M8.7 — stop async loader before destroying world
     m_dialogue.reset();
     m_quests.reset();
     m_weather.reset();
     m_ai.reset();
     m_combat.reset();
+    m_assetLoader.reset();
     LOG_INFO("GameRuntime shut down after " << m_frameCount << " frames.");
 }
 

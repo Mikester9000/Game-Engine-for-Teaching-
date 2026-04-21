@@ -144,43 +144,51 @@ backend.
 
 ---
 
-## Milestone 7 — World Streaming *(medium-term)*
+## Milestone 7 — World Streaming ✅ *(complete)*
 
 **Goal:** Open-world zone streaming without loading screens.
 
-| Item | Priority |
-|------|----------|
-| `world_streaming` proximity-based loader (`src/engine/world/world_streaming.hpp/.cpp`) | HIGH |
-| `world_partition` spatial grid (`src/engine/world/world_partition.hpp/.cpp`) | HIGH |
-| Async loader worker thread (`src/engine/world/async_loader.hpp/.cpp`) | HIGH |
-| No frame spikes during zone transition | HIGH |
+| Item | Status |
+|------|--------|
+| `world_streaming` proximity-based loader (`src/engine/world/world_streaming.hpp/.cpp`) | ✅ Done |
+| `world_partition` spatial grid (`src/engine/world/world_partition.hpp/.cpp`) | ✅ Done |
+| Async loader worker thread (`src/engine/world/async_loader.hpp/.cpp`) | ✅ Done |
+| Frame-budget cap (`SetMaxCompletionsPerFrame`) | ✅ Done |
+| `GameStreamingManager` — Zone lifecycle wiring (`src/game/world/`) | ✅ Done |
+| AssetLoader `.level` cooked cell integration (M7.2) | ✅ Done |
+| Cancellation token in `AsyncLoader` (`CancelJob`) (M7.3) | ✅ Done |
+| ImGui streaming debug overlay + editor View menu toggle (M7.5) | ✅ Done |
+| `streaming_load` / `streaming_evict` / `streaming_async` headless CI scenes | ✅ Done |
 
 ---
 
-## Milestone 8 — Gameplay Integration *(long-term)*
+## Milestone 8 — Gameplay Integration ✅ *(complete)*
 
 **Goal:** Wire all terminal gameplay systems into the D3D11 runtime (Vulkan catch-up is Post-M8).
 
-| Item | Priority |
-|------|----------|
-| CombatSystem → D3D11 runtime (replace ncurses rendering) | HIGH |
-| AISystem → D3D11 + physics raycasts | HIGH |
-| QuestSystem → D3D11 ImGui HUD | HIGH |
-| WeatherSystem → D3D11 sky renderer + weather VFX | MEDIUM |
-| Dialogue system (`src/game/systems/dialogue_system.hpp/.cpp`) | MEDIUM |
-| Production save system: 15 slots + auto-save + migration (`src/engine/save/`) | MEDIUM |
+| Item | Status |
+|------|--------|
+| `GameRuntime` D3D11 game-loop driver (M8.1) | ✅ Done |
+| `InputMapper`: Win32 key events → ECS state (M8.2) | ✅ Done |
+| `CameraSystem`: third-person follow + mouse orbit (M8.3) | ✅ Done |
+| D3D11 ImGui HUD: HP/MP bars, ATB, equipped spell (M8.5) | ✅ Done |
+| `DialogueSystem` + QuestSystem HUD notifications + NPC sample cell (M8.6) | ✅ Done |
+| `GameStreamingManager` → D3D11; `AnimatorComponent` on streamed entities; 3 new cells (M8.7) | ✅ Done |
+| `SaveSystem`: 15 slots + auto-save + `"version"` migration field (M8.8) | ✅ Done |
+| `--scene m8_gameplay` headless CI acceptance test (M8.9) | ✅ Done |
+| `--scene m8_streaming` headless CI acceptance test (M8.7) | ✅ Done |
 
 ---
 
 ## Post-M8 Work
 
-- PBR rendering (IBL + directional shadows + bloom + tonemap)
-- Dynamic sky / procedural time-of-day
-- Vehicle physics
+- PBR rendering (IBL + directional shadows + bloom + tonemap) — D3D11 first, then Vulkan
+- Dynamic sky / procedural time-of-day + weather VFX
+- Vehicle physics (`VehicleComponent` + wheel-ray suspension)
 - Behaviour tree AI (`src/engine/ai/behaviour_tree.hpp/.cpp`)
 - Formation system (`src/engine/ai/formation_system.hpp/.cpp`)
 - Cinematic sequencer + camera rig
-- Vulkan HUD / menu stack
+- Vulkan catch-up: all DEFERRED items (vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning)
 - Nav-mesh generation + runtime pathfinding
 - PAK file packager
 

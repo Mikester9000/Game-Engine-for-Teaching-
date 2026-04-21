@@ -1,0 +1,14 @@
+{
+  "zoneName": "Duscae Plains West",
+  "tileWidth": 40,
+  "tileHeight": 40,
+  "isDungeon": false,
+  "dangerLevel": 2,
+  "recommendedLevel": 4,
+  "spawns": [
+    { "enemyDataID": 1, "tileX": 8,  "tileY": 12, "respawnTime": 45.0 },
+    { "enemyDataID": 2, "tileX": 22, "tileY": 30, "respawnTime": 60.0 }
+  ],
+  "npcIDs": [],
+  "shopIDs": []
+}

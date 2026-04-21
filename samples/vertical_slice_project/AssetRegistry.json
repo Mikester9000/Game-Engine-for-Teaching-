@@ -1,7 +1,7 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-20T19:47:26Z",
+  "generatedAt": "2026-04-21T13:51:32Z",
   "assets": [
     {
       "id": "63d82695-f567-42f7-a8a3-110afe1e03d0",
@@ -23,6 +23,45 @@
       "source": "Levels/cell_0_0.cell.json",
       "cooked": "Cooked/Levels/cell_0_0.level",
       "hash": "c80490bcddefefabbab828b7b1548e46e196146b6243c37c779dd8dbf1ebcc2a",
+      "dependencies": [],
+      "tags": [
+        "level",
+        "streaming-cell"
+      ]
+    },
+    {
+      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011",
+      "type": "level",
+      "name": "cell_0_1",
+      "source": "Levels/cell_0_1.cell.json",
+      "cooked": "Cooked/Levels/cell_0_1.level",
+      "hash": "acb8cd5854ee84fb10b85672b1654b09b32dd248c692beaf238f429cd9060d7e",
+      "dependencies": [],
+      "tags": [
+        "level",
+        "streaming-cell"
+      ]
+    },
+    {
+      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022",
+      "type": "level",
+      "name": "cell_1_0",
+      "source": "Levels/cell_1_0.cell.json",
+      "cooked": "Cooked/Levels/cell_1_0.level",
+      "hash": "0c9929035796467c1a470381656b0c1178b5fc6c60bce6cbe8ac0ef3bab77f1c",
+      "dependencies": [],
+      "tags": [
+        "level",
+        "streaming-cell"
+      ]
+    },
+    {
+      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033",
+      "type": "level",
+      "name": "cell_1_1",
+      "source": "Levels/cell_1_1.cell.json",
+      "cooked": "Cooked/Levels/cell_1_1.level",
+      "hash": "0e2165234691de8946d4aa22212a677c118be7ff44b78461b255e507a1a4d45a",
       "dependencies": [],
       "tags": [
         "level",

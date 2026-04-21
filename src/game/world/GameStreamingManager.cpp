@@ -363,9 +363,77 @@ void GameStreamingManager::OnCellLoaded(uint32_t                      id,
         zone.SpawnEnemies(*m_world);
         zone.SpawnNPCs(*m_world);
 
+        // TEACHING NOTE — M8.7: Apply per-cell world-space origin offset
+        // ─────────────────────────────────────────────────────────────────
+        // Zone::SpawnOneEnemy() places entities at tile-local world positions:
+        //   position = Vec3(sp.x * TILE_SIZE, 0, sp.y * TILE_SIZE)
+        // This is correct for cell (0,0), but for any other cell the entities
+        // all stack near the origin.  We must add the cell's world-space origin:
+        //   cellOrigin = Vec3(coord.cx * CellSize, 0, coord.cz * CellSize)
+        //
+        // This mirrors how FF15's Luminous Engine applies a "cell offset matrix"
+        // when loading a streaming cell, so that each cell occupies its distinct
+        // region of the world grid.
+        const float cellSize    = Partition().CellSize();
+        const float cellOriginX = static_cast<float>(coord.cx) * cellSize;
+        const float cellOriginZ = static_cast<float>(coord.cz) * cellSize;
+
+        auto applyOffset = [&](const std::vector<uint32_t>& entities)
+        {
+            for (const uint32_t eid : entities)
+            {
+                if (m_world->HasComponent<TransformComponent>(eid))
+                {
+                    auto& tr = m_world->GetComponent<TransformComponent>(eid);
+                    tr.position.x += cellOriginX;
+                    tr.position.z += cellOriginZ;
+                    tr.isDirty     = true;
+                }
+            }
+        };
+        applyOffset(zone.GetEnemyEntities());
+        applyOffset(zone.GetNPCEntities());
+
+        // TEACHING NOTE — M8.7: AnimatorComponent for D3D11 skinned-mesh pass
+        // ─────────────────────────────────────────────────────────────────────
+        // The D3D11 skinned-mesh vertex shader (skinned_mesh.vs.hlsl) reads a
+        // joint-matrix constant buffer uploaded by GpuSkinningBuffer.  Any
+        // entity that should be rendered with GPU skinning MUST have an
+        // AnimatorComponent so AnimationSystem can write joint matrices each
+        // frame.  We add a default component here for every enemy and NPC
+        // spawned by the streaming manager.
+        //
+        // skeletonID / currentClipID are deliberately left as placeholder
+        // strings ("skel_enemy_default", "clip_idle").  When real skeleton and
+        // clip assets are cooked and registered with AnimationSystem, update
+        // these IDs to the corresponding asset GUIDs.  The engine will then
+        // evaluate real keyframe data instead of identity matrices.
+        for (const uint32_t eid : zone.GetEnemyEntities())
+        {
+            if (!m_world->HasComponent<AnimatorComponent>(eid))
+            {
+                auto& anim        = m_world->AddComponent<AnimatorComponent>(eid);
+                anim.skeletonID   = "skel_enemy_default";
+                anim.currentClipID = "clip_idle";
+                anim.isPlaying    = true;
+            }
+        }
+        for (const uint32_t eid : zone.GetNPCEntities())
+        {
+            if (!m_world->HasComponent<AnimatorComponent>(eid))
+            {
+                auto& anim        = m_world->AddComponent<AnimatorComponent>(eid);
+                anim.skeletonID   = "skel_npc_default";
+                anim.currentClipID = "clip_idle_npc";
+                anim.isPlaying    = true;
+            }
+        }
+
         LOG_INFO("GameStreamingManager: cell " << coord.cx << "," << coord.cz
                  << " spawned — zone='" << zd.name << "'"
-                 << ", enemies registered=" << zd.enemyIDs.size());
+                 << ", enemies=" << zone.GetEnemyEntities().size()
+                 << ", npcs=" << zone.GetNPCEntities().size()
+                 << " (AnimatorComponent attached to all)");
     }
     else
     {

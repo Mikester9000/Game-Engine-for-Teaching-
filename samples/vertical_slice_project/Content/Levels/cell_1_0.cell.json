@@ -1,0 +1,15 @@
+{
+  "zoneName": "Duscae Plains South",
+  "tileWidth": 40,
+  "tileHeight": 40,
+  "isDungeon": false,
+  "dangerLevel": 3,
+  "recommendedLevel": 5,
+  "spawns": [
+    { "enemyDataID": 1, "tileX": 15, "tileY": 5,  "respawnTime": 40.0 },
+    { "enemyDataID": 3, "tileX": 30, "tileY": 20, "respawnTime": 50.0 },
+    { "enemyDataID": 2, "tileX": 5,  "tileY": 35, "respawnTime": 55.0 }
+  ],
+  "npcIDs": [],
+  "shopIDs": []
+}

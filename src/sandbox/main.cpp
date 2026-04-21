@@ -70,6 +70,7 @@
  *   engine_sandbox.exe --headless --scene streaming_async   # M7 streaming: async timing budget
  *   engine_sandbox.exe --scene game                         # M8 full gameplay windowed (D3D11)
  *   engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
  *
  * ============================================================================
  *
@@ -133,6 +134,24 @@
 //   5. Asserts: quest objective registered for player.
 // ---------------------------------------------------------------------------
 #include "sandbox/game_runtime.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M8.7 Streaming integration headless test
+// ---------------------------------------------------------------------------
+// The m8_streaming scene validates the full M8.7 pipeline:
+//   1. Loads assetdb.json produced by cook.exe.
+//   2. Inits a GameStreamingManager with cell size TILE_SIZE*40 = 2560 world
+//      units (same as GameRuntime, same coordinate mapping path).
+//   3. Registers the cell_0_0 GUID for world cell (1,1) — matching the
+//      GameRuntime mapping (player starts in cell (1,1) at 2560-unit cells).
+//   4. Runs 200 Update() calls at position (3840, 0, 3840) — centre of (1,1).
+//   5. Asserts: at least 1 cell reached the LOADED state.
+//
+// Run AFTER cook.exe — the test exits with [FAIL] if assetdb.json is absent.
+// In build-windows.yml this step appears after the "Cook vertical slice
+// project" step, guaranteeing the file is present.
+// ---------------------------------------------------------------------------
+#include "game/world/GameStreamingManager.hpp"
 
 #include <iostream>
 #include <exception>
@@ -1030,6 +1049,106 @@ int main(int argc, char* argv[])
                     return 1;
                 }
                 std::cout << "[PASS] m8_gameplay: all 3 acceptance tests passed.\n";
+            }
+            else if (scene == "m8_streaming")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — M8.7 Streaming Integration headless test
+                // -----------------------------------------------------------
+                // This acceptance scene validates the complete M8.7 pipeline:
+                //
+                //   1. ASSET DB LOAD — Load assetdb.json produced by cook.exe.
+                //      Exits [FAIL] if the file is missing (cook.exe must run
+                //      before this scene is invoked, as enforced in CI).
+                //
+                //   2. STREAMING INIT — Create a GameStreamingManager with cell
+                //      size TILE_SIZE * 40 = 2560 world units — matching the
+                //      shipped GameRuntime (same coordinate mapping path).
+                //
+                //   3. GUID REGISTRATION — Register the stable GUID
+                //      "5db40c3b-…" (cell_0_0) for world cell (1,1), mirroring
+                //      GameRuntime (player starts at tile 50,50 = world 3200,3200
+                //      which lies in cell (1,1) at 2560-unit cell size).
+                //
+                //   4. UPDATE LOOP — Run 200 Update() calls at position
+                //      (3840, 0, 3840) — the centre of cell (1,1) at 2560 cell
+                //      size.  The async worker has enough calls to complete the
+                //      load and trigger PumpCompletions().
+                //
+                //   5. LOADED COUNT — Assert ≥ 1 cell reached LOADED state.
+                //
+                // TEACHING NOTE — Why 200 iterations?
+                // The async loader works on a background thread.  The main
+                // thread drains at most kMaxPerFrame completions per
+                // Update() call (default: 4).  For 9 cells in a radius-1
+                // patch, 200 iterations is generous headroom even on a busy
+                // CI runner where the worker thread may be slow to schedule.
+                // -----------------------------------------------------------
+
+                // 1. Load AssetDB (requires cook.exe to have run first).
+                engine::assets::AssetDB streamDb;
+                const std::string kDbPath =
+                    "samples/vertical_slice_project/Cooked/assetdb.json";
+                if (!streamDb.Load(kDbPath))
+                {
+                    std::cout << "[FAIL] m8_streaming: assetdb.json not found at '"
+                              << kDbPath << "'. Run cook.exe first.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                engine::assets::AssetLoader streamLoader(&streamDb);
+
+                // 2. Create ECS World and streaming manager.
+                // TEACHING NOTE — Heap-allocate World (same reason as GameRuntime)
+                auto streamWorld = std::make_unique<World>();
+                RegisterAllComponents(*streamWorld);
+
+                auto streamMgr = std::make_unique<GameStreamingManager>();
+                // TEACHING NOTE — Keep this acceptance-test cell size matched to
+                // GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
+                // Using a smaller test-only value exercises a different
+                // world-position → cell-coordinate mapping path and can hide
+                // boundary bugs that would appear in the shipped runtime.
+                constexpr float kStreamCellSize = TILE_SIZE * 40.0f;  // 2560 world units
+                if (!streamMgr->Init(*streamWorld, &streamLoader, kStreamCellSize, 1))
+                {
+                    std::cout << "[FAIL] m8_streaming: GameStreamingManager::Init failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+
+                // 3. Register cell_0_0 GUID for world cell (1,1).
+                // This matches GameRuntime's registration: the player starts at
+                // tile (50,50) = world (3200, 0, 3200), which lies in cell (1,1)
+                // at cell size 2560.  Using the same coord → GUID mapping as the
+                // shipped runtime means this test validates the exact same path.
+                const std::string kCell00Guid = "5db40c3b-a192-4a4c-a1aa-728775cd12fa";
+                const uint32_t    kCellId00   =
+                    engine::world::CellIdFromCoord({ 1, 1 });
+                streamMgr->RegisterCellGuid(kCellId00, kCell00Guid);
+
+                // 4. Update 200 times — camera at (3840, 0, 3840) which is the
+                // centre of cell (1,1) at cell size 2560.
+                const engine::math::Vec3 kCamPos{ 3840.0f, 0.0f, 3840.0f };
+                for (int i = 0; i < 200; ++i)
+                    streamMgr->Update(kCamPos);
+
+                const int loadedCells = streamMgr->LoadedCellCount();
+                streamMgr->Shutdown();
+
+                // 5. Validate.
+                if (loadedCells < 1)
+                {
+                    std::cout << "[FAIL] m8_streaming: no cells reached LOADED state "
+                                 "after 200 Update() calls.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] m8_streaming: " << loadedCells
+                          << " cell(s) loaded from disk via AssetLoader.\n";
             }
             else
             {
