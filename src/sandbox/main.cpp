@@ -66,6 +66,8 @@
  *   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
  *   engine_sandbox.exe --scene pbr_mesh             # M9 PBR Cook-Torrance sphere (windowed)
  *   engine_sandbox.exe --headless --scene pbr_mesh  # M9 PBR Cook-Torrance CI
+ *   engine_sandbox.exe --scene dynamic_sky          # M10 procedural sky + weather (windowed)
+ *   engine_sandbox.exe --headless --scene dynamic_sky   # M10 dynamic sky CI
  *   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
  *   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
  *   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
@@ -154,6 +156,18 @@
 // project" step, guaranteeing the file is present.
 // ---------------------------------------------------------------------------
 #include "game/world/GameStreamingManager.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M10 Dynamic Sky headless test
+// ---------------------------------------------------------------------------
+// The dynamic_sky scene exercises three acceptance criteria:
+//   1. GPU pipeline: RecordHeadlessFrame() draws via SV_VertexID + sky shaders.
+//   2. Time-of-day: SkyRenderer must compute correct sun elevations.
+//   3. Weather states: fog density must increase from Clear to Storm.
+// The SkyRenderer header is included here for the CPU-side tests (2 and 3)
+// which do not require a renderer at all.
+// ---------------------------------------------------------------------------
+#include "engine/rendering/sky_renderer.hpp"
 
 #include <iostream>
 #include <exception>
@@ -419,7 +433,114 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] " << scene << " scene pipeline OK (WARP headless).\n";
             }
-            else if (scene == "physics_test")
+            else if (scene == "dynamic_sky")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — M10 Dynamic Sky Acceptance Tests
+                // -----------------------------------------------------------
+                // The dynamic_sky headless path exercises three acceptance
+                // criteria from FF15_REQUIREMENTS_BLUEPRINT.md §7:
+                //
+                //   Test 1 — GPU pipeline: RecordHeadlessFrame() draws the sky
+                //     via the SV_VertexID full-screen triangle + sky.ps.hlsl.
+                //     This validates the sky CB, sky VS, and sky PS all work
+                //     on WARP without a physical GPU.
+                //
+                //   Test 2 — Time-of-day: the SkyRenderer must compute a
+                //     positive sun elevation at noon (t=12 h) and a negative
+                //     elevation at midnight (t=0 h).
+                //
+                //   Test 3 — Weather states: fog density must differ between
+                //     WeatherType::Clear and WeatherType::Storm.
+                //
+                // All three must pass for the scene to report [PASS].
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+
+                // Test 1 — GPU pipeline validation via RecordHeadlessFrame().
+                if (!renderer->RecordHeadlessFrame())
+                {
+                    std::cout << "[FAIL] dynamic_sky Test 1/3: GPU pipeline (RecordHeadlessFrame) failed.\n";
+                    ++testsFailed;
+                }
+                else
+                {
+                    std::cout << "[OK] dynamic_sky Test 1/3: GPU pipeline OK (WARP headless).\n";
+                }
+
+                // Test 2 — Time-of-day: sun above horizon at noon, below at midnight.
+                {
+                    engine::rendering::SkyRenderer skyTest;
+                    skyTest.SetTimeOfDay(12.0f);  // noon
+                    auto noonConstants = skyTest.GetShaderConstants();
+
+                    skyTest.SetTimeOfDay(0.0f);   // midnight
+                    auto nightConstants = skyTest.GetShaderConstants();
+
+                    const bool sunAboveAtNoon     = (noonConstants.sunIntensity  > 0.9f);
+                    const bool sunBelowAtMidnight = (nightConstants.sunIntensity < 0.01f);
+
+                    if (!sunAboveAtNoon)
+                    {
+                        std::cout << "[FAIL] dynamic_sky Test 2/3: sun not above horizon at noon "
+                                     "(sunIntensity=" << noonConstants.sunIntensity << ").\n";
+                        ++testsFailed;
+                    }
+                    else if (!sunBelowAtMidnight)
+                    {
+                        std::cout << "[FAIL] dynamic_sky Test 2/3: sun not below horizon at midnight "
+                                     "(sunIntensity=" << nightConstants.sunIntensity << ").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] dynamic_sky Test 2/3: time-of-day sun elevation OK "
+                                     "(noon=" << noonConstants.sunIntensity
+                                  << ", midnight=" << nightConstants.sunIntensity << ").\n";
+                    }
+                }
+
+                // Test 3 — Weather states: fog density differs between Clear and Storm.
+                {
+                    engine::rendering::SkyRenderer skyTest;
+                    skyTest.SetTimeOfDay(12.0f);   // noon for a fair comparison
+
+                    skyTest.SetWeatherType(engine::rendering::WeatherType::Clear);
+                    // Update WeatherFx many times so it reaches the target
+                    for (int i = 0; i < 600; ++i)
+                        skyTest.Update(0.1f);   // 60 seconds at dt=0.1
+                    auto clearConst = skyTest.GetShaderConstants();
+
+                    skyTest.SetWeatherType(engine::rendering::WeatherType::Storm);
+                    for (int i = 0; i < 600; ++i)
+                        skyTest.Update(0.1f);
+                    auto stormConst = skyTest.GetShaderConstants();
+
+                    const float fogDelta = stormConst.fogDensity - clearConst.fogDensity;
+                    if (fogDelta < 0.1f)
+                    {
+                        std::cout << "[FAIL] dynamic_sky Test 3/3: fog density did not differ "
+                                     "between Clear and Storm (delta=" << fogDelta << ").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] dynamic_sky Test 3/3: weather fog delta OK "
+                                     "(clear=" << clearConst.fogDensity
+                                  << ", storm=" << stormConst.fogDensity << ").\n";
+                    }
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] dynamic_sky: " << testsFailed
+                              << " of 3 acceptance test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] dynamic_sky: all 3 acceptance tests passed.\n";
+            }
             {
                 // -----------------------------------------------------------
                 // TEACHING NOTE — M5 Physics Acceptance Tests

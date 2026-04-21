@@ -439,12 +439,74 @@ all three constant buffers mapped correctly; sphere geometry drawn without D3D11
 
 ---
 
-## Future Milestones (Post-M9)
+## Milestone M10 — Dynamic Sky + Weather VFX
+
+**Goal:** Implement a procedural time-of-day sky renderer with weather effects (fog, rain,
+cloud cover) that runs as a standalone D3D11 scene and validates on WARP in CI.
+
+**What M10 adds:**
+
+- `WeatherType` enum (`Clear/Cloudy/Rain/Storm`) + `WeatherFxState` struct in
+  `engine/rendering/weather_fx.hpp/.cpp`.
+- `WeatherFx` — translates a `WeatherType` into smoothly-lerped fog density,
+  rain intensity, and cloud cover values.
+- `SkyShaderConstants` (80 bytes, 5 × float4) — maps directly to the HLSL cbuffer.
+- `SkyRenderer` in `engine/rendering/sky_renderer.hpp/.cpp` — time-of-day clock
+  (60× compression), sun direction formula (`sin/cos` on shifted arc), zenith/horizon
+  colour phases (night / day / sunset/sunrise), cloud darkening, fog colour matching.
+- `shaders/sky.vs.hlsl` — SV_VertexID full-screen triangle trick (no VB needed).
+- `shaders/sky.ps.hlsl` — exponential gradient + sun disc + glow + fog overlay +
+  rain darkening + Reinhard tonemap + gamma correction (SM 4.0).
+- `D3D11Renderer::SkyScene` struct + `LoadSkyScene()` helper + `DrawSky()` method.
+- `D3D11Renderer::DrawFrame()` — calls `m_skyRenderer.Update(dt)` + `DrawSky()` when
+  `m_currentScene == "dynamic_sky"`.
+- `D3D11Renderer::RecordHeadlessFrame()` — sky scene WARP validation path.
+- `D3D11Renderer::UnloadScene()` — releases VS, PS, CB for the sky scene.
+- `--scene dynamic_sky` in `main.cpp` — windowed demo + 3-test headless acceptance:
+  1. GPU pipeline (RecordHeadlessFrame on WARP)
+  2. Time-of-day: sun above horizon at noon, below at midnight
+  3. Weather: fog density ≥ 0.1 higher in Storm vs Clear
+
+**What M10 does NOT include (deferred):**
+- Volumetric clouds or cloud shadow casters.
+- IBL sky cubemap (HDR capture + irradiance convolution).
+- Rain particle system (GPU particles).
+- Time-of-day curve editor (tod.lut authoring tool).
+- Vulkan sky pipeline.
+
+| Sub-task | Description | Status |
+|---|---|---|
+| M10.1 | `weather_fx.hpp/.cpp` — WeatherType + WeatherFxState + lerp transitions | ✅ |
+| M10.2 | `sky_renderer.hpp/.cpp` — time-of-day, sun direction, colour phases, SkyShaderConstants | ✅ |
+| M10.3 | `shaders/sky.vs.hlsl` — SV_VertexID full-screen triangle | ✅ |
+| M10.4 | `shaders/sky.ps.hlsl` — gradient + sun disc + fog + weather + Reinhard + gamma | ✅ |
+| M10.5 | `D3D11Renderer` `SkyScene` struct + `LoadSkyScene()` + `DrawSky()` | ✅ |
+| M10.6 | `--scene dynamic_sky` + `--headless --scene dynamic_sky` in main.cpp | ✅ |
+| M10.7 | CI acceptance step: `build-windows.yml` headless WARP run | ✅ |
+
+**CI validation command:**
+```
+engine_sandbox.exe --headless --scene dynamic_sky
+```
+Expected output:
+```
+[OK] dynamic_sky Test 1/3: GPU pipeline OK (WARP headless).
+[OK] dynamic_sky Test 2/3: time-of-day sun elevation OK ...
+[OK] dynamic_sky Test 3/3: weather fog delta OK ...
+[PASS] dynamic_sky: all 3 acceptance tests passed.
+```
+
+**Done means:** `--headless --scene dynamic_sky` exits 0 in CI; sky CB uploaded correctly;
+sun elevation formula validated; weather fog transitions validated.
+
+---
+
+## Future Milestones (Post-M10)
 
 | ID | Name | Key deliverable |
 |---|---|---|
 | M9 | PBR Rendering | ✅ Cook-Torrance BRDF + metallic-roughness + UV sphere (D3D11) |
-| M10 | Dynamic Sky | Procedural time-of-day + weather VFX (rain, fog) |
+| M10 | Dynamic Sky | ✅ Procedural time-of-day + weather VFX (rain, fog) — D3D11 |
 | M11 | Vehicle Physics | Wheel-ray suspension + chase camera + `VehicleComponent` |
 | M12 | Behaviour Tree AI | Boss patterns; formation system; nav-mesh baker |
 | M13 | Cinematics | `CinematicSequencer` + camera rig + cut-scene editor |
@@ -468,3 +530,4 @@ all three constant buffers mapped correctly; sphere geometry drawn without D3D11
 | M7 | World streaming | ✅ Complete |
 | M8 | Gameplay integration | ✅ Complete |
 | M9 | PBR Rendering (Cook-Torrance BRDF) | ✅ Complete |
+| M10 | Dynamic Sky + Weather VFX | ✅ Complete |

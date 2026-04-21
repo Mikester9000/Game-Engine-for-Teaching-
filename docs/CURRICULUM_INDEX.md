@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1335 across 46 subsystems.
+**Total lessons:** 1378 across 46 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (55 lessons)
-- [ci/workflows](#ciworkflows) (44 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (57 lessons)
+- [ci/workflows](#ciworkflows) (45 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
@@ -25,7 +25,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (242 lessons)
+- [engine/rendering](#enginerendering) (280 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -39,7 +39,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (40 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (42 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -470,12 +470,23 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
 src/engine/animation/gpu_skinning.cpp
+
+### M10: SkyRenderer + WeatherFx are renderer-agnostic
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L524) (line 524)
+
+CPU objects that compute time-of-day sky colours and weather state.
+They are compiled alongside D3D11Renderer because D3D11Renderer
+owns a SkyRenderer member (m_skyRenderer).  A future Vulkan backend
+would also include these files without modification.
+src/engine/rendering/sky_renderer.cpp
+src/engine/rendering/weather_fx.cpp
 )
 endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L542) (line 542)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L549) (line 549)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -488,13 +499,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L555) (line 555)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L562) (line 562)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L557) (line 557)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L564) (line 564)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -527,7 +538,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional JSON sources
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L590) (line 590)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L597) (line 597)
 
 scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
 The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
@@ -541,7 +552,7 @@ src/engine/scene/scene_serialiser.cpp
 
 ### M7 World Streaming Source Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L604) (line 604)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L611) (line 611)
 
 ─────────────────────────────────────────────────────
 The three world-streaming modules are pure C++17 with no platform or
@@ -563,7 +574,7 @@ src/engine/world/world_streaming.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L626) (line 626)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L633) (line 633)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -576,7 +587,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L639) (line 639)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L646) (line 646)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -599,7 +610,7 @@ src/game/world/Zone.cpp
 
 ### M7.1: GameStreamingManager wires Zone lifecycle into
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L658) (line 658)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L665) (line 665)
 
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
@@ -607,7 +618,7 @@ src/game/world/GameStreamingManager.cpp
 
 ### M8 Gameplay Integration: new systems.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L662) (line 662)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L669) (line 669)
 
 game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
 input_mapper.cpp reads Win32 key state → ECS components.
@@ -625,7 +636,7 @@ src/engine/save/save_system.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L696) (line 696)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L703) (line 703)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -637,7 +648,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L705) (line 705)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L712) (line 712)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -646,7 +657,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L715) (line 715)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L722) (line 722)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -658,7 +669,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L724) (line 724)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L731) (line 731)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -668,7 +679,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L734) (line 734)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L741) (line 741)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -677,7 +688,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L740) (line 740)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L747) (line 747)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -686,7 +697,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L745) (line 745)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L752) (line 752)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -697,7 +708,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L761) (line 761)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L768) (line 768)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -708,7 +719,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L769) (line 769)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L776) (line 776)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -718,7 +729,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L781) (line 781)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L788) (line 788)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -752,7 +763,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L813) (line 813)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L820) (line 820)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -767,7 +778,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L828) (line 828)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L835) (line 835)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -782,7 +793,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L870) (line 870)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L877) (line 877)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -805,7 +816,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L891) (line 891)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L898) (line 898)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -826,7 +837,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L908) (line 908)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L915) (line 915)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -836,7 +847,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L914) (line 914)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L921) (line 921)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -845,11 +856,23 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
   + gamma correction.  Metallic-roughness material workflow.
 "${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.vs.hlsl"
 "${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.ps.hlsl"
+
+### M10: Dynamic sky HLSL shaders.
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L929) (line 929)
+
+sky.vs.hlsl generates a full-screen triangle using SV_VertexID
+  (no vertex buffer required; 3 vertices cover the entire viewport).
+sky.ps.hlsl implements the procedural sky:
+  zenith-to-horizon gradient + sun disc + atmospheric scatter
+  approximation + fog overlay + rain darkening + Reinhard tonemap.
+"${CMAKE_SOURCE_DIR}/shaders/sky.vs.hlsl"
+"${CMAKE_SOURCE_DIR}/shaders/sky.ps.hlsl"
 )
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L939) (line 939)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L954) (line 954)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -871,7 +894,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L958) (line 958)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L973) (line 973)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -882,7 +905,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L966) (line 966)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L981) (line 981)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -892,7 +915,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L996) (line 996)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1011) (line 1011)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -901,7 +924,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1003) (line 1003)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1018) (line 1018)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1272,9 +1295,32 @@ No physical GPU required: WARP executes all SM 4.0 shader instructions.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_mesh
 shell: cmd
 
+### M10 Acceptance Tests
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L229) (line 229)
+
+This step validates three criteria from FF15_REQUIREMENTS_BLUEPRINT §7:
+
+  Test 1 — GPU pipeline: RecordHeadlessFrame() draws the sky via the
+    SV_VertexID full-screen triangle + sky.vs.hlsl + sky.ps.hlsl.
+    This confirms the sky CB, VS, and PS are correct and execute on WARP.
+
+  Test 2 — Time-of-day: the SkyRenderer must report sunIntensity > 0.9
+    at noon (t=12 h) and sunIntensity < 0.01 at midnight (t=0 h).
+
+  Test 3 — Weather states: fog density in WeatherType::Storm must be
+    > 0.1 higher than fog density in WeatherType::Clear (after 60 s).
+
+No physical GPU required: the GPU path uses WARP; the CPU tests are
+pure arithmetic with no graphics API calls.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M10 — dynamic_sky scene)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dynamic_sky
+shell: cmd
+
 ### M8.7 Streaming Integration Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L243) (line 243)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L266) (line 266)
 
 This scene validates the complete M8.7 pipeline that wires the world
 streaming system into the D3D11 GameRuntime:
@@ -1293,7 +1339,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L262) (line 262)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L285) (line 285)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1319,7 +1365,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L301) (line 301)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L324) (line 324)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1345,7 +1391,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L335) (line 335)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L358) (line 358)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1366,7 +1412,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L359) (line 359)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L382) (line 382)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1379,7 +1425,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L372) (line 372)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L395) (line 395)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1410,7 +1456,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L400) (line 400)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L423) (line 423)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1419,7 +1465,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L422) (line 422)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L445) (line 445)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1447,7 +1493,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L457) (line 457)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L480) (line 480)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1456,7 +1502,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L471) (line 471)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L494) (line 494)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1478,7 +1524,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L496) (line 496)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L519) (line 519)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1492,7 +1538,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L520) (line 520)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L543) (line 543)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1510,7 +1556,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L545) (line 545)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L568) (line 568)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1521,7 +1567,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L556) (line 556)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L579) (line 579)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1536,7 +1582,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L578) (line 578)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L601) (line 601)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -10612,9 +10658,27 @@ We advance it unconditionally so LoadScene("skinned_mesh") can start
 animating immediately.
 m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
 
-### Present interval
+### Sky Draw Order
 
 **Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L569) (line 569)
+
+The sky is drawn AFTER clearing the back buffer but could optionally be
+drawn first since it uses depth 0.9999 (behind everything).  In a full
+game with 3D geometry, draw the sky first (or draw it with depth test
+disabled) so the GPU can early-Z reject pixels covered by solid geometry.
+For this standalone sky demo there is no other geometry so order doesn't
+matter.
+
+m_skyRenderer.Update(1/60) advances the time-of-day each frame.
+if (m_skyScene.loaded && m_currentScene == "dynamic_sky")
+{
+m_skyRenderer.Update(1.0f / 60.0f);
+DrawSky();
+}
+
+### Present interval
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L585) (line 585)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -10626,7 +10690,7 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L587) (line 587)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L603) (line 603)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -10635,7 +10699,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L636) (line 636)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L652) (line 652)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -10660,7 +10724,7 @@ return false;
 
 ### COM Reference Counting
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L685) (line 685)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L701) (line 701)
 
 COM objects are reference-counted.  CreateRenderTargetView internally
 calls AddRef on the texture, so the texture stays alive even after we
@@ -10675,7 +10739,7 @@ return false;
 
 ### Validating the Scene Pipeline in Headless Mode (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L702) (line 702)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L718) (line 718)
 
 -----------------------------------------------------------------------
 If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
@@ -10694,7 +10758,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the GPU skinning scene (M4b).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L722) (line 722)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L738) (line 738)
 
 We bind the off-screen RTV, set a matching 64×64 viewport, and call
 DrawSkinnedMesh() once.  This validates that the skinned mesh pipeline
@@ -10710,7 +10774,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the PBR scene (M9).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L739) (line 739)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L755) (line 755)
 
 Same pattern as skinned_mesh: bind the 64×64 off-screen RTV, set the
 matching viewport, and call DrawPBRMesh() once.  This validates that
@@ -10726,9 +10790,25 @@ vp.Height   = 64.0f;
 vp.MaxDepth = 1.0f;
 m_context->RSSetViewports(1, &vp);
 
+### Headless validation for the dynamic sky scene (M10).
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L774) (line 774)
+
+Bind the 64×64 off-screen RTV and call DrawSky() once.  This validates
+that the sky shaders (sky.vs.hlsl + sky.ps.hlsl), the sky constant
+buffer, and the SV_VertexID full-screen triangle draw all work correctly
+under the WARP software renderer without a physical GPU.
+if (m_skyScene.loaded && m_currentScene == "dynamic_sky")
+{
+D3D11_VIEWPORT vp = {};
+vp.Width    = 64.0f;
+vp.Height   = 64.0f;
+vp.MaxDepth = 1.0f;
+m_context->RSSetViewports(1, &vp);
+
 ### C++ requires functions to be declared before use.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L768) (line 768)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L801) (line 801)
 
 LoadSkinnedMeshScene is a file-scope static helper defined later in this
 translation unit.  Rather than move the entire 300-line function above
@@ -10740,7 +10820,7 @@ D3D11Renderer::SkinnedMeshScene& scene);
 
 ### Runtime HLSL Compilation with D3DCompileFromFile
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L840) (line 840)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L890) (line 890)
 
 -----------------------------------------------------------------------
 D3D11 shaders are written in HLSL and can be compiled either:
@@ -10763,7 +10843,7 @@ Windows filesystem API uses UTF-16 internally.
 
 ### Embedded Fallback HLSL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L866) (line 866)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L916) (line 916)
 
 -----------------------------------------------------------------------
 If the .hlsl files are not present on disk (e.g. a minimal CI run that
@@ -10781,7 +10861,7 @@ static const char* kVsFallback =
 
 ### std::wstring for Win32 wide-char path
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L900) (line 900)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L950) (line 950)
 
 D3DCompileFromFile requires a LPCWSTR (wide string) path.
 std::filesystem::path::wstring() gives us that on MSVC.
@@ -10801,7 +10881,7 @@ D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
 
 ### Creating Shader Objects
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L980) (line 980)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1030) (line 1030)
 
 -----------------------------------------------------------------------
 D3D11 separates shader compilation (→ bytecode blob) from shader object
@@ -10815,7 +10895,7 @@ nullptr, &m_quadScene.vs);
 
 ### Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1012) (line 1012)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1062) (line 1062)
 
 -----------------------------------------------------------------------
 The Input Assembler (IA) stage needs to know how the raw bytes in the
@@ -10838,7 +10918,7 @@ D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 ### Vertex and Index Buffers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1048) (line 1048)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1098) (line 1098)
 
 -----------------------------------------------------------------------
 D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
@@ -10859,7 +10939,7 @@ bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
 
 ### Texture Loading vs Fallback
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1097) (line 1097)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1147) (line 1147)
 
 -----------------------------------------------------------------------
 We look for a test DDS texture in the shaderDir's parent (project root)
@@ -10878,7 +10958,7 @@ ddsPath = ddsPath.lexically_normal();
 
 ### Procedural 1×1 White Fallback Texture
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1123) (line 1123)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1173) (line 1173)
 
 -----------------------------------------------------------------------
 When no DDS file is present we create a 1×1 RGBA8 white texture
@@ -10889,7 +10969,7 @@ std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n
 
 ### LoadScene_SkinnedMesh (private helper — inlined in LoadScene)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1203) (line 1203)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1253) (line 1253)
 
 We use a local lambda at file scope to keep the main LoadScene() readable.
 All resource creation follows the same pattern as the textured quad:
@@ -10897,7 +10977,7 @@ All resource creation follows the same pattern as the textured quad:
 
 ### Fallback HLSL for the skinned mesh vertex shader.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1216) (line 1216)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1266) (line 1266)
 
 -----------------------------------------------------------------------
 This is a minimal version of skinned_mesh.vs.hlsl that performs linear
@@ -10922,7 +11002,7 @@ static const char* kSkinnedVsFallback =
 
 ### SkinnedVertex Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1323) (line 1323)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1373) (line 1373)
 
 The D3D11_INPUT_ELEMENT_DESC array must exactly match the SkinnedVertex
 struct defined at the top of this file (field order and byte offsets).
@@ -10945,7 +11025,7 @@ D3D11_INPUT_ELEMENT_DESC layout[] =
 
 ### Why cull-none for the skinning demo?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1396) (line 1396)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1446) (line 1446)
 
 The strip starts facing the camera but rotates 360° as bone 1 oscillates.
 With the default back-face culling the strip disappears every 180°.
@@ -10968,7 +11048,7 @@ return false;
 
 ### The D3D11 Draw Call Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1428) (line 1428)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1478) (line 1478)
 
 -----------------------------------------------------------------------
 Every draw call in D3D11 requires the full pipeline state to be set:
@@ -10983,7 +11063,7 @@ We set IA, VS, and PS here for the quad draw call.
 
 ### PSSetShaderResources / PSSetSamplers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1440) (line 1440)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1490) (line 1490)
 
 These calls bind texture resources and sampler states to HLSL registers.
 register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
@@ -10992,7 +11072,7 @@ register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
 
 ### Constructing the Skin Matrices for the 2-Joint Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1496) (line 1496)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1546) (line 1546)
 
 -----------------------------------------------------------------------
 The demo skeleton has two joints:
@@ -11018,7 +11098,7 @@ const float angle = std::sin(m_sceneTime * 1.5f) * (kPi * 0.25f);  // ±45°
 
 ### Input Assembler (IA) Stage Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1531) (line 1531)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1581) (line 1581)
 
 -----------------------------------------------------------------------
 We set the same four IA parameters as any other draw call:
@@ -11032,7 +11112,7 @@ m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 ### DrawIndexed
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1555) (line 1555)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1605) (line 1605)
 
 -----------------------------------------------------------------------
 DrawIndexed(indexCount, startIndex, baseVertex):
@@ -11044,7 +11124,7 @@ m_context->DrawIndexed(static_cast<UINT>(m_skinnedScene.indexCount), 0, 0);
 
 ### Release Order (LIFO vs Creation Order)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1577) (line 1577)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1627) (line 1627)
 
 COM objects must be released in reverse-creation order when one object
 holds a reference to another.  For independent scene objects (shaders,
@@ -11053,7 +11133,7 @@ reverse makes intent clear.
 
 ### Release order: state objects first (they don't depend on
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1607) (line 1607)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1657) (line 1657)
 
 shaders), then shaders, then geometry buffers, then the CB.
 if (m_skinnedScene.rastState)   { m_skinnedScene.rastState->Release();   m_skinnedScene.rastState   = nullptr; }
@@ -11065,7 +11145,7 @@ if (m_skinnedScene.vertexBuf)   { m_skinnedScene.vertexBuf->Release();   m_skinn
 
 ### Release in reverse creation order (LIFO):
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1621) (line 1621)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1671) (line 1671)
 
 state objects first (no dependents), then shaders, then buffers.
 if (m_pbrScene.rastState)   { m_pbrScene.rastState->Release();   m_pbrScene.rastState   = nullptr; }
@@ -11080,9 +11160,20 @@ if (m_pbrScene.vertexBuf)   { m_pbrScene.vertexBuf->Release();   m_pbrScene.vert
 m_pbrScene.indexCount = 0;
 m_pbrScene.loaded     = false;
 
+### The sky scene only has three objects: VS, PS, and the
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1686) (line 1686)
+
+sky constant buffer.  No vertex buffer or input layout to release (the
+full-screen triangle uses SV_VertexID — no IA stage resources needed).
+if (m_skyScene.skyConstantsCB) { m_skyScene.skyConstantsCB->Release(); m_skyScene.skyConstantsCB = nullptr; }
+if (m_skyScene.ps)             { m_skyScene.ps->Release();             m_skyScene.ps             = nullptr; }
+if (m_skyScene.vs)             { m_skyScene.vs->Release();             m_skyScene.vs             = nullptr; }
+m_skyScene.loaded = false;
+
 ### PBR Per-Frame Constant Buffer Update
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1648) (line 1648)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1707) (line 1707)
 
 -----------------------------------------------------------------------
 The world matrix changes every frame (the sphere rotates slowly around
@@ -11101,7 +11192,7 @@ Proj matrix: FovY=60°, aspect from current back-buffer, near=0.1, far=100.
 
 ### LookAt matrix (Right-Handed, row-major D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1671) (line 1671)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1730) (line 1730)
 
 -----------------------------------------------------------------------
 We build the view matrix manually to show the derivation:
@@ -11121,7 +11212,7 @@ Vec3 up     = { 0.0f, 1.0f, 0.0f };
 
 ### Perspective Projection (Right-Handed, D3D11 Z=[0,1])
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1699) (line 1699)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1758) (line 1758)
 
 -----------------------------------------------------------------------
 D3D11 maps view-space z ∈ [-near, -far] to NDC z ∈ [0, 1].
@@ -11146,7 +11237,7 @@ float f      = 1.0f / std::tan(kFovY * 0.5f);   // cot(FovY/2)
 
 ### Map / Unmap for DYNAMIC buffers.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1732) (line 1732)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1791) (line 1791)
 
 D3D11_MAP_WRITE_DISCARD tells the driver "discard the old contents and
 give me a new pointer to write into".  This avoids GPU/CPU stalls: the
@@ -11167,7 +11258,7 @@ std::memcpy(pfData.proj,         projMat.Data(),  64);
 
 ### Input Assembler (IA) stage setup.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1761) (line 1761)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1820) (line 1820)
 
 We must set:
   1. The primitive topology (triangles, lines, etc.).
@@ -11183,9 +11274,77 @@ m_context->IASetVertexBuffers(0, 1, &m_pbrScene.vertexBuf, &stride, &offset);
 m_context->IASetIndexBuffer(m_pbrScene.indexBuf, DXGI_FORMAT_R16_UINT, 0);
 m_context->IASetInputLayout(m_pbrScene.inputLayout);
 
+### Updating the Sky Constant Buffer
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1864) (line 1864)
+
+-----------------------------------------------------------------------
+m_skyRenderer.Update(dt) is called by DrawFrame each frame to advance
+the time-of-day and weather simulation.  Here we read the current state
+and upload it to the GPU before issuing the draw call.
+
+We use Map/Unmap with D3D11_MAP_WRITE_DISCARD on a DYNAMIC buffer.
+This is the lowest-overhead CPU→GPU path for frequently-updated CBs:
+  • The driver allocates a fresh memory page each frame (no stall waiting
+    for the GPU to finish reading the previous frame's data).
+  • We copy 80 bytes of SkyShaderConstants into that page.
+  • The GPU reads from the page during the subsequent Draw(3,0) call.
+-----------------------------------------------------------------------
+engine::rendering::SkyShaderConstants constants = m_skyRenderer.GetShaderConstants();
+
+### Sky Pipeline State
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1889) (line 1889)
+
+-----------------------------------------------------------------------
+The sky draw uses the absolute minimum pipeline state:
+
+  IA: No vertex buffer, no index buffer, no input layout.
+      The VS reads SV_VertexID to generate positions procedurally.
+      Setting IASetInputLayout(nullptr) is required on some D3D11
+      implementations to clear a previously bound layout; without it,
+      debug validation layers warn about mismatched input layout.
+
+  VS: sky.vs.hlsl — generates 3 clip-space vertices.
+      Draw(3, 0) produces vertex IDs 0, 1, 2.
+
+  PS: sky.ps.hlsl — reads SkyCB (b0) for all colours.
+      PSSetConstantBuffers(0, 1, &skyConstantsCB) binds it.
+
+  OM: Render target is already bound by the caller (DrawFrame or
+      RecordHeadlessFrame).  We do not change blend state or depth
+      stencil state — the sky quad depth (0.9999) ensures it sits
+      behind all 3D geometry in the depth buffer.
+-----------------------------------------------------------------------
+
+### The sky VS does not use any constant buffers.
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1919) (line 1919)
+
+Explicitly clear b0 of the VS stage so no stale matrix CB from a
+previous draw call bleeds into the sky VS's register space.
+ID3D11Buffer* nullCB = nullptr;
+m_context->VSSetConstantBuffers(0, 1, &nullCB);
+
+### Draw(3, 0): Full-Screen Triangle, No Vertex Buffer
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1930) (line 1930)
+
+-----------------------------------------------------------------------
+Draw(vertexCount, startVertexLocation):
+  vertexCount          = 3  (one triangle, three vertices)
+  startVertexLocation  = 0  (start at SV_VertexID = 0)
+
+Because no vertex buffer is bound, the IA stage produces no vertex data.
+The VS reads SV_VertexID (0, 1, 2) and generates NDC positions internally.
+This is a standard "bindless" trick used in post-process passes in all
+modern rendering engines.
+-----------------------------------------------------------------------
+m_context->Draw(3, 0);
+
 ### Embedded PBR Shader Fallbacks
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1811) (line 1811)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1963) (line 1963)
 
 -----------------------------------------------------------------------
 As with the textured_quad and skinned_mesh scenes, we include minimal
@@ -11210,7 +11369,7 @@ static const char* kPBRVsFallback =
 
 ### kPi for the UV sphere generation inside LoadPBRMeshScene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1845) (line 1845)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1997) (line 1997)
 
 math_types.hpp defines engine::math::kPi, but that name requires the
 engine::math namespace which is not open at file scope here.  We declare a
@@ -11221,7 +11380,7 @@ static constexpr float kPi = 3.14159265358979323846f;
 
 ### Same compile helper pattern as the skinned mesh scene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1863) (line 1863)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2015) (line 2015)
 
 We attempt to compile from the .hlsl file on disk; if that fails (file
 missing, syntax error) we fall back to the embedded string.  This
@@ -11236,7 +11395,7 @@ HRESULT   hr     = E_FAIL;
 
 ### D3D11 Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1931) (line 1931)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2083) (line 2083)
 
 The input layout maps each field of the C++ vertex struct to a
 semantic name in the HLSL VSInput struct.  We have three fields:
@@ -11268,7 +11427,7 @@ return false;
 
 ### UV Sphere Parametric Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1963) (line 1963)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2115) (line 2115)
 
 A UV sphere is generated by sweeping a circle (latitude) around the
 Y axis (longitude).  Parameters:
@@ -11300,7 +11459,7 @@ constexpr int N_SLICES = 16;
 
 ### Triangle winding (clockwise from outside of sphere).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2037) (line 2037)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2189) (line 2189)
 
 Triangle 1: top-left, bottom-left, top-right
 Triangle 2: top-right, bottom-left, bottom-right
@@ -11311,7 +11470,7 @@ indices[iIdx++] = v1;
 
 ### IMMUTABLE vs DYNAMIC buffers for geometry.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2055) (line 2055)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2207) (line 2207)
 
 The sphere geometry never changes, so we use D3D11_USAGE_IMMUTABLE:
   • GPU-only access (no CPU write after creation).
@@ -11336,7 +11495,7 @@ return false;
 
 ### D3D11 Constant Buffer Size Rules.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2096) (line 2096)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2248) (line 2248)
 
 A D3D11 constant buffer must be a MULTIPLE of 16 bytes.
 The perFrameCB holds four 4×4 float matrices = 4 × 64 = 256 bytes. ✓
@@ -11363,7 +11522,7 @@ return buf;
 
 ### Uploading data to a DYNAMIC constant buffer at init.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2132) (line 2132)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2284) (line 2284)
 
 For the very first upload we use D3D11_MAP_WRITE_DISCARD (same as the
 per-frame update).  The resource has never been used by the GPU, so
@@ -11372,7 +11531,7 @@ per-frame update).  The resource has never been used by the GPU, so
 
 ### Light direction points TOWARD the light (toward the source),
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2139) (line 2139)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2291) (line 2291)
 
 so the dot product N·L is positive for surfaces facing the light.
 struct alignas(16) LightData {
@@ -11400,7 +11559,7 @@ lightData.padL2           = 0.0f;
 
 ### Workaround: use device->GetImmediateContext to get
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2170) (line 2170)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2322) (line 2322)
 
 a context pointer for the one-time init upload.  In a production
 engine the context would be passed as a parameter.
@@ -11419,7 +11578,7 @@ ctx->Release();
 
 ### Material Parameters for a Gold-like Surface:
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2187) (line 2187)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2339) (line 2339)
 
 albedo   = warm orange-gold (reflected tint for metals = albedo)
   metallic = 0.9  (mostly metallic; a small dielectric contribution
@@ -11440,7 +11599,7 @@ matData.matPad[0] = matData.matPad[1] = 0.0f;
 
 ### Cull-None for the PBR Demo Sphere.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2223) (line 2223)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2375) (line 2375)
 
 The default D3D11 rasterizer state back-face culls (removes triangles
 whose vertices wind clockwise from the camera's perspective).  For a
@@ -11461,6 +11620,73 @@ rd.FrontCounterClockwise = FALSE;
 rd.DepthClipEnable       = TRUE;
 device->CreateRasterizerState(&rd, &scene.rastState);
 }
+
+### Minimal Pipeline for a Sky Scene
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2413) (line 2413)
+
+──────────────────────────────────────────────────
+The sky is the simplest possible D3D11 pipeline:
+  • VS    — generates 3 clip-space vertices from SV_VertexID (no VB needed)
+  • PS    — samples the sky colour from a constant buffer (no texture needed)
+  • No IA stage resources (no vertex buffer, no index buffer, no input layout)
+  • No rasterizer override (default cull-back is fine; the triangle always
+    faces the camera since it's generated in clip space)
+  • One constant buffer (b0) carrying all sky parameters
+
+This simplicity makes the sky scene a perfect study example for D3D11 basics:
+  "How little does a GPU draw call need?" — just VS + PS + a constant.
+===========================================================================
+
+### Embedded Sky Shader Fallbacks
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2428) (line 2428)
+
+-----------------------------------------------------------------------
+As with all other scenes, we include minimal inline HLSL strings as
+fallbacks in case the .hlsl files are absent (e.g. a clean build before
+the POST_BUILD step copies shaders to the output directory).
+
+The sky VS fallback generates the same three SV_VertexID positions.
+The sky PS fallback does a simple zenith-horizon lerp without the full
+sun disc or weather effects — enough to confirm the pipeline works.
+-----------------------------------------------------------------------
+static const char* kSkyVsFallback =
+"struct PSInput{float4 pos:SV_POSITION;float2 uv:TEXCOORD0;};\n"
+"PSInput main(uint id:SV_VertexID){\n"
+"PSInput o;\n"
+"float px=(id==2u)?3.0f:-1.0f;\n"
+"float py=(id==1u)?3.0f:-1.0f;\n"
+"o.pos=float4(px,py,0.9999f,1.0f);\n"
+"o.uv=float2(px*0.5f+0.5f,-py*0.5f+0.5f);\n"
+"return o;}\n";
+
+### compile helper (same pattern as all other scene loaders)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2469) (line 2469)
+
+-----------------------------------------------------------------------
+auto compile = [&](const fs::path& path, const char* fallback,
+const char* entry, const char* target) -> ID3DBlob*
+{
+ID3DBlob* code   = nullptr;
+ID3DBlob* errors = nullptr;
+HRESULT   hr     = E_FAIL;
+
+### Sky Constant Buffer Size
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2554) (line 2554)
+
+SkyShaderConstants is 80 bytes (5 × float4 = 5 × 16 bytes).
+D3D11 requires constant buffers to be multiples of 16 bytes.
+The static_assert in sky_renderer.hpp verifies this at compile time.
+
+We use DYNAMIC + CPU_ACCESS_WRITE because the sky constants change
+every frame (time-of-day advances, weather interpolates).  Map/Unmap
+with D3D11_MAP_WRITE_DISCARD is the fastest way to update a dynamic CB.
+-----------------------------------------------------------------------
+static_assert(sizeof(engine::rendering::SkyShaderConstants) % 16 == 0,
+"SkyShaderConstants must be 16-byte aligned");
 
 ### Why Direct3D 11?
 
@@ -11530,7 +11756,7 @@ Requires: d3d11.lib, dxgi.lib, d3dcompiler.lib (Windows SDK — always present)
 
 ### D3D11 / DXGI Headers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L69) (line 69)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L70) (line 70)
 
 ---------------------------------------------------------------------------
 These headers ship with the Windows SDK — no separate download needed.
@@ -11544,7 +11770,7 @@ include <d3dcompiler.h>
 
 ### Object Lifecycle
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L91) (line 91)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L92) (line 92)
 
 All COM objects (ID3D11Device, etc.) are managed via raw COM pointers.
 We call Release() manually in Shutdown() in reverse-creation order.
@@ -11557,16 +11783,29 @@ public:
 D3D11Renderer();
 ~D3D11Renderer() override;
 
+### DrawSky (M10)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L163) (line 163)
+
+-----------------------------------------------------------------------
+DrawSky() renders a full-screen procedural sky using SV_VertexID (no
+vertex buffer required).  The sky constant buffer is updated from
+m_skyRenderer every frame.  DrawSky() should be called BEFORE any
+opaque 3D geometry so the sky fills in only where no geometry covers it.
+-----------------------------------------------------------------------
+* Draw the procedural sky to the currently bound render target (M10). */
+void DrawSky();
+
 ### COM pointer naming convention
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L168) (line 168)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L180) (line 180)
 
 We prefix all COM interface pointers with m_ (member) and use the
 interface name as the type hint.  e.g. m_device is an ID3D11Device*.
 
 ### Storing Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L180) (line 180)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L192) (line 192)
 
 -----------------------------------------------------------------------
 We cache the current back-buffer size so that DrawFrame can set the
@@ -11580,7 +11819,7 @@ uint32_t                m_height        = 0;
 
 ### Public Scene-Resource Structs
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L196) (line 196)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L208) (line 208)
 
 -----------------------------------------------------------------------
 These inner structs are public to allow static helper functions in the
@@ -11594,7 +11833,7 @@ SkinnedMeshScene  (M4b): resources for the GPU-skinned strip.
 
 ### PBRScene (M9: Physically Based Rendering)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L240) (line 240)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L252) (line 252)
 
 -----------------------------------------------------------------------
 PBRScene holds every Direct3D 11 resource required to render a
@@ -11630,6 +11869,47 @@ ID3D11RasterizerState* rastState   = nullptr;
 int                    indexCount  = 0;
 bool                   loaded      = false;
 };
+
+### SkyScene (M10: Dynamic Sky + Weather VFX)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L289) (line 289)
+
+-----------------------------------------------------------------------
+SkyScene is the simplest scene struct: it only needs a VS, PS, and a
+single constant buffer.
+
+  vs             — sky.vs.hlsl: SV_VertexID full-screen triangle
+  ps             — sky.ps.hlsl: gradient + sun disc + fog + weather
+  skyConstantsCB — b0 (PS): SkyShaderConstants packed struct
+                   updated every frame from m_skyRenderer.GetShaderConstants()
+
+No vertex buffer is required because the sky VS generates all three
+vertices procedurally from SV_VertexID (see sky.vs.hlsl).
+
+No input layout is required because there is no vertex buffer to
+describe.  D3D11 accepts a null input layout when IA::SetInputLayout(null)
+is called — the shader does not read from the IA stage at all.
+
+No rasterizer state override is needed: the default cull-back state is
+fine because the full-screen triangle never faces away from the camera.
+-----------------------------------------------------------------------
+struct SkyScene
+{
+ID3D11VertexShader* vs             = nullptr;
+ID3D11PixelShader*  ps             = nullptr;
+ID3D11Buffer*       skyConstantsCB = nullptr;  ///< b0 (PS): SkyShaderConstants
+bool                loaded         = false;
+};
+
+### SkyRenderer member
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L325) (line 325)
+
+m_skyRenderer owns the CPU-side procedural sky simulation (time-of-day,
+weather state, colour math).  It is updated each frame in DrawSky()
+and queried for SkyShaderConstants which are then uploaded to
+m_skyScene.skyConstantsCB.
+engine::rendering::SkyRenderer m_skyRenderer;
 
 ### DDS Parsing without a Third-Party Library
 
@@ -11880,6 +12160,287 @@ Usage:
       ctx->PSSetSamplers(0, 1, &smp);
   }
 @endcode
+
+### Colour Science for Procedural Skies
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L6) (line 6)
+
+============================================================================
+Real sky colour comes from Rayleigh scattering of sunlight:
+  • Short wavelengths (blue) scatter more than long wavelengths (red).
+  • At noon, the sun path through the atmosphere is short → blue sky.
+  • At sunrise/sunset, the path is long → blue scattered out → orange/red.
+  • At twilight, scattered blue light illuminates the zenith → purple.
+
+We approximate all of this with hand-tuned colour curves that capture the
+visual appearance without full spectral simulation:
+
+  Phase          Zenith colour     Horizon colour
+  Night          navy (0.02,0.03,0.12)  very dark (0.03,0.05,0.15)
+  Sunrise/Sunset mauve blend            orange (0.95,0.55,0.20)
+  Day            sky blue (0.10,0.40,0.90)  pale blue (0.50,0.75,0.95)
+
+Production note: FF15 and most modern engines store these curves in a
+time-of-day LUT (look-up texture) authored in the editor so artists can
+control the sky without recompiling.  Our implementation hardcodes the
+curves here; a future M10+ extension would load a tod.lut cooked asset.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Mathematical Constants
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L43) (line 43)
+
+---------------------------------------------------------------------------
+We define kPi locally rather than using M_PI (which is a POSIX extension
+not guaranteed by the C++ standard on all compilers / with /W4 on MSVC).
+---------------------------------------------------------------------------
+static constexpr float kPi = 3.14159265358979323846f;
+
+### Time-of-Day Advancement
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L62) (line 62)
+
+dt is in seconds.  timeScale converts to simulated hours:
+  simulatedHours = dt × timeScale / 3600
+With timeScale = 60:  1 s real → 60 s simulated → 60/3600 h = 1/60 h.
+A full 24-hour cycle completes in 24 × 60 = 1440 real seconds (24 min).
+m_timeOfDay += dt * m_timeScale / 3600.0f;
+
+### Sun Elevation Formula
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L103) (line 103)
+
+elevation = sin(π × (t − 6) / 12)
+  t = 6  → 0  (horizon, sunrise)
+  t = 12 → 1  (zenith, noon)
+  t = 18 → 0  (horizon, sunset)
+  t = 0  → −1 (deepest night)
+return std::sin(kPi * (m_timeOfDay - 6.0f) / 12.0f);
+}
+
+### Sun Direction Computation
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L119) (line 119)
+
+-----------------------------------------------------------------------
+We model the sun moving on a great circle through the zenith:
+  elevation component  → sin(angle)  → sunY
+  horizontal component → cos(angle)  → sunX  (east in the morning)
+  depth component      → 0           (sun stays in XY plane)
+
+This is a simplified 2D arc — the sun always rises due east and sets
+due west.  Real sun position calculations also account for latitude,
+season, and time zone.  For a teaching project the simplification is
+acceptable and produces good-looking results.
+-----------------------------------------------------------------------
+const float angle      = kPi * (m_timeOfDay - 6.0f) / 12.0f;
+const float elevation  = std::sin(angle);
+const float sunX       = std::cos(angle);   // east at dawn, west at dusk
+
+### Sky Colour Phases
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L139) (line 139)
+
+-----------------------------------------------------------------------
+We define three phases and blend between them:
+
+  Night  (elevation < −0.10): dark navy
+  Day    (elevation > +0.30): bright blue
+  Transition (elevation in [−0.10, +0.30]): orange/red sunrise-sunset
+
+The blend factor sunsetFactor peaks at elevation = 0 (sun on horizon)
+and fades toward 0 as the sun rises or sets further from the horizon.
+A width of ±0.30 gives a believable hour-long transition.
+-----------------------------------------------------------------------
+
+### Sunset Tint Layering
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L189) (line 189)
+
+We apply the sunset/sunrise tint AFTER the night blend.  The sunset
+zenith gets a subtle mauve/purple tint (sky darkens before turning
+orange) while the horizon gets a strong orange.
+sunsetFactor already accounts for the sun being above −0.1 elevation.
+zenR = lerp(zenR, kSunsetZenR, sunsetFactor * 0.35f);
+zenG = lerp(zenG, kSunsetZenG, sunsetFactor * 0.35f);
+zenB = lerp(zenB, kSunsetZenB, sunsetFactor * 0.35f);
+
+### Cloud Cover Darkening
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L202) (line 202)
+
+A fully overcast sky suppresses sun-related colouring and reduces
+overall brightness (like a thin white sheet over the sun).
+We reduce saturation as well by lerping toward a grey midpoint.
+const WeatherFxState& wfx = m_weatherFx.GetState();
+const float cloudDarken   = 1.0f - wfx.cloudCover * 0.45f;
+const float greyMidR = 0.55f, greyMidG = 0.58f, greyMidB = 0.62f;
+
+### Fog Colour
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L221) (line 221)
+
+In clear weather fog picks up the horizon colour (natural atmospheric
+haze).  In rain the fog shifts toward a neutral cool grey.
+float fogR, fogG, fogB, fogDensity;
+
+### Rain fog is a cool, desaturated grey.
+
+**Source:** [`src/engine/rendering/sky_renderer.cpp`](src/engine/rendering/sky_renderer.cpp#L228) (line 228)
+
+Real rain scatters all wavelengths equally → neutral grey.
+fogR = lerp(horR, 0.68f, wfx.rainIntensity);
+fogG = lerp(horG, 0.70f, wfx.rainIntensity);
+fogB = lerp(horB, 0.73f, wfx.rainIntensity);
+fogDensity = 0.10f + wfx.fogDensity * 0.90f;
+}
+else
+{
+Clear/cloudy: fog matches the horizon colour for seamless blending.
+fogR       = horR;
+fogG       = horG;
+fogB       = horB;
+fogDensity = wfx.fogDensity;
+}
+
+### Procedural Sky in Modern Game Engines
+
+**Source:** [`src/engine/rendering/sky_renderer.hpp`](src/engine/rendering/sky_renderer.hpp#L6) (line 6)
+
+============================================================================
+FF15's Luminous Engine uses a physical sky model derived from Preetham et al.
+("A Practical Analytic Model for Daylight", SIGGRAPH 1999).  Our
+implementation is a simplified version that captures the key visual
+qualities without the full spectral math:
+
+  1. GRADIENT SKY — Zenith-to-horizon colour transition based on time of day.
+     Day: blue zenith → lighter cyan/white horizon.
+     Sunset/Sunrise: orange/red horizon, purple zenith.
+     Night: dark navy throughout.
+
+  2. SUN DISC — A bright disc at the sun's screen position.  In the pixel
+     shader a pow() function sharpens the Gaussian falloff to a crisp disc.
+
+  3. ATMOSPHERIC SCATTERING APPROXIMATION — At sunrise/sunset the sun is
+     low on the horizon and its light travels through more atmosphere.
+     We approximate this by shifting the horizon colour toward orange/red
+     when the sun elevation is near 0.
+
+  4. WEATHER INTEGRATION — WeatherFx adds fog, rain darkening, and cloud
+     cover on top of the base sky colour.
+
+============================================================================
+
+### SkyShaderConstants Layout
+
+**Source:** [`src/engine/rendering/sky_renderer.hpp`](src/engine/rendering/sky_renderer.hpp#L30) (line 30)
+
+============================================================================
+This struct is memcpy'd directly into a D3D11 constant buffer so its
+layout MUST match the HLSL cbuffer declaration in sky.ps.hlsl.
+
+D3D11 constant buffer rules:
+  • Each member is 16-byte aligned (GPU operates on float4 registers).
+  • We group members into float4 blocks to avoid hidden padding.
+  • Total size must be a multiple of 16 bytes.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC) and Linux (GCC/Clang)
+
+### SkyShaderConstants
+
+**Source:** [`src/engine/rendering/sky_renderer.hpp`](src/engine/rendering/sky_renderer.hpp#L57) (line 57)
+
+---------------------------------------------------------------------------
+Every field maps to a float4 in the HLSL cbuffer.  We pack logically
+related values together to minimise wasted padding:
+
+  b0 (sky.ps.hlsl register b0):
+  float4 g_sunDir       = { sunDirX, sunDirY, sunDirZ, sunIntensity  }
+  float4 g_zenithColor  = { zenithR, zenithG, zenithB, 0.0           }
+  float4 g_horizonColor = { horizonR, horizonG, horizonB, 0.0        }
+  float4 g_fogColor     = { fogR, fogG, fogB, fogDensity             }
+  float4 g_weatherFx    = { rainIntensity, cloudCover, timeOfDay, 0.0 }
+
+sizeof = 5 × 16 = 80 bytes.
+---------------------------------------------------------------------------
+pragma pack(push, 1)
+struct SkyShaderConstants
+{
+--- float4 block 0: sun direction + intensity ---
+float sunDirX       = 0.0f;   ///< World-space sun direction X
+float sunDirY       = 1.0f;   ///< World-space sun direction Y (up = noon)
+float sunDirZ       = 0.0f;   ///< World-space sun direction Z
+float sunIntensity  = 1.0f;   ///< 0 = below horizon / night, 1 = noon
+
+### Responsibilities
+
+**Source:** [`src/engine/rendering/sky_renderer.hpp`](src/engine/rendering/sky_renderer.hpp#L113) (line 113)
+
+─────────────────────────────────────────────────────────────────────────
+SkyRenderer is a PURE CPU object.  It:
+  1. Advances the time-of-day clock each frame (Update).
+  2. Computes the sun's world-space direction from the time.
+  3. Interpolates zenith/horizon colours based on sun elevation.
+  4. Delegates fog/rain/cloud computations to WeatherFx.
+  5. Packs everything into SkyShaderConstants for the GPU.
+
+SkyRenderer knows NOTHING about D3D11, Vulkan, or any GPU resource.
+The D3D11Renderer calls GetShaderConstants() each frame and uploads the
+result to its sky constant buffer — the renderer owns the GPU side.
+
+This design allows SkyRenderer to be tested purely on the CPU (no GPU
+needed) and reused by any future renderer backend.
+
+============================================================================
+
+### Sun Direction Model
+
+**Source:** [`src/engine/rendering/sky_renderer.hpp`](src/engine/rendering/sky_renderer.hpp#L130) (line 130)
+
+============================================================================
+We use a simplified solar model with no azimuth variation (the sun always
+rises due east and sets due west in our world).
+
+  timeOfDay in [0, 24) hours.
+  elevation = sin(π × (t − 6) / 12)
+
+  t = 0  → elevation = sin(-π/2) = −1.00  midnight, sun deep below horizon
+  t = 6  → elevation = sin(0)    = +0.00  sunrise, sun on horizon
+  t = 12 → elevation = sin(+π/2) = +1.00  noon, sun directly overhead
+  t = 18 → elevation = sin(+π)   = +0.00  sunset, sun on horizon again
+  t = 24 → elevation = sin(+3π/2) = −1.00 midnight
+
+The horizontal component follows the same arc:
+  sunX = cos(π × (t − 6) / 12)  (positive at dawn, negative at dusk)
+
+Both form a unit circle so the sun direction is always normalised.
+---------------------------------------------------------------------------
+class SkyRenderer
+{
+public:
+SkyRenderer();
+
+### Time Scale Compression
+
+**Source:** [`src/engine/rendering/sky_renderer.hpp`](src/engine/rendering/sky_renderer.hpp#L157) (line 157)
+
+A real day is 86 400 seconds.  The default timeScale of 60 means
+1 real second = 60 simulated seconds, giving a 24-minute day/night
+cycle — the same compression factor used by FF15's field areas.
+-----------------------------------------------------------------------
+void Update(float dt);
 
 ### Reading This File
 
@@ -13543,6 +14104,169 @@ would corrupt the binary data (0x0D 0x0A → 0x0A would mis-align words).
 A shader module can be destroyed immediately after pipeline creation —
 the driver has copied what it needs.  We destroy both modules at the
 end of Create() to avoid holding onto them unnecessarily.
+
+### Approach-Rate Lerp for Weather Transitions
+
+**Source:** [`src/engine/rendering/weather_fx.cpp`](src/engine/rendering/weather_fx.cpp#L6) (line 6)
+
+============================================================================
+A fixed percentage approach-rate lerp is one of the simplest and most
+readable ways to smooth a state transition:
+
+  current += (target - current) * alpha
+
+Properties:
+  • Never overshoots the target (assuming alpha ∈ [0, 1]).
+  • Frame-rate independent when alpha = 1 - exp(-k * dt).
+
+For brevity we use alpha = min(1, dt * 0.5) which is close enough to the
+exact exponential for educational purposes and avoids the exp() call.
+In a production engine you would use the exact form to be truly
+frame-rate independent.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+
+### Data-Driven Weather Parameters
+
+**Source:** [`src/engine/rendering/weather_fx.cpp`](src/engine/rendering/weather_fx.cpp#L39) (line 39)
+
+─────────────────────────────────────────────────
+Defining target values as local constants (rather than switch literals)
+makes it easy to tune them without digging into logic code.  A production
+engine would load these from a JSON "weather profile" asset baked by the
+tools pipeline, so designers can tune weather without recompiling.
+---------------------------------------------------------------------------
+static constexpr float kClearFog    = 0.02f;   // Barely perceptible horizon haze
+static constexpr float kCloudyFog   = 0.08f;   // Light mist in distance
+static constexpr float kRainFog     = 0.30f;   // Noticeable fog curtain
+static constexpr float kStormFog    = 0.55f;   // Heavy fog, 50% visibility
+
+### Target State Selection
+
+**Source:** [`src/engine/rendering/weather_fx.cpp`](src/engine/rendering/weather_fx.cpp#L68) (line 68)
+
+-----------------------------------------------------------------------
+We pick the target fog/rain/cloud values for the current WeatherType
+and then lerp the current state toward them each frame.
+-----------------------------------------------------------------------
+float targetFog   = kClearFog;
+float targetRain  = kClearRain;
+float targetCloud = kClearCloud;
+
+### Approach-Rate Lerp
+
+**Source:** [`src/engine/rendering/weather_fx.cpp`](src/engine/rendering/weather_fx.cpp#L105) (line 105)
+
+-----------------------------------------------------------------------
+alpha controls how fast we transition.  alpha = dt * 0.5 means the
+state moves ~50% of the remaining distance per second — reaching
+~75% of the target in 2 s, and visually "fully transitioned" in ~6 s.
+
+std::min(1.0f, ...) clamps to [0,1] so a large dt (e.g. the first
+frame after a long load) does not overshoot the target.
+-----------------------------------------------------------------------
+const float alpha = std::min(1.0f, dt * 0.5f);
+
+### Weather as a Rendering Layer
+
+**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L6) (line 6)
+
+============================================================================
+FF15's weather system has two distinct concerns:
+
+  1. GAME LOGIC — WeatherSystem (game/systems/WeatherSystem.hpp) owns the
+     authoritative FSM: Clear → Cloudy → Rain → Storm.  It broadcasts
+     WeatherChanged events to any subscriber (enemy spawns, music, etc.).
+
+  2. RENDERING STATE — WeatherFx (this file) translates the current
+     WeatherType into shader-friendly floats: fog density, rain intensity,
+     and cloud cover.  It knows nothing about the game simulation — only
+     about what the sky shader needs.
+
+This separation respects the engine architecture layer rule:
+  game/systems/ → engine/rendering/   (allowed: game may call engine)
+  engine/rendering/ → game/systems/   (FORBIDDEN: engine must not depend on game)
+
+The bridge is the plain WeatherType enum, which is defined here in the
+engine/rendering/ layer and mirrored (as a cast) from the game layer's
+WeatherState enum.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Target: Windows (MSVC) and Linux (GCC/Clang)
+
+### WeatherType Enum
+
+**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L42) (line 42)
+
+---------------------------------------------------------------------------
+The four weather states correspond to FF15's day/night weather cycle:
+  Clear  — sunny, minimal fog, full sky color
+  Cloudy — scattered clouds, moderate fog, reduced sun intensity
+  Rain   — heavy clouds, significant fog, reduced visibility
+  Storm  — full overcast, dense fog, maximum rain, darkened sky
+
+The values are assigned explicit integers so they can be cast from the
+game layer's WeatherState enum without a lookup table.
+---------------------------------------------------------------------------
+enum class WeatherType : int
+{
+Clear  = 0,  ///< Clear sky, no precipitation
+Cloudy = 1,  ///< Overcast, no precipitation
+Rain   = 2,  ///< Light to medium rain
+Storm  = 3,  ///< Heavy rain, lightning, dense fog
+};
+
+### WeatherFxState
+
+**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L62) (line 62)
+
+---------------------------------------------------------------------------
+Plain-data struct that carries all per-frame weather rendering parameters.
+It is computed once per frame by WeatherFx::Update() and passed to the
+sky shader's constant buffer.
+
+All values are in [0, 1] normalised range so the shader can use them
+directly as lerp weights without any additional scaling.
+---------------------------------------------------------------------------
+struct WeatherFxState
+{
+float fogDensity    = 0.02f;  ///< 0 = no fog,  1 = fully fogged (scale: 0..1)
+float rainIntensity = 0.0f;   ///< 0 = no rain, 1 = storm-level precipitation
+float cloudCover    = 0.0f;   ///< 0 = clear sky, 1 = full overcast
+};
+
+### Smooth State Transitions
+
+**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L81) (line 81)
+
+─────────────────────────────────────────
+Rather than snapping fog density to its target value the moment WeatherType
+changes, WeatherFx uses a simple exponential approach-rate lerp:
+
+  current += (target - current) * alpha
+
+where alpha = dt * k_transitionSpeed.  With k_transitionSpeed = 0.5, the
+state reaches ~63% of the target in 2 seconds (half-life ≈ 1.4 s).
+This produces the gradual weather build-up seen in FF15.
+
+The WeatherFx does NOT own a timer or drive its own transitions — it only
+TRANSLATES a WeatherType to render-state.  Timing is controlled externally
+by the SkyRenderer which calls Update(type, dt) each frame.
+---------------------------------------------------------------------------
+class WeatherFx
+{
+public:
+WeatherFx() = default;
 
 ---
 
@@ -20060,6 +20784,8 @@ Usage:
   engine_sandbox.exe --headless --scene skinned_mesh   # M4b GPU skinning CI
   engine_sandbox.exe --scene pbr_mesh             # M9 PBR Cook-Torrance sphere (windowed)
   engine_sandbox.exe --headless --scene pbr_mesh  # M9 PBR Cook-Torrance CI
+  engine_sandbox.exe --scene dynamic_sky          # M10 procedural sky + weather (windowed)
+  engine_sandbox.exe --headless --scene dynamic_sky   # M10 dynamic sky CI
   engine_sandbox.exe --headless --scene physics_test   # M5 physics acceptance tests (CI)
   engine_sandbox.exe --headless --scene streaming_load    # M7 streaming: load 9 cells (radius-1 patch)
   engine_sandbox.exe --headless --scene streaming_evict   # M7 streaming: evict cells on camera move
@@ -20078,7 +20804,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L94) (line 94)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L96) (line 96)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -20098,7 +20824,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L112) (line 112)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L114) (line 114)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -20116,7 +20842,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L128) (line 128)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L130) (line 130)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -20131,7 +20857,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L141) (line 141)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L143) (line 143)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -20149,9 +20875,23 @@ project" step, guaranteeing the file is present.
 ---------------------------------------------------------------------------
 include "game/world/GameStreamingManager.hpp"
 
+### M10 Dynamic Sky headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L161) (line 161)
+
+---------------------------------------------------------------------------
+The dynamic_sky scene exercises three acceptance criteria:
+  1. GPU pipeline: RecordHeadlessFrame() draws via SV_VertexID + sky shaders.
+  2. Time-of-day: SkyRenderer must compute correct sun elevations.
+  3. Weather states: fog density must increase from Clear to Storm.
+The SkyRenderer header is included here for the CPU-side tests (2 and 3)
+which do not require a renderer at all.
+---------------------------------------------------------------------------
+include "engine/rendering/sky_renderer.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L181) (line 181)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -20168,7 +20908,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L182) (line 182)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -20185,7 +20925,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L195) (line 195)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L209) (line 209)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -20197,7 +20937,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L217) (line 217)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L231) (line 231)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -20216,7 +20956,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L232) (line 232)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L246) (line 246)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -20229,7 +20969,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L245) (line 245)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L259) (line 259)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -20240,7 +20980,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L274) (line 274)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L288) (line 288)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -20255,7 +20995,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L299) (line 299)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L313) (line 313)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -20265,7 +21005,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L329) (line 329)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L343) (line 343)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -20281,7 +21021,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L378) (line 378)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L392) (line 392)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -20307,7 +21047,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L400) (line 400)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L414) (line 414)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -20330,13 +21070,37 @@ return 1;
 }
 std::cout << "[PASS] " << scene << " scene pipeline OK (WARP headless).\n";
 }
-else if (scene == "physics_test")
+else if (scene == "dynamic_sky")
 {
 -----------------------------------------------------------
 
+### M10 Dynamic Sky Acceptance Tests
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L439) (line 439)
+
+-----------------------------------------------------------
+The dynamic_sky headless path exercises three acceptance
+criteria from FF15_REQUIREMENTS_BLUEPRINT.md §7:
+
+  Test 1 — GPU pipeline: RecordHeadlessFrame() draws the sky
+    via the SV_VertexID full-screen triangle + sky.ps.hlsl.
+    This validates the sky CB, sky VS, and sky PS all work
+    on WARP without a physical GPU.
+
+  Test 2 — Time-of-day: the SkyRenderer must compute a
+    positive sun elevation at noon (t=12 h) and a negative
+    elevation at midnight (t=0 h).
+
+  Test 3 — Weather states: fog density must differ between
+    WeatherType::Clear and WeatherType::Storm.
+
+All three must pass for the scene to report [PASS].
+-----------------------------------------------------------
+int testsFailed = 0;
+
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L425) (line 425)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L546) (line 546)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -20361,7 +21125,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L546) (line 546)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L667) (line 667)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -20382,7 +21146,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L630) (line 630)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L751) (line 751)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -20400,7 +21164,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L644) (line 644)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L765) (line 765)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -20418,7 +21182,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L677) (line 677)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L798) (line 798)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -20444,7 +21208,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L728) (line 728)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L849) (line 849)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -20466,7 +21230,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L747) (line 747)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L868) (line 868)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -20489,7 +21253,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L828) (line 828)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L949) (line 949)
 
 -----------------------------------------------------------
 Verifies that:
@@ -20509,7 +21273,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L845) (line 845)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L966) (line 966)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -20529,7 +21293,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L888) (line 888)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1009) (line 1009)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -20545,7 +21309,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L930) (line 930)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1051) (line 1051)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -20571,7 +21335,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L952) (line 952)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1073) (line 1073)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -20594,7 +21358,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1061) (line 1061)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1182) (line 1182)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -20621,7 +21385,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1085) (line 1085)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1206) (line 1206)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -20632,14 +21396,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1108) (line 1108)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1229) (line 1229)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1113) (line 1113)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1234) (line 1234)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -20656,7 +21420,7 @@ return 1;
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1174) (line 1174)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1295) (line 1295)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -20666,7 +21430,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1182) (line 1182)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1303) (line 1303)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -20696,7 +21460,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1210) (line 1210)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1331) (line 1331)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -20719,7 +21483,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1263) (line 1263)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1384) (line 1384)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -20732,7 +21496,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1279) (line 1279)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1400) (line 1400)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

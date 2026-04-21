@@ -224,6 +224,29 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M10 — Dynamic Sky + Weather VFX headless acceptance test.
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M10 Acceptance Tests
+      # This step validates three criteria from FF15_REQUIREMENTS_BLUEPRINT §7:
+      #
+      #   Test 1 — GPU pipeline: RecordHeadlessFrame() draws the sky via the
+      #     SV_VertexID full-screen triangle + sky.vs.hlsl + sky.ps.hlsl.
+      #     This confirms the sky CB, VS, and PS are correct and execute on WARP.
+      #
+      #   Test 2 — Time-of-day: the SkyRenderer must report sunIntensity > 0.9
+      #     at noon (t=12 h) and sunIntensity < 0.01 at midnight (t=0 h).
+      #
+      #   Test 3 — Weather states: fog density in WeatherType::Storm must be
+      #     > 0.1 higher than fog density in WeatherType::Clear (after 60 s).
+      #
+      # No physical GPU required: the GPU path uses WARP; the CPU tests are
+      # pure arithmetic with no graphics API calls.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M10 — dynamic_sky scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dynamic_sky
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # 6. Cook the vertical slice sample project.
       # -----------------------------------------------------------------------
       - name: Cook vertical slice project

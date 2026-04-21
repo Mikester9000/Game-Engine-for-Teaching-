@@ -64,6 +64,7 @@
 #include "engine/rendering/IRenderer.hpp"
 #include "engine/rendering/d3d11/d3d11_texture.hpp"
 #include "engine/animation/gpu_skinning.hpp"
+#include "engine/rendering/sky_renderer.hpp"
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — D3D11 / DXGI Headers
@@ -157,6 +158,17 @@ private:
 
     /** Draw the PBR sphere scene to the currently bound render target (M9). */
     void DrawPBRMesh();
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — DrawSky (M10)
+    // -----------------------------------------------------------------------
+    // DrawSky() renders a full-screen procedural sky using SV_VertexID (no
+    // vertex buffer required).  The sky constant buffer is updated from
+    // m_skyRenderer every frame.  DrawSky() should be called BEFORE any
+    // opaque 3D geometry so the sky fills in only where no geometry covers it.
+    // -----------------------------------------------------------------------
+    /** Draw the procedural sky to the currently bound render target (M10). */
+    void DrawSky();
 
     /** Release all scene resources (called from Shutdown and before LoadScene). */
     void UnloadScene();
@@ -273,12 +285,50 @@ public:
         bool                   loaded      = false;
     };
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — SkyScene (M10: Dynamic Sky + Weather VFX)
+    // -----------------------------------------------------------------------
+    // SkyScene is the simplest scene struct: it only needs a VS, PS, and a
+    // single constant buffer.
+    //
+    //   vs             — sky.vs.hlsl: SV_VertexID full-screen triangle
+    //   ps             — sky.ps.hlsl: gradient + sun disc + fog + weather
+    //   skyConstantsCB — b0 (PS): SkyShaderConstants packed struct
+    //                    updated every frame from m_skyRenderer.GetShaderConstants()
+    //
+    // No vertex buffer is required because the sky VS generates all three
+    // vertices procedurally from SV_VertexID (see sky.vs.hlsl).
+    //
+    // No input layout is required because there is no vertex buffer to
+    // describe.  D3D11 accepts a null input layout when IA::SetInputLayout(null)
+    // is called — the shader does not read from the IA stage at all.
+    //
+    // No rasterizer state override is needed: the default cull-back state is
+    // fine because the full-screen triangle never faces away from the camera.
+    // -----------------------------------------------------------------------
+    struct SkyScene
+    {
+        ID3D11VertexShader* vs             = nullptr;
+        ID3D11PixelShader*  ps             = nullptr;
+        ID3D11Buffer*       skyConstantsCB = nullptr;  ///< b0 (PS): SkyShaderConstants
+        bool                loaded         = false;
+    };
+
 private:
     TexturedQuadScene   m_quadScene;
     std::string         m_currentScene;   ///< Name of the active scene, or "".
 
     SkinnedMeshScene    m_skinnedScene;
     PBRScene            m_pbrScene;
+    SkyScene            m_skyScene;
+
+    // TEACHING NOTE — SkyRenderer member
+    // m_skyRenderer owns the CPU-side procedural sky simulation (time-of-day,
+    // weather state, colour math).  It is updated each frame in DrawSky()
+    // and queried for SkyShaderConstants which are then uploaded to
+    // m_skyScene.skyConstantsCB.
+    engine::rendering::SkyRenderer m_skyRenderer;
+
     float               m_sceneTime = 0.0f;  ///< Seconds since last LoadScene call.
 };
 

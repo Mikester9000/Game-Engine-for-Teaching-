@@ -565,6 +565,22 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     if (m_pbrScene.loaded && m_currentScene == "pbr_mesh")
         DrawPBRMesh();
 
+    // M10: Dynamic sky scene
+    // TEACHING NOTE — Sky Draw Order
+    // The sky is drawn AFTER clearing the back buffer but could optionally be
+    // drawn first since it uses depth 0.9999 (behind everything).  In a full
+    // game with 3D geometry, draw the sky first (or draw it with depth test
+    // disabled) so the GPU can early-Z reject pixels covered by solid geometry.
+    // For this standalone sky demo there is no other geometry so order doesn't
+    // matter.
+    //
+    // m_skyRenderer.Update(1/60) advances the time-of-day each frame.
+    if (m_skyScene.loaded && m_currentScene == "dynamic_sky")
+    {
+        m_skyRenderer.Update(1.0f / 60.0f);
+        DrawSky();
+    }
+
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Present interval
     // -----------------------------------------------------------------------
@@ -755,6 +771,23 @@ bool D3D11Renderer::RecordHeadlessFrame()
         DrawPBRMesh();
     }
 
+    // TEACHING NOTE — Headless validation for the dynamic sky scene (M10).
+    // Bind the 64×64 off-screen RTV and call DrawSky() once.  This validates
+    // that the sky shaders (sky.vs.hlsl + sky.ps.hlsl), the sky constant
+    // buffer, and the SV_VertexID full-screen triangle draw all work correctly
+    // under the WARP software renderer without a physical GPU.
+    if (m_skyScene.loaded && m_currentScene == "dynamic_sky")
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = 64.0f;
+        vp.Height   = 64.0f;
+        vp.MaxDepth = 1.0f;
+        m_context->RSSetViewports(1, &vp);
+
+        m_context->OMSetRenderTargets(1, &offscreenRTV, nullptr);
+        DrawSky();
+    }
+
     // Step 4 — Flush to ensure the GPU (or WARP) processes the work.
     m_context->Flush();
 
@@ -781,6 +814,12 @@ static bool LoadPBRMeshScene(
     const std::string&         shaderDir,
     D3D11Renderer::PBRScene&   scene);
 
+// Forward declaration for the sky scene builder (M10).
+static bool LoadSkyScene(
+    ID3D11Device*             device,
+    const std::string&        shaderDir,
+    D3D11Renderer::SkyScene&  scene);
+
 // ===========================================================================
 // LoadScene — load scene resources (M3+)
 // ===========================================================================
@@ -795,10 +834,10 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
     }
 
     // Unknown scene names are accepted silently — they may be handled by
-    // higher-level systems.  Only "textured_quad", "skinned_mesh", and
-    // "pbr_mesh" have D3D11 implementations.
+    // higher-level systems.  Only "textured_quad", "skinned_mesh",
+    // "pbr_mesh", and "dynamic_sky" have D3D11 implementations.
     if (sceneName != "textured_quad" && sceneName != "skinned_mesh" &&
-        sceneName != "pbr_mesh")
+        sceneName != "pbr_mesh" && sceneName != "dynamic_sky")
     {
         std::cout << "[D3D11Renderer] LoadScene('" << sceneName
                   << "') — no D3D11 scene handler; accepted as no-op.\n";
@@ -831,6 +870,17 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
             return false;
         }
         m_currentScene = "pbr_mesh";
+        return true;
+    }
+
+    if (sceneName == "dynamic_sky")
+    {
+        if (!LoadSkyScene(m_device, shaderDir, m_skyScene))
+        {
+            std::cerr << "[D3D11Renderer] LoadScene('dynamic_sky') failed.\n";
+            return false;
+        }
+        m_currentScene = "dynamic_sky";
         return true;
     }
 
@@ -1632,6 +1682,15 @@ void D3D11Renderer::UnloadScene()
     m_pbrScene.indexCount = 0;
     m_pbrScene.loaded     = false;
 
+    // --- Dynamic sky scene (M10) ---
+    // TEACHING NOTE — The sky scene only has three objects: VS, PS, and the
+    // sky constant buffer.  No vertex buffer or input layout to release (the
+    // full-screen triangle uses SV_VertexID — no IA stage resources needed).
+    if (m_skyScene.skyConstantsCB) { m_skyScene.skyConstantsCB->Release(); m_skyScene.skyConstantsCB = nullptr; }
+    if (m_skyScene.ps)             { m_skyScene.ps->Release();             m_skyScene.ps             = nullptr; }
+    if (m_skyScene.vs)             { m_skyScene.vs->Release();             m_skyScene.vs             = nullptr; }
+    m_skyScene.loaded = false;
+
     m_currentScene.clear();
 }
 
@@ -1790,6 +1849,99 @@ void D3D11Renderer::DrawPBRMesh()
 
     // Restore default rasterizer state.
     m_context->RSSetState(nullptr);
+}
+
+// ===========================================================================
+// DrawSky — render the full-screen procedural sky (M10)
+// ===========================================================================
+
+void D3D11Renderer::DrawSky()
+{
+    if (!m_skyScene.loaded || !m_context)
+        return;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Updating the Sky Constant Buffer
+    // -----------------------------------------------------------------------
+    // m_skyRenderer.Update(dt) is called by DrawFrame each frame to advance
+    // the time-of-day and weather simulation.  Here we read the current state
+    // and upload it to the GPU before issuing the draw call.
+    //
+    // We use Map/Unmap with D3D11_MAP_WRITE_DISCARD on a DYNAMIC buffer.
+    // This is the lowest-overhead CPU→GPU path for frequently-updated CBs:
+    //   • The driver allocates a fresh memory page each frame (no stall waiting
+    //     for the GPU to finish reading the previous frame's data).
+    //   • We copy 80 bytes of SkyShaderConstants into that page.
+    //   • The GPU reads from the page during the subsequent Draw(3,0) call.
+    // -----------------------------------------------------------------------
+    engine::rendering::SkyShaderConstants constants = m_skyRenderer.GetShaderConstants();
+
+    D3D11_MAPPED_SUBRESOURCE mapped = {};
+    if (SUCCEEDED(m_context->Map(m_skyScene.skyConstantsCB, 0,
+                                  D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+    {
+        std::memcpy(mapped.pData, &constants,
+                    sizeof(engine::rendering::SkyShaderConstants));
+        m_context->Unmap(m_skyScene.skyConstantsCB, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Sky Pipeline State
+    // -----------------------------------------------------------------------
+    // The sky draw uses the absolute minimum pipeline state:
+    //
+    //   IA: No vertex buffer, no index buffer, no input layout.
+    //       The VS reads SV_VertexID to generate positions procedurally.
+    //       Setting IASetInputLayout(nullptr) is required on some D3D11
+    //       implementations to clear a previously bound layout; without it,
+    //       debug validation layers warn about mismatched input layout.
+    //
+    //   VS: sky.vs.hlsl — generates 3 clip-space vertices.
+    //       Draw(3, 0) produces vertex IDs 0, 1, 2.
+    //
+    //   PS: sky.ps.hlsl — reads SkyCB (b0) for all colours.
+    //       PSSetConstantBuffers(0, 1, &skyConstantsCB) binds it.
+    //
+    //   OM: Render target is already bound by the caller (DrawFrame or
+    //       RecordHeadlessFrame).  We do not change blend state or depth
+    //       stencil state — the sky quad depth (0.9999) ensures it sits
+    //       behind all 3D geometry in the depth buffer.
+    // -----------------------------------------------------------------------
+
+    // IA — no geometry resources.
+    m_context->IASetInputLayout(nullptr);
+    m_context->IASetVertexBuffers(0, 0, nullptr, nullptr, nullptr);
+    m_context->IASetIndexBuffer(nullptr, DXGI_FORMAT_R32_UINT, 0);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    // VS stage.
+    m_context->VSSetShader(m_skyScene.vs, nullptr, 0);
+    // TEACHING NOTE — The sky VS does not use any constant buffers.
+    // Explicitly clear b0 of the VS stage so no stale matrix CB from a
+    // previous draw call bleeds into the sky VS's register space.
+    ID3D11Buffer* nullCB = nullptr;
+    m_context->VSSetConstantBuffers(0, 1, &nullCB);
+
+    // PS stage — sky constants at b0.
+    m_context->PSSetShader(m_skyScene.ps, nullptr, 0);
+    m_context->PSSetConstantBuffers(0, 1, &m_skyScene.skyConstantsCB);
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Draw(3, 0): Full-Screen Triangle, No Vertex Buffer
+    // -----------------------------------------------------------------------
+    // Draw(vertexCount, startVertexLocation):
+    //   vertexCount          = 3  (one triangle, three vertices)
+    //   startVertexLocation  = 0  (start at SV_VertexID = 0)
+    //
+    // Because no vertex buffer is bound, the IA stage produces no vertex data.
+    // The VS reads SV_VertexID (0, 1, 2) and generates NDC positions internally.
+    // This is a standard "bindless" trick used in post-process passes in all
+    // modern rendering engines.
+    // -----------------------------------------------------------------------
+    m_context->Draw(3, 0);
+
+    // Unbind the sky CB to avoid debug-layer "resource still bound" warnings.
+    m_context->PSSetConstantBuffers(0, 1, &nullCB);
 }
 
 // ===========================================================================
@@ -2244,6 +2396,189 @@ static bool LoadPBRMeshScene(
     scene.loaded = true;
     std::cout << "[D3D11Renderer] LoadScene('pbr_mesh') — OK. "
               << nVerts << " verts, " << nTris << " tris.\n";
+    return true;
+}
+
+// ===========================================================================
+// LoadSkyScene — build the dynamic sky pipeline (M10)
+// ===========================================================================
+// Called from D3D11Renderer::LoadScene() when sceneName == "dynamic_sky".
+//
+// Steps:
+//   1. Compile HLSL shaders: sky.vs.hlsl (SV_VertexID full-screen triangle)
+//                            sky.ps.hlsl (gradient + sun disc + fog + weather)
+//   2. Create the sky constant buffer (80 bytes — SkyShaderConstants).
+//   3. No vertex buffer, no input layout (SV_VertexID approach).
+//
+// TEACHING NOTE — Minimal Pipeline for a Sky Scene
+// ──────────────────────────────────────────────────
+// The sky is the simplest possible D3D11 pipeline:
+//   • VS    — generates 3 clip-space vertices from SV_VertexID (no VB needed)
+//   • PS    — samples the sky colour from a constant buffer (no texture needed)
+//   • No IA stage resources (no vertex buffer, no index buffer, no input layout)
+//   • No rasterizer override (default cull-back is fine; the triangle always
+//     faces the camera since it's generated in clip space)
+//   • One constant buffer (b0) carrying all sky parameters
+//
+// This simplicity makes the sky scene a perfect study example for D3D11 basics:
+//   "How little does a GPU draw call need?" — just VS + PS + a constant.
+// ===========================================================================
+
+// -----------------------------------------------------------------------
+// TEACHING NOTE — Embedded Sky Shader Fallbacks
+// -----------------------------------------------------------------------
+// As with all other scenes, we include minimal inline HLSL strings as
+// fallbacks in case the .hlsl files are absent (e.g. a clean build before
+// the POST_BUILD step copies shaders to the output directory).
+//
+// The sky VS fallback generates the same three SV_VertexID positions.
+// The sky PS fallback does a simple zenith-horizon lerp without the full
+// sun disc or weather effects — enough to confirm the pipeline works.
+// -----------------------------------------------------------------------
+static const char* kSkyVsFallback =
+    "struct PSInput{float4 pos:SV_POSITION;float2 uv:TEXCOORD0;};\n"
+    "PSInput main(uint id:SV_VertexID){\n"
+    "PSInput o;\n"
+    "float px=(id==2u)?3.0f:-1.0f;\n"
+    "float py=(id==1u)?3.0f:-1.0f;\n"
+    "o.pos=float4(px,py,0.9999f,1.0f);\n"
+    "o.uv=float2(px*0.5f+0.5f,-py*0.5f+0.5f);\n"
+    "return o;}\n";
+
+static const char* kSkyPsFallback =
+    "cbuffer SkyCB:register(b0){"
+    "float4 g_sunDir;float4 g_zenithColor;float4 g_horizonColor;"
+    "float4 g_fogColor;float4 g_weatherFx;};\n"
+    "struct PSInput{float4 pos:SV_POSITION;float2 uv:TEXCOORD0;};\n"
+    "float4 main(PSInput i):SV_TARGET{\n"
+    "float t=i.uv.y;\n"
+    "float gf=1.0f-exp(-t*3.0f);\n"
+    "float3 c=lerp(g_zenithColor.xyz,g_horizonColor.xyz,gf);\n"
+    "c=c/(c+1.0f);\n"
+    "c=pow(max(c,float3(0,0,0)),1.0f/2.2f);\n"
+    "return float4(c,1.0f);}\n";
+
+static bool LoadSkyScene(
+    ID3D11Device*             device,
+    const std::string&        shaderDir,
+    D3D11Renderer::SkyScene&  scene)
+{
+    namespace fs = std::filesystem;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — compile helper (same pattern as all other scene loaders)
+    // -----------------------------------------------------------------------
+    auto compile = [&](const fs::path& path, const char* fallback,
+                       const char* entry, const char* target) -> ID3DBlob*
+    {
+        ID3DBlob* code   = nullptr;
+        ID3DBlob* errors = nullptr;
+        HRESULT   hr     = E_FAIL;
+
+        if (fs::exists(path))
+        {
+            std::wstring wp = path.wstring();
+            hr = D3DCompileFromFile(wp.c_str(), nullptr, nullptr,
+                                    entry, target,
+                                    D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                                    &code, &errors);
+        }
+        if (FAILED(hr))
+        {
+            if (errors) {
+                std::cerr << "[D3D11Renderer] HLSL error ("
+                          << path.filename().string() << "):\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release(); errors = nullptr;
+            }
+            std::cout << "[D3D11Renderer] Using embedded sky fallback for "
+                      << path.filename().string() << ".\n";
+            hr = D3DCompile(fallback, std::strlen(fallback), nullptr, nullptr, nullptr,
+                            entry, target, D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                            &code, &errors);
+        }
+        if (FAILED(hr)) {
+            if (errors) {
+                std::cerr << "[D3D11Renderer] Sky fallback HLSL error:\n"
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release();
+            }
+            return nullptr;
+        }
+        if (errors) errors->Release();
+        return code;
+    };
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Compile vertex and pixel shaders.
+    // -----------------------------------------------------------------------
+    const fs::path vsPath = fs::path(shaderDir) / "sky.vs.hlsl";
+    const fs::path psPath = fs::path(shaderDir) / "sky.ps.hlsl";
+
+    ID3DBlob* vsBlob = compile(vsPath, kSkyVsFallback, "main", "vs_4_0");
+    if (!vsBlob) {
+        std::cerr << "[D3D11Renderer] Sky VS compile failed.\n";
+        return false;
+    }
+
+    ID3DBlob* psBlob = compile(psPath, kSkyPsFallback, "main", "ps_4_0");
+    if (!psBlob) {
+        vsBlob->Release();
+        std::cerr << "[D3D11Renderer] Sky PS compile failed.\n";
+        return false;
+    }
+
+    HRESULT hr = device->CreateVertexShader(vsBlob->GetBufferPointer(),
+                                            vsBlob->GetBufferSize(),
+                                            nullptr, &scene.vs);
+    vsBlob->Release();
+    if (FAILED(hr)) {
+        psBlob->Release();
+        std::cerr << "[D3D11Renderer] CreateVertexShader (sky) failed.\n";
+        return false;
+    }
+
+    hr = device->CreatePixelShader(psBlob->GetBufferPointer(),
+                                   psBlob->GetBufferSize(),
+                                   nullptr, &scene.ps);
+    psBlob->Release();
+    if (FAILED(hr)) {
+        scene.vs->Release(); scene.vs = nullptr;
+        std::cerr << "[D3D11Renderer] CreatePixelShader (sky) failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — Create the sky constant buffer.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Sky Constant Buffer Size
+    // SkyShaderConstants is 80 bytes (5 × float4 = 5 × 16 bytes).
+    // D3D11 requires constant buffers to be multiples of 16 bytes.
+    // The static_assert in sky_renderer.hpp verifies this at compile time.
+    //
+    // We use DYNAMIC + CPU_ACCESS_WRITE because the sky constants change
+    // every frame (time-of-day advances, weather interpolates).  Map/Unmap
+    // with D3D11_MAP_WRITE_DISCARD is the fastest way to update a dynamic CB.
+    // -----------------------------------------------------------------------
+    static_assert(sizeof(engine::rendering::SkyShaderConstants) % 16 == 0,
+        "SkyShaderConstants must be 16-byte aligned");
+
+    D3D11_BUFFER_DESC cbd = {};
+    cbd.ByteWidth      = static_cast<UINT>(sizeof(engine::rendering::SkyShaderConstants));
+    cbd.Usage          = D3D11_USAGE_DYNAMIC;
+    cbd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+    cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    hr = device->CreateBuffer(&cbd, nullptr, &scene.skyConstantsCB);
+    if (FAILED(hr)) {
+        scene.vs->Release(); scene.vs = nullptr;
+        scene.ps->Release(); scene.ps = nullptr;
+        std::cerr << "[D3D11Renderer] CreateBuffer (sky CB) failed.\n";
+        return false;
+    }
+
+    scene.loaded = true;
+    std::cout << "[D3D11Renderer] LoadScene('dynamic_sky') — OK.\n";
     return true;
 }
 
