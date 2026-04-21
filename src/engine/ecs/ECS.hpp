@@ -2023,6 +2023,38 @@ struct CameraComponent
 
     /// World position of the camera this frame (derived from target + offset).
     engine::math::Vec3 worldPosition;
+
+    // -----------------------------------------------------------------------
+    // Cinematic override — written by CinematicSequencer (Post-M10).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Cinematic Override Pattern
+    // When a cut-scene is playing the CinematicSequencer writes a camera
+    // position and look-at target directly to this component and sets
+    // cinematicOverride = true.  CameraSystem checks this flag each frame:
+    //
+    //   false (default) → use orbit math (follow-camera, player-controlled).
+    //   true            → use cinematicEyePos / cinematicLookAt directly.
+    //
+    // This design keeps the two camera modes (gameplay / cinematic) isolated:
+    //   • The sequencer does NOT need to know about orbit parameters.
+    //   • The CameraSystem does NOT need to know about the sequencer.
+    //   • The flag is reset to false by the sequencer when playback ends,
+    //     returning control to the follow camera automatically.
+    //
+    // In a production engine you might add a blend weight so the camera
+    // smoothly transitions between gameplay and cinematic modes instead of
+    // hard-cutting (e.g. cinematicBlendWeight ∈ [0, 1]).
+    // -----------------------------------------------------------------------
+
+    /// When true, CameraSystem uses cinematicEyePos + cinematicLookAt
+    /// instead of orbit math.  Set and cleared by CinematicSequencer.
+    bool cinematicOverride = false;
+
+    /// World-space camera position when cinematicOverride=true.
+    engine::math::Vec3 cinematicEyePos;
+
+    /// World-space look-at target when cinematicOverride=true.
+    engine::math::Vec3 cinematicLookAt;
 };
 
 /** @} */ // end of Components

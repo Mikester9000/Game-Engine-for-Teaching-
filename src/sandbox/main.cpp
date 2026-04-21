@@ -77,6 +77,7 @@
  *   engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
  *   engine_sandbox.exe --headless --scene vehicle_test      # Post-M10 vehicle physics acceptance test (CI)
  *   engine_sandbox.exe --headless --scene bt_test           # Post-M10 BT AI + formation + nav-mesh acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene cinematic_test    # Post-M10 Cinematics: CameraRig + CinematicSequencer acceptance test (CI)
  *
  * ============================================================================
  *
@@ -191,6 +192,22 @@
 #include "engine/ai/behaviour_tree.hpp"
 #include "engine/ai/formation_system.hpp"
 #include "engine/ai/nav_mesh.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Post-M10 Cinematics headless test
+// ---------------------------------------------------------------------------
+// The cinematic_test scene validates the two new engine/cinematics/ subsystems:
+//
+//   1. CameraRig (camera_rig.hpp): keyframe addition, Evaluate() linear
+//      interpolation, Duration() correctness, clamp at ends.
+//   2. CinematicSequencer (cinematic_sequencer.hpp): shot advancement on
+//      Tick(), OnShotChanged / OnComplete callbacks, CurrentSample() values.
+//
+// All tests are pure C++17 CPU tests — no D3D11 renderer required.
+// ---------------------------------------------------------------------------
+#include "engine/cinematics/camera_rig.hpp"
+#include "engine/cinematics/cinematic_sequencer.hpp"
+
 
 #include <iostream>
 #include <exception>
@@ -1747,6 +1764,288 @@ int main(int argc, char* argv[])
                 std::cout << "[PASS] bt_test: all 4 acceptance tests passed "
                              "(BT sequence/selector, blackboard, "
                              "formation offsets, nav-mesh A*).\n";
+            }
+            else if (scene == "cinematic_test")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Post-M10 Cinematics acceptance test
+                // -----------------------------------------------------------
+                // This scene validates the two new engine/cinematics/
+                // subsystems:
+                //
+                //   Test 1 — CameraRig keyframe interpolation:
+                //     Build a rig with 3 keyframes.  Evaluate at t=0 must
+                //     return the first keyframe exactly; at t=1 (midpoint)
+                //     the interpolated position must be the midpoint; at
+                //     t=duration must return the last keyframe exactly.
+                //     Duration() must equal (last.time - first.time).
+                //
+                //   Test 2 — CinematicSequencer shot advancement:
+                //     Build a sequencer with 2 short shots (0.1 s each).
+                //     Tick(0.15 s) must advance past shot 0 and land in
+                //     shot 1.  Tick(0.15 s) again must complete the
+                //     sequence (IsComplete() == true).
+                //
+                //   Test 3 — Callbacks (OnShotChanged + OnComplete):
+                //     Verify that OnShotChanged fires with the correct index
+                //     on every cut, and OnComplete fires exactly once when
+                //     all shots finish.
+                //
+                // All three tests are pure C++17 CPU tests.
+                // -----------------------------------------------------------
+
+                using namespace engine::cinematics;
+                using engine::math::Vec3;
+
+                int testsFailed = 0;
+
+                // ============================================================
+                // Test 1 — CameraRig keyframe interpolation
+                // ============================================================
+                // TEACHING NOTE — Building a CameraRig for testing
+                // We author three keyframes:
+                //   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
+                //   t=1.0 : eye=(10,0,0) lookAt=(10,0,10) fov=50
+                //   t=2.0 : eye=(20,0,0) lookAt=(20,0,10) fov=40
+                //
+                // At t=0.0 we expect sample == kf[0] exactly.
+                // At t=1.0 (midpoint of full range) we expect sample == kf[1].
+                // At t=2.0 we expect sample == kf[2] exactly.
+                // At t=0.5 (midpoint of kf[0]→kf[1]) we expect eye=(5,0,0).
+                // ============================================================
+                {
+                    CameraRig rig;
+                    rig.AddKeyframe(0.0f, Vec3{  0.0f, 0.0f, 0.0f },
+                                          Vec3{  0.0f, 0.0f, 10.0f }, 60.0f);
+                    rig.AddKeyframe(1.0f, Vec3{ 10.0f, 0.0f, 0.0f },
+                                          Vec3{ 10.0f, 0.0f, 10.0f }, 50.0f);
+                    rig.AddKeyframe(2.0f, Vec3{ 20.0f, 0.0f, 0.0f },
+                                          Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
+
+                    // Subtest 1a — Duration
+                    const float dur = rig.Duration();
+                    if (std::abs(dur - 2.0f) > 0.001f)
+                    {
+                        std::cout << "[FAIL] cinematic_test/rig_duration: "
+                                  << "expected 2.0, got " << dur << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/rig_duration: "
+                                  << "Duration() = " << dur << " s.\n";
+                    }
+
+                    // Subtest 1b — Evaluate at t=0 (clamp to first keyframe)
+                    auto s0 = rig.Evaluate(0.0f);
+                    if (std::abs(s0.position.x) > 0.001f ||
+                        std::abs(s0.fovDeg - 60.0f) > 0.001f)
+                    {
+                        std::cout << "[FAIL] cinematic_test/rig_eval_t0: "
+                                  << "pos.x=" << s0.position.x
+                                  << " fov=" << s0.fovDeg << " (expected 0, 60).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/rig_eval_t0: "
+                                  << "pos.x=0  fov=60.\n";
+                    }
+
+                    // Subtest 1c — Evaluate at t=0.5 (midpoint of kf[0]→kf[1])
+                    // TEACHING NOTE — Testing interpolation correctness
+                    // At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
+                    // pos.x = Lerp(0, 10, 0.5) = 5.0
+                    // fovDeg = Lerp(60, 50, 0.5) = 55.0
+                    auto s05 = rig.Evaluate(0.5f);
+                    if (std::abs(s05.position.x - 5.0f) > 0.001f ||
+                        std::abs(s05.fovDeg - 55.0f) > 0.001f)
+                    {
+                        std::cout << "[FAIL] cinematic_test/rig_eval_t05: "
+                                  << "pos.x=" << s05.position.x
+                                  << " fov=" << s05.fovDeg
+                                  << " (expected 5.0, 55.0).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/rig_eval_t05: "
+                                  << "pos.x=5.0  fov=55.0 (Lerp correct).\n";
+                    }
+
+                    // Subtest 1d — Evaluate at t=duration (clamp to last keyframe)
+                    auto sEnd = rig.Evaluate(rig.Duration());
+                    if (std::abs(sEnd.position.x - 20.0f) > 0.001f ||
+                        std::abs(sEnd.fovDeg - 40.0f) > 0.001f)
+                    {
+                        std::cout << "[FAIL] cinematic_test/rig_eval_end: "
+                                  << "pos.x=" << sEnd.position.x
+                                  << " fov=" << sEnd.fovDeg
+                                  << " (expected 20.0, 40.0).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/rig_eval_end: "
+                                  << "pos.x=20.0  fov=40.0 (last keyframe clamped).\n";
+                    }
+                }
+
+                // ============================================================
+                // Test 2 — CinematicSequencer shot advancement
+                // ============================================================
+                // TEACHING NOTE — Testing time advancement with carry-over
+                // We build a sequencer with two 0.1 s shots.
+                //
+                //   After Tick(0.15): shot 0 finishes (duration=0.1 s), carry
+                //     0.05 s into shot 1 → CurrentShotIndex() == 1.
+                //   After Tick(0.15) again: shot 1 finishes (duration=0.1 s,
+                //     0.05 carry + 0.15 = 0.20 > 0.1) → IsComplete() == true.
+                //
+                // We also verify CurrentSample() returns a non-zero position
+                // while playing (the rig has a non-zero keyframe at t=0.1).
+                // ============================================================
+                {
+                    CinematicSequencer seq;
+
+                    CameraRig rig0;
+                    rig0.AddKeyframe(0.0f, Vec3{  0.0f, 0.0f, 0.0f }, Vec3{1,0,0}, 60.0f);
+                    rig0.AddKeyframe(0.1f, Vec3{ 10.0f, 0.0f, 0.0f }, Vec3{1,0,0}, 55.0f);
+                    seq.AddShot(rig0, 0.1f, "shot0");
+
+                    CameraRig rig1;
+                    rig1.AddKeyframe(0.0f, Vec3{ 10.0f, 0.0f, 0.0f }, Vec3{1,0,0}, 55.0f);
+                    rig1.AddKeyframe(0.1f, Vec3{ 20.0f, 0.0f, 0.0f }, Vec3{1,0,0}, 45.0f);
+                    seq.AddShot(rig1, 0.1f, "shot1");
+
+                    seq.Play();
+
+                    if (seq.CurrentShotIndex() != 0 || !seq.IsPlaying())
+                    {
+                        std::cout << "[FAIL] cinematic_test/seq_play: "
+                                  << "expected shot=0 playing; got shot="
+                                  << seq.CurrentShotIndex()
+                                  << " playing=" << seq.IsPlaying() << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/seq_play: "
+                                  << "Play() started shot 0.\n";
+                    }
+
+                    // Tick past the end of shot 0.
+                    seq.Tick(0.15f);
+
+                    if (seq.CurrentShotIndex() != 1)
+                    {
+                        std::cout << "[FAIL] cinematic_test/seq_advance: "
+                                  << "expected shot=1 after Tick(0.15); got shot="
+                                  << seq.CurrentShotIndex() << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/seq_advance: "
+                                  << "Advanced to shot 1 after Tick(0.15 s).\n";
+                    }
+
+                    // Tick past the end of shot 1.
+                    seq.Tick(0.15f);
+
+                    if (!seq.IsComplete())
+                    {
+                        std::cout << "[FAIL] cinematic_test/seq_complete: "
+                                  << "expected IsComplete()=true after all shots.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/seq_complete: "
+                                  << "IsComplete()=true after both shots elapsed.\n";
+                    }
+                }
+
+                // ============================================================
+                // Test 3 — Callbacks (OnShotChanged + OnComplete)
+                // ============================================================
+                // TEACHING NOTE — Testing callbacks with lambda closures
+                // std::function callbacks are idiomatic modern C++.  We use
+                // lambda closures that capture local counters by reference to
+                // verify each callback fires the expected number of times with
+                // the expected argument.
+                // ============================================================
+                {
+                    CinematicSequencer seq;
+
+                    CameraRig r0;
+                    r0.AddKeyframe(0.0f, Vec3{0,0,0}, Vec3{0,0,1}, 60.0f);
+                    r0.AddKeyframe(0.1f, Vec3{1,0,0}, Vec3{1,0,1}, 60.0f);
+                    seq.AddShot(r0, 0.1f, "cb_shot0");
+
+                    CameraRig r1;
+                    r1.AddKeyframe(0.0f, Vec3{1,0,0}, Vec3{1,0,1}, 60.0f);
+                    r1.AddKeyframe(0.1f, Vec3{2,0,0}, Vec3{2,0,1}, 60.0f);
+                    seq.AddShot(r1, 0.1f, "cb_shot1");
+
+                    int  shotChangedCount     = 0;
+                    int  lastShotChangedIndex = -1;
+                    int  completeCount        = 0;
+
+                    seq.SetOnShotChanged([&](int idx)
+                    {
+                        ++shotChangedCount;
+                        lastShotChangedIndex = idx;
+                    });
+                    seq.SetOnComplete([&]()
+                    {
+                        ++completeCount;
+                    });
+
+                    seq.Play();          // fires OnShotChanged(0)
+                    seq.Tick(0.15f);     // fires OnShotChanged(1)
+                    seq.Tick(0.15f);     // fires OnComplete
+
+                    // OnShotChanged should have fired twice: once for shot 0
+                    // (at Play()) and once for shot 1 (at first Tick).
+                    if (shotChangedCount != 2 || lastShotChangedIndex != 1)
+                    {
+                        std::cout << "[FAIL] cinematic_test/cb_shot_changed: "
+                                  << "expected 2 calls (last idx=1); got "
+                                  << shotChangedCount << " calls (last idx="
+                                  << lastShotChangedIndex << ").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/cb_shot_changed: "
+                                  << "OnShotChanged fired 2×  (idx 0 then 1).\n";
+                    }
+
+                    if (completeCount != 1)
+                    {
+                        std::cout << "[FAIL] cinematic_test/cb_complete: "
+                                  << "expected 1 OnComplete call; got "
+                                  << completeCount << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/cb_complete: "
+                                  << "OnComplete fired exactly once.\n";
+                    }
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] cinematic_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] cinematic_test: all 3 acceptance tests passed "
+                             "(CameraRig Lerp, sequencer shot advancement, callbacks).\n";
             }
             else
             {

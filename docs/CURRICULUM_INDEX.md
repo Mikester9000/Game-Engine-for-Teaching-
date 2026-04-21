@@ -6,27 +6,28 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1473 across 48 subsystems.
+**Total lessons:** 1515 across 49 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (60 lessons)
-- [ci/workflows](#ciworkflows) (47 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (61 lessons)
+- [ci/workflows](#ciworkflows) (48 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/ai](#engineai) (49 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
+- [engine/cinematics](#enginecinematics) (32 lessons)
 - [engine/core](#enginecore) (50 lessons)
-- [engine/ecs](#engineecs) (40 lessons)
+- [engine/ecs](#engineecs) (41 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (283 lessons)
+- [engine/rendering](#enginerendering) (284 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -41,7 +42,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (52 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (58 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -482,9 +483,38 @@ src/engine/ai/formation_system.cpp
 src/engine/ai/nav_mesh.cpp
 )
 
+### Cinematics Sources (Post-M10)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L536) (line 536)
+
+-----------------------------------------------------------------------
+The engine/cinematics/ layer provides TWO subsystems for cut-scene
+production:
+
+  camera_rig.cpp — Keyframed camera path.  Stores an ordered list of
+    CameraKeyframes (position, look-at, FOV, time) and evaluates the
+    interpolated camera state at any shot-local time using binary search
+    + Vec3::Lerp.  Zero platform or rendering dependencies.
+
+  cinematic_sequencer.cpp — Shot/cut orchestrator.  Holds an ordered
+    list of (CameraRig, duration) pairs, advances time each frame via
+    Tick(dt), fires OnShotChanged / OnComplete callbacks, and pushes the
+    interpolated camera state into the active ECS CameraComponent via
+    ApplyToCamera(World&) — setting the new cinematicOverride flag so
+    CameraSystem uses the cinematic eye position instead of orbit math.
+
+Both files are pure C++17 (no D3D11 or Vulkan dependency); they are
+always included in the sandbox build so --scene cinematic_test is
+available in every configuration.
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/engine/cinematics/camera_rig.cpp
+src/engine/cinematics/cinematic_sequencer.cpp
+)
+
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L537) (line 537)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L565) (line 565)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -496,7 +526,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L545) (line 545)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L573) (line 573)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -504,7 +534,7 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 
 ### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L549) (line 549)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L577) (line 577)
 
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
@@ -512,7 +542,7 @@ src/engine/animation/gpu_skinning.cpp
 
 ### M10: SkyRenderer + WeatherFx are renderer-agnostic
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L553) (line 553)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L581) (line 581)
 
 CPU objects that compute time-of-day sky colours and weather state.
 They are compiled alongside D3D11Renderer because D3D11Renderer
@@ -525,7 +555,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L578) (line 578)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L606) (line 606)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -538,13 +568,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L591) (line 591)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L619) (line 619)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L593) (line 593)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L621) (line 621)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -571,7 +601,7 @@ src/engine/physics/raycast.cpp
 
 ### M11 Vehicle Physics (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L616) (line 616)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L644) (line 644)
 
 vehicle_system.cpp implements the VehicleSystem: four wheel-ray
 suspension raycasts, spring-damper force model, Ackermann steering,
@@ -587,7 +617,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional JSON sources
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L632) (line 632)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L660) (line 660)
 
 scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
 The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
@@ -601,7 +631,7 @@ src/engine/scene/scene_serialiser.cpp
 
 ### M7 World Streaming Source Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L646) (line 646)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L674) (line 674)
 
 ─────────────────────────────────────────────────────
 The three world-streaming modules are pure C++17 with no platform or
@@ -623,7 +653,7 @@ src/engine/world/world_streaming.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L668) (line 668)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L696) (line 696)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -636,7 +666,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L681) (line 681)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L709) (line 709)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -659,7 +689,7 @@ src/game/world/Zone.cpp
 
 ### M7.1: GameStreamingManager wires Zone lifecycle into
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L700) (line 700)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L728) (line 728)
 
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
@@ -667,7 +697,7 @@ src/game/world/GameStreamingManager.cpp
 
 ### M8 Gameplay Integration: new systems.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L704) (line 704)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L732) (line 732)
 
 game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
 input_mapper.cpp reads Win32 key state → ECS components.
@@ -685,7 +715,7 @@ src/engine/save/save_system.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L738) (line 738)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L766) (line 766)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -697,7 +727,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L747) (line 747)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L775) (line 775)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -706,7 +736,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L757) (line 757)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L785) (line 785)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -718,7 +748,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L766) (line 766)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L794) (line 794)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -728,7 +758,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L776) (line 776)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L804) (line 804)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -737,7 +767,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L782) (line 782)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L810) (line 810)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -746,7 +776,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L787) (line 787)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L815) (line 815)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -757,7 +787,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L803) (line 803)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L831) (line 831)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -768,7 +798,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L811) (line 811)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L839) (line 839)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -778,7 +808,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L823) (line 823)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L851) (line 851)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -812,7 +842,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L855) (line 855)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L883) (line 883)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -827,7 +857,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L870) (line 870)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L898) (line 898)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -842,7 +872,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L912) (line 912)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L940) (line 940)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -865,7 +895,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L933) (line 933)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L961) (line 961)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -886,7 +916,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L950) (line 950)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L978) (line 978)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -896,7 +926,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L956) (line 956)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L984) (line 984)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -908,7 +938,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L964) (line 964)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L992) (line 992)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -921,7 +951,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L989) (line 989)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1017) (line 1017)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -943,7 +973,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1008) (line 1008)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1036) (line 1036)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -954,7 +984,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1016) (line 1016)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1044) (line 1044)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -964,7 +994,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1046) (line 1046)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1074) (line 1074)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -973,7 +1003,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1053) (line 1053)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1081) (line 1081)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1412,9 +1442,37 @@ No D3D11 renderer needed — all four tests are pure C++17 CPU tests.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bt_test
 shell: cmd
 
-### M5 Physics CI Job
+### cinematic_test CI Gate
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L311) (line 311)
+
+This step validates the two new engine/cinematics/ subsystems:
+
+  Test 1a — CameraRig Duration(): 3-keyframe rig spanning 2 s must
+    report Duration() = 2.0 s.
+  Test 1b — CameraRig Evaluate(t=0): must return the first keyframe
+    (pos.x=0, fov=60) with no interpolation.
+  Test 1c — CameraRig Evaluate(t=0.5): must return Lerp midpoint
+    between kf[0] and kf[1] (pos.x=5, fov=55).
+  Test 1d — CameraRig Evaluate(t=duration): must clamp to the last
+    keyframe (pos.x=20, fov=40).
+  Test 2a — Sequencer Play(): CurrentShotIndex()==0, IsPlaying()==true.
+  Test 2b — Sequencer shot advance: Tick(0.15 s) on a 0.1 s shot
+    advances to shot 1 (carry-over).
+  Test 2c — Sequencer complete: second Tick(0.15 s) finishes the
+    sequence; IsComplete()==true.
+  Test 3a — OnShotChanged callback: fires twice with indices 0 and 1.
+  Test 3b — OnComplete callback: fires exactly once after all shots.
+
+No D3D11 renderer needed — all tests are pure C++17 CPU tests.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (Post-M10 — cinematic_test)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene cinematic_test
+shell: cmd
+
+### M5 Physics CI Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L339) (line 339)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1440,7 +1498,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L350) (line 350)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L378) (line 378)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1466,7 +1524,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L384) (line 384)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L412) (line 412)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1487,7 +1545,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L408) (line 408)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1500,7 +1558,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L421) (line 421)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L449) (line 449)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1515,7 +1573,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L464) (line 464)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1546,7 +1604,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L464) (line 464)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L492) (line 492)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1555,7 +1613,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L486) (line 486)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L514) (line 514)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1583,7 +1641,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L521) (line 521)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L549) (line 549)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1592,7 +1650,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L535) (line 535)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L563) (line 563)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1614,7 +1672,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L560) (line 560)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L588) (line 588)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1628,7 +1686,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L584) (line 584)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L612) (line 612)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1646,7 +1704,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L609) (line 609)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L637) (line 637)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1657,7 +1715,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L620) (line 620)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L648) (line 648)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1672,7 +1730,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L642) (line 642)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L670) (line 670)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -6819,6 +6877,545 @@ the existing voice, which is cheaper.
 
 ---
 
+## engine/cinematics
+
+### Implementation Strategy
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L6) (line 6)
+
+============================================================================
+
+The two responsibilities of this file are:
+
+  1. AUTHORING: AddKeyframe() validates the insertion order and stores the
+     keyframe.  Sorted order is required by Evaluate()'s binary search.
+
+  2. EVALUATION: Evaluate(t) performs a binary search to find the two
+     keyframes that bracket t, then linearly interpolates between them.
+
+─── Binary search for the bracket ─────────────────────────────────────────
+
+We use std::upper_bound with a lambda comparator to find the first
+keyframe whose time is > t.  The keyframe immediately before it is the
+lower bracket.
+
+  keyframes: [0.0, 1.0, 2.0, 3.0, 4.0]
+  t = 1.5:
+    upper_bound → iterator to 2.0 (index 2)
+    lower = index 1 (time 1.0)
+    upper = index 2 (time 2.0)
+    alpha = (1.5 - 1.0) / (2.0 - 1.0) = 0.5
+
+### std::upper_bound
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L30) (line 30)
+
+std::upper_bound(begin, end, value, comp) returns an iterator to the
+first element for which comp(value, element) is true.  Here comp is
+(t < kf.time), so it finds the first keyframe with time > t — exactly
+the upper bracket we need.  Time complexity: O(log N).
+
+─── Edge cases ─────────────────────────────────────────────────────────────
+
+  • t ≤ first keyframe time  → return first keyframe (no interpolation).
+  • t ≥ last keyframe time   → return last keyframe (no interpolation).
+  • 0 or 1 keyframe          → return default / single keyframe.
+  • upper == lower time      → alpha = 0 (avoid div-by-zero).
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows / Linux (no platform dependencies)
+
+### Ascending-time invariant
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L69) (line 69)
+
+We assert rather than silently reorder because out-of-order keyframes
+are almost always a content authoring bug.  Asserting catches the
+mistake at the call site with a helpful stack trace, while silently
+sorting would hide the bug and produce confusing camera jumps.
+if (!m_keyframes.empty())
+{
+assert(time >= m_keyframes.back().time &&
+"CameraRig: keyframes must be added in non-decreasing time order.");
+}
+
+### Empty and single-keyframe guards
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L90) (line 90)
+
+-----------------------------------------------------------------------
+These guards keep the rest of the function's logic simple — we only
+need to handle the general case (≥2 keyframes) below.
+-----------------------------------------------------------------------
+
+### Clamp to valid range
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L109) (line 109)
+
+-----------------------------------------------------------------------
+Clamp t so that t < first keyframe time returns the first keyframe, and
+t > last keyframe time returns the last keyframe.  This means the caller
+never needs to guard for out-of-range values.
+-----------------------------------------------------------------------
+
+### Binary search for keyframe bracket
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L131) (line 131)
+
+-----------------------------------------------------------------------
+std::upper_bound finds the first keyframe whose time is strictly > t.
+The keyframe before it is the lower bracket.
+
+Example with keyframes at t = {0, 1, 2, 3} and query t = 1.4:
+  upper_bound → iterator to kf[2] (time=2.0)
+  lower = kf[1] (time=1.0)
+  upper = kf[2] (time=2.0)
+  alpha = (1.4 - 1.0) / (2.0 - 1.0) = 0.4
+-----------------------------------------------------------------------
+
+### Linear interpolation factor (alpha)
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L154) (line 154)
+
+-----------------------------------------------------------------------
+alpha ∈ [0,1] tells us how far between lower and upper we are.
+We guard against a degenerate case where upper.time == lower.time
+(two keyframes at the same instant) by returning alpha = 0, which
+yields the lower keyframe.
+-----------------------------------------------------------------------
+
+### Lerp for translation is correct here.
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L167) (line 167)
+
+We use Vec3::Lerp for both position and look-at.  We do NOT slerp the
+"direction" because we store a world-space LOOK-AT POINT, not a direction
+quaternion.  Lerping a look-at point is fine — it smoothly moves the
+target across the scene.
+result.position = engine::math::Vec3::Lerp(lower.position, upper.position, alpha);
+result.lookAt   = engine::math::Vec3::Lerp(lower.lookAt,   upper.lookAt,   alpha);
+
+### FOV is a scalar; plain linear interpolation is correct.
+
+**Source:** [`src/engine/cinematics/camera_rig.cpp`](src/engine/cinematics/camera_rig.cpp#L175) (line 175)
+
+FOV changes feel like zoom in/out.  In film this is called a "dolly zoom"
+(or "Vertigo effect") when combined with a camera that moves opposite to
+the FOV change.
+result.fovDeg = lower.fovDeg + (upper.fovDeg - lower.fovDeg) * alpha;
+
+### What is a Camera Rig?
+
+**Source:** [`src/engine/cinematics/camera_rig.hpp`](src/engine/cinematics/camera_rig.hpp#L6) (line 6)
+
+============================================================================
+
+In film production a "camera rig" is the physical mount that holds and
+moves a camera along a predetermined path (dolly, crane, steadicam).  In
+a game engine a CameraRig is the data structure that encodes that path as
+a sequence of keyframes.
+
+Each keyframe stores:
+  • position  — where the camera is in world space.
+  • lookAt    — the world-space point the camera is looking at.
+  • fovDeg    — the vertical field-of-view in degrees.
+  • time      — when this keyframe occurs (seconds from shot start).
+
+Between keyframes the CameraRig interpolates (see below).  The renderer
+uses the evaluated position + lookAt to build a view matrix, and fovDeg
+for the projection matrix.
+
+─── Interpolation ──────────────────────────────────────────────────────────
+
+This implementation uses *linear interpolation* (Lerp) for position and
+look-at, and linear interpolation for FOV.  In a production engine you
+would replace this with a Catmull-Rom spline or Bezier spline to get
+smooth "easing" curves, but the linear version is easier to teach and
+debug.
+
+### Lerp vs Spline for Camera Paths
+
+**Source:** [`src/engine/cinematics/camera_rig.hpp`](src/engine/cinematics/camera_rig.hpp#L32) (line 32)
+
+Linear interpolation produces straight-line paths with sudden direction
+changes at each keyframe.  A Catmull-Rom spline passes smoothly through
+every control point (C1 continuity) — position and velocity are both
+continuous.  To upgrade: replace Vec3::Lerp with a CatmullRom(p0,p1,p2,p3,t)
+helper.  The rest of the CameraRig API stays the same.
+
+─── Design Decisions ───────────────────────────────────────────────────────
+
+1. KEYFRAME TIME — keyframes are stored in *shot-local* time (seconds from
+   the start of this rig).  The CinematicSequencer maps global time to
+   shot-local time by subtracting the shot start.  This makes it easy to
+   reorder shots without changing keyframe data.
+
+2. SORTED REQUIREMENT — keyframes MUST be added in ascending time order.
+   AddKeyframe() asserts this in debug builds to catch authoring mistakes.
+
+3. CLAMP AT ENDS — Evaluate() clamps t to [0, duration]: requesting t < 0
+   returns the first keyframe; t > duration returns the last keyframe.
+   This makes sequencer code simpler (no special-casing needed).
+
+─── Usage example ───────────────────────────────────────────────────────────
+
+@code
+  CameraRig rig;
+  rig.AddKeyframe(0.0f, {0,5,-10}, {0,0,0}, 60.0f);  // opening position
+  rig.AddKeyframe(2.0f, {5,3,-8},  {0,1,0}, 55.0f);  // pan right
+  rig.AddKeyframe(4.0f, {10,2,-5}, {0,2,0}, 50.0f);  // push in
+
+  float shotTime = 1.5f;  // 1.5 s into the shot
+  auto sample = rig.Evaluate(shotTime);
+  // sample.position  is lerped between kf[0] and kf[1]
+  // sample.lookAt    is lerped between kf[0] and kf[1]
+  // sample.fovDeg    is lerped between kf[0] and kf[1]
+@endcode
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows / Linux (no platform dependencies)
+
+### Why separate position from lookAt?
+
+**Source:** [`src/engine/cinematics/camera_rig.hpp`](src/engine/cinematics/camera_rig.hpp#L95) (line 95)
+
+Storing position AND a look-at target (instead of position + direction
+vector) makes it trivially easy to keep a character "in frame" during a
+pan: just interpolate the look-at target toward the character while
+interpolating the camera position along the dolly path.  The view matrix
+is then  lookAt(position, lookAtTarget, worldUp).
+
+### Output-value object pattern
+
+**Source:** [`src/engine/cinematics/camera_rig.hpp`](src/engine/cinematics/camera_rig.hpp#L126) (line 126)
+
+Rather than writing results into mutable output parameters (old-style C),
+we return a small struct.  This enables move semantics and makes call
+sites self-documenting:
+
+  auto s = rig.Evaluate(t);
+  UploadToRenderer(s.position, s.lookAt, s.fovDeg);
+
+### Value semantics
+
+**Source:** [`src/engine/cinematics/camera_rig.hpp`](src/engine/cinematics/camera_rig.hpp#L152) (line 152)
+
+CameraRig is copyable and movable.  This lets the CinematicSequencer store
+shots by value in a std::vector, which simplifies ownership and avoids
+heap fragmentation from individual heap allocations per shot.
+
+### Binary search for keyframe bracket
+
+**Source:** [`src/engine/cinematics/camera_rig.hpp`](src/engine/cinematics/camera_rig.hpp#L202) (line 202)
+
+Finding the two keyframes that bracket time t is an O(log N) binary
+search.  For typical shot lengths (5–30 keyframes) a linear scan would
+be just as fast, but the binary search teaches the standard algorithm
+and scales to very long procedurally-generated rigs.
+
+### Implementation Overview
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L6) (line 6)
+
+============================================================================
+
+The sequencer has three responsibilities:
+
+  1. SHOT MANAGEMENT — AddShot() stores ordered ShotEntries.  Play() resets
+     state.  SkipToShot() allows scrubbing for editor use.
+
+  2. TIME ADVANCEMENT — Tick(dt) increments m_shotTime.  When m_shotTime
+     exceeds the shot's duration, the sequencer calls AdvanceShot() which
+     increments m_currentShot, fires OnShotChanged, and checks for sequence
+     completion (fires OnComplete).
+
+  3. ECS CAMERA WRITE — ApplyToCamera() evaluates the CameraRig at the
+     current m_shotTime (remapped to rig-local time), writes the result to
+     the active CameraComponent, and sets cinematicOverride=true.  When
+     IsComplete(), it clears cinematicOverride so the follow camera resumes.
+
+─── Time remapping ─────────────────────────────────────────────────────────
+
+A shot has a user-specified duration (shotDuration) and its rig has an
+internal duration (rig.Duration()).  We remap shot time to rig time:
+
+  rigTime = (m_shotTime / shotDuration) * rig.Duration()
+
+This means:
+  • A 3 s shot playing a 6 s rig → plays the rig at 0.5× speed.
+  • A 6 s shot playing a 3 s rig → plays the rig at 2× speed.
+  • A 3 s shot playing a 0-duration rig → always returns the rig's
+    single static keyframe (static hold shot).
+
+### Time stretch / compress
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L37) (line 37)
+
+This remapping pattern is called "time stretch" in audio / video editing.
+It lets the artist set the pacing (how long each shot takes) separately
+from the motion design (how the camera moves along the rig).  In practice,
+you author the rig at 1:1 speed then adjust the shot duration in the
+sequence editor without re-authoring the rig.
+
+─── Carry-over time ────────────────────────────────────────────────────────
+
+### Leftover dt after a shot ends
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L46) (line 46)
+
+When a frame's dt causes the shot to finish, there is usually leftover time
+(m_shotTime > shotDuration).  We carry this over into the next shot:
+
+  remainder = m_shotTime - shotDuration
+  m_shotTime = 0.0f
+  advance shot
+  m_shotTime += remainder
+
+Without carry-over, the beginning of each shot would be slightly short
+(truncated by the frame boundary).  This is especially noticeable at high
+frame rates where a single dt can be a significant fraction of a short shot.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows / Linux (no platform dependencies)
+
+### Clamp duration to a small positive minimum.
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L83) (line 83)
+
+A zero-duration shot would cause Tick() to spin-advance through all
+remaining shots in a single frame (infinite loop risk).  We clamp to
+1 ms minimum and log a warning so the content author is alerted.
+if (duration <= 0.0f)
+{
+LOG_WARN("CinematicSequencer::AddShot — shot duration <= 0; clamped to 0.001 s.");
+duration = 0.001f;
+}
+m_shots.emplace_back(std::move(rig), duration, std::move(label));
+}
+
+### Bounds clamping for editor scrubbing
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L141) (line 141)
+
+Editor timeline scrubbers often call SkipToShot() with an arbitrary
+index.  Clamping here prevents out-of-bounds access and makes the
+API safe to call even before AddShot() has been called.
+if (m_shots.empty()) return;
+
+### Carry-over loop
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L178) (line 178)
+
+-----------------------------------------------------------------------
+We use a loop rather than a single if-check because in theory a very
+large dt (e.g. first frame after a debugger pause) could span multiple
+shots.  The loop ensures every intermediate OnShotChanged fires and the
+sequencer lands in the correct final shot.
+-----------------------------------------------------------------------
+while (m_currentShot < static_cast<int>(m_shots.size()))
+{
+const float shotDur = m_shots[static_cast<size_t>(m_currentShot)].duration;
+
+### Why iterate rather than cache the camera entity ID?
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L224) (line 224)
+
+-----------------------------------------------------------------------
+We call world.View<CameraComponent>() each frame instead of caching
+the entity ID at Play() time.  Caching would be slightly faster, but
+the camera entity can be destroyed and re-created during scene load.
+Iterating each frame is safer and the overhead is negligible (there
+is usually exactly one camera entity).
+-----------------------------------------------------------------------
+
+### Releasing cinematic control
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L242) (line 242)
+
+When the sequence is done we clear cinematicOverride so that
+CameraSystem reverts to follow-camera mode.  This gives the
+player control back automatically without any extra game code.
+cam.cinematicOverride = false;
+return;
+}
+
+### Time remapping (shot time → rig time)
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L292) (line 292)
+
+-----------------------------------------------------------------------
+shot.duration  is the playback duration set by the sequence author.
+rig.Duration() is the time span spanned by the rig's keyframes.
+We remap [0, shot.duration] → [0, rig.Duration()].
+
+If rig.Duration() is 0 (static rig / single keyframe), rigTime = 0
+so Evaluate(0) returns the one keyframe consistently.
+-----------------------------------------------------------------------
+const float rigDur = shot.rig.Duration();
+float rigTime = 0.0f;
+
+### What is a Cinematic Sequencer?
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L6) (line 6)
+
+============================================================================
+
+A cut-scene in a game is a sequence of "shots" — each shot places the
+camera at a specific position and animates it along a CameraRig path for a
+fixed duration.  When one shot ends the sequencer "cuts" (or smoothly
+transitions) to the next shot.
+
+Final Fantasy XV uses a similar system for "Royal Arms acquisition" and
+"Chapter boss reveal" cinematics: the camera glides through a series of
+authored positions before returning control to the player.
+
+This CinematicSequencer implements the following features:
+
+  • Shot list  — an ordered list of (CameraRig, duration) pairs.
+  • Playback   — Tick(dt) advances the current shot; auto-advances.
+  • Callbacks  — optional std::function<void()> for:
+                   OnShotChanged(int newIndex) — called on every cut.
+                   OnComplete()               — called when all shots finish.
+  • ECS output — ApplyToCamera(World&) writes the interpolated camera
+                 state into the active CameraComponent each frame.
+
+─── Architecture ───────────────────────────────────────────────────────────
+
+### Push vs Pull camera control
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L30) (line 30)
+
+The sequencer PUSHES camera data into the ECS CameraComponent.  This is a
+deliberate design choice:
+
+  Push (this design): Sequencer writes viewPos/lookAt directly to CameraComponent.
+  Pull: Renderer reads from Sequencer directly.
+
+Push is preferred because:
+  1. The renderer already reads from CameraComponent — no renderer change needed.
+  2. Gameplay code can blend the sequencer output with player input by
+     reading and then overriding CameraComponent fields.
+  3. The sequencer has zero coupling to the renderer; it is pure gameplay.
+
+─── Shot and transition model ───────────────────────────────────────────────
+
+  Timeline:
+    |--- shot 0 (dur=3s) ---|--- shot 1 (dur=2s) ---|--- shot 2 (dur=4s) ---|
+    0                       3                       5                       9
+
+  m_shotTime counts from 0 within the current shot.  When m_shotTime
+  reaches the shot's CameraRig duration (or explicit shot duration),
+  the sequencer advances: resets m_shotTime = 0, increments m_currentShot.
+
+### Shot duration vs rig duration
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L54) (line 54)
+
+A CameraRig has its own duration (last keyframe time - first keyframe time).
+The sequencer stores that duration explicitly in ShotEntry so that:
+  1. You can play a rig faster or slower (stretch/compress time).
+  2. A shot with a single static keyframe still has a meaningful duration.
+
+─── Usage example ───────────────────────────────────────────────────────────
+
+@code
+  CinematicSequencer seq;
+
+  // Build two shots.
+  CameraRig intro;
+  intro.AddKeyframe(0.0f, {0,5,-10}, {0,0,0}, 60.0f);
+  intro.AddKeyframe(3.0f, {5,3,-8},  {0,1,0}, 55.0f);
+  seq.AddShot(intro, 3.0f);
+
+  CameraRig reveal;
+  reveal.AddKeyframe(0.0f, {5,3,-8},  {0,1,0}, 55.0f);
+  reveal.AddKeyframe(2.0f, {10,2,-5}, {0,2,0}, 45.0f);
+  seq.AddShot(reveal, 2.0f);
+
+  seq.SetOnComplete([](){ LOG_INFO("Cinematic done!"); });
+
+  seq.Play();
+
+  // Per-frame update (in GameRuntime):
+  seq.Tick(dt);
+  seq.ApplyToCamera(world);
+@endcode
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows / Linux (no platform dependencies)
+
+### Separating rig from duration
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L114) (line 114)
+
+Storing the duration alongside the rig (rather than reading rig.Duration())
+lets the sequence author stretch or compress any shot in time without
+modifying the rig's keyframes.  The local time fed to rig.Evaluate() is
+remapped by (shotTime / shotDuration) * rig.Duration().
+
+### Event-driven design with std::function callbacks
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L140) (line 140)
+
+Rather than polling IsComplete() every frame, callers can register
+callbacks for events of interest.  std::function<void()> is the idiomatic
+C++11 way to store a callable without exposing the implementation type.
+Callbacks are optional (left unset = no-op).
+
+### Callback signature (int newShotIndex)
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L181) (line 181)
+
+Passing the new shot index lets the game trigger dialogue or gameplay
+events at specific shots without tightly coupling the sequencer to game
+code.  The sequencer knows nothing about dialogue; it just fires an int.
+
+@param cb  Called with the index of the incoming shot.
+
+### Accumulated dt vs absolute time
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L233) (line 233)
+
+We accumulate delta-time rather than storing an absolute timestamp so
+that the sequencer works correctly even if the application is paused,
+restarted at an offset, or if time is scaled.  Absolute time would
+require the caller to manage a base timestamp.
+
+@param dt  Elapsed time in seconds since the last Tick().
+
+### CameraComponent fields written by the sequencer
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L252) (line 252)
+
+The CameraSystem reads cameraComp.viewPos and cameraComp.lookAt to
+build the view matrix each frame, so the sequencer just writes those
+two fields.  If no CameraComponent is found, this is a no-op (safe to
+call even before the camera entity is spawned).
+
+@param world  ECS World containing at least one CameraComponent.
+
+---
+
 ## engine/core
 
 ### Why a Publish-Subscribe (Observer) Pattern?
@@ -8276,9 +8873,31 @@ row-major matrices are ready to upload directly to a D3D11 constant buffer:
 
 ============================================================================
 
+### Cinematic Override Pattern
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2030) (line 2030)
+
+When a cut-scene is playing the CinematicSequencer writes a camera
+position and look-at target directly to this component and sets
+cinematicOverride = true.  CameraSystem checks this flag each frame:
+
+  false (default) → use orbit math (follow-camera, player-controlled).
+  true            → use cinematicEyePos / cinematicLookAt directly.
+
+This design keeps the two camera modes (gameplay / cinematic) isolated:
+  • The sequencer does NOT need to know about orbit parameters.
+  • The CameraSystem does NOT need to know about the sequencer.
+  • The flag is reset to false by the sequencer when playback ends,
+    returning control to the follow camera automatically.
+
+In a production engine you might add a blend weight so the camera
+smoothly transitions between gameplay and cinematic modes instead of
+hard-cutting (e.g. cinematicBlendWeight ∈ [0, 1]).
+-----------------------------------------------------------------------
+
 ### Facade Pattern
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2039) (line 2039)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2071) (line 2071)
 
 ────────────────────────────────
 The World class is a *facade*: it provides a simple unified API over the
@@ -8297,7 +8916,7 @@ all entities, components, and systems cleanly.
 
 ### Variadic Templates
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2253) (line 2253)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2285) (line 2285)
 
 ────────────────────────────────────
 `template<typename... Components>` accepts any number of type arguments.
@@ -8310,7 +8929,7 @@ Fold expressions were introduced in C++17:
 
 ### Update Order
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2300) (line 2300)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2332) (line 2332)
 
 ──────────────────────────────
 Systems are updated in the order they were registered.  Order matters:
@@ -8323,7 +8942,7 @@ Systems are updated in the order they were registered.  Order matters:
 
 ### View Pattern / Query
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2327) (line 2327)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2359) (line 2359)
 
 ──────────────────────────────────────
 A "view" is an on-demand filter over living entities.  It avoids
@@ -8340,7 +8959,7 @@ Example usage:
 
 ### `if constexpr` and Fold Expressions
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2341) (line 2341)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2373) (line 2373)
 
 ──────────────────────────────────────────────────────
 The implementation uses parameter pack expansion to call HasComponent<C>
@@ -8349,7 +8968,7 @@ a single boolean.
 
 ### Factory Methods
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2397) (line 2397)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2429) (line 2429)
 
 ─────────────────────────────────
 Rather than calling AddComponent 10 times at every call site, a factory
@@ -8361,7 +8980,7 @@ individual components afterwards.
 
 ### static_cast vs dynamic_cast
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2481) (line 2481)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2513) (line 2513)
 
 ─────────────────────────────────────────────
 dynamic_cast performs a runtime type check (RTTI) and returns nullptr
@@ -8377,7 +8996,7 @@ fine; using it on user-supplied pointers would be dangerous.
 
 ### Why a free function?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2558) (line 2558)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2590) (line 2590)
 
 ───────────────────────────────────────
 Putting registration in a free function keeps the World constructor clean
@@ -8389,7 +9008,7 @@ modification.
 
 ### M4 / M5 / M8.3 components registered here.
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2589) (line 2589)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2621) (line 2621)
 
 AnimatorComponent, RigidBodyComponent, ColliderComponent are gated by
 their respective subsystems in engine code but must be registered with
@@ -11160,9 +11779,33 @@ production engine you might maintain a "primary camera" pointer, but
 iterating a small set of cameras is cheap and keeps this system
 self-contained.
 
+### Cinematic override path
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L89) (line 89)
+
+When a CinematicSequencer is playing, it writes a pre-computed
+eye position and look-at target to the CameraComponent and sets
+cinematicOverride=true.  We use those directly to build the view
+matrix, bypassing the follow-camera orbit math entirely.
+This keeps the two camera modes cleanly separated: the sequencer
+owns position authority during a cut-scene; the follow-camera
+resumes automatically when the sequencer clears the flag.
+----------------------------------------------------------------
+if (cam.cinematicOverride)
+{
+cam.worldPosition = cam.cinematicEyePos;
+cam.viewMatrix = BuildLookAt(cam.cinematicEyePos,
+cam.cinematicLookAt,
+{ 0.0f, 1.0f, 0.0f });
+const float fovRad = DegToRad(cam.fovDegrees);
+cam.projMatrix = BuildPerspective(fovRad, cam.aspectRatio,
+cam.nearPlane, cam.farPlane);
+return;  // skip orbit math
+}
+
 ### Vehicle Chase Camera
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L92) (line 92)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L114) (line 114)
 
 When the target entity has a VehicleComponent we apply two
 adjustments for a more cinematic driving feel:
@@ -11177,7 +11820,7 @@ float vehicleYaw      = 0.0f;
 
 ### Two Vec3 types coexist in this codebase:
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L108) (line 108)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L130) (line 130)
 
 the global Vec3 in Types.hpp (used by game-layer components
 like TransformComponent::position) and engine::math::Vec3 in
@@ -11190,7 +11833,7 @@ targetPos = Vec3{ p.x, p.y, p.z };
 
 ### Checking for optional components
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L119) (line 119)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L141) (line 141)
 
 HasComponent<T>() is a safe O(1) check — no exception is
 thrown if the component is absent.  We detect a vehicle
@@ -11207,7 +11850,7 @@ vehicleYaw      = vc.yaw;
 
 ### Orbit Camera Math
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L133) (line 133)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L155) (line 155)
 
 ──────────────────────────────────
 We parameterise the camera's position in *spherical coordinates*
@@ -11226,7 +11869,7 @@ We clamp pitch to [-π/3, π/3] to prevent the camera flipping.
 
 ### Vehicle chase arm extension
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L155) (line 155)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L177) (line 177)
 
 When following a vehicle we use a longer arm so the shot is wider
 and more cinematic.  We also apply a look-ahead offset: the camera
@@ -11241,7 +11884,7 @@ Vec3  lookAtPoint     = targetPos;   // default: track entity centre
 
 ### Row-Major View Matrix: basis vectors in COLUMNS
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L228) (line 228)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L250) (line 250)
 
 ──────────────────────────────────────────────────────────────────
 In D3D11 we multiply: transformedPos = mul(float4(pos,1), viewMatrix)
@@ -11267,7 +11910,7 @@ Steps:
 
 ### D3D11 Perspective Projection (Row-Major)
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L292) (line 292)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L314) (line 314)
 
 ─────────────────────────────────────────────────────────
 D3D11's clip-space depth range is [0, 1] (not OpenGL's [-1, 1]).
@@ -22277,6 +22920,7 @@ Usage:
   engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
   engine_sandbox.exe --headless --scene vehicle_test      # Post-M10 vehicle physics acceptance test (CI)
   engine_sandbox.exe --headless --scene bt_test           # Post-M10 BT AI + formation + nav-mesh acceptance test (CI)
+  engine_sandbox.exe --headless --scene cinematic_test    # Post-M10 Cinematics: CameraRig + CinematicSequencer acceptance test (CI)
 
 ============================================================================
 
@@ -22288,7 +22932,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L98) (line 98)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L99) (line 99)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -22307,7 +22951,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L113) (line 113)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L114) (line 114)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -22315,7 +22959,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L119) (line 119)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L120) (line 120)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -22333,7 +22977,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L135) (line 135)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L136) (line 136)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -22348,7 +22992,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L148) (line 148)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L149) (line 149)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -22368,7 +23012,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L166) (line 166)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -22382,7 +23026,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L178) (line 178)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L179) (line 179)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -22400,9 +23044,26 @@ include "engine/ai/behaviour_tree.hpp"
 include "engine/ai/formation_system.hpp"
 include "engine/ai/nav_mesh.hpp"
 
+### Post-M10 Cinematics headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L197) (line 197)
+
+---------------------------------------------------------------------------
+The cinematic_test scene validates the two new engine/cinematics/ subsystems:
+
+  1. CameraRig (camera_rig.hpp): keyframe addition, Evaluate() linear
+     interpolation, Duration() correctness, clamp at ends.
+  2. CinematicSequencer (cinematic_sequencer.hpp): shot advancement on
+     Tick(), OnShotChanged / OnComplete callbacks, CurrentSample() values.
+
+All tests are pure C++17 CPU tests — no D3D11 renderer required.
+---------------------------------------------------------------------------
+include "engine/cinematics/camera_rig.hpp"
+include "engine/cinematics/cinematic_sequencer.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L204) (line 204)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L221) (line 221)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -22419,7 +23080,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L219) (line 219)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L236) (line 236)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -22436,7 +23097,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L232) (line 232)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L249) (line 249)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -22448,7 +23109,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L254) (line 254)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L271) (line 271)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -22467,7 +23128,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L269) (line 269)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L286) (line 286)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -22480,7 +23141,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L282) (line 282)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L299) (line 299)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -22491,7 +23152,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L311) (line 311)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L328) (line 328)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -22506,7 +23167,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L336) (line 336)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L353) (line 353)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -22516,7 +23177,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L366) (line 366)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L383) (line 383)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -22532,7 +23193,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L415) (line 415)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L432) (line 432)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -22558,7 +23219,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L437) (line 437)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L454) (line 454)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -22587,7 +23248,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L462) (line 462)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L479) (line 479)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -22611,7 +23272,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L570) (line 570)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L587) (line 587)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -22636,7 +23297,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L691) (line 691)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L708) (line 708)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -22657,7 +23318,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L775) (line 775)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L792) (line 792)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -22675,7 +23336,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L789) (line 789)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L806) (line 806)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -22706,7 +23367,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L818) (line 818)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L835) (line 835)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -22714,7 +23375,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L880) (line 880)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L897) (line 897)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -22737,7 +23398,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L955) (line 955)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L972) (line 972)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -22755,7 +23416,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L969) (line 969)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L986) (line 986)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -22773,7 +23434,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1002) (line 1002)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1019) (line 1019)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -22799,7 +23460,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1053) (line 1053)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1070) (line 1070)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -22821,7 +23482,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1072) (line 1072)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1089) (line 1089)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -22844,7 +23505,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1153) (line 1153)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1170) (line 1170)
 
 -----------------------------------------------------------
 Verifies that:
@@ -22864,7 +23525,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1170) (line 1170)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1187) (line 1187)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -22884,7 +23545,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1213) (line 1213)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1230) (line 1230)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -22900,7 +23561,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1255) (line 1255)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1272) (line 1272)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -22926,7 +23587,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1277) (line 1277)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1294) (line 1294)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -22949,7 +23610,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1386) (line 1386)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1403) (line 1403)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -22976,7 +23637,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1410) (line 1410)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1427) (line 1427)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -22987,14 +23648,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1433) (line 1433)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1450) (line 1450)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1438) (line 1438)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1455) (line 1455)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -23011,7 +23672,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1486) (line 1486)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1503) (line 1503)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -23046,7 +23707,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1544) (line 1544)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1561) (line 1561)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -23056,7 +23717,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1635) (line 1635)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1652) (line 1652)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -23066,15 +23727,119 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1703) (line 1703)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1720) (line 1720)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
 y=0 (leave a gap).  A* must route through the gap.
 
+### Post-M10 Cinematics acceptance test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1771) (line 1771)
+
+-----------------------------------------------------------
+This scene validates the two new engine/cinematics/
+subsystems:
+
+  Test 1 — CameraRig keyframe interpolation:
+    Build a rig with 3 keyframes.  Evaluate at t=0 must
+    return the first keyframe exactly; at t=1 (midpoint)
+    the interpolated position must be the midpoint; at
+    t=duration must return the last keyframe exactly.
+    Duration() must equal (last.time - first.time).
+
+  Test 2 — CinematicSequencer shot advancement:
+    Build a sequencer with 2 short shots (0.1 s each).
+    Tick(0.15 s) must advance past shot 0 and land in
+    shot 1.  Tick(0.15 s) again must complete the
+    sequence (IsComplete() == true).
+
+  Test 3 — Callbacks (OnShotChanged + OnComplete):
+    Verify that OnShotChanged fires with the correct index
+    on every cut, and OnComplete fires exactly once when
+    all shots finish.
+
+All three tests are pure C++17 CPU tests.
+-----------------------------------------------------------
+
+### Building a CameraRig for testing
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1805) (line 1805)
+
+We author three keyframes:
+  t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
+  t=1.0 : eye=(10,0,0) lookAt=(10,0,10) fov=50
+  t=2.0 : eye=(20,0,0) lookAt=(20,0,10) fov=40
+
+At t=0.0 we expect sample == kf[0] exactly.
+At t=1.0 (midpoint of full range) we expect sample == kf[1].
+At t=2.0 we expect sample == kf[2] exactly.
+At t=0.5 (midpoint of kf[0]→kf[1]) we expect eye=(5,0,0).
+============================================================
+{
+CameraRig rig;
+rig.AddKeyframe(0.0f, Vec3{  0.0f, 0.0f, 0.0f },
+Vec3{  0.0f, 0.0f, 10.0f }, 60.0f);
+rig.AddKeyframe(1.0f, Vec3{ 10.0f, 0.0f, 0.0f },
+Vec3{ 10.0f, 0.0f, 10.0f }, 50.0f);
+rig.AddKeyframe(2.0f, Vec3{ 20.0f, 0.0f, 0.0f },
+Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
+
+### Testing interpolation correctness
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1856) (line 1856)
+
+At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
+pos.x = Lerp(0, 10, 0.5) = 5.0
+fovDeg = Lerp(60, 50, 0.5) = 55.0
+auto s05 = rig.Evaluate(0.5f);
+if (std::abs(s05.position.x - 5.0f) > 0.001f ||
+std::abs(s05.fovDeg - 55.0f) > 0.001f)
+{
+std::cout << "[FAIL] cinematic_test/rig_eval_t05: "
+<< "pos.x=" << s05.position.x
+<< " fov=" << s05.fovDeg
+<< " (expected 5.0, 55.0).\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] cinematic_test/rig_eval_t05: "
+<< "pos.x=5.0  fov=55.0 (Lerp correct).\n";
+}
+
+### Testing time advancement with carry-over
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1897) (line 1897)
+
+We build a sequencer with two 0.1 s shots.
+
+  After Tick(0.15): shot 0 finishes (duration=0.1 s), carry
+    0.05 s into shot 1 → CurrentShotIndex() == 1.
+  After Tick(0.15) again: shot 1 finishes (duration=0.1 s,
+    0.05 carry + 0.15 = 0.20 > 0.1) → IsComplete() == true.
+
+We also verify CurrentSample() returns a non-zero position
+while playing (the rig has a non-zero keyframe at t=0.1).
+============================================================
+{
+CinematicSequencer seq;
+
+### Testing callbacks with lambda closures
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1972) (line 1972)
+
+std::function callbacks are idiomatic modern C++.  We use
+lambda closures that capture local counters by reference to
+verify each callback fires the expected number of times with
+the expected argument.
+============================================================
+{
+CinematicSequencer seq;
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1767) (line 1767)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2066) (line 2066)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -23084,7 +23849,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1775) (line 1775)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2074) (line 2074)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -23114,7 +23879,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1803) (line 1803)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2102) (line 2102)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -23137,7 +23902,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1856) (line 1856)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2155) (line 2155)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -23150,7 +23915,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1872) (line 1872)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2171) (line 2171)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

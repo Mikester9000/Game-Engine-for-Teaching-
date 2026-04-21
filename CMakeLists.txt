@@ -532,6 +532,34 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         src/engine/ai/nav_mesh.cpp
     )
 
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Cinematics Sources (Post-M10)
+    # -----------------------------------------------------------------------
+    # The engine/cinematics/ layer provides TWO subsystems for cut-scene
+    # production:
+    #
+    #   camera_rig.cpp — Keyframed camera path.  Stores an ordered list of
+    #     CameraKeyframes (position, look-at, FOV, time) and evaluates the
+    #     interpolated camera state at any shot-local time using binary search
+    #     + Vec3::Lerp.  Zero platform or rendering dependencies.
+    #
+    #   cinematic_sequencer.cpp — Shot/cut orchestrator.  Holds an ordered
+    #     list of (CameraRig, duration) pairs, advances time each frame via
+    #     Tick(dt), fires OnShotChanged / OnComplete callbacks, and pushes the
+    #     interpolated camera state into the active ECS CameraComponent via
+    #     ApplyToCamera(World&) — setting the new cinematicOverride flag so
+    #     CameraSystem uses the cinematic eye position instead of orbit math.
+    #
+    # Both files are pure C++17 (no D3D11 or Vulkan dependency); they are
+    # always included in the sandbox build so --scene cinematic_test is
+    # available in every configuration.
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/engine/cinematics/camera_rig.cpp
+        src/engine/cinematics/cinematic_sequencer.cpp
+    )
+
+
     # D3D11 backend sources (included when ENGINE_ENABLE_D3D11=ON).
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Conditional Source Files
