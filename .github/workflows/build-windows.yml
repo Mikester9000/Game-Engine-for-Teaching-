@@ -305,6 +305,34 @@ jobs:
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bt_test
         shell: cmd
 
+      # -----------------------------------------------------------------------
+      # Post-M10 — Cinematics acceptance tests (CPU-only, no GPU needed).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — cinematic_test CI Gate
+      # This step validates the two new engine/cinematics/ subsystems:
+      #
+      #   Test 1a — CameraRig Duration(): 3-keyframe rig spanning 2 s must
+      #     report Duration() = 2.0 s.
+      #   Test 1b — CameraRig Evaluate(t=0): must return the first keyframe
+      #     (pos.x=0, fov=60) with no interpolation.
+      #   Test 1c — CameraRig Evaluate(t=0.5): must return Lerp midpoint
+      #     between kf[0] and kf[1] (pos.x=5, fov=55).
+      #   Test 1d — CameraRig Evaluate(t=duration): must clamp to the last
+      #     keyframe (pos.x=20, fov=40).
+      #   Test 2a — Sequencer Play(): CurrentShotIndex()==0, IsPlaying()==true.
+      #   Test 2b — Sequencer shot advance: Tick(0.15 s) on a 0.1 s shot
+      #     advances to shot 1 (carry-over).
+      #   Test 2c — Sequencer complete: second Tick(0.15 s) finishes the
+      #     sequence; IsComplete()==true.
+      #   Test 3a — OnShotChanged callback: fires twice with indices 0 and 1.
+      #   Test 3b — OnComplete callback: fires exactly once after all shots.
+      #
+      # No D3D11 renderer needed — all tests are pure C++17 CPU tests.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (Post-M10 — cinematic_test)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene cinematic_test
+        shell: cmd
+
   # --------------------------------------------------------------------------
   # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
   # --------------------------------------------------------------------------

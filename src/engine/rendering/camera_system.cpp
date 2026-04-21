@@ -86,6 +86,28 @@ void CameraSystem::Update(World& world,
             cam.aspectRatio = aspect;
 
             // ----------------------------------------------------------------
+            // TEACHING NOTE — Cinematic override path
+            // When a CinematicSequencer is playing, it writes a pre-computed
+            // eye position and look-at target to the CameraComponent and sets
+            // cinematicOverride=true.  We use those directly to build the view
+            // matrix, bypassing the follow-camera orbit math entirely.
+            // This keeps the two camera modes cleanly separated: the sequencer
+            // owns position authority during a cut-scene; the follow-camera
+            // resumes automatically when the sequencer clears the flag.
+            // ----------------------------------------------------------------
+            if (cam.cinematicOverride)
+            {
+                cam.worldPosition = cam.cinematicEyePos;
+                cam.viewMatrix = BuildLookAt(cam.cinematicEyePos,
+                                             cam.cinematicLookAt,
+                                             { 0.0f, 1.0f, 0.0f });
+                const float fovRad = DegToRad(cam.fovDegrees);
+                cam.projMatrix = BuildPerspective(fovRad, cam.aspectRatio,
+                                                  cam.nearPlane, cam.farPlane);
+                return;  // skip orbit math
+            }
+
+            // ----------------------------------------------------------------
             // Compute the camera's world position from the orbit parameters.
             // ----------------------------------------------------------------
             Vec3 targetPos { 0.0f, 0.0f, 0.0f };
