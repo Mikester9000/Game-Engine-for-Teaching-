@@ -75,7 +75,7 @@ cbuffer SkyCB : register(b0)
     float4 g_horizonColor;  ///< xyz = horizon sky colour, w = unused
     float4 g_fogColor;      ///< xyz = fog colour, w = fog density (0..1)
     float4 g_weatherFx;     ///< x = rainIntensity, y = cloudCover, z = timeOfDay
-}
+};
 
 // ---------------------------------------------------------------------------
 // Input from the vertex shader.

@@ -20,9 +20,10 @@
  *   game/systems/ → engine/rendering/   (allowed: game may call engine)
  *   engine/rendering/ → game/systems/   (FORBIDDEN: engine must not depend on game)
  *
- * The bridge is the plain WeatherType enum, which is defined here in the
- * engine/rendering/ layer and mirrored (as a cast) from the game layer's
- * WeatherState enum.
+ * The bridge is the shared ::WeatherType enum defined in engine/core/Types.hpp.
+ * engine/rendering/ is allowed to include engine/core/ headers — both are in
+ * the engine layer.  The game layer's WeatherSystem already stores and
+ * broadcasts a ::WeatherType value, so no cast or mapping table is needed.
  *
  * ============================================================================
  *
@@ -35,28 +36,10 @@
 
 #pragma once
 
+#include "engine/core/Types.hpp"   // ::WeatherType (CLEAR/CLOUDY/RAIN/STORM/FOG)
+
 namespace engine {
 namespace rendering {
-
-// ---------------------------------------------------------------------------
-// TEACHING NOTE — WeatherType Enum
-// ---------------------------------------------------------------------------
-// The four weather states correspond to FF15's day/night weather cycle:
-//   Clear  — sunny, minimal fog, full sky color
-//   Cloudy — scattered clouds, moderate fog, reduced sun intensity
-//   Rain   — heavy clouds, significant fog, reduced visibility
-//   Storm  — full overcast, dense fog, maximum rain, darkened sky
-//
-// The values are assigned explicit integers so they can be cast from the
-// game layer's WeatherState enum without a lookup table.
-// ---------------------------------------------------------------------------
-enum class WeatherType : int
-{
-    Clear  = 0,  ///< Clear sky, no precipitation
-    Cloudy = 1,  ///< Overcast, no precipitation
-    Rain   = 2,  ///< Light to medium rain
-    Storm  = 3,  ///< Heavy rain, lightning, dense fog
-};
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — WeatherFxState
@@ -101,8 +84,10 @@ public:
     // -----------------------------------------------------------------------
     // Update — compute render state for the given weather type and dt.
     // Smoothly lerps current state toward the target implied by `type`.
+    // WeatherType::FOG is treated as Rain-level precipitation with maximum
+    // fog density, since FOG is a gameplay variant that is visually similar.
     // -----------------------------------------------------------------------
-    void Update(WeatherType type, float dt);
+    void Update(::WeatherType type, float dt);
 
     // -----------------------------------------------------------------------
     // GetState — returns the current (smoothly transitioning) weather state.

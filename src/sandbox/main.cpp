@@ -451,7 +451,7 @@ int main(int argc, char* argv[])
                 //     elevation at midnight (t=0 h).
                 //
                 //   Test 3 — Weather states: fog density must differ between
-                //     WeatherType::Clear and WeatherType::Storm.
+                //     WeatherType::CLEAR and WeatherType::STORM.
                 //
                 // All three must pass for the scene to report [PASS].
                 // -----------------------------------------------------------
@@ -505,13 +505,13 @@ int main(int argc, char* argv[])
                     engine::rendering::SkyRenderer skyTest;
                     skyTest.SetTimeOfDay(12.0f);   // noon for a fair comparison
 
-                    skyTest.SetWeatherType(engine::rendering::WeatherType::Clear);
+                    skyTest.SetWeatherType(WeatherType::CLEAR);
                     // Update WeatherFx many times so it reaches the target
                     for (int i = 0; i < 600; ++i)
                         skyTest.Update(0.1f);   // 60 seconds at dt=0.1
                     auto clearConst = skyTest.GetShaderConstants();
 
-                    skyTest.SetWeatherType(engine::rendering::WeatherType::Storm);
+                    skyTest.SetWeatherType(WeatherType::STORM);
                     for (int i = 0; i < 600; ++i)
                         skyTest.Update(0.1f);
                     auto stormConst = skyTest.GetShaderConstants();
@@ -541,6 +541,7 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] dynamic_sky: all 3 acceptance tests passed.\n";
             }
+            else if (scene == "physics_test")
             {
                 // -----------------------------------------------------------
                 // TEACHING NOTE — M5 Physics Acceptance Tests

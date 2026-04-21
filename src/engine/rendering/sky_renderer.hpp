@@ -68,7 +68,6 @@ namespace rendering {
 //
 // sizeof = 5 × 16 = 80 bytes.
 // ---------------------------------------------------------------------------
-#pragma pack(push, 1)
 struct SkyShaderConstants
 {
     // --- float4 block 0: sun direction + intensity ---
@@ -101,7 +100,6 @@ struct SkyShaderConstants
     float timeOfDay     = 8.0f;   ///< Current time-of-day 0..24 h (for debug overlay)
     float _pad2         = 0.0f;
 };
-#pragma pack(pop)
 
 // Compile-time guard: sizeof must be a multiple of 16 for D3D11 CB alignment.
 static_assert(sizeof(SkyShaderConstants) % 16 == 0,
@@ -169,7 +167,10 @@ public:
 
     // -----------------------------------------------------------------------
     // SetWeatherType — override the weather state.
-    // The new state is applied immediately (not interpolated).
+    // The weather type itself is changed immediately; the visual WeatherFx
+    // state (fog density, rain intensity, cloud cover) is still smoothly
+    // blended toward its target in subsequent Update() calls so transitions
+    // remain gradual rather than snapping.
     // -----------------------------------------------------------------------
     void SetWeatherType(WeatherType w);
 
@@ -192,7 +193,7 @@ public:
 private:
     float       m_timeOfDay   = 8.0f;              ///< Simulation time 0..24 h
     float       m_timeScale   = 60.0f;             ///< Real-to-sim compression
-    WeatherType m_weatherType = WeatherType::Clear;
+    WeatherType m_weatherType = WeatherType::CLEAR;
     WeatherFx   m_weatherFx;
 
     // Internal helper: compute sun elevation (−1..+1) from time-of-day.

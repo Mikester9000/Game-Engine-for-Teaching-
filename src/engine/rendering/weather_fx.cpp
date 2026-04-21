@@ -62,13 +62,16 @@ static constexpr float kStormCloud  = 1.00f;   // Complete overcast
 // WeatherFx::Update
 // ---------------------------------------------------------------------------
 
-void WeatherFx::Update(WeatherType type, float dt)
+void WeatherFx::Update(::WeatherType type, float dt)
 {
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Target State Selection
     // -----------------------------------------------------------------------
     // We pick the target fog/rain/cloud values for the current WeatherType
     // and then lerp the current state toward them each frame.
+    // WeatherType::FOG (gameplay visibility reduction) is treated as
+    // Rain-level precipitation with maximum fog density for rendering
+    // purposes — dense fog without heavy rain matches FF15's misty dungeon look.
     // -----------------------------------------------------------------------
     float targetFog   = kClearFog;
     float targetRain  = kClearRain;
@@ -76,28 +79,38 @@ void WeatherFx::Update(WeatherType type, float dt)
 
     switch (type)
     {
-    case WeatherType::Clear:
+    case WeatherType::CLEAR:
         targetFog   = kClearFog;
         targetRain  = kClearRain;
         targetCloud = kClearCloud;
         break;
 
-    case WeatherType::Cloudy:
+    case WeatherType::CLOUDY:
         targetFog   = kCloudyFog;
         targetRain  = kCloudyRain;
         targetCloud = kCloudyCloud;
         break;
 
-    case WeatherType::Rain:
+    case WeatherType::RAIN:
         targetFog   = kRainFog;
         targetRain  = kRainRain;
         targetCloud = kRainCloud;
         break;
 
-    case WeatherType::Storm:
+    case WeatherType::STORM:
         targetFog   = kStormFog;
         targetRain  = kStormRain;
         targetCloud = kStormCloud;
+        break;
+
+    case WeatherType::FOG:
+        // TEACHING NOTE — FOG as a rendering state
+        // FOG is a gameplay type (halves enemy detection range).
+        // Visually we render it as maximum fog density + light rain,
+        // similar to heavy cloud cover without the full storm.
+        targetFog   = kStormFog;
+        targetRain  = kCloudyRain;
+        targetCloud = kRainCloud;
         break;
     }
 
