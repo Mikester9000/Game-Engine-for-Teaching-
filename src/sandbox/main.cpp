@@ -2312,8 +2312,8 @@ int main(int argc, char* argv[])
                 //      defined and the renderer is always D3D11Renderer.
                 //   b) dynamic_cast returns nullptr on failure, which we check.
                 // -----------------------------------------------------------
-                engine::rendering::d3d11::D3D11Renderer* d3dRenderer =
-                    dynamic_cast<engine::rendering::d3d11::D3D11Renderer*>(renderer.get());
+                engine::rendering::D3D11Renderer* d3dRenderer =
+                    dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
                 if (!d3dRenderer)
                 {
