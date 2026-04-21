@@ -179,19 +179,20 @@ physics (force/torque on 4 wheels), road/terrain queries, and a chase camera.
 
 ## 7. Weather & Time-of-Day
 
-**Status:** ✅ (WeatherSystem, day/night cycle) · ⬜ (sky renderer, curve editor)
+**Status:** ✅ (WeatherSystem, day/night cycle, sky renderer, WeatherFx, D3D11 procedural sky — M10)
 
 **Purpose:** The world transitions from dawn to dusk, with dynamic fog, rain,
 and clear weather affecting enemy spawns and visual ambiance.
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/game/systems/WeatherSystem.hpp/.cpp` — time cycle, weather FSM, EventBus publish (exists) |
-| | `src/engine/rendering/sky_renderer.hpp/.cpp` — procedural sky, sun/moon, atmospheric scatter |
-| | `src/engine/rendering/weather_fx.hpp/.cpp` — rain particles, fog density |
+| **Runtime component(s)** | `src/game/systems/WeatherSystem.hpp/.cpp` — time cycle, weather FSM, EventBus publish (✅) |
+| | `src/engine/rendering/sky_renderer.hpp/.cpp` — procedural sky: time-of-day, sun direction, zenith/horizon colour phases, sunset/sunrise tint, cloud cover darkening (✅ M10) |
+| | `src/engine/rendering/weather_fx.hpp/.cpp` — fog density, rain intensity, cloud cover smooth lerp (✅ M10) |
+| | `src/engine/rendering/d3d11/D3D11Renderer.cpp::LoadSkyScene` — sky.vs.hlsl (SV_VertexID full-screen triangle), sky.ps.hlsl (gradient + sun disc + fog), sky CB (✅ M10) |
 | **Tool component(s)** | `tools/creation_engine.py` — time-of-day curve baker (JSON curves → cooked LUT) |
 | **Data formats** | Source: `environment/tod.json` (curves); Cooked: `cooked/environment/tod.lut` |
-| **Acceptance tests** | Advance time 24 h headlessly; assert all 4 weather states visited at least once |
+| **Acceptance tests** | `--headless --scene dynamic_sky` — Test 1: GPU pipeline (RecordHeadlessFrame); Test 2: sun above horizon at noon, below at midnight; Test 3: fog density differs ≥0.1 between Clear and Storm ✅ M10 |
 | | EventBus receives `WeatherChanged` events at each transition |
 
 ---
@@ -336,7 +337,7 @@ teaching slice but must follow the same pipeline shape.
 | 4 | Quests & objectives | 🔨 | ⬜ | ⬜ | QuestSystem + DialogueSystem in D3D11 GameRuntime (M8.6); dialogue tree editor ⬜ |
 | 5 | Cinematics | ⬜ | ⬜ | ⬜ | No `src/engine/cinematics/` |
 | 6 | Vehicles | ⬜ | ⬜ | ⬜ | State enum only; no physics/road/camera |
-| 7 | Weather & time-of-day | 🔨 | ⬜ | ⬜ | WeatherSystem in D3D11 GameRuntime (M8.1); sky renderer ⬜ |
+| 7 | Weather & time-of-day | ✅ | 🔨 | ✅ | SkyRenderer + WeatherFx + D3D11 sky pipeline + `dynamic_sky` headless CI (M10) ✅; tod.lut curve editor ⬜ |
 | 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + AudioSourceComponent ✅ (M3) |
 | 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
 | 10 | Physics | ✅ | ✅ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent`; 3 headless CI tests (M5) |

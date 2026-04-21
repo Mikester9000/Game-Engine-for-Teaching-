@@ -63,11 +63,11 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | **Vulkan descriptor sets** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — implement when Vulkan work resumes |
 | D3D11 textured quad scene | ✅ | HLSL shaders `shaders/textured_quad.vs.hlsl` + `textured_quad.ps.hlsl`; `LoadScene("textured_quad")` + `DrawTexturedQuad()` + `UnloadScene()` in D3D11Renderer; 1×1 white fallback if no DDS |
 | D3D11 PBR rendering (M9) | ✅ | `shaders/pbr_mesh.vs.hlsl` + `pbr_mesh.ps.hlsl` (SM 4.0); GGX NDF + Smith G + Schlick F + Reinhard tonemap + gamma; `LoadScene("pbr_mesh")`; UV sphere 16×16; 3 CBs (perFrameCB/lightCB/materialCB); `--headless --scene pbr_mesh` CI |
-| **PBR: IBL + shadow maps + bloom** | **(DEFERRED)** | Full IBL cubemaps, directional shadow map, bloom post-processing — deferred to M10+ |
+| **PBR: IBL + shadow maps + bloom** | **(DEFERRED)** | Full IBL cubemaps, directional shadow map, bloom post-processing — deferred to M11+ |
 | **Directional shadow map** | **(DEFERRED)** | Shadow pass render target + shadow sampling |
 | **Post-processing (bloom + tonemap)** | **(DEFERRED)** | Full-screen pass pipeline |
-| **Dynamic sky / procedural time-of-day** | **(DEFERRED)** | `src/engine/rendering/sky_renderer.hpp/.cpp` |
-| **Weather VFX (rain, fog)** | **(DEFERRED)** | `src/engine/rendering/weather_fx.hpp/.cpp` |
+| Dynamic sky / procedural time-of-day (M10) | ✅ | `src/engine/rendering/sky_renderer.hpp/.cpp` — time-of-day clock, sun direction, zenith/horizon colour phases, sunset/sunrise tint, cloud darkening; `--headless --scene dynamic_sky` CI |
+| Weather VFX — fog + rain (M10) | ✅ | `src/engine/rendering/weather_fx.hpp/.cpp` — fog density, rain intensity, cloud cover smooth lerp; `shaders/sky.vs.hlsl` (SV_VertexID full-screen triangle) + `sky.ps.hlsl` (gradient + sun disc + fog + weather + Reinhard + gamma) |
 | D3D11 GPU skinned mesh pass | ✅ | `shaders/skinned_mesh.vs.hlsl` + `skinned_mesh.ps.hlsl`; `GpuSkinningBuffer` (64 × Mat4 CB); D3D11Renderer `skinned_mesh` scene |
 | **Vulkan GPU skinned mesh pass** | **(DEFERRED)** | `shaders/skinned_mesh.vert/.frag`; joint matrix UBO |
 | D3D11 swapchain resize handling | ✅ | `D3D11Renderer::RecreateSwapchain()` |
@@ -134,7 +134,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M9 (PBR Cook-Torrance BRDF, all sub-milestones M9.1–M9.7) is ✅ complete.** Next: M10 (Dynamic Sky + weather VFX), vehicle physics, behaviour tree, cinematics, Vulkan catch-up.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M9 (PBR Cook-Torrance BRDF, all sub-milestones M9.1–M9.7) is ✅ complete.** **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** Next: vehicle physics, behaviour tree AI, cinematics, Vulkan catch-up.
 
 ---
 
@@ -260,7 +260,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M9 ✅ complete (Cook-Torrance PBR BRDF: GGX NDF + Smith G + Schlick F + Reinhard tonemap + gamma, UV sphere, 3 CBs, `pbr_mesh` headless CI). Next: M10 (Dynamic Sky + weather VFX), vehicle physics, behaviour tree, cinematics, Vulkan catch-up.**
+> **Current position: M10 ✅ complete (Dynamic Sky: SkyRenderer + WeatherFx + sky.vs.hlsl + sky.ps.hlsl + D3D11 SkyScene + 3-test headless CI). Next: vehicle physics, behaviour tree AI, cinematics, Vulkan catch-up.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -270,10 +270,10 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | ~~**2**~~ | ~~**M7: World streaming**~~ | ✅ done — WorldStreamingManager + Zone wiring (M7.1), AssetLoader `.level` (M7.2), cancellation tokens (M7.3), frame-budget cap (M7.4), ImGui debug overlay (M7.5) |
 | ~~**3**~~ | ~~**M8: Gameplay integration**~~ | ✅ done — GameRuntime, InputMapper, CameraSystem, HUD, DialogueSystem, Zone streaming → D3D11 (M8.7), SaveSystem, m8_gameplay + m8_streaming CI scenes |
 | ~~**4**~~ | ~~**M9: PBR rendering**~~ | ✅ done — Cook-Torrance BRDF (GGX NDF + Smith G + Schlick F), UV sphere, 3 CBs, Reinhard tonemap, gamma, `pbr_mesh` headless CI |
-| **1 — Now** | **M10: Dynamic sky** | Procedural time-of-day sky renderer + weather VFX (rain, fog) |
-| **2** | **Post-M9: Vehicle physics** | `VehicleComponent` + wheel-ray suspension + chase camera |
-| **3** | **Post-M9: Behaviour tree AI** | Replace/augment FSM with real BT; formation system; nav-mesh baker |
-| **4** | **Post-M9: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
+| ~~**1 — Now**~~ | ~~**M10: Dynamic sky**~~ | ✅ done — SkyRenderer + WeatherFx + sky.vs.hlsl + sky.ps.hlsl + D3D11 SkyScene + 3 headless acceptance tests |
+| **1 — Now** | **Post-M10: Vehicle physics** | `VehicleComponent` + wheel-ray suspension + chase camera |
+| **2** | **Post-M10: Behaviour tree AI** | Replace/augment FSM with real BT; formation system; nav-mesh baker |
+| **3** | **Post-M10: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
@@ -804,7 +804,8 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M7.5 | ImGui streaming debug overlay + editor View menu toggle | ✅ |
 | M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | ✅ |
 | M9 | PBR Cook-Torrance BRDF (D3D11: GGX NDF, Smith G, Schlick F, Reinhard, UV sphere, headless CI) | ✅ |
-| Post-M9 | Dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up | ⬜ |
+| M10 | Dynamic sky + weather VFX (SkyRenderer, WeatherFx, sky.vs.hlsl, sky.ps.hlsl, 3-test headless CI) | ✅ |
+| Post-M10 | Vehicle physics, behaviour tree, cinematics, Vulkan catch-up | ⬜ |
 
 ---
 
@@ -858,8 +859,8 @@ A student must be able to:
 | Vulkan PBR pipeline | `src/engine/rendering/vulkan/pbr_pipeline.hpp/.cpp` | IBL + directional light; metallic-roughness workflow |
 | Vulkan shadow map | Shadow render pass + shadow CB | `VK_FORMAT_D32_SFLOAT` offscreen; PCF shadow sampling in PBR shader |
 | Vulkan post-processing | Full-screen pass pipeline | Bloom (extract + blur + composite) + Reinhard/ACES tonemap |
-| Vulkan dynamic sky | `src/engine/rendering/sky_renderer.hpp/.cpp` | Preetham/Bruneton sky; time-of-day CBs |
-| Vulkan weather VFX | `src/engine/rendering/weather_fx.hpp/.cpp` | GPU particle rain + fog pass |
+| Vulkan dynamic sky | Reuse `src/engine/rendering/sky_renderer.hpp/.cpp` + `weather_fx.hpp/.cpp` (already ✅ D3D11). Add `shaders/sky.vert/.frag` GLSL + Vulkan sky pipeline in `VulkanRenderer` | D3D11 CPU side is done; only Vulkan GPU pipeline deferred |
+| Vulkan weather VFX | GPU particle rain + fog pass; reuse `WeatherFxState` from `weather_fx.hpp` (already ✅ D3D11) | CPU state done; Vulkan particle pipeline deferred |
 | Vulkan GPU skinning | `shaders/skinned_mesh.vert/.frag` + UBO | joint matrix UBO; `VulkanRenderer::UploadJointMatrices()` |
 | Vulkan HUD / menu stack | `src/engine/ui/` (Vulkan imgui binding) | imgui Vulkan backend; bind to Vulkan render pass |
 | Vulkan `M8` gameplay wiring | All gameplay systems → `VulkanRenderer` | Wire combat, AI, quests, etc. into Vulkan render loop |

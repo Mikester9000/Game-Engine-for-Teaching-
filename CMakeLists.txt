@@ -521,6 +521,13 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             # buffer that uploads 64 joint matrices (4096 bytes) to the VS
             # every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
             src/engine/animation/gpu_skinning.cpp
+            # TEACHING NOTE — M10: SkyRenderer + WeatherFx are renderer-agnostic
+            # CPU objects that compute time-of-day sky colours and weather state.
+            # They are compiled alongside D3D11Renderer because D3D11Renderer
+            # owns a SkyRenderer member (m_skyRenderer).  A future Vulkan backend
+            # would also include these files without modification.
+            src/engine/rendering/sky_renderer.cpp
+            src/engine/rendering/weather_fx.cpp
         )
     endif()
 
@@ -919,6 +926,14 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             #   + gamma correction.  Metallic-roughness material workflow.
             "${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.vs.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/pbr_mesh.ps.hlsl"
+            # TEACHING NOTE — M10: Dynamic sky HLSL shaders.
+            # sky.vs.hlsl generates a full-screen triangle using SV_VertexID
+            #   (no vertex buffer required; 3 vertices cover the entire viewport).
+            # sky.ps.hlsl implements the procedural sky:
+            #   zenith-to-horizon gradient + sun disc + atmospheric scatter
+            #   approximation + fog overlay + rain darkening + Reinhard tonemap.
+            "${CMAKE_SOURCE_DIR}/shaders/sky.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/sky.ps.hlsl"
         )
 
         add_custom_command(TARGET engine_sandbox POST_BUILD
