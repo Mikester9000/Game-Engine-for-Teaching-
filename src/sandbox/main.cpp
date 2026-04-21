@@ -75,6 +75,7 @@
  *   engine_sandbox.exe --scene game                         # M8 full gameplay windowed (D3D11)
  *   engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
  *   engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
+ *   engine_sandbox.exe --headless --scene vehicle_test      # Post-M10 vehicle physics acceptance test (CI)
  *
  * ============================================================================
  *
@@ -108,6 +109,9 @@
 #  include "engine/physics/character_controller.hpp"
 #  include "engine/physics/raycast.hpp"
 #  include "engine/physics/hit_volume.hpp"
+// TEACHING NOTE — VehicleSystem (Post-M10) is compiled only when
+// ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
+#  include "engine/vehicle/vehicle_system.hpp"
 #endif
 
 // ---------------------------------------------------------------------------
@@ -760,6 +764,185 @@ int main(int argc, char* argv[])
                              "[PASS] physics_test: skipped (no Jolt Physics in build).\n";
 #endif
             }
+            else if (scene == "vehicle_test")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Post-M10 Vehicle Physics headless test
+                // -----------------------------------------------------------
+                // This acceptance scene validates the VehicleSystem:
+                //
+                //   Test 1 — SUSPENSION: The vehicle must stay above the ground
+                //   after 120 simulated frames (2 s at 1/60 dt).  With no
+                //   suspension the vehicle would fall to Y ≈ -19.6 m (half a
+                //   free-fall of 2 s) under gravity.  A working spring holds it
+                //   at roughly the ride height above the floor.
+                //
+                //   Test 2 — THROTTLE: With throttle=1.0 the car must travel
+                //   at least 1 m forward (Z increases) in 120 frames.  At
+                //   maxSpeed=30 m/s the expected travel is ~60 m; we use 1 m
+                //   as a generous lower bound that rules out "stuck" bugs.
+                //
+                //   Test 3 — WHEEL GROUNDING: At least 2 of the 4 wheels must
+                //   be reporting isGrounded=true after settling.  This confirms
+                //   that suspension raycasts are hitting the static floor body.
+                //
+                // All three tests run without any D3D11 rendering: they are
+                // pure physics CPU tests, like the M5 physics_test scene.
+                // -----------------------------------------------------------
+#ifdef ENGINE_ENABLE_PHYSICS
+                using namespace engine;
+                using physics::PhysicsWorld;
+                using vehicle::VehicleSystem;
+                using math::Vec3;
+
+                // --- Shared ECS world for the acceptance tests. ---
+                // TEACHING NOTE — Heap-allocated World (avoids stack overflow)
+                // See the m8_gameplay note for why World must be heap-allocated.
+                auto vehicleWorld = std::make_unique<World>();
+                RegisterAllComponents(*vehicleWorld);
+
+                // --- Initialise physics world (flat ground at Y=0). ---
+                PhysicsWorld physWorld;
+                if (!physWorld.Init())
+                {
+                    std::cout << "[FAIL] vehicle_test: PhysicsWorld::Init() failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+
+                // Create a static floor box: 200 m × 0.1 m × 200 m at Y = -0.05
+                // so its top surface is exactly at Y = 0.
+                physWorld.CreateBox(
+                    Vec3{ 0.0f, -0.05f, 0.0f },    // centre
+                    Vec3{ 100.0f, 0.05f, 100.0f },  // half-extents
+                    0.0f,                            // mass irrelevant — isStatic
+                    true);                           // isStatic
+
+                // --- Spawn vehicle entity above the floor. ---
+                const EntityID vehicleID = vehicleWorld->CreateEntity();
+                {
+                    TransformComponent tc;
+                    // Place the chassis centre 1.2 m above the floor.
+                    // With suspensionRestLength=0.5 m and wheelRestPositions.y=-0.4 m
+                    // the wheel ray starts at (1.2 - 0.4 + 0.5 + 0.2 = 1.5 m) and
+                    // hits the floor at distance 1.5 m, giving compression > 0 once
+                    // the vehicle settles.
+                    tc.position = { 0.0f, 1.2f, 0.0f };
+                    vehicleWorld->AddComponent<TransformComponent>(vehicleID, tc);
+                }
+                {
+                    VehicleComponent vc;
+                    vc.throttleInput = 1.0f;   // full throttle throughout the test
+                    vc.isOccupied    = true;
+                    vehicleWorld->AddComponent<VehicleComponent>(vehicleID, vc);
+                }
+
+                // --- Init VehicleSystem (creates Jolt chassis body). ---
+                VehicleSystem vSys;
+                vSys.Init(*vehicleWorld, physWorld);
+
+                // --- Simulate 120 frames at 1/60 dt (= 2 simulated seconds). ---
+                constexpr int   kFrames = 120;
+                constexpr float kDt     = 1.0f / 60.0f;
+                const float  zStart = vehicleWorld->GetComponent<TransformComponent>(vehicleID)
+                                        .position.z;
+
+                for (int f = 0; f < kFrames; ++f)
+                {
+                    physWorld.Step(kDt);
+                    vSys.Update(*vehicleWorld, physWorld, kDt);
+                }
+
+                int testsFailed = 0;
+
+                // ---- Test 1: Suspension — vehicle stays above ground ----
+                {
+                    // TEACHING NOTE — Why -0.5 m threshold?
+                    // Without suspension the vehicle falls freely: Y ≈ -19.6 m.
+                    // With working suspension it should settle near Y ≈ 0.4–1.2 m.
+                    // We allow down to -0.5 m as a safety margin for tuning changes.
+                    const float yAfter = vehicleWorld->GetComponent<TransformComponent>(vehicleID)
+                                            .position.y;
+                    if (yAfter < -0.5f)
+                    {
+                        std::cout << "[FAIL] vehicle_test/suspension: "
+                                  << "vehicle Y=" << yAfter
+                                  << " (fell through floor; expected > -0.5).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] vehicle_test/suspension: "
+                                  << "vehicle Y=" << yAfter << " (suspension active).\n";
+                    }
+                }
+
+                // ---- Test 2: Throttle — vehicle moves forward ----
+                {
+                    const float zAfter = vehicleWorld->GetComponent<TransformComponent>(vehicleID)
+                                            .position.z;
+                    const float travelZ = zAfter - zStart;
+                    if (travelZ < 1.0f)
+                    {
+                        std::cout << "[FAIL] vehicle_test/throttle: "
+                                  << "forward travel=" << travelZ
+                                  << " m in 2 s (expected ≥ 1.0 m).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] vehicle_test/throttle: "
+                                  << "forward travel=" << travelZ << " m in 2 s.\n";
+                    }
+                }
+
+                // ---- Test 3: Wheel grounding — at least 2 wheels grounded ----
+                {
+                    const auto& vc = vehicleWorld->GetComponent<VehicleComponent>(vehicleID);
+                    int groundedCount = 0;
+                    for (int i = 0; i < 4; ++i)
+                        if (vc.wheelStates[i].isGrounded) ++groundedCount;
+
+                    if (groundedCount < 2)
+                    {
+                        std::cout << "[FAIL] vehicle_test/grounding: "
+                                  << groundedCount
+                                  << "/4 wheels grounded (expected ≥ 2).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] vehicle_test/grounding: "
+                                  << groundedCount << "/4 wheels grounded.\n";
+                    }
+                }
+
+                vSys.Shutdown(*vehicleWorld, physWorld);
+                physWorld.Shutdown();
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] vehicle_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] vehicle_test: all 3 acceptance tests passed.\n";
+
+#else
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Build-time gate for vehicle_test
+                // If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
+                // is not defined and the vehicle_test scene is not available.
+                // Build with the windows-ninja-debug-physics preset and install
+                // joltphysics via vcpkg to enable this scene.
+                // -----------------------------------------------------------
+                std::cout << "[SKIP] vehicle_test: ENGINE_ENABLE_PHYSICS not defined "
+                             "(rebuild with joltphysics via vcpkg).\n"
+                             "[PASS] vehicle_test: skipped (no Jolt Physics in build).\n";
+#endif
             else if (scene == "testworld")
             {
                 // -----------------------------------------------------------

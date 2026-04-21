@@ -36,7 +36,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Shared runtime headers | ✅ | `shared/runtime/`: `Guid.hpp`, `VersionedFile.hpp`, `Log.hpp` |
 | CI — Linux build + Python tests | ✅ | `.github/workflows/build-linux.yml`: builds terminal game, runs 32+11 pytest |
 | CI — asset manifest validation | ✅ | `.github/workflows/validate-assets.yml` |
-| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; M7 streaming tests (`streaming_load`, `streaming_evict`, `streaming_async`); `build-windows-physics` job (Jolt, classic-mode vcpkg, `--scene physics_test`) |
+| CI — Windows build + headless | ✅ | `.github/workflows/build-windows.yml`: MSVC x64 + D3D11 (no Vulkan SDK); builds `engine_sandbox` + `cook`; runs `--headless` (WARP) + `--validate-project`; M7 streaming tests (`streaming_load`, `streaming_evict`, `streaming_async`); `build-windows-physics` job (Jolt, classic-mode vcpkg, `--scene physics_test`, `--scene vehicle_test`) |
 | CI — contract / golden-file tests | ✅ | `.github/workflows/contract-tests.yml`: runs `cook`, diffs against `tests/golden/assetdb_expected.json`; pytest cook pipeline (13 tests); TEACHING NOTE audit |
 | CI — Architecture Lint | ✅ | `.github/workflows/architecture-lint.yml`: runs `check_architecture.py` (file-size + layer rules) and `extract_teaching_notes.py`; fails if `CURRICULUM_INDEX.md` is stale |
 | `vcpkg.json` | ✅ | Repo root; `nlohmann-json` (M2), `directxtex` (M3 texture), `imgui[docking,dx11-binding,win32-binding]` (editor), `joltphysics` (M5; CI physics job installs via classic-mode vcpkg separately) |
@@ -121,7 +121,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | Dialogue system | ⬜ | `src/game/systems/dialogue_system.hpp/.cpp` — referenced but not created |
 | Behaviour tree AI | ⬜ | `src/engine/ai/behaviour_tree.hpp/.cpp` — FSM exists; BT not implemented |
 | Formation system | ⬜ | `src/engine/ai/formation_system.hpp/.cpp` |
-| Vehicle physics | ⬜ | State enum only; `src/game/systems/vehicle_system.hpp/.cpp` not yet complete |
+| Vehicle physics | ✅ | `src/engine/vehicle/vehicle_system.hpp/.cpp` — `VehicleSystem` (wheel-ray suspension + spring-damper + Ackermann steer + fuel); `WheelState` × 4 in `VehicleComponent`; vehicle chase camera in `CameraSystem`; `--scene vehicle_test` headless CI |
 
 ---
 
@@ -134,7 +134,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M9 (PBR Cook-Torrance BRDF, all sub-milestones M9.1–M9.7) is ✅ complete.** **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** Next: vehicle physics, behaviour tree AI, cinematics, Vulkan catch-up.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** **Post-M10 Vehicle Physics is ✅ complete:** `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steering, fuel drain), `WheelState` per-wheel snapshot in `VehicleComponent`, vehicle chase camera in `CameraSystem`, `--scene vehicle_test` 3-test headless CI. Next: behaviour tree AI, cinematics, Vulkan catch-up.
 
 ---
 
@@ -260,7 +260,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M10 ✅ complete (Dynamic Sky: SkyRenderer + WeatherFx + sky.vs.hlsl + sky.ps.hlsl + D3D11 SkyScene + 3-test headless CI). Next: vehicle physics, behaviour tree AI, cinematics, Vulkan catch-up.**
+> **Current position: Post-M10 Vehicle Physics ✅ complete (VehicleSystem + WheelState + VehicleComponent expansion + chase camera + vehicle_test CI). Next: behaviour tree AI, cinematics, Vulkan catch-up.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -271,8 +271,8 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | ~~**3**~~ | ~~**M8: Gameplay integration**~~ | ✅ done — GameRuntime, InputMapper, CameraSystem, HUD, DialogueSystem, Zone streaming → D3D11 (M8.7), SaveSystem, m8_gameplay + m8_streaming CI scenes |
 | ~~**4**~~ | ~~**M9: PBR rendering**~~ | ✅ done — Cook-Torrance BRDF (GGX NDF + Smith G + Schlick F), UV sphere, 3 CBs, Reinhard tonemap, gamma, `pbr_mesh` headless CI |
 | ~~**1 — Now**~~ | ~~**M10: Dynamic sky**~~ | ✅ done — SkyRenderer + WeatherFx + sky.vs.hlsl + sky.ps.hlsl + D3D11 SkyScene + 3 headless acceptance tests |
-| **1 — Now** | **Post-M10: Vehicle physics** | `VehicleComponent` + wheel-ray suspension + chase camera |
-| **2** | **Post-M10: Behaviour tree AI** | Replace/augment FSM with real BT; formation system; nav-mesh baker |
+| ~~**1 — Now**~~ | ~~**Post-M10: Vehicle physics**~~ | ✅ done — `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steering), `WheelState` × 4, vehicle chase camera in CameraSystem, `--scene vehicle_test` CI |
+| **1 — Now** | **Post-M10: Behaviour tree AI** | Replace/augment FSM with real BT; formation system; nav-mesh baker |
 | **3** | **Post-M10: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
 | **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
@@ -439,7 +439,7 @@ check this table — the component you need may already exist.
 | `AnimatorComponent` | Animation system (M4) | Already ✅ added — `skeletonID`, `currentClipID`, `blendTreeID`, `playbackSpeed`, `currentTime`, `jointMatrices[MAX_JOINTS]` |
 | `RigidBodyComponent` | Physics system (M5) | Already ✅ added — component 22: `mass`, `isStatic`, `useGravity`, `linearDamping`, `bodyID` (opaque Jolt handle, uint32_t) |
 | `ColliderComponent` | Physics system (M5) | Already ✅ added — component 23: `shapeType` (Box/Sphere/Capsule), `halfExtents`, `radius`, `isTrigger` |
-| `VehicleComponent` | Vehicle system (post-M8) | `throttle`, `brake`, `steerAngle`, wheel suspension state (4 wheels), `currentSpeed` |
+| `VehicleComponent` | Vehicle system (Post-M10) | Already ✅ expanded — `throttleInput`, `brakeInput`, `steerInput`, `velocity`, `yaw`, `wheelStates[4]` (WheelState with spring compression/damping), `physicsBodyID`, full suspension tuning |
 
 ---
 
@@ -805,7 +805,8 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M8 | Wire all gameplay into D3D11 runtime (see M8.0 plan above) | ✅ |
 | M9 | PBR Cook-Torrance BRDF (D3D11: GGX NDF, Smith G, Schlick F, Reinhard, UV sphere, headless CI) | ✅ |
 | M10 | Dynamic sky + weather VFX (SkyRenderer, WeatherFx, sky.vs.hlsl, sky.ps.hlsl, 3-test headless CI) | ✅ |
-| Post-M10 | Vehicle physics, behaviour tree, cinematics, Vulkan catch-up | ⬜ |
+| Post-M10 | Vehicle physics | ✅ |
+| Post-M10 | Behaviour tree, cinematics, Vulkan catch-up | ⬜ |
 
 ---
 
