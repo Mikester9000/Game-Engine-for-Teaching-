@@ -1460,37 +1460,197 @@ struct CampComponent {
 // ---------------------------------------------------------------------------
 
 /**
+ * @struct WheelState
+ * @brief Per-wheel physics snapshot produced each frame by VehicleSystem.
+ *
+ * ============================================================================
+ * TEACHING NOTE — Wheel-Ray Suspension
+ * ============================================================================
+ * Wheel-ray (sometimes called "wheel-ray casting" or "spring suspension")
+ * is the dominant technique used in AAA open-world games (FFXV's Regalia,
+ * GTA, BeamNG.drive) for vehicle suspension.  Instead of simulating the
+ * full suspension geometry, each wheel fires a short downward ray from a
+ * fixed attachment point on the chassis.  The gap between the ray hit
+ * distance and the desired "rest length" gives the spring compression.
+ *
+ * Spring model per wheel:
+ *   F_susp = springStiffness * compression − springDamping * dCompression/dt
+ *
+ * This single force law is enough to produce realistic-feeling suspension
+ * that keeps the car on bumpy terrain, body-rolls in corners, and nosedives
+ * under braking.
+ * ============================================================================
+ */
+struct WheelState {
+    float compression     = 0.0f;   ///< Spring compression this frame (m). 0 = fully extended.
+    float prevCompression = 0.0f;   ///< Compression previous frame (for damping derivative).
+    engine::math::Vec3 contactPoint {};  ///< World-space ground contact point (valid only when isGrounded).
+    bool  isGrounded      = false;  ///< True when the suspension ray hits the ground.
+};
+
+/**
  * @struct VehicleComponent
  * @brief Tracks vehicle state for the Regalia or other driveable objects.
+ *
+ * ============================================================================
+ * TEACHING NOTE — VehicleComponent Design
+ * ============================================================================
+ * A VehicleComponent stores both the *input* state (throttle, brake, steer)
+ * driven by player input / AI, and the *physics output* state (velocity, yaw,
+ * wheel suspension snapshots) computed by VehicleSystem each frame.
+ *
+ * This separation mirrors the Model-View-Controller pattern used in game
+ * engines:
+ *   Input layer   → writes throttleInput / brakeInput / steerInput.
+ *   VehicleSystem → reads inputs, simulates physics, writes velocity/yaw/wheelStates.
+ *   Renderer      → reads TransformComponent (position/rotation) to draw the car.
+ *   HUD           → reads speed / fuel / needsFuel for the dashboard.
+ *
+ * ─── Wheel Layout ────────────────────────────────────────────────────────────
+ * Four wheels in vehicle-local space (Y = down from chassis centre, Z = forward):
+ *
+ *   WHEEL_FL (0) — Front-Left   (-width/2, -rideHeight, +halfWheelbase)
+ *   WHEEL_FR (1) — Front-Right  (+width/2, -rideHeight, +halfWheelbase)
+ *   WHEEL_RL (2) — Rear-Left    (-width/2, -rideHeight, -halfWheelbase)
+ *   WHEEL_RR (3) — Rear-Right   (+width/2, -rideHeight, -halfWheelbase)
+ *
+ * ─── Physics Body ────────────────────────────────────────────────────────────
+ * VehicleSystem creates one Jolt box body for the chassis (used for collision
+ * with the world — picking up physics-object hits, blocking other bodies).
+ * The position of this body is kept in sync with TransformComponent each
+ * frame via PhysicsWorld::SetPosition().
+ * ============================================================================
  *
  * In FF15 the Regalia is the party's car.  This component enables vehicle
  * physics, fast-travel, and the fuel system.
  */
 struct VehicleComponent {
+    // -----------------------------------------------------------------------
+    // Vehicle type
+    // -----------------------------------------------------------------------
     enum class VehicleType : uint8_t {
         REGALIA,       ///< The royal car (Regalia Type-F = flying version).
         CHOCOBO,       ///< Rideable bird — off-road exploration.
         BOAT,          ///< Aquatic vehicle.
         AIRSHIP        ///< Full airship (late-game).
     };
+    VehicleType type = VehicleType::REGALIA;
 
-    VehicleType type        = VehicleType::REGALIA;
-    bool        isOccupied  = false;   ///< True when party is inside.
-    float       speed       = 0.0f;    ///< Current speed (units/sec).
-    float       maxSpeed    = 50.0f;   ///< Maximum speed.
-    float       acceleration= 5.0f;   ///< Speed increase per second.
-    float       fuel        = 100.0f;  ///< Current fuel (0 = stalled).
-    float       maxFuel     = 100.0f;
-    float       fuelConsumption = 0.1f; ///< Fuel per second at max speed.
-    bool        canFly      = false;   ///< True for Type-F Regalia.
-    float       altitude    = 0.0f;   ///< Current height when flying.
-    bool        autoMode    = false;   ///< AI drives on the main road.
-    bool        needsFuel   = false;   ///< True when fuel == 0.
+    // -----------------------------------------------------------------------
+    // Driver / Occupant state
+    // -----------------------------------------------------------------------
+    bool isOccupied = false;   ///< True when party is inside.
+    bool autoMode   = false;   ///< AI drives on the main road.
+
+    // -----------------------------------------------------------------------
+    // Fuel
+    // -----------------------------------------------------------------------
+    float fuel            = 100.0f;  ///< Current fuel (0 = stalled).
+    float maxFuel         = 100.0f;
+    float fuelConsumption = 0.1f;    ///< Fuel drained per second at max throttle.
+    bool  needsFuel       = false;   ///< True when fuel == 0.
 
     /// Return fuel as a [0,1] fraction.
     float FuelFraction() const {
         return (maxFuel > 0.0f) ? fuel / maxFuel : 0.0f;
     }
+
+    // -----------------------------------------------------------------------
+    // Speed / Flight
+    // -----------------------------------------------------------------------
+    float speed    = 0.0f;    ///< Current horizontal speed (m/s) — read by HUD/camera.
+    float maxSpeed = 30.0f;   ///< Maximum speed (m/s).  ~108 km/h — highway speed.
+    bool  canFly   = false;   ///< True for Type-F Regalia.
+    float altitude = 0.0f;   ///< Current height above ground when flying (m).
+
+    // -----------------------------------------------------------------------
+    // Driver input (written by InputMapper / AI every frame)
+    // -----------------------------------------------------------------------
+    float throttleInput = 0.0f;   ///< [-1, 1]  −1 = full reverse, +1 = full forward.
+    float brakeInput    = 0.0f;   ///< [0,  1]   0 = no brake,     +1 = locked wheels.
+    float steerInput    = 0.0f;   ///< [-1, 1]  −1 = full left,    +1 = full right.
+
+    // -----------------------------------------------------------------------
+    // Drive parameters (tuning)
+    // -----------------------------------------------------------------------
+    float maxSteerAngle = 0.52f;  ///< Max steer angle at low speed (rad, ≈30°).
+    float driveForce    = 6000.0f;///< Peak engine force (N) — traction at low speed.
+
+    // -----------------------------------------------------------------------
+    // Suspension tuning
+    // -----------------------------------------------------------------------
+
+    /// TEACHING NOTE — Suspension Rest Length
+    /// The distance from the wheel attachment point to the target wheel
+    /// ground contact when the spring is at equilibrium.  Too short = hard
+    /// ride; too long = floaty / slow to respond.
+    float suspensionRestLength = 0.5f;   ///< Metres.
+
+    /// TEACHING NOTE — Spring Stiffness
+    /// F = k * compression.  k determines how quickly the car returns to
+    /// its ride height.  For a 1200 kg car with 4 wheels, each wheel carries
+    /// ~3000 N at rest, so k ≈ 3000 / restLength ≈ 6000 N/m.  Lower values
+    /// feel softer (sports touring), higher values feel stiffer (rally car).
+    float springStiffness = 6000.0f;     ///< N/m per wheel.
+
+    /// TEACHING NOTE — Spring Damping
+    /// F = -c * d(compression)/dt.  Without damping the suspension oscillates
+    /// forever like a pogo stick.  Critical damping coefficient for this spring:
+    ///   c_crit = 2 * sqrt(k * m_wheel)   where m_wheel = vehicleMass / 4
+    /// Typical cars use ~40–70% of critical damping (underdamped = bouncy).
+    float springDamping = 400.0f;        ///< N·s/m per wheel.
+
+    // -----------------------------------------------------------------------
+    // Chassis mass (affects acceleration, braking, and suspension forces)
+    // -----------------------------------------------------------------------
+
+    /// TEACHING NOTE — Vehicle Mass
+    /// All forces are divided by vehicleMass to get acceleration (F = ma).
+    /// The Regalia weighs about 1 200 kg — approximately a full-size luxury sedan.
+    float vehicleMass = 1200.0f;         ///< kg.
+
+    // -----------------------------------------------------------------------
+    // Wheel layout — vehicle-local space (x=right, y=up, z=forward)
+    // -----------------------------------------------------------------------
+
+    /// TEACHING NOTE — Wheel Rest Positions (vehicle-local)
+    /// These offsets are measured from the chassis centre (TransformComponent
+    /// position) in the vehicle's own coordinate frame BEFORE yaw rotation.
+    ///   x: +half-track (right) / −half-track (left)
+    ///   y: −rideHeight (below chassis centre)
+    ///   z: +half-wheelbase (front) / −half-wheelbase (rear)
+    engine::math::Vec3 wheelRestPositions[4] = {
+        { -0.9f, -0.4f,  1.4f },  // FL (front-left)
+        {  0.9f, -0.4f,  1.4f },  // FR (front-right)
+        { -0.9f, -0.4f, -1.4f },  // RL (rear-left)
+        {  0.9f, -0.4f, -1.4f },  // RR (rear-right)
+    };
+
+    // Wheel index constants.
+    static constexpr int WHEEL_FL = 0;
+    static constexpr int WHEEL_FR = 1;
+    static constexpr int WHEEL_RL = 2;
+    static constexpr int WHEEL_RR = 3;
+
+    // -----------------------------------------------------------------------
+    // Physics state (written by VehicleSystem, read by renderer/HUD)
+    // -----------------------------------------------------------------------
+    engine::math::Vec3  velocity {};           ///< World-space velocity (m/s).
+    float               yaw      = 0.0f;       ///< Heading angle (radians, Y-axis).
+    // TEACHING NOTE — std::array vs C-style array for wheelStates
+    // `wheelRestPositions` uses a C-style array because it is a tuning constant
+    // initialised with aggregate syntax at declaration.
+    // `wheelStates` uses std::array because:
+    //   a) std::array supports range-based for and structured bindings.
+    //   b) It default-initialises all elements (WheelState{}) without a
+    //      separate initialiser list.
+    //   c) It is bounds-checked in Debug builds via at().
+    // Both are fine choices; this contrast is intentional for teaching.
+    std::array<WheelState, 4> wheelStates{};   ///< Per-wheel suspension snapshot.
+
+    /// Jolt body ID of the chassis collision box (0xFFFFFFFF = not created yet).
+    /// Assigned by VehicleSystem::Init(); used by VehicleSystem::Shutdown().
+    uint32_t physicsBodyID = 0xFFFFFFFFu;
 };
 
 // ---------------------------------------------------------------------------

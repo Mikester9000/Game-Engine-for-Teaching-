@@ -389,6 +389,21 @@ jobs:
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
         shell: cmd
 
+      # -----------------------------------------------------------------------
+      # Post-M10 — Vehicle Physics acceptance tests (CPU-only, no GPU needed).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — VehicleSystem CI Gate
+      # Like physics_test, vehicle_test runs entirely on the CPU: it
+      # initialises Jolt Physics, creates a flat ground body and a vehicle
+      # entity, ticks VehicleSystem for 120 frames, and validates:
+      #   Test 1 — Suspension: vehicle stays above floor (Y > -0.5 m).
+      #   Test 2 — Throttle:   vehicle travels ≥ 1 m forward in 2 s.
+      #   Test 3 — Grounding:  ≥ 2 of 4 wheels detect the floor.
+      # -----------------------------------------------------------------------
+      - name: Run vehicle physics acceptance tests (Post-M10)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
+        shell: cmd
+
   # --------------------------------------------------------------------------
   # M6 Editor job: Build creation-suite-editor with Dear ImGui via vcpkg
   # --------------------------------------------------------------------------

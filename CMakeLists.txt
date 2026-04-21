@@ -584,6 +584,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             src/engine/physics/rigid_body.cpp
             src/engine/physics/character_controller.cpp
             src/engine/physics/raycast.cpp
+            # TEACHING NOTE — M11 Vehicle Physics (Post-M10)
+            # vehicle_system.cpp implements the VehicleSystem: four wheel-ray
+            # suspension raycasts, spring-damper force model, Ackermann steering,
+            # and fuel drain.  It requires PhysicsWorld for the downward raycasts
+            # and chassis box body, so it is compiled only when Jolt is present.
+            src/engine/vehicle/vehicle_system.cpp
         )
     endif()
     # hit_volume.cpp has no Jolt dependency — always include it.

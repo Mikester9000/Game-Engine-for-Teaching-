@@ -89,6 +89,17 @@ void CameraSystem::Update(World& world,
             // Compute the camera's world position from the orbit parameters.
             // ----------------------------------------------------------------
             Vec3 targetPos { 0.0f, 0.0f, 0.0f };
+            // TEACHING NOTE — Vehicle Chase Camera
+            // When the target entity has a VehicleComponent we apply two
+            // adjustments for a more cinematic driving feel:
+            //   1. Longer arm (wider shot shows more of the road ahead).
+            //   2. Look-ahead: shift the look-at point forward in the
+            //      vehicle's direction so the camera leads the car rather
+            //      than lagging behind it.  The look-ahead distance scales
+            //      with vehicle speed (more speed = further look-ahead).
+            bool  isVehicleTarget = false;
+            float vehicleSpeed    = 0.0f;
+            float vehicleYaw      = 0.0f;
 
             if (cam.targetEntityID != NULL_ENTITY &&
                 world.IsAlive(cam.targetEntityID) &&
@@ -103,6 +114,20 @@ void CameraSystem::Update(World& world,
                 const auto& p = world.GetComponent<TransformComponent>(
                     cam.targetEntityID).position;
                 targetPos = Vec3{ p.x, p.y, p.z };
+
+                // ----  Vehicle Chase Camera Adjustments  ----
+                // TEACHING NOTE — Checking for optional components
+                // HasComponent<T>() is a safe O(1) check — no exception is
+                // thrown if the component is absent.  We detect a vehicle
+                // target here and record its speed/yaw for the look-ahead.
+                if (world.HasComponent<VehicleComponent>(cam.targetEntityID))
+                {
+                    const auto& vc = world.GetComponent<VehicleComponent>(
+                        cam.targetEntityID);
+                    isVehicleTarget = true;
+                    vehicleSpeed    = vc.speed;
+                    vehicleYaw      = vc.yaw;
+                }
             }
 
             // TEACHING NOTE — Orbit Camera Math
@@ -127,9 +152,33 @@ void CameraSystem::Update(World& world,
             cam.pitchRadians = std::max(kMinPitch,
                                std::min(kMaxPitch, cam.pitchRadians));
 
-            const float armLen = std::abs(cam.offset.z);
-            const float sinYaw = std::sin(cam.yawRadians);
-            const float cosYaw = std::cos(cam.yawRadians);
+            // TEACHING NOTE — Vehicle chase arm extension
+            // When following a vehicle we use a longer arm so the shot is wider
+            // and more cinematic.  We also apply a look-ahead offset: the camera
+            // looks at a point in front of the car instead of the car centre.
+            // This mimics FFXV's driving camera which always shows the road ahead.
+            //
+            // Look-ahead distance scales with speed:
+            //   d_lookahead = speed * 0.5 s   (half-second prediction horizon)
+            // At maxSpeed ~30 m/s this gives ~15 m look-ahead.
+            float effectiveArmLen = std::abs(cam.offset.z);
+            Vec3  lookAtPoint     = targetPos;   // default: track entity centre
+
+            if (isVehicleTarget)
+            {
+                // 1.6× arm length for a driving shot (wider field of view).
+                effectiveArmLen *= 1.6f;
+
+                // Shift look-at forward along the vehicle's forward direction.
+                const float lookAheadDist = vehicleSpeed * 0.5f;
+                const Vec3  vehFwd { std::sin(vehicleYaw), 0.0f,
+                                     std::cos(vehicleYaw) };
+                lookAtPoint = targetPos + vehFwd * lookAheadDist;
+            }
+
+            const float armLen   = effectiveArmLen;
+            const float sinYaw   = std::sin(cam.yawRadians);
+            const float cosYaw   = std::cos(cam.yawRadians);
             const float sinPitch = std::sin(cam.pitchRadians);
             const float cosPitch = std::cos(cam.pitchRadians);
 
@@ -142,9 +191,9 @@ void CameraSystem::Update(World& world,
             cam.worldPosition = targetPos - arm;  // camera behind target
 
             // ----------------------------------------------------------------
-            // Build the view matrix.
+            // Build the view matrix (look at lookAtPoint, not raw targetPos).
             // ----------------------------------------------------------------
-            cam.viewMatrix = BuildLookAt(cam.worldPosition, targetPos,
+            cam.viewMatrix = BuildLookAt(cam.worldPosition, lookAtPoint,
                                          { 0.0f, 1.0f, 0.0f });
 
             // ----------------------------------------------------------------
