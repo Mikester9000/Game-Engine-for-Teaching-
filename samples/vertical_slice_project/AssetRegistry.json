@@ -1,10 +1,10 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-21T13:37:30Z",
+  "generatedAt": "2026-04-21T13:51:32Z",
   "assets": [
     {
-      "id": "26c1f906-50e0-483e-876d-dd4a94dafae9",
+      "id": "63d82695-f567-42f7-a8a3-110afe1e03d0",
       "type": "scene",
       "name": "MainTown",
       "source": "Maps/MainTown.scene.json",
@@ -17,7 +17,7 @@
       ]
     },
     {
-      "id": "d46b4fd5-e6d1-42ad-bc8a-e36add519c69",
+      "id": "5db40c3b-a192-4a4c-a1aa-728775cd12fa",
       "type": "level",
       "name": "cell_0_0",
       "source": "Levels/cell_0_0.cell.json",
@@ -30,7 +30,7 @@
       ]
     },
     {
-      "id": "19a3a093-b9a2-4fac-9658-2d2fc80536e7",
+      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011",
       "type": "level",
       "name": "cell_0_1",
       "source": "Levels/cell_0_1.cell.json",
@@ -43,7 +43,7 @@
       ]
     },
     {
-      "id": "135ca8d3-367c-4987-b7c0-ac0e75484f7c",
+      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022",
       "type": "level",
       "name": "cell_1_0",
       "source": "Levels/cell_1_0.cell.json",
@@ -56,7 +56,7 @@
       ]
     },
     {
-      "id": "cb77870c-7c6f-41ab-9397-0a5a42be9b08",
+      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033",
       "type": "level",
       "name": "cell_1_1",
       "source": "Levels/cell_1_1.cell.json",
