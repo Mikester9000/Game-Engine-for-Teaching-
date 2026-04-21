@@ -76,6 +76,7 @@
  *   engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
  *   engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
  *   engine_sandbox.exe --headless --scene vehicle_test      # Post-M10 vehicle physics acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene bt_test           # Post-M10 BT AI + formation + nav-mesh acceptance test (CI)
  *
  * ============================================================================
  *
@@ -172,6 +173,24 @@
 // which do not require a renderer at all.
 // ---------------------------------------------------------------------------
 #include "engine/rendering/sky_renderer.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Post-M10 Behaviour Tree AI headless test
+// ---------------------------------------------------------------------------
+// The bt_test scene validates the three new engine/ai/ subsystems:
+//
+//   1. BehaviourTree (behaviour_tree.hpp): sequence/selector semantics,
+//      blackboard read/write, action RUNNING→SUCCESS transitions.
+//   2. FormationSystem (formation_system.hpp): slot offsets are non-zero
+//      for all three formation types (LINE, V_SHAPE, CIRCLE).
+//   3. NavMesh (nav_mesh.hpp): A* finds a correct path on a 5×5 all-walkable
+//      grid and respects blocked cells.
+//
+// All three tests are pure C++17 CPU tests — no D3D11 renderer required.
+// ---------------------------------------------------------------------------
+#include "engine/ai/behaviour_tree.hpp"
+#include "engine/ai/formation_system.hpp"
+#include "engine/ai/nav_mesh.hpp"
 
 #include <iostream>
 #include <exception>
@@ -1460,6 +1479,274 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] m8_streaming: " << loadedCells
                           << " cell(s) loaded from disk via AssetLoader.\n";
+            }
+            else if (scene == "bt_test")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Post-M10 Behaviour Tree AI headless test
+                // -----------------------------------------------------------
+                // This acceptance scene validates the three new engine/ai/
+                // subsystems without any D3D11 renderer: pure CPU tests.
+                //
+                // Test 1 — BT SEQUENCE SEMANTICS:
+                //   A Sequence node short-circuits on the first FAILURE.
+                //   We build:   Sequence( Condition(false), Action(succeed) )
+                //   Expected result: FAILURE (action never runs).
+                //   We also verify:  Sequence( Condition(true), Action(running→success) )
+                //   returns RUNNING on the first tick, then SUCCESS on the second.
+                //
+                // Test 2 — BT SELECTOR SEMANTICS:
+                //   A Selector node short-circuits on the first SUCCESS.
+                //   We build:   Selector( Condition(false), Condition(true) )
+                //   Expected result: SUCCESS (second child succeeds).
+                //   We also verify blackboard read/write: the action writes a
+                //   key and the test reads it back.
+                //
+                // Test 3 — FORMATION SLOT OFFSETS:
+                //   For all three FormationType values (LINE, V_SHAPE, CIRCLE),
+                //   BuildSlotOffsets(type, 4) must return exactly 4 slots and
+                //   all slots for followers (index > 0) must have non-zero
+                //   offset so they are not stacked on top of the leader.
+                //
+                // Test 4 — NAV MESH PATHFINDING:
+                //   BakeEmpty(5, 5) creates an all-walkable 5×5 grid.
+                //   FindPath({0,0}, {4,4}) must return a non-empty path that
+                //   starts at {0,0} and ends at {4,4}.
+                //   After blocking cell (2,2), the path must route around it.
+                // -----------------------------------------------------------
+
+                int testsFailed = 0;
+
+                // ---- Test 1: Sequence semantics ----
+                {
+                    // 1a. Sequence with a failing condition must return FAILURE.
+                    BtTree tree1;
+                    {
+                        auto seq = std::make_unique<BtSequence>();
+                        seq->AddChild(std::make_unique<BtCondition>(
+                            [](BtBlackboard&) { return false; }));  // FAIL
+                        seq->AddChild(std::make_unique<BtAction>(
+                            [](BtBlackboard&) { return BtStatus::SUCCESS; }));
+                        tree1.SetRoot(std::move(seq));
+                    }
+                    if (tree1.Tick() != BtStatus::FAILURE)
+                    {
+                        std::cout << "[FAIL] bt_test/sequence_short_circuit: "
+                                     "expected FAILURE when first child fails.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bt_test/sequence_short_circuit: "
+                                     "Sequence returns FAILURE on first failing child.\n";
+                    }
+
+                    // TEACHING NOTE — RUNNING state across ticks
+                    // ──────────────────────────────────────────────
+                    // A multi-frame action returns RUNNING on tick 1 and
+                    // SUCCESS on tick 2.  The sequence must forward RUNNING
+                    // upward and resume the same action (not restart) on the
+                    // next tick.
+
+                    // 1b. Sequence with condition(true) + running action:
+                    //     tick 1 → RUNNING, tick 2 → SUCCESS.
+                    BtTree tree2;
+                    int actionCallCount = 0;
+                    {
+                        auto seq = std::make_unique<BtSequence>();
+                        seq->AddChild(std::make_unique<BtCondition>(
+                            [](BtBlackboard&) { return true; }));
+                        seq->AddChild(std::make_unique<BtAction>(
+                            [&actionCallCount](BtBlackboard&) -> BtStatus {
+                                ++actionCallCount;
+                                return (actionCallCount == 1)
+                                    ? BtStatus::RUNNING   // first call
+                                    : BtStatus::SUCCESS;  // second call
+                            }));
+                        tree2.SetRoot(std::move(seq));
+                    }
+                    BtStatus r1 = tree2.Tick();
+                    BtStatus r2 = tree2.Tick();
+                    if (r1 != BtStatus::RUNNING || r2 != BtStatus::SUCCESS)
+                    {
+                        std::cout << "[FAIL] bt_test/sequence_running: "
+                                     "expected RUNNING then SUCCESS for multi-frame action.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bt_test/sequence_running: "
+                                     "Sequence correctly propagates RUNNING → SUCCESS.\n";
+                    }
+                }
+
+                // ---- Test 2: Selector semantics + blackboard ----
+                {
+                    // 2a. Selector tries children in order; succeeds on second.
+                    BtTree tree3;
+                    {
+                        auto sel = std::make_unique<BtSelector>();
+                        sel->AddChild(std::make_unique<BtCondition>(
+                            [](BtBlackboard&) { return false; }));  // fail
+                        sel->AddChild(std::make_unique<BtCondition>(
+                            [](BtBlackboard&) { return true; }));   // succeed
+                        tree3.SetRoot(std::move(sel));
+                    }
+                    if (tree3.Tick() != BtStatus::SUCCESS)
+                    {
+                        std::cout << "[FAIL] bt_test/selector_fallback: "
+                                     "expected SUCCESS when second child succeeds.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bt_test/selector_fallback: "
+                                     "Selector returns SUCCESS on second child.\n";
+                    }
+
+                    // 2b. Blackboard: action writes a key; outer test reads it.
+                    BtTree tree4;
+                    {
+                        auto sel = std::make_unique<BtSelector>();
+                        sel->AddChild(std::make_unique<BtAction>(
+                            [](BtBlackboard& bb) -> BtStatus {
+                                bb.Set<int>("hitCount", 42);
+                                return BtStatus::SUCCESS;
+                            }));
+                        tree4.SetRoot(std::move(sel));
+                    }
+                    tree4.Tick();
+                    const int hitCount = tree4.Blackboard().GetOr<int>("hitCount", 0);
+                    if (hitCount != 42)
+                    {
+                        std::cout << "[FAIL] bt_test/blackboard: "
+                                     "expected hitCount=42, got " << hitCount << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bt_test/blackboard: "
+                                     "Blackboard correctly stores and retrieves int value.\n";
+                    }
+                }
+
+                // ---- Test 3: Formation slot offsets ----
+                {
+                    // TEACHING NOTE — Testing formation geometry
+                    // ────────────────────────────────────────────
+                    // We verify that all follower slots (there are 4 of them)
+                    // have a non-zero offset so they are not stacked on the leader.
+                    // This catches regressions if the offset computation loops
+                    // are wrong (off-by-one, sign error, etc.).
+
+                    const int kFollowers = 4;
+                    bool formationOk = true;
+                    for (auto ftype : { FormationType::LINE,
+                                        FormationType::V_SHAPE,
+                                        FormationType::CIRCLE })
+                    {
+                        auto slots = FormationSystem::BuildSlotOffsets(ftype, kFollowers);
+                        if (static_cast<int>(slots.size()) != kFollowers)
+                        {
+                            std::cout << "[FAIL] bt_test/formation_count: "
+                                         "expected " << kFollowers
+                                      << " slots, got " << slots.size() << ".\n";
+                            formationOk = false;
+                            break;
+                        }
+                        for (int si = 0; si < kFollowers; ++si)
+                        {
+                            const float ox = slots[static_cast<size_t>(si)].first;
+                            const float oz = slots[static_cast<size_t>(si)].second;
+                            if (ox == 0.0f && oz == 0.0f)
+                            {
+                                std::cout << "[FAIL] bt_test/formation_offset: "
+                                             "slot " << si
+                                          << " has zero offset (stacked on leader).\n";
+                                formationOk = false;
+                                break;
+                            }
+                        }
+                        if (!formationOk) break;
+                    }
+                    if (formationOk)
+                        std::cout << "[OK] bt_test/formation_offsets: "
+                                     "LINE, V_SHAPE, and CIRCLE all produce non-zero "
+                                     "offsets for 4 followers.\n";
+                    else
+                        ++testsFailed;
+                }
+
+                // ---- Test 4: NavMesh pathfinding ----
+                {
+                    NavMesh nav;
+                    nav.BakeEmpty(5, 5);
+
+                    // 4a. Basic path: corner to corner.
+                    auto path = nav.FindPath({0,0}, {4,4});
+                    if (path.empty() ||
+                        path.front().tileX != 0 || path.front().tileY != 0 ||
+                        path.back().tileX  != 4 || path.back().tileY  != 4)
+                    {
+                        std::cout << "[FAIL] bt_test/navmesh_basic_path: "
+                                     "FindPath({0,0},{4,4}) returned wrong path "
+                                     "(size=" << path.size() << ").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bt_test/navmesh_basic_path: "
+                                     "FindPath returned path of length "
+                                  << path.size() << " from {0,0} to {4,4}.\n";
+                    }
+
+                    // TEACHING NOTE — Obstacle routing test
+                    // ──────────────────────────────────────
+                    // Block the direct path at column x=2 for all rows except
+                    // y=0 (leave a gap).  A* must route through the gap.
+
+                    // 4b. Obstacle routing: block x=2 for y=1..4; gap at y=0.
+                    for (int y = 1; y <= 4; ++y)
+                        nav.SetWalkable(2, y, false);
+
+                    auto pathAround = nav.FindPath({0,2}, {4,2});
+                    bool routedAround = !pathAround.empty();
+                    if (routedAround)
+                    {
+                        // Verify path does NOT contain the blocked cell (2, 1..4).
+                        for (const auto& c : pathAround)
+                        {
+                            if (c.tileX == 2 && c.tileY >= 1)
+                            {
+                                routedAround = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (!routedAround)
+                    {
+                        std::cout << "[FAIL] bt_test/navmesh_obstacle: "
+                                     "path traversed a blocked cell or returned empty.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bt_test/navmesh_obstacle: "
+                                     "A* correctly routes around blocked column.\n";
+                    }
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] bt_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] bt_test: all 4 acceptance tests passed "
+                             "(BT sequence/selector, blackboard, "
+                             "formation offsets, nav-mesh A*).\n";
             }
             else
             {

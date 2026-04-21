@@ -405,6 +405,12 @@ if(ENGINE_ENABLE_TERMINAL)
         src/game/systems/CampSystem.cpp
         src/game/systems/WeatherSystem.cpp
         src/game/systems/AISystem.cpp
+        # TEACHING NOTE — Post-M10 Behaviour Tree AI (terminal game).
+        # The engine/ai/ layer is pure C++17 with no rendering or platform
+        # dependencies — it builds on Linux (ncurses game) and Windows alike.
+        src/engine/ai/behaviour_tree.cpp
+        src/engine/ai/formation_system.cpp
+        src/engine/ai/nav_mesh.cpp
         src/game/Game.cpp
     )
 
@@ -501,6 +507,29 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         # Two-Bone analytical IK and FABRIK iterative N-joint IK.
         # Lives in animation/ alongside the other CPU-side animation systems.
         src/engine/animation/ik_solver.cpp
+    )
+
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Behaviour Tree AI Sources (Post-M10)
+    # -----------------------------------------------------------------------
+    # The engine/ai/ layer provides THREE complementary AI systems:
+    #
+    #   behaviour_tree.cpp — BT framework (BtSequence, BtSelector, BtCondition,
+    #     BtAction, BtBlackboard, BtTree).  Zero external dependencies.
+    #
+    #   formation_system.cpp — FormationSystem (LINE / V_SHAPE / CIRCLE slot
+    #     layouts).  Depends on ECS (TransformComponent) but NOT on game/.
+    #
+    #   nav_mesh.cpp — Grid NavMesh (A* on a walkability grid).  Replaces
+    #     TileMap dependency for engine-layer pathfinding.
+    #
+    # All three files are pure C++17 with no platform or rendering deps;
+    # they compile on both Windows (SANDBOX) and Linux (game terminal) alike.
+    # -----------------------------------------------------------------------
+    list(APPEND SANDBOX_SOURCES
+        src/engine/ai/behaviour_tree.cpp
+        src/engine/ai/formation_system.cpp
+        src/engine/ai/nav_mesh.cpp
     )
 
     # D3D11 backend sources (included when ENGINE_ENABLE_D3D11=ON).
