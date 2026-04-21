@@ -6,30 +6,32 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1378 across 46 subsystems.
+**Total lessons:** 1473 across 48 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (57 lessons)
-- [ci/workflows](#ciworkflows) (45 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (60 lessons)
+- [ci/workflows](#ciworkflows) (47 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
+- [engine/ai](#engineai) (49 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (32 lessons)
 - [engine/core](#enginecore) (50 lessons)
-- [engine/ecs](#engineecs) (37 lessons)
+- [engine/ecs](#engineecs) (40 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (280 lessons)
+- [engine/rendering](#enginerendering) (283 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
 - [engine/ui](#engineui) (6 lessons)
+- [engine/vehicle](#enginevehicle) (25 lessons)
 - [engine/world](#engineworld) (56 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
 - [game/Game.hpp](#gamegame.hpp) (1 lesson)
@@ -39,7 +41,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (42 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (52 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -382,9 +384,21 @@ the ncurses-dependent Renderer.cpp and InputSystem.cpp.
 ---------------------------------------------------------------------------
 if(ENGINE_ENABLE_TERMINAL)
 
+### Post-M10 Behaviour Tree AI (terminal game).
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L408) (line 408)
+
+The engine/ai/ layer is pure C++17 with no rendering or platform
+dependencies — it builds on Linux (ncurses game) and Windows alike.
+src/engine/ai/behaviour_tree.cpp
+src/engine/ai/formation_system.cpp
+src/engine/ai/nav_mesh.cpp
+src/game/Game.cpp
+)
+
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L429) (line 429)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L435) (line 435)
 
 The terminal game links against Lua 5.5 (built from bundled source or
 found as a system package).  ENGINE_ENABLE_LUA activates the Lua
@@ -396,7 +410,7 @@ endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L451) (line 451)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L457) (line 457)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -421,7 +435,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Animation Runtime Sources (M4)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L489) (line 489)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L495) (line 495)
 
 -----------------------------------------------------------------------
 The animation runtime is renderer-agnostic: it runs on both D3D11 and
@@ -436,16 +450,41 @@ src/engine/animation/animation_system.cpp
 
 ### M4b: IK solver (renderer-agnostic, pure C++17).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L500) (line 500)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L506) (line 506)
 
 Two-Bone analytical IK and FABRIK iterative N-joint IK.
 Lives in animation/ alongside the other CPU-side animation systems.
 src/engine/animation/ik_solver.cpp
 )
 
+### Behaviour Tree AI Sources (Post-M10)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L513) (line 513)
+
+-----------------------------------------------------------------------
+The engine/ai/ layer provides THREE complementary AI systems:
+
+  behaviour_tree.cpp — BT framework (BtSequence, BtSelector, BtCondition,
+    BtAction, BtBlackboard, BtTree).  Zero external dependencies.
+
+  formation_system.cpp — FormationSystem (LINE / V_SHAPE / CIRCLE slot
+    layouts).  Depends on ECS (TransformComponent) but NOT on game/.
+
+  nav_mesh.cpp — Grid NavMesh (A* on a walkability grid).  Replaces
+    TileMap dependency for engine-layer pathfinding.
+
+All three files are pure C++17 with no platform or rendering deps;
+they compile on both Windows (SANDBOX) and Linux (game terminal) alike.
+-----------------------------------------------------------------------
+list(APPEND SANDBOX_SOURCES
+src/engine/ai/behaviour_tree.cpp
+src/engine/ai/formation_system.cpp
+src/engine/ai/nav_mesh.cpp
+)
+
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L508) (line 508)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L537) (line 537)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -457,7 +496,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L516) (line 516)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L545) (line 545)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -465,7 +504,7 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 
 ### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L520) (line 520)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L549) (line 549)
 
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
@@ -473,7 +512,7 @@ src/engine/animation/gpu_skinning.cpp
 
 ### M10: SkyRenderer + WeatherFx are renderer-agnostic
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L524) (line 524)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L553) (line 553)
 
 CPU objects that compute time-of-day sky colours and weather state.
 They are compiled alongside D3D11Renderer because D3D11Renderer
@@ -486,7 +525,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L549) (line 549)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L578) (line 578)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -499,13 +538,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L562) (line 562)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L591) (line 591)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L564) (line 564)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L593) (line 593)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -529,6 +568,16 @@ src/engine/physics/physics_world.cpp
 src/engine/physics/rigid_body.cpp
 src/engine/physics/character_controller.cpp
 src/engine/physics/raycast.cpp
+
+### M11 Vehicle Physics (Post-M10)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L616) (line 616)
+
+vehicle_system.cpp implements the VehicleSystem: four wheel-ray
+suspension raycasts, spring-damper force model, Ackermann steering,
+and fuel drain.  It requires PhysicsWorld for the downward raycasts
+and chassis box body, so it is compiled only when Jolt is present.
+src/engine/vehicle/vehicle_system.cpp
 )
 endif()
 hit_volume.cpp has no Jolt dependency — always include it.
@@ -538,7 +587,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional JSON sources
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L597) (line 597)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L632) (line 632)
 
 scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
 The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
@@ -552,7 +601,7 @@ src/engine/scene/scene_serialiser.cpp
 
 ### M7 World Streaming Source Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L611) (line 611)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L646) (line 646)
 
 ─────────────────────────────────────────────────────
 The three world-streaming modules are pure C++17 with no platform or
@@ -574,7 +623,7 @@ src/engine/world/world_streaming.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L633) (line 633)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L668) (line 668)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -587,7 +636,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L646) (line 646)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L681) (line 681)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -610,7 +659,7 @@ src/game/world/Zone.cpp
 
 ### M7.1: GameStreamingManager wires Zone lifecycle into
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L665) (line 665)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L700) (line 700)
 
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
@@ -618,7 +667,7 @@ src/game/world/GameStreamingManager.cpp
 
 ### M8 Gameplay Integration: new systems.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L669) (line 669)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L704) (line 704)
 
 game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
 input_mapper.cpp reads Win32 key state → ECS components.
@@ -636,7 +685,7 @@ src/engine/save/save_system.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L703) (line 703)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L738) (line 738)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -648,7 +697,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L712) (line 712)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L747) (line 747)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -657,7 +706,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L722) (line 722)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L757) (line 757)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -669,7 +718,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L731) (line 731)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L766) (line 766)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -679,7 +728,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L741) (line 741)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L776) (line 776)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -688,7 +737,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L747) (line 747)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L782) (line 782)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -697,7 +746,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L752) (line 752)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L787) (line 787)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -708,7 +757,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L768) (line 768)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L803) (line 803)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -719,7 +768,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L776) (line 776)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L811) (line 811)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -729,7 +778,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L788) (line 788)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L823) (line 823)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -763,7 +812,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L820) (line 820)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L855) (line 855)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -778,7 +827,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L835) (line 835)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L870) (line 870)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -793,7 +842,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L877) (line 877)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L912) (line 912)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -816,7 +865,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L898) (line 898)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L933) (line 933)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -837,7 +886,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L915) (line 915)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L950) (line 950)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -847,7 +896,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L921) (line 921)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L956) (line 956)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -859,7 +908,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L929) (line 929)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L964) (line 964)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -872,7 +921,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L954) (line 954)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L989) (line 989)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -894,7 +943,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L973) (line 973)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1008) (line 1008)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -905,7 +954,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L981) (line 981)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1016) (line 1016)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -915,7 +964,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1011) (line 1011)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1046) (line 1046)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -924,7 +973,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1018) (line 1018)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1053) (line 1053)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1337,9 +1386,35 @@ Must run AFTER step 6 (Cook) because assetdb.json must exist.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_streaming
 shell: cmd
 
-### M5 Physics CI Job
+### bt_test CI Gate
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L285) (line 285)
+
+This step validates the three new engine/ai/ subsystems:
+
+  Test 1 — BT Sequence short-circuit: a failing condition must cause
+    the Sequence to return FAILURE without running subsequent children.
+  Test 1b — BT Sequence RUNNING: a multi-frame action returns RUNNING
+    on tick 1 and SUCCESS on tick 2 (resuming from the same child).
+  Test 2a — BT Selector fallback: the Selector returns SUCCESS when
+    the SECOND child succeeds (first child failed).
+  Test 2b — Blackboard: an action writes an int key; the outer test
+    reads it back correctly.
+  Test 3 — Formation offsets: LINE, V_SHAPE, and CIRCLE each produce
+    4 non-zero slot offsets (followers not stacked on the leader).
+  Test 4a — NavMesh basic path: A* finds a path from {0,0} to {4,4}
+    on an all-walkable 5×5 grid.
+  Test 4b — NavMesh obstacle: A* routes around a blocked column.
+
+No D3D11 renderer needed — all four tests are pure C++17 CPU tests.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (Post-M10 — bt_test)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bt_test
+shell: cmd
+
+### M5 Physics CI Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L311) (line 311)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1365,7 +1440,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L324) (line 324)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L350) (line 350)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1391,7 +1466,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L358) (line 358)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L384) (line 384)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1412,7 +1487,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L382) (line 382)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L408) (line 408)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1423,9 +1498,24 @@ works on any runner regardless of GPU driver availability.
 run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
 shell: cmd
 
+### VehicleSystem CI Gate
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L421) (line 421)
+
+Like physics_test, vehicle_test runs entirely on the CPU: it
+initialises Jolt Physics, creates a flat ground body and a vehicle
+entity, ticks VehicleSystem for 120 frames, and validates:
+  Test 1 — Suspension: vehicle stays above floor (Y > -0.5 m).
+  Test 2 — Throttle:   vehicle travels ≥ 1 m forward in 2 s.
+  Test 3 — Grounding:  ≥ 2 of 4 wheels detect the floor.
+-----------------------------------------------------------------------
+- name: Run vehicle physics acceptance tests (Post-M10)
+run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
+shell: cmd
+
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L395) (line 395)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1456,7 +1546,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L423) (line 423)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L464) (line 464)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1465,7 +1555,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L445) (line 445)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L486) (line 486)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1493,7 +1583,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L480) (line 480)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L521) (line 521)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1502,7 +1592,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L494) (line 494)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L535) (line 535)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1524,7 +1614,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L519) (line 519)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L560) (line 560)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1538,7 +1628,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L543) (line 543)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L584) (line 584)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1556,7 +1646,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L568) (line 568)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L609) (line 609)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1567,7 +1657,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L579) (line 579)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L620) (line 620)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1582,7 +1672,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L601) (line 601)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L642) (line 642)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -3439,6 +3529,889 @@ to decouple the panels further.  For a teaching project, the pointer approach
 is deliberately simple and explicit.
 
 =============================================================================
+
+---
+
+## engine/ai
+
+### Why so little code in the .cpp?
+
+**Source:** [`src/engine/ai/behaviour_tree.cpp`](src/engine/ai/behaviour_tree.cpp#L6) (line 6)
+
+============================================================================
+
+Most of the BT framework is implemented in the header as inline / template
+code because:
+
+  1. The node types are template-free but very short — the compiler inlines
+     them anyway.
+  2. BtBlackboard::Set<T> and BtBlackboard::GetOr<T> are function templates
+     and MUST be defined in the header so every translation unit that calls
+     them gets a specialisation.
+
+This file exists as the canonical translation unit for any future non-inline
+methods (e.g. debug pretty-printing, serialisation to JSON for the editor).
+
+### Header-only vs. split compilation
+
+**Source:** [`src/engine/ai/behaviour_tree.cpp`](src/engine/ai/behaviour_tree.cpp#L21) (line 21)
+
+────────────────────────────────────────────────────
+A "header-only" library (all code in .hpp) is convenient but slows
+compile times: every .cpp that includes the header recompiles all the code.
+Our approach (minimal .cpp with only the template-free non-trivial methods)
+is a compromise: templates and short inlines live in the header; anything
+non-trivial lives here.  For a teaching engine the compile-time difference
+is negligible, but the pattern is worth knowing.
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+
+C++ Standard: C++17
+
+### Future extension points
+
+**Source:** [`src/engine/ai/behaviour_tree.cpp`](src/engine/ai/behaviour_tree.cpp#L43) (line 43)
+
+─────────────────────────────────────────
+When you add features here, consider:
+  • BtTree::Serialize(std::ostream&) — emit JSON for the editor debugger.
+  • BtTree::BuildFromJson(nlohmann::json) — load a tree from an asset file.
+  • BtDebugVisitor — walk the tree and emit per-node last-status to ImGui.
+
+Each of these is a natural homework exercise for students who have mastered
+the core BT mechanics.
+
+### What is a Behaviour Tree?
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L6) (line 6)
+
+============================================================================
+
+A Behaviour Tree (BT) is a hierarchical AI control structure used in
+production games (Halo: Combat Evolved, The Last of Us, Unreal Engine,
+Unity).  It answers the question: "What should this character do RIGHT NOW?"
+
+Compared to the Finite State Machine (FSM) in AISystem.cpp, a BT is:
+
+  ✓ MODULAR  — behaviour is expressed as a tree of independent nodes that
+               can be recombined without touching other nodes.
+  ✓ READABLE — the tree structure mirrors a natural English decision:
+               "Try to attack; if you can't, try to flee; if you can't, wander."
+  ✓ SCALABLE — adding complex conditions / actions is additive, not
+               multiplicative (no state-transition matrix explosion).
+  ✗ OVERHEAD — a tree traversal every frame is slightly more expensive than
+               a direct switch() statement.  For 10 000 enemies you would
+               add a "dirty flag" to skip the tick when inputs have not changed.
+
+─── Node Types ─────────────────────────────────────────────────────────────
+
+  LEAF nodes (no children):
+    BtCondition — test a predicate; returns SUCCESS or FAILURE instantly.
+    BtAction    — execute a task; may return RUNNING across multiple frames.
+
+  COMPOSITE nodes (one or more children):
+    BtSequence  — "AND gate": tick children left to right; return SUCCESS
+                  only if ALL succeed; short-circuit on first FAILURE.
+    BtSelector  — "OR gate": tick children left to right; return SUCCESS
+                  on the FIRST child that succeeds; short-circuit on SUCCESS.
+
+  DECORATOR nodes (exactly one child) — not implemented here but described
+  for reference:
+    BtInverter  — flips SUCCESS ↔ FAILURE.
+    BtRepeat    — re-ticks its child N times.
+    BtSucceeder — always returns SUCCESS regardless of child.
+
+─── Execution Status ────────────────────────────────────────────────────────
+
+  SUCCESS — the node completed its task successfully.
+  FAILURE — the node could not complete its task.
+  RUNNING — the node is still executing (multi-frame tasks).
+
+  A parent composite remembers which child returned RUNNING last frame and
+  resumes from that child on the next tick (the "last running child" pointer).
+
+─── Blackboard ──────────────────────────────────────────────────────────────
+
+  All nodes share a BtBlackboard: a typed key→value store.  The blackboard
+  decouples nodes from each other — a "see player" condition writes
+  "playerVisible=true"; a "move to player" action reads it.
+
+### Blackboard Pattern
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L58) (line 58)
+
+This is the SHARED MEMORY pattern from concurrent programming adapted to
+  AI.  Each node reads/writes NAMED KEYS rather than calling each other
+  directly.  This enables drag-and-drop reuse of nodes across different
+  enemy types without coupling them.
+
+─── Example tree for an enemy guard ────────────────────────────────────────
+
+  Selector   (root — try in order until one succeeds)
+  ├── Sequence  (engage player if visible)
+  │     ├── Condition: IsPlayerVisible
+  │     └── Action:    AttackPlayer
+  ├── Sequence  (flee if wounded)
+  │     ├── Condition: IsLowHealth
+  │     └── Action:    FleeFromPlayer
+  └── Action: Wander   (fallback — always succeeds)
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+
+C++ Standard: C++17
+
+### Why only three values?
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L102) (line 102)
+
+─────────────────────────────────────────
+Many AI systems use boolean "done / not done".  RUNNING is the critical
+addition: it allows a single logical action (e.g. "walk to waypoint") to
+span many frames without a separate state machine.  The tree remembers
+which child was RUNNING and resumes it next frame.
+
+### Blackboard as Decoupling Mechanism
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L124) (line 124)
+
+────────────────────────────────────────────────────
+Without a blackboard, node A that computes "nearest enemy position" would
+need to directly call node B that needs that position.  This creates
+coupling (A must know about B) and duplicates computation.
+
+With a blackboard:
+  A writes:  blackboard.Set<float>("nearestEnemyDist", dist);
+  B reads:   float d = blackboard.GetOr<float>("nearestEnemyDist", 9999.f);
+
+Now A and B are completely independent modules.  New nodes can read any
+value without changing existing nodes.
+
+### std::variant for type safety
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L137) (line 137)
+
+─────────────────────────────────────────────
+We store values as std::variant<bool, int, float, std::string>.
+This is safer than void* or std::any because:
+  • The compiler enforces the type on Get<T> at compile time.
+  • Memory layout is fixed — no heap allocation per entry (for small types).
+  • Pattern-matching via std::visit is possible for debug dumps.
+
+### Why GetOr instead of throwing on miss?
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L168) (line 168)
+
+──────────────────────────────────────────────────────────
+Throwing on a missing key makes nodes ORDER-DEPENDENT: node B must run
+after node A or it crashes.  GetOr lets every node run in any order;
+the fallback value represents "key not yet written" gracefully.
+
+### Polymorphism via virtual Tick()
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L207) (line 207)
+
+──────────────────────────────────────────────────
+The BT framework is built entirely around ONE virtual method: Tick().
+This is the "Command pattern" (GoF) applied to AI nodes: every node
+is an object that knows how to execute itself.  The framework does not
+need to know whether a node is a condition, a sequence, or a network
+request — it just calls Tick().
+
+Performance note: virtual dispatch adds ~3–5 ns per call.  A tree with
+20 nodes ticked at 60 Hz for 500 enemies = ~300 000 virtual calls/s.
+On a modern CPU that is well under 1 ms — negligible.  Only for tens of
+thousands of entities would you consider data-oriented flattening.
+
+### Reset vs. Tick
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L235) (line 235)
+
+───────────────────────────────
+RUNNING nodes need to know when they have been INTERRUPTED — e.g. the
+enemy was chasing the player but the tree root switched to FleeFromPlayer
+mid-way.  Reset() gives each node a chance to cancel ongoing work
+(cancel a pathfind request, release a locked door, etc.).
+The default implementation propagates to all children.
+
+### Composite Pattern
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L258) (line 258)
+
+────────────────────────────────────
+This is the Composite design pattern (GoF):  BtSequence and BtSelector
+look identical from the outside (both are BtNode) but internally
+BtComposite holds N children, each of which is also a BtNode.
+The recursive structure lets you nest sequences inside selectors and vice
+versa to express arbitrarily complex behaviour without changing the
+framework code.
+
+### Resuming a running child
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L281) (line 281)
+
+──────────────────────────────────────────
+When a child returns RUNNING we store its index here.  On the next
+Tick() call we jump straight to that child rather than restarting
+from index 0.  This preserves the semantic that a RUNNING action
+continues from where it left off.
+size_t m_runningIndex = 0;
+};
+
+### Sequence as "Check then Do"
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L306) (line 306)
+
+─────────────────────────────────────────────
+The most common BT pattern is:
+
+  Sequence
+    ├── Condition: CanSeePlayer
+    └── Action:    ShootAtPlayer
+
+The condition acts as a GUARD: the action only runs if the condition
+passes.  This replaces an if() statement with a composable node.
+The advantage: you can insert another condition between them later
+(e.g. HasAmmo) without touching the existing condition or action.
+
+### Start from the running child index, not 0.
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L322) (line 322)
+
+If we restarted from 0 every frame, a long-running action (e.g.
+"walk to waypoint") would be interrupted on every tick before
+it finishes.
+for (size_t i = m_runningIndex; i < m_children.size(); ++i) {
+BtStatus s = m_children[i]->Tick(bb);
+if (s == BtStatus::FAILURE) {
+m_runningIndex = 0;  // reset for next evaluation
+return BtStatus::FAILURE;
+}
+if (s == BtStatus::RUNNING) {
+m_runningIndex = i;
+return BtStatus::RUNNING;
+}
+SUCCESS — advance to the next child
+}
+m_runningIndex = 0;  // all children succeeded; reset for reuse
+return BtStatus::SUCCESS;
+}
+};
+
+### Selector as Priority List
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L359) (line 359)
+
+───────────────────────────────────────────
+A Selector models PRIORITY-ordered fallback:
+
+  Selector
+    ├── Sequence: [CanSeePlayer] → [AttackPlayer]   ← highest priority
+    ├── Sequence: [IsWounded]    → [FleeToBase]      ← second priority
+    └── Action:   Wander                              ← fallback (always succeeds)
+
+The enemy attacks if it can, flees if it can't attack, and wanders
+as a last resort.  Adding a new behaviour is as simple as inserting
+a new child at the right priority position.
+
+### Lambda as Behaviour Node
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L404) (line 404)
+
+──────────────────────────────────────────
+Using std::function<bool(BtBlackboard&)> as the predicate lets you
+write conditions inline at the call site:
+
+@code
+  auto canSee = std::make_unique<BtCondition>(
+      [&world, playerID, entityID](BtBlackboard&) {
+          float dist = TileDistance(world, entityID, playerID);
+          return dist < sightRange;
+      });
+@endcode
+
+This avoids boilerplate: you don't need a new class per condition —
+you just capture the relevant state in the lambda closure.
+
+### Single-frame vs. Multi-frame Actions
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L445) (line 445)
+
+──────────────────────────────────────────────────────
+Single-frame: "set velocity toward player" → returns SUCCESS immediately.
+Multi-frame:  "animate attack sequence (0.5 s)" → returns RUNNING for
+              30 frames then SUCCESS when the animation finishes.
+
+The RUNNING status is what makes BTs suitable for real-time games; it
+acts as a cooperative coroutine without threads.
+
+### One BtTree per entity
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L476) (line 476)
+
+───────────────────────────────────────
+In a real engine each enemy entity has its OWN BtTree instance with its
+own BtBlackboard.  The tree *structure* (the node graph) can be shared
+(it is read-only), but the runtime state (which child is RUNNING, what
+is on the blackboard) must be per-entity.
+
+For this teaching engine we allocate one BtTree per entity in BtAISystem
+and store it alongside the AIComponent.
+
+USAGE:
+@code
+  BtTree tree;
+
+  auto root = std::make_unique<BtSelector>();
+  // ... add children ...
+  tree.SetRoot(std::move(root));
+
+  // Game loop:
+  tree.Tick();  // updates the blackboard and advances the tree
+@endcode
+
+### Full restart vs partial tick
+
+**Source:** [`src/engine/ai/behaviour_tree.hpp`](src/engine/ai/behaviour_tree.hpp#L510) (line 510)
+
+──────────────────────────────────────────────
+BTs can be "memoryless" (restart the root every frame) or "stateful"
+(resume from the last RUNNING leaf).  We use the stateful variant:
+composites remember their m_runningIndex.  This is the more common
+production style because it avoids replaying conditions that are
+expensive to evaluate (e.g. line-of-sight raycasts).
+
+### Implementation Overview
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L6) (line 6)
+
+============================================================================
+
+This file implements two main responsibilities:
+
+  1. SLOT GENERATION (BuildSlotOffsets) — compute local-space (x, z) offsets
+     for each follower slot based on the chosen FormationType.
+
+  2. WORLD TRANSFORM (Update / LocalToWorld) — rotate the local offsets by
+     the leader's yaw and add the leader's world position to get the
+     world-space target for each follower.
+
+The maths involved is a 2D rotation matrix:
+
+  world_x = leader_x + cos(yaw)*local_x − sin(yaw)*local_z
+  world_z = leader_z + sin(yaw)*local_x + cos(yaw)*local_z
+
+This is identical to transforming a direction vector by a rotation matrix
+about the Y axis (which is what TransformComponent::Forward() does for
+the entity's facing direction).
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+
+C++ Standard: C++17
+
+### Line Formation Layout
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L46) (line 46)
+
+─────────────────────────────────────────
+Slots are placed to the RIGHT of the leader along the local X axis:
+
+  [LEADER] [F0] [F1] [F2] ...
+
+Each slot is `spacing` units further right than the previous.
+Z offset is fixed at 0 (same depth as leader).
+
+Real AAA games often stagger the depth slightly per pair so the formation
+looks less like a straight line when the leader turns.  We keep it simple
+here for teachability.
+
+### Centred line
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L74) (line 74)
+
+We centre the line so that for N followers the rightmost slot is
++N/2 * spacing and the leftmost is -N/2 * spacing.  This keeps the
+formation visually balanced around the leader.
+{
+const float totalWidth = static_cast<float>(count - 1) * kFormationSpacing;
+const float startX     = -totalWidth * 0.5f;  // leftmost slot X
+for (int i = 0; i < count; ++i) {
+offsets.push_back({ startX + static_cast<float>(i) * kFormationSpacing,
+0.0f });
+}
+break;
+}
+
+### V-shape (echelon) layout
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L91) (line 91)
+
+Alternating left/right behind the leader.  Each successive pair moves
+one spacing unit further back (negative Z = behind leader).
+
+  depth 1: [F0 left]   [F1 right]
+  depth 2: [F2 left]   [F3 right]
+  ...
+
+An odd count means the last follower is at the back-centre (x=0).
+{
+for (int i = 0; i < count; ++i) {
+const int   depth = (i / 2) + 1;
+const float z     = -static_cast<float>(depth) * kFormationSpacing;
+const float x     = (i % 2 == 0)
+? -static_cast<float>(depth) * kFormationSpacing * 0.5f
+:  static_cast<float>(depth) * kFormationSpacing * 0.5f;
+offsets.push_back({ x, z });
+}
+break;
+}
+
+### Evenly-spaced circle
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L115) (line 115)
+
+Place N followers around a circle of radius `r`.  Each follower is at
+angle  (2π / N) * i  radians from the leader.
+
+  slot_x = r * sin(angle)   (positive X = leader's right)
+  slot_z = r * cos(angle)   (positive Z = leader's forward)
+
+### Why sin/cos for circle offsets?
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L122) (line 122)
+
+On a unit circle, (sin θ, cos θ) traces the circle starting from the
+"forward" direction (θ=0 → x=0, z=1) and going clockwise when viewed
+from above.  Starting from forward makes the first follower visually
+"in front" of the leader, which looks better than starting from the right.
+{
+const float r        = kFormationSpacing * 1.5f;
+const float angleInc = 2.0f * 3.14159265f / static_cast<float>(count);
+for (int i = 0; i < count; ++i) {
+const float angle = static_cast<float>(i) * angleInc;
+offsets.push_back({ r * std::sin(angle), r * std::cos(angle) });
+}
+break;
+}
+
+### Greedy nearest-slot assignment
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L172) (line 172)
+
+──────────────────────────────────────────────────
+For each follower we find the unclaimed slot whose WORLD-SPACE position
+(based on the leader's CURRENT transform) is closest to the follower's
+current position.  This minimises the initial repositioning distance
+and avoids followers crossing paths.
+
+For small N (≤ 7) this O(N²) greedy approach is indistinguishable from
+the O(N³) optimal Hungarian assignment in practice.
+
+### 2D Rotation Matrix
+
+**Source:** [`src/engine/ai/formation_system.cpp`](src/engine/ai/formation_system.cpp#L295) (line 295)
+
+────────────────────────────────────
+A rotation by angle θ around the Y axis transforms (x, z) as:
+
+  world_x = cos(θ) * local_x − sin(θ) * local_z
+  world_z = sin(θ) * local_x + cos(θ) * local_z
+
+We only rotate in XZ (horizontal plane) and copy Y unchanged.
+This matches how FFXV formations stay flat on the ground plane while
+the characters follow the terrain height via physics raycasts.
+
+### Formation Systems in Action RPGs
+
+**Source:** [`src/engine/ai/formation_system.hpp`](src/engine/ai/formation_system.hpp#L6) (line 6)
+
+============================================================================
+
+Formation systems control the RELATIVE POSITIONS of a squad of characters
+around a designated LEADER.  In FFXV, Noctis's party (Ignis, Prompto,
+Gladio) maintain dynamic formations as they run through the world.
+
+─── Key Concepts ──────────────────────────────────────────────────────────
+
+  SLOT — a named position relative to the leader (e.g. "left-wing",
+          "right-wing", "rear").  Each follower occupies exactly one slot.
+
+  FORMATION OFFSET — a 2D (x, z) displacement from the leader's position
+  *in the leader's local space*.  When the leader turns, all offsets rotate
+  with them so the formation stays visually consistent.
+
+  STEERING — each follower runs toward their DESIRED SLOT POSITION (world
+  space) using a seek steering behaviour.  Formation systems do NOT
+  teleport characters — they just provide target positions and let the
+  AI/physics layer move toward them.
+
+─── Formation Types ─────────────────────────────────────────────────────
+
+  LINE    — followers stand to the left and right of the leader.
+            Best for standing/idle in a corridor.
+
+       [F1] [LEADER] [F2] [F3]
+
+  V_SHAPE — followers fan behind-left and behind-right of the leader,
+            like a flock of migrating birds.  Provides good visibility
+            for all members (nobody blocked by the leader).
+
+       [F1]          [F3]
+            [LEADER]
+            [F2]
+
+  CIRCLE  — followers form a protective ring around the leader.
+            Used for defending a VIP NPC.
+
+            [F1]
+        [F4]  [F2]
+            [F3]
+
+─── Local vs. World Space ────────────────────────────────────────────────
+
+### The critical transform step
+
+**Source:** [`src/engine/ai/formation_system.hpp`](src/engine/ai/formation_system.hpp#L51) (line 51)
+
+─────────────────────────────────────────────
+Formation offsets are defined in the leader's LOCAL space (forward = +Z,
+right = +X, up = +Y).  To get the WORLD space target for each follower
+we must rotate the offset by the leader's yaw angle:
+
+  worldTarget.x = leader.x + cos(yaw) * offset.x − sin(yaw) * offset.z
+  worldTarget.z = leader.z + sin(yaw) * offset.x + cos(yaw) * offset.z
+
+This is just a 2D rotation matrix applied to the (x, z) components.
+The y component is taken directly from the leader (followers stay at
+the same height — terrain adherence is handled by physics).
+
+─── Slot Assignment ──────────────────────────────────────────────────────
+
+### Optimal slot assignment via cost matrix
+
+**Source:** [`src/engine/ai/formation_system.hpp`](src/engine/ai/formation_system.hpp#L66) (line 66)
+
+─────────────────────────────────────────────────────────
+For N followers and N slots, the OPTIMAL assignment minimises the total
+travel distance (Hungarian algorithm, O(N³)).  For N ≤ 4 (typical party
+size) we use a simpler nearest-slot greedy assignment, which gives
+good results in practice.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+
+C++ Standard: C++17
+
+### Data-driven formation switching
+
+**Source:** [`src/engine/ai/formation_system.hpp`](src/engine/ai/formation_system.hpp#L101) (line 101)
+
+──────────────────────────────────────────────────
+Rather than hard-coding positions, each FormationType has a corresponding
+BuildSlots() helper that generates the offset list.  Switching formation
+is then a single call:
+
+  system.SetFormation(leaderID, followers, FormationType::V_SHAPE);
+
+This is the Strategy design pattern: the formation TYPE controls how
+offsets are computed, but the assignment and world-space transform logic
+is identical for all types.
+
+### Why local-space offsets?
+
+**Source:** [`src/engine/ai/formation_system.hpp`](src/engine/ai/formation_system.hpp#L133) (line 133)
+
+──────────────────────────────────────────
+Storing world-space positions would require updating ALL slot positions
+every time the leader moves.  Storing local-space offsets means slot
+positions only need to be recomputed when we call GetWorldPosition(),
+which is typically once per frame per follower.
+
+### Why not move entities here?
+
+**Source:** [`src/engine/ai/formation_system.hpp`](src/engine/ai/formation_system.hpp#L207) (line 207)
+
+─────────────────────────────────────────────
+FormationSystem only WRITES TARGET POSITIONS — it does not modify
+TransformComponent directly.  Movement toward targets is handled by the
+physics/AI layer to avoid multiple systems fighting over the same
+component.  This separation is the "tell, don't ask" principle applied
+to ECS: systems communicate through data, not through direct calls.
+
+@param world  ECS World (reads leader TransformComponent).
+@param dt     Delta time (reserved for future smooth slot transitions).
+
+### Procedural slot generation
+
+**Source:** [`src/engine/ai/formation_system.hpp`](src/engine/ai/formation_system.hpp#L260) (line 260)
+
+────────────────────────────────────────────
+Hardcoding positions for every possible squad size is error-prone.
+Instead we GENERATE them procedurally:
+  • LINE:    slots are evenly spaced along the X axis at a fixed Z.
+  • V_SHAPE: alternating left/right at increasing Z-depth behind the leader.
+  • CIRCLE:  evenly spaced around a circle of radius `spacing`.
+
+### A* on a Grid (Full Walkthrough)
+
+**Source:** [`src/engine/ai/nav_mesh.cpp`](src/engine/ai/nav_mesh.cpp#L6) (line 6)
+
+============================================================================
+
+The FindPath() function below implements classic A* on our grid nav mesh.
+This is identical in structure to the A* in AISystem.cpp but is
+ENGINE-LAYER code (no TileMap dependency) so it can be used by any
+system that has a WalkabilityGrid.
+
+─── Open Set (priority queue) ───────────────────────────────────────────
+
+The open set is a MIN-HEAP ordered by f = g + h.  C++ provides
+std::priority_queue which is a MAX-HEAP by default.  We use
+`std::greater<NavPathNode>` to invert it into a min-heap.
+
+  std::priority_queue<NavPathNode,
+                      std::vector<NavPathNode>,
+                      std::greater<NavPathNode>> openSet;
+
+─── Closed Set ────────────────────────────────────────────────────────
+
+The closed set stores every cell we have FULLY PROCESSED (all neighbours
+explored).  We use an unordered_set<uint64_t> (encoded coord) for O(1)
+lookup.
+
+─── g-cost map ────────────────────────────────────────────────────────
+
+gCost[coord] = the cheapest known cost to reach `coord` from `start`.
+Initialised to infinity; updated whenever a cheaper path is found.
+
+─── cameFrom map ──────────────────────────────────────────────────────
+
+cameFrom[coord] = the predecessor of `coord` on the cheapest path found
+so far.  Used to reconstruct the path at the end.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+
+C++ Standard: C++17
+
+### Bounds checking during bake
+
+**Source:** [`src/engine/ai/nav_mesh.cpp`](src/engine/ai/nav_mesh.cpp#L62) (line 62)
+
+──────────────────────────────────────────────
+The grid is provided by the game layer and might have inconsistent
+dimensions.  We clamp to the provided width/height to avoid reading
+out-of-bounds rows.
+m_width  = width;
+m_height = height;
+m_cells.assign(static_cast<size_t>(width * height), NavCell{});
+
+### A* data structures
+
+**Source:** [`src/engine/ai/nav_mesh.cpp`](src/engine/ai/nav_mesh.cpp#L118) (line 118)
+
+-----------------------------------------------------------------------
+openSet    — cells to evaluate, ordered by f = g + h (min-heap).
+closed     — cells fully processed (no need to revisit).
+gCost      — cheapest known cost from `start` to each cell.
+cameFrom   — predecessor map for path reconstruction.
+-----------------------------------------------------------------------
+using PQ = std::priority_queue<NavPathNode,
+std::vector<NavPathNode>,
+std::greater<NavPathNode>>;
+PQ openSet;
+std::unordered_set<uint64_t>         closed;
+std::unordered_map<uint64_t, float>  gCost;
+std::unordered_map<uint64_t, TileCoord> cameFrom;
+
+### Diagonal blocking (corner cutting)
+
+**Source:** [`src/engine/ai/nav_mesh.cpp`](src/engine/ai/nav_mesh.cpp#L170) (line 170)
+
+──────────────────────────────────────────────────────
+When diagonal movement is allowed we block "corner cutting":
+moving diagonally through the gap between two orthogonally
+adjacent walls.  This prevents the agent clipping corners.
+if (std::abs(offset.tileX) + std::abs(offset.tileY) == 2) {
+diagonal step — check both orthogonal neighbours are clear.
+if (!IsWalkable(cur.coord.tileX + offset.tileX, cur.coord.tileY) ||
+!IsWalkable(cur.coord.tileX, cur.coord.tileY + offset.tileY))
+return;
+}
+
+### Chebyshev distance for 8-directional grids
+
+**Source:** [`src/engine/ai/nav_mesh.cpp`](src/engine/ai/nav_mesh.cpp#L235) (line 235)
+
+─────────────────────────────────────────────────────────────
+On an 8-directional grid, one diagonal step costs √2 (or 1 if you
+use uniform costs).  The Chebyshev distance max(|dx|, |dy|) is
+admissible because in the best case you move diagonally to close
+both axes simultaneously.
+const int dx = std::abs(a.tileX - b.tileX);
+const int dy = std::abs(a.tileY - b.tileY);
+return static_cast<float>((dx > dy) ? dx : dy);
+}
+
+### Reversing the reconstructed path
+
+**Source:** [`src/engine/ai/nav_mesh.cpp`](src/engine/ai/nav_mesh.cpp#L263) (line 263)
+
+──────────────────────────────────────────────────
+We built the path from goal → start by following parent pointers.
+std::reverse() gives us start → goal order without allocating a
+second vector.
+std::reverse(path.begin(), path.end());
+return path;
+}
+
+### What is a Nav Mesh?
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L6) (line 6)
+
+============================================================================
+
+A Navigation Mesh (nav mesh) is the data structure that answers the question
+"Which areas of the world can an AI agent walk through?".  It has two jobs:
+
+  1. BAKING — convert a world representation (tile map, height map, 3D mesh)
+     into a compact, queryable walkability graph.
+
+  2. PATHFINDING — given a baked nav mesh, find the shortest walkable path
+     from point A to point B using A*.
+
+─── Grid Nav Mesh vs. Polygon Nav Mesh ──────────────────────────────────
+
+### Two common representations
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L20) (line 20)
+
+────────────────────────────────────────────
+GRID NAV MESH (this file):
+  • World divided into a regular grid of cells (walkable / blocked).
+  • Simple to implement; A* on a grid is fast for small worlds.
+  • Memory: width × height bytes.
+  • Pathfinding: O(N log N) where N = number of cells in the grid.
+
+POLYGON NAV MESH (used in Unreal Engine, Unity, Recast):
+  • World represented as a mesh of convex polygons (portals between them).
+  • Much more memory efficient for large open worlds.
+  • Path is a sequence of polygon-crossing portals (funnel algorithm gives
+    the shortest straight path inside the corridor of polygons).
+  • Used in every modern AAA open-world game including FFXV.
+
+For this educational engine we implement the GRID variant because:
+  • The tile-based game world maps directly to a grid.
+  • The algorithm is fully readable in ~100 lines.
+  • It teaches the core A* concepts that polygon nav meshes also use.
+  • Students can graduate to Recast/Detour as a next step.
+
+─── Baking ──────────────────────────────────────────────────────────────
+
+### Offline vs. Runtime Baking
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L43) (line 43)
+
+────────────────────────────────────────────
+Professional engines bake the nav mesh OFFLINE (at content creation time)
+and store the result in a cooked asset.  This allows complex polygon nav
+meshes to be generated without impacting runtime frame time.
+
+Our grid nav mesh can be baked at RUNTIME from a `WalkabilityGrid` in
+under 1 ms for a 256×256 cell map — small enough that it runs once at
+level load.
+
+─── Connection with AISystem (FSM) and BehaviourTree ────────────────────
+
+The existing AISystem.cpp uses A* directly on the TileMap.  NavMesh wraps
+the same algorithm in a more general API:
+  • NavMesh::BakeFromGrid()  — replaces TileMap dependency.
+  • NavMesh::FindPath()      — same A* result.
+  • BtAction nodes can call NavMesh::FindPath() via the blackboard.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+
+C++ Standard: C++17
+
+### Minimal cell representation
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L89) (line 89)
+
+─────────────────────────────────────────────
+We store only `walkable` here.  A more complete implementation might add:
+  • `cost`  — extra traversal cost (mud = 2×, road = 0.5×).
+  • `area`  — area type (grass, water, road) for material-specific SFX.
+  • `slope` — vertical angle (steep slopes block slow NPCs but not agile ones).
+Each of these is a one-field extension that students can add as exercises.
+
+### Re-using the PathNode pattern from AISystem.hpp
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L110) (line 110)
+
+──────────────────────────────────────────────────────────────────
+This is deliberately similar to the `PathNode` struct in AISystem.hpp.
+We duplicate it here (rather than sharing) because NavMesh lives in the
+engine layer (engine/ai/) and must NOT depend on game/ code.
+Keeping the layers separate is more important than avoiding a small
+struct duplication.
+
+### Bake = "offline" pre-process
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L176) (line 176)
+
+──────────────────────────────────────────────
+After baking, FindPath() is read-only and thread-safe.  You can
+query paths from multiple AI threads simultaneously.  In a production
+engine the bake step would also compute:
+  • Portal graph (for polygon nav meshes via Recast).
+  • Hierarchical clusters (HPA* for very large maps).
+  • Pre-computed distance fields (for swarm AI movement).
+
+### Diagonal movement and heuristic admissibility
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L220) (line 220)
+
+──────────────────────────────────────────────────────────────
+With 4-directional movement, the optimal heuristic is Manhattan distance:
+  h = |dx| + |dy|   (never overestimates on a 4-dir grid → admissible)
+
+With 8-directional movement, the Chebyshev distance is admissible:
+  h = max(|dx|, |dy|)
+
+Using Manhattan distance with 8-directional movement slightly
+overestimates (non-admissible), which makes A* faster but may not
+return the absolute shortest path.  For game AI this trade-off is
+usually acceptable.
+
+### Flat array vs. vector-of-vectors
+
+**Source:** [`src/engine/ai/nav_mesh.hpp`](src/engine/ai/nav_mesh.hpp#L280) (line 280)
+
+A flat array has better cache locality than a vector-of-vectors because
+all elements are contiguous in memory.  The A* inner loop accesses
+neighbours sequentially; cache misses on a vector-of-vectors would
+noticeably slow it down on large grids.
+std::vector<NavCell> m_cells;
+};
 
 ---
 
@@ -7070,9 +8043,77 @@ In FF15, characters level up only when resting at camp.  XP is accumulated
 during combat and exploration, then "banked" to actual levels at camp.
 We model this with pendingXP (accumulated) vs currentXP (cashed in).
 
+### Wheel-Ray Suspension
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1467) (line 1467)
+
+============================================================================
+Wheel-ray (sometimes called "wheel-ray casting" or "spring suspension")
+is the dominant technique used in AAA open-world games (FFXV's Regalia,
+GTA, BeamNG.drive) for vehicle suspension.  Instead of simulating the
+full suspension geometry, each wheel fires a short downward ray from a
+fixed attachment point on the chassis.  The gap between the ray hit
+distance and the desired "rest length" gives the spring compression.
+
+Spring model per wheel:
+  F_susp = springStiffness * compression − springDamping * dCompression/dt
+
+This single force law is enough to produce realistic-feeling suspension
+that keeps the car on bumpy terrain, body-rolls in corners, and nosedives
+under braking.
+============================================================================
+
+### VehicleComponent Design
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1496) (line 1496)
+
+============================================================================
+A VehicleComponent stores both the *input* state (throttle, brake, steer)
+driven by player input / AI, and the *physics output* state (velocity, yaw,
+wheel suspension snapshots) computed by VehicleSystem each frame.
+
+This separation mirrors the Model-View-Controller pattern used in game
+engines:
+  Input layer   → writes throttleInput / brakeInput / steerInput.
+  VehicleSystem → reads inputs, simulates physics, writes velocity/yaw/wheelStates.
+  Renderer      → reads TransformComponent (position/rotation) to draw the car.
+  HUD           → reads speed / fuel / needsFuel for the dashboard.
+
+─── Wheel Layout ────────────────────────────────────────────────────────────
+Four wheels in vehicle-local space (Y = down from chassis centre, Z = forward):
+
+  WHEEL_FL (0) — Front-Left   (-width/2, -rideHeight, +halfWheelbase)
+  WHEEL_FR (1) — Front-Right  (+width/2, -rideHeight, +halfWheelbase)
+  WHEEL_RL (2) — Rear-Left    (-width/2, -rideHeight, -halfWheelbase)
+  WHEEL_RR (3) — Rear-Right   (+width/2, -rideHeight, -halfWheelbase)
+
+─── Physics Body ────────────────────────────────────────────────────────────
+VehicleSystem creates one Jolt box body for the chassis (used for collision
+with the world — picking up physics-object hits, blocking other bodies).
+The position of this body is kept in sync with TransformComponent each
+frame via PhysicsWorld::SetPosition().
+============================================================================
+
+In FF15 the Regalia is the party's car.  This component enables vehicle
+physics, fast-travel, and the fuel system.
+
+### std::array vs C-style array for wheelStates
+
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1640) (line 1640)
+
+`wheelRestPositions` uses a C-style array because it is a tuning constant
+initialised with aggregate syntax at declaration.
+`wheelStates` uses std::array because:
+  a) std::array supports range-based for and structured bindings.
+  b) It default-initialises all elements (WheelState{}) without a
+     separate initialiser list.
+  c) It is bounds-checked in Debug builds via at().
+Both are fine choices; this contrast is intentional for teaching.
+std::array<WheelState, 4> wheelStates{};   ///< Per-wheel suspension snapshot.
+
 ### Data-Driven Audio via ECS
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1505) (line 1505)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1665) (line 1665)
 
 ============================================================================
 Instead of hard-coding sound triggers in gameplay code, we attach an
@@ -7105,7 +8146,7 @@ Fields mirror the design from docs/FF15_REQUIREMENTS_BLUEPRINT.md §8:
 
 ### Animator Component vs Animation System
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1591) (line 1591)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1751) (line 1751)
 
 ============================================================================
 The AnimatorComponent is a *data bag*: it holds references to assets
@@ -7138,7 +8179,7 @@ It enables:
 
 ### ECS + Physics Linkage
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1671) (line 1671)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1831) (line 1831)
 
 ============================================================================
 This component links an ECS entity to a Jolt Physics body.  The field
@@ -7169,7 +8210,7 @@ Note: `bodyID` == 0xFFFFFFFF (kInvalidBodyID) means "not yet created".
 
 ### Collider Component
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1720) (line 1720)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1880) (line 1880)
 
 ============================================================================
 ColliderComponent stores the *shape* of the physics body:
@@ -7197,7 +8238,7 @@ target) or entities that are purely a trigger zone (no rigid body needed).
 
 ### Camera Component Design
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1776) (line 1776)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1936) (line 1936)
 
 ============================================================================
 A camera is represented as an ECS component on a dedicated "camera entity"
@@ -7237,7 +8278,7 @@ row-major matrices are ready to upload directly to a D3D11 constant buffer:
 
 ### Facade Pattern
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L1879) (line 1879)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2039) (line 2039)
 
 ────────────────────────────────
 The World class is a *facade*: it provides a simple unified API over the
@@ -7256,7 +8297,7 @@ all entities, components, and systems cleanly.
 
 ### Variadic Templates
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2093) (line 2093)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2253) (line 2253)
 
 ────────────────────────────────────
 `template<typename... Components>` accepts any number of type arguments.
@@ -7269,7 +8310,7 @@ Fold expressions were introduced in C++17:
 
 ### Update Order
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2140) (line 2140)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2300) (line 2300)
 
 ──────────────────────────────
 Systems are updated in the order they were registered.  Order matters:
@@ -7282,7 +8323,7 @@ Systems are updated in the order they were registered.  Order matters:
 
 ### View Pattern / Query
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2167) (line 2167)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2327) (line 2327)
 
 ──────────────────────────────────────
 A "view" is an on-demand filter over living entities.  It avoids
@@ -7299,7 +8340,7 @@ Example usage:
 
 ### `if constexpr` and Fold Expressions
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2181) (line 2181)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2341) (line 2341)
 
 ──────────────────────────────────────────────────────
 The implementation uses parameter pack expansion to call HasComponent<C>
@@ -7308,7 +8349,7 @@ a single boolean.
 
 ### Factory Methods
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2237) (line 2237)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2397) (line 2397)
 
 ─────────────────────────────────
 Rather than calling AddComponent 10 times at every call site, a factory
@@ -7320,7 +8361,7 @@ individual components afterwards.
 
 ### static_cast vs dynamic_cast
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2321) (line 2321)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2481) (line 2481)
 
 ─────────────────────────────────────────────
 dynamic_cast performs a runtime type check (RTTI) and returns nullptr
@@ -7336,7 +8377,7 @@ fine; using it on user-supplied pointers would be dangerous.
 
 ### Why a free function?
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2398) (line 2398)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2558) (line 2558)
 
 ───────────────────────────────────────
 Putting registration in a free function keeps the World constructor clean
@@ -7348,7 +8389,7 @@ modification.
 
 ### M4 / M5 / M8.3 components registered here.
 
-**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2429) (line 2429)
+**Source:** [`src/engine/ecs/ECS.hpp`](src/engine/ecs/ECS.hpp#L2589) (line 2589)
 
 AnimatorComponent, RigidBodyComponent, ColliderComponent are gated by
 their respective subsystems in engine code but must be registered with
@@ -10119,9 +11160,24 @@ production engine you might maintain a "primary camera" pointer, but
 iterating a small set of cameras is cheap and keeps this system
 self-contained.
 
+### Vehicle Chase Camera
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L92) (line 92)
+
+When the target entity has a VehicleComponent we apply two
+adjustments for a more cinematic driving feel:
+  1. Longer arm (wider shot shows more of the road ahead).
+  2. Look-ahead: shift the look-at point forward in the
+     vehicle's direction so the camera leads the car rather
+     than lagging behind it.  The look-ahead distance scales
+     with vehicle speed (more speed = further look-ahead).
+bool  isVehicleTarget = false;
+float vehicleSpeed    = 0.0f;
+float vehicleYaw      = 0.0f;
+
 ### Two Vec3 types coexist in this codebase:
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L97) (line 97)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L108) (line 108)
 
 the global Vec3 in Types.hpp (used by game-layer components
 like TransformComponent::position) and engine::math::Vec3 in
@@ -10131,11 +11187,27 @@ conversion exists between the two distinct types.
 const auto& p = world.GetComponent<TransformComponent>(
 cam.targetEntityID).position;
 targetPos = Vec3{ p.x, p.y, p.z };
+
+### Checking for optional components
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L119) (line 119)
+
+HasComponent<T>() is a safe O(1) check — no exception is
+thrown if the component is absent.  We detect a vehicle
+target here and record its speed/yaw for the look-ahead.
+if (world.HasComponent<VehicleComponent>(cam.targetEntityID))
+{
+const auto& vc = world.GetComponent<VehicleComponent>(
+cam.targetEntityID);
+isVehicleTarget = true;
+vehicleSpeed    = vc.speed;
+vehicleYaw      = vc.yaw;
+}
 }
 
 ### Orbit Camera Math
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L108) (line 108)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L133) (line 133)
 
 ──────────────────────────────────
 We parameterise the camera's position in *spherical coordinates*
@@ -10152,9 +11224,24 @@ The camera "arm" vector (in world space) is:
 
 We clamp pitch to [-π/3, π/3] to prevent the camera flipping.
 
+### Vehicle chase arm extension
+
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L155) (line 155)
+
+When following a vehicle we use a longer arm so the shot is wider
+and more cinematic.  We also apply a look-ahead offset: the camera
+looks at a point in front of the car instead of the car centre.
+This mimics FFXV's driving camera which always shows the road ahead.
+
+Look-ahead distance scales with speed:
+  d_lookahead = speed * 0.5 s   (half-second prediction horizon)
+At maxSpeed ~30 m/s this gives ~15 m look-ahead.
+float effectiveArmLen = std::abs(cam.offset.z);
+Vec3  lookAtPoint     = targetPos;   // default: track entity centre
+
 ### Row-Major View Matrix: basis vectors in COLUMNS
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L179) (line 179)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L228) (line 228)
 
 ──────────────────────────────────────────────────────────────────
 In D3D11 we multiply: transformedPos = mul(float4(pos,1), viewMatrix)
@@ -10180,7 +11267,7 @@ Steps:
 
 ### D3D11 Perspective Projection (Row-Major)
 
-**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L243) (line 243)
+**Source:** [`src/engine/rendering/camera_system.cpp`](src/engine/rendering/camera_system.cpp#L292) (line 292)
 
 ─────────────────────────────────────────────────────────
 D3D11's clip-space depth range is [0, 1] (not OpenGL's [-1, 1]).
@@ -15456,6 +16543,407 @@ ATB is a timer that fills over time.  When it reaches 1.0 the player
 can perform an action.  FF15 uses a real-time variant called the
 "Armiger chain meter" that fills as the player deals damage.
 Here we use the simpler classic ATB: 0 = empty, 1 = full / action ready.
+
+---
+
+## engine/vehicle
+
+### Gravity constant
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L32) (line 32)
+
+We match Jolt's default gravity (9.81 m/s² downward).
+Using a named constant here makes it easy to tune for an "arcade-y"
+feel (lower gravity = floatier) without hunting for magic numbers.
+constexpr float kGravity        = 9.81f;
+
+### Wheelbase
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L38) (line 38)
+
+The distance between the front and rear axles.  Used in the Ackermann
+steering approximation:   yawRate = speed * tan(steerAngle) / wheelbase.
+Matches wheelRestPositions: front Z = +1.4, rear Z = -1.4 → 2.8 m apart.
+constexpr float kWheelbase      = 2.8f;   // metres between front and rear axles
+
+### 2D rotation in the XZ plane
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L57) (line 57)
+
+A rotation around the Y axis by angle `yaw` maps:
+  x_world =  x_local * cos(yaw) + z_local * sin(yaw)
+  z_world = -x_local * sin(yaw) + z_local * cos(yaw)
+The y component is unchanged (vertical is world-up Y).
+const float c = std::cos(yaw);
+const float s = std::sin(yaw);
+return {
+localOffset.x * c + localOffset.z * s,
+localOffset.y,
+-localOffset.x * s + localOffset.z * c
+};
+}
+
+### Iterating with World::View<A, B>()
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L85) (line 85)
+
+View scans all living entities and calls the lambda only for those
+that have BOTH VehicleComponent and TransformComponent.  This is an
+O(n_entities) pass — efficient for a small number of vehicles.
+world.View<VehicleComponent, TransformComponent>(
+[&](EntityID eid, VehicleComponent& vc, TransformComponent& tc)
+{
+if (vc.physicsBodyID != kInvalidBodyID)
+{
+
+### Guard against double-Init
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L94) (line 94)
+
+If Init() is called twice (e.g. on level reload) without
+an intervening Shutdown(), we skip body creation to avoid
+orphaned physics bodies and stale IDs.
+LOG_WARN("VehicleSystem::Init: entity " << eid
+<< " already has a physics body — skipping.");
+return;
+}
+
+### Kinematic vs Dynamic body
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L104) (line 104)
+
+A dynamic body is simulated by Jolt's constraint solver (forces,
+impulses, gravity apply).  A kinematic body is moved explicitly by
+the application each frame — it has a position and velocity but
+is not subject to forces from the solver.
+
+We use a DYNAMIC body (isStatic=false) with a large mass so that
+other physics objects (crates, debris) can react to being hit by
+the car.  We then override its velocity every frame from our
+spring-damper calculation, effectively making it "semi-kinematic".
+const Vec3 initPos { tc.position.x, tc.position.y, tc.position.z };
+const uint32_t bodyID = physicsWorld.CreateBox(
+initPos,
+kChassisHalfExtents,
+vc.vehicleMass,
+isStatic=*/ false);
+
+### TransformComponent::position uses the game-layer
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L150) (line 150)
+
+Vec3 (defined in Types.hpp) while engine::math::Vec3 is the math
+library type.  They are structurally identical (x, y, z floats)
+but are distinct C++ types.  We copy the fields manually.
+Vec3 pos { tc.position.x, tc.position.y, tc.position.z };
+
+### Why cast from ABOVE the rest position?
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L159) (line 159)
+
+The ray must start above the expected contact point so it can
+detect both compressed and extended suspension.  We start
+suspensionRestLength + 0.2 m above the wheel rest attachment
+and cast down for 2 × restLength + 0.3 m.  This window covers:
+  • Full compression: wheel hits at ~0.1 m below attachment
+  • Full extension:   wheel hits at ~restLength + 0.2 m below
+If the ray misses entirely, the wheel is in the air.
+float totalSuspForceY = 0.0f;
+int   groundedCount   = 0;
+
+### Compression calculation
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L195) (line 195)
+
+hitDist is measured from rayOrigin.  We subtract the
+0.2 m offset that we added to the ray origin so that
+compression = 0 when the wheel is exactly at rest length.
+const float adjustedDist = hit.distance - 0.2f;
+const float compression  =
+vc.suspensionRestLength - adjustedDist;
+
+### Spring-damper force
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L209) (line 209)
+
+Derivative of compression ≈ finite difference:
+  dC/dt ≈ (C_now - C_prev) / dt
+The damping term opposes the spring velocity (it
+reduces oscillation but can also go negative when
+the wheel is rebounding — this is correct behaviour).
+const float compressionVel =
+(ws.compression - ws.prevCompression) / dt;
+const float suspForce =
+vc.springStiffness * ws.compression
+- vc.springDamping * compressionVel;
+
+### Semi-implicit integration
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L238) (line 238)
+
+We update velocity first, then integrate position:
+  v(t+dt) = v(t) + a(t) * dt
+  p(t+dt) = p(t) + v(t+dt) * dt
+This is *semi-implicit Euler* (also called symplectic Euler).
+It is more energy-conservative than explicit Euler and is the
+standard for game physics.
+
+### Forward axis from yaw
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L263) (line 263)
+
+The vehicle's forward direction in world space is a unit vector
+in the XZ plane rotated by the current yaw angle:
+  fwd.x = sin(yaw),  fwd.z = cos(yaw)
+(Z+ is world "forward" at yaw=0; positive yaw rotates right.)
+const float cosYaw = std::cos(vc.yaw);
+const float sinYaw = std::sin(vc.yaw);
+const Vec3  fwd    { sinYaw,  0.0f, cosYaw };
+const Vec3  right  { cosYaw,  0.0f, -sinYaw };
+
+### Velocity-servo drive
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L278) (line 278)
+
+We use a simple proportional controller: the drive force is
+proportional to the difference between the desired speed and
+the current forward speed.  This prevents the car from
+accelerating past maxSpeed and gives natural-feeling
+deceleration when the throttle is released.
+const float desiredSpeed = vc.throttleInput * vc.maxSpeed;
+const float speedError   = desiredSpeed - fwdSpeed;
+const float driveAccel   = (vc.driveForce / vc.vehicleMass)
+(speedError / vc.maxSpeed);
+vc.velocity.x += fwd.x * driveAccel * dt;
+vc.velocity.z += fwd.z * driveAccel * dt;
+
+### Brake force
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L291) (line 291)
+
+Braking applies a deceleration force opposing current motion.
+We multiply by a fixed deceleration (~0.8g) scaled by input.
+if (vc.brakeInput > 0.0f && std::abs(fwdSpeed) > 0.1f)
+{
+const float brakeDecel = 8.0f * vc.brakeInput;
+const float brakeSign  = (fwdSpeed > 0.0f) ? 1.0f : -1.0f;
+vc.velocity.x -= fwd.x * brakeSign * brakeDecel * dt;
+vc.velocity.z -= fwd.z * brakeSign * brakeDecel * dt;
+}
+}
+else
+{
+
+### Airborne throttle
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L304) (line 304)
+
+When all wheels are off the ground (e.g. cresting a hill
+or mid-jump) we apply a much smaller drive force so the car
+doesn't rocket away in mid-air.
+const float fwdSpeed     = Dot3(vc.velocity, fwd);
+const float desiredSpeed = vc.throttleInput * vc.maxSpeed;
+const float speedError   = desiredSpeed - fwdSpeed;
+const float airDriveAcc  = (vc.driveForce / vc.vehicleMass)
+(speedError / vc.maxSpeed) * 0.05f;
+vc.velocity.x += fwd.x * airDriveAcc * dt;
+vc.velocity.z += fwd.z * airDriveAcc * dt;
+}
+
+### Lateral drag simulates tyre friction
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L320) (line 320)
+
+A real car resists sideways sliding because the tyres provide
+a large cornering force.  We approximate this by reducing the
+lateral velocity component each frame.
+
+The grip factor is high when grounded (gripFactor ≈ 0.90 at 60 fps)
+and near-zero when airborne (gripFactor ≈ 0.01) — cars slip freely
+in the air.  The effective lateral deceleration per frame is:
+
+  lateralV_next = lateralV * (1 - gripFactor)
+
+With gripFactor = 0.90 and dt = 1/60, the car loses 90% of its
+lateral velocity in one frame — very stiff grip.  Reduce to 0.5–0.7
+for a drift-car feel.
+{
+const float gripFactor = (groundedCount >= 2) ? 0.90f : 0.01f;
+const float lateralVel = Dot3(vc.velocity, right);
+vc.velocity.x -= right.x * lateralVel * gripFactor;
+vc.velocity.z -= right.z * lateralVel * gripFactor;
+}
+
+### Ackermann Steering Approximation
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L344) (line 344)
+
+In a real car, each wheel has a slightly different turn radius
+(Ackermann geometry).  We simplify to a bicycle model:
+
+  yawRate = (forwardSpeed / wheelbase) * tan(steerAngle)
+
+The steer angle scales linearly with steerInput, but we reduce
+it at high speed (speed-sensitive steering) so the car doesn't
+spin out at highway speed (common in most racing games).
+if (groundedCount >= 2)
+{
+const float fwdSpeed = Dot3(vc.velocity, fwd);
+
+### Fuel model
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L375) (line 375)
+
+Fuel only drains when the vehicle is occupied AND throttle is
+applied.  In FFXV running out of fuel strands the party on the
+road and triggers the Cindy tow-truck scene.
+if (vc.isOccupied && vc.fuel > 0.0f)
+{
+const float drain = std::abs(vc.throttleInput)
+vc.fuelConsumption * dt;
+vc.fuel = std::max(0.0f, vc.fuel - drain);
+if (vc.fuel == 0.0f)
+vc.needsFuel = true;
+}
+
+### Why sync instead of reading from physics?
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L398) (line 398)
+
+We are driving the body kinematics from our own spring-damper
+calculations, so the Jolt body's computed position would be
+stale after our velocity override.  We write our integrated
+position back into Jolt so its broadphase AABB and collision
+queries (from other raycasts/body pairs) see the correct car
+position.
+if (vc.physicsBodyID != kInvalidBodyID)
+{
+physicsWorld.SetPosition(vc.physicsBodyID, pos);
+physicsWorld.SetLinearVelocity(vc.physicsBodyID, vc.velocity);
+}
+
+### Storing yaw in TransformComponent::rotation
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L418) (line 418)
+
+TransformComponent::rotation is a game-layer Vec3 of Euler angles
+in DEGREES (pitch=x, yaw=y, roll=z).  We convert our radian yaw
+to degrees and write it to the Y channel.  The renderer (and
+CameraSystem) uses TransformComponent::Forward() which reads
+rotation.y in degrees internally.
+
+We store the canonical radian yaw in VehicleComponent so that
+steering updates are precise (no rounding from degree conversion).
+
+### Using engine::math::kPi (single source of truth)
+
+**Source:** [`src/engine/vehicle/vehicle_system.cpp`](src/engine/vehicle/vehicle_system.cpp#L428) (line 428)
+
+Rather than hard-coding 180 / 3.14159..., we use the named
+constant from math_types.hpp.  This ensures every file uses the
+same precision for π.
+constexpr float kRadToDeg = 180.0f / engine::math::kPi;
+tc.rotation.y = vc.yaw * kRadToDeg;
+
+### Vehicle Physics Overview
+
+**Source:** [`src/engine/vehicle/vehicle_system.hpp`](src/engine/vehicle/vehicle_system.hpp#L6) (line 6)
+
+============================================================================
+FFXV's Regalia uses a technique called *wheel-ray suspension* (also known
+as "ray-cast vehicle" physics).  Rather than modelling the full suspension
+geometry as rigid bodies with joints, four short downward raycasts represent
+the four wheels.  The gap between each ray's hit point and the wheel's
+"rest position" gives the spring compression, from which a spring force is
+computed.  This approach is used in virtually every AAA open-world game
+(GTA series, Horizon, etc.) because:
+
+  • It is stable at large timesteps (no fast-spinning constraint solver).
+  • It is easy to tune (just stiffness + damping per wheel).
+  • Wheels never clip through ground or spin out of constraint.
+  • It works on geometry that has no Jolt-collidable mesh (heightfields,
+    procedural terrain) as long as you can raycast against it.
+
+─── Spring-Damper Model ──────────────────────────────────────────────────
+For each wheel, the vertical spring force is:
+
+  F_y = springStiffness * compression − springDamping * dCompression/dt
+
+where:
+  compression     = suspensionRestLength − rayHitDistance   (>0 when compressed)
+  dCompression/dt = (compression_thisFrame − compression_lastFrame) / dt
+
+All four suspension forces are summed and divided by vehicleMass to produce
+a vertical acceleration that keeps the car above the ground.
+
+─── Kinematic Drive ──────────────────────────────────────────────────────
+Rather than modelling engine torque and tyre friction in full, we use a
+"velocity-servo" drive model:
+
+  1. Compute targetSpeed = throttleInput * maxSpeed.
+  2. Compute speedError  = targetSpeed − currentForwardSpeed.
+  3. Apply driveForce = driveForce * speedError / maxSpeed (saturation).
+  4. A lateral drag cancels sideways sliding (simulates tyre grip).
+  5. Steering yaw rate ≈ forwardSpeed * tan(steerAngle) / wheelbase
+     (Ackermann approximation — matches how most open-world games steer).
+
+─── Collision Body ───────────────────────────────────────────────────────
+VehicleSystem creates one Jolt box body for each vehicle chassis.  The body
+is kinematic (not simulated by the solver); we move it each frame via
+SetPosition so other physics objects can detect and react to the car.
+
+─── Update Order ─────────────────────────────────────────────────────────
+  Per frame (called from GameRuntime::Update or the vehicle_test scene):
+  1. PhysicsWorld::Step(dt)     — advance Jolt simulation.
+  2. VehicleSystem::Update(...) — for each VehicleComponent entity:
+     a. Cast 4 wheel rays → compute spring forces.
+     b. Apply gravity + suspension + drive + drag to velocity.
+     c. Integrate position (pos += vel * dt).
+     d. Update yaw from steer.
+     e. Sync chassis box body position via PhysicsWorld::SetPosition.
+     f. Write back to TransformComponent.
+     g. Update speed for HUD / camera.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows (ENGINE_ENABLE_PHYSICS required)
+
+### Compile-time guard
+
+**Source:** [`src/engine/vehicle/vehicle_system.hpp`](src/engine/vehicle/vehicle_system.hpp#L73) (line 73)
+
+VehicleSystem depends on PhysicsWorld (Jolt Physics).  When built without
+Jolt (ENGINE_ENABLE_PHYSICS not defined), the system is compiled out entirely
+rather than failing with linker errors.  The same pattern is used for
+physics_world.cpp, rigid_body.cpp, etc.
+ifdef ENGINE_ENABLE_PHYSICS
+
+### Stateless System Design
+
+**Source:** [`src/engine/vehicle/vehicle_system.hpp`](src/engine/vehicle/vehicle_system.hpp#L99) (line 99)
+
+─────────────────────────────────────────
+VehicleSystem itself holds no per-vehicle state.  All vehicle state lives
+in VehicleComponent (ECS data).  This follows the ECS principle: systems
+contain logic, components contain data.  The system can be destroyed and
+recreated without losing any simulation state.
+
+### dt conventions
+
+**Source:** [`src/engine/vehicle/vehicle_system.hpp`](src/engine/vehicle/vehicle_system.hpp#L146) (line 146)
+
+For a stable spring-damper at 60 FPS, springDamping should be tuned
+at dt = 1/60 s.  Very large dt (> 1/10 s) will cause the spring to
+overshoot.  In production games the physics step is fixed at 1/60 or
+1/120 s and the rendering uses interpolation for smooth visuals.
+
+@param world         ECS World.
+@param physicsWorld  Physics world (for ray casts and body sync).
+@param dt            Delta time in seconds (typically 1/60).
 
 ---
 
@@ -20787,6 +22275,8 @@ Usage:
   engine_sandbox.exe --scene game                         # M8 full gameplay windowed (D3D11)
   engine_sandbox.exe --headless --scene m8_gameplay       # M8 gameplay acceptance test (CI)
   engine_sandbox.exe --headless --scene m8_streaming      # M8.7 streaming integration test (CI — run after cook.exe)
+  engine_sandbox.exe --headless --scene vehicle_test      # Post-M10 vehicle physics acceptance test (CI)
+  engine_sandbox.exe --headless --scene bt_test           # Post-M10 BT AI + formation + nav-mesh acceptance test (CI)
 
 ============================================================================
 
@@ -20798,7 +22288,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L96) (line 96)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L98) (line 98)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -20814,11 +22304,18 @@ ifdef ENGINE_ENABLE_PHYSICS
  include "engine/physics/character_controller.hpp"
  include "engine/physics/raycast.hpp"
  include "engine/physics/hit_volume.hpp"
+
+### VehicleSystem (Post-M10) is compiled only when
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L113) (line 113)
+
+ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
+ include "engine/vehicle/vehicle_system.hpp"
 endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L114) (line 114)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L119) (line 119)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -20836,7 +22333,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L130) (line 130)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L135) (line 135)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -20851,7 +22348,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L143) (line 143)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L148) (line 148)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -20871,7 +22368,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L161) (line 161)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L166) (line 166)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -20883,9 +22380,29 @@ which do not require a renderer at all.
 ---------------------------------------------------------------------------
 include "engine/rendering/sky_renderer.hpp"
 
+### Post-M10 Behaviour Tree AI headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L178) (line 178)
+
+---------------------------------------------------------------------------
+The bt_test scene validates the three new engine/ai/ subsystems:
+
+  1. BehaviourTree (behaviour_tree.hpp): sequence/selector semantics,
+     blackboard read/write, action RUNNING→SUCCESS transitions.
+  2. FormationSystem (formation_system.hpp): slot offsets are non-zero
+     for all three formation types (LINE, V_SHAPE, CIRCLE).
+  3. NavMesh (nav_mesh.hpp): A* finds a correct path on a 5×5 all-walkable
+     grid and respects blocked cells.
+
+All three tests are pure C++17 CPU tests — no D3D11 renderer required.
+---------------------------------------------------------------------------
+include "engine/ai/behaviour_tree.hpp"
+include "engine/ai/formation_system.hpp"
+include "engine/ai/nav_mesh.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L181) (line 181)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L204) (line 204)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -20902,7 +22419,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L219) (line 219)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -20919,7 +22436,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L209) (line 209)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L232) (line 232)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -20931,7 +22448,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L231) (line 231)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L254) (line 254)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -20950,7 +22467,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L246) (line 246)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L269) (line 269)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -20963,7 +22480,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L259) (line 259)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L282) (line 282)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -20974,7 +22491,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L288) (line 288)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L311) (line 311)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -20989,7 +22506,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L313) (line 313)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L336) (line 336)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -20999,7 +22516,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L343) (line 343)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L366) (line 366)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -21015,7 +22532,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L392) (line 392)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L415) (line 415)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -21041,7 +22558,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L414) (line 414)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L437) (line 437)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -21070,7 +22587,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L439) (line 439)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L462) (line 462)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -21094,7 +22611,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L547) (line 547)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L570) (line 570)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -21119,7 +22636,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L668) (line 668)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L691) (line 691)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -21140,7 +22657,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L752) (line 752)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L775) (line 775)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -21152,13 +22669,93 @@ std::cout << "[SKIP] physics_test: ENGINE_ENABLE_PHYSICS not defined "
 "[PASS] physics_test: skipped (no Jolt Physics in build).\n";
 endif
 }
+else if (scene == "vehicle_test")
+{
+-----------------------------------------------------------
+
+### Post-M10 Vehicle Physics headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L789) (line 789)
+
+-----------------------------------------------------------
+This acceptance scene validates the VehicleSystem:
+
+  Test 1 — SUSPENSION: The vehicle must stay above the ground
+  after 120 simulated frames (2 s at 1/60 dt).  With no
+  suspension the vehicle would fall to Y ≈ -19.6 m (half a
+  free-fall of 2 s) under gravity.  A working spring holds it
+  at roughly the ride height above the floor.
+
+  Test 2 — THROTTLE: With throttle=1.0 the car must travel
+  at least 1 m forward (Z increases) in 120 frames.  At
+  maxSpeed=30 m/s the expected travel is ~60 m; we use 1 m
+  as a generous lower bound that rules out "stuck" bugs.
+
+  Test 3 — WHEEL GROUNDING: At least 2 of the 4 wheels must
+  be reporting isGrounded=true after settling.  This confirms
+  that suspension raycasts are hitting the static floor body.
+
+All three tests run without any D3D11 rendering: they are
+pure physics CPU tests, like the M5 physics_test scene.
+-----------------------------------------------------------
+ifdef ENGINE_ENABLE_PHYSICS
+using namespace engine;
+using physics::PhysicsWorld;
+using vehicle::VehicleSystem;
+using math::Vec3;
+
+### Heap-allocated World (avoids stack overflow)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L818) (line 818)
+
+See the m8_gameplay note for why World must be heap-allocated.
+auto vehicleWorld = std::make_unique<World>();
+RegisterAllComponents(*vehicleWorld);
+
+### Why -0.5 m threshold?
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L880) (line 880)
+
+Without suspension the vehicle falls freely: Y ≈ -19.6 m.
+With working suspension it should settle near Y ≈ 0.4–1.2 m.
+We allow down to -0.5 m as a safety margin for tuning changes.
+const float yAfter = vehicleWorld->GetComponent<TransformComponent>(vehicleID)
+.position.y;
+if (yAfter < -0.5f)
+{
+std::cout << "[FAIL] vehicle_test/suspension: "
+<< "vehicle Y=" << yAfter
+<< " (fell through floor; expected > -0.5).\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] vehicle_test/suspension: "
+<< "vehicle Y=" << yAfter << " (suspension active).\n";
+}
+}
+
+### Build-time gate for vehicle_test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L955) (line 955)
+
+If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
+is not defined and the vehicle_test scene is not available.
+Build with the windows-ninja-debug-physics preset and install
+joltphysics via vcpkg to enable this scene.
+-----------------------------------------------------------
+std::cout << "[SKIP] vehicle_test: ENGINE_ENABLE_PHYSICS not defined "
+"(rebuild with joltphysics via vcpkg).\n"
+"[PASS] vehicle_test: skipped (no Jolt Physics in build).\n";
+endif
+}
 else if (scene == "testworld")
 {
 -----------------------------------------------------------
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L766) (line 766)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L969) (line 969)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -21176,7 +22773,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L799) (line 799)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1002) (line 1002)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -21202,7 +22799,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L850) (line 850)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1053) (line 1053)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -21224,7 +22821,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L869) (line 869)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1072) (line 1072)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -21247,7 +22844,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L950) (line 950)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1153) (line 1153)
 
 -----------------------------------------------------------
 Verifies that:
@@ -21267,7 +22864,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L967) (line 967)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1170) (line 1170)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -21287,7 +22884,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1010) (line 1010)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1213) (line 1213)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -21303,7 +22900,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1052) (line 1052)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1255) (line 1255)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -21329,7 +22926,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1074) (line 1074)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1277) (line 1277)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -21352,7 +22949,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1183) (line 1183)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1386) (line 1386)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -21379,7 +22976,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1207) (line 1207)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1410) (line 1410)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -21390,14 +22987,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1230) (line 1230)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1433) (line 1433)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1235) (line 1235)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1438) (line 1438)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -21412,9 +23009,72 @@ window.Shutdown();
 return 1;
 }
 
+### Post-M10 Behaviour Tree AI headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1486) (line 1486)
+
+-----------------------------------------------------------
+This acceptance scene validates the three new engine/ai/
+subsystems without any D3D11 renderer: pure CPU tests.
+
+Test 1 — BT SEQUENCE SEMANTICS:
+  A Sequence node short-circuits on the first FAILURE.
+  We build:   Sequence( Condition(false), Action(succeed) )
+  Expected result: FAILURE (action never runs).
+  We also verify:  Sequence( Condition(true), Action(running→success) )
+  returns RUNNING on the first tick, then SUCCESS on the second.
+
+Test 2 — BT SELECTOR SEMANTICS:
+  A Selector node short-circuits on the first SUCCESS.
+  We build:   Selector( Condition(false), Condition(true) )
+  Expected result: SUCCESS (second child succeeds).
+  We also verify blackboard read/write: the action writes a
+  key and the test reads it back.
+
+Test 3 — FORMATION SLOT OFFSETS:
+  For all three FormationType values (LINE, V_SHAPE, CIRCLE),
+  BuildSlotOffsets(type, 4) must return exactly 4 slots and
+  all slots for followers (index > 0) must have non-zero
+  offset so they are not stacked on top of the leader.
+
+Test 4 — NAV MESH PATHFINDING:
+  BakeEmpty(5, 5) creates an all-walkable 5×5 grid.
+  FindPath({0,0}, {4,4}) must return a non-empty path that
+  starts at {0,0} and ends at {4,4}.
+  After blocking cell (2,2), the path must route around it.
+-----------------------------------------------------------
+
+### RUNNING state across ticks
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1544) (line 1544)
+
+──────────────────────────────────────────────
+A multi-frame action returns RUNNING on tick 1 and
+SUCCESS on tick 2.  The sequence must forward RUNNING
+upward and resume the same action (not restart) on the
+next tick.
+
+### Testing formation geometry
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1635) (line 1635)
+
+────────────────────────────────────────────
+We verify that all follower slots (there are 4 of them)
+have a non-zero offset so they are not stacked on the leader.
+This catches regressions if the offset computation loops
+are wrong (off-by-one, sign error, etc.).
+
+### Obstacle routing test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1703) (line 1703)
+
+──────────────────────────────────────
+Block the direct path at column x=2 for all rows except
+y=0 (leave a gap).  A* must route through the gap.
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1296) (line 1296)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1767) (line 1767)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -21424,7 +23084,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1304) (line 1304)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1775) (line 1775)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -21454,7 +23114,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1332) (line 1332)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1803) (line 1803)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -21477,7 +23137,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1385) (line 1385)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1856) (line 1856)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -21490,7 +23150,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1401) (line 1401)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1872) (line 1872)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -21605,7 +23265,7 @@ still subject to all other checks (layer boundaries, TEACHING NOTEs).
 
 ### Suppressing Known Pre-existing Violations
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L185) (line 185)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L191) (line 191)
 
 ----------------------------------------------------------
 A freshly introduced lint rule will almost always find violations in existing
@@ -21621,19 +23281,19 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L287) (line 287)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L293) (line 293)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L329) (line 329)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L335) (line 335)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L409) (line 409)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L415) (line 415)
 
 ### skip_dirs excludes build artefacts and third-party sources.
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L446) (line 446)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L452) (line 452)
 
 "Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
 source that intentionally has no TEACHING NOTE blocks and may be large.

@@ -176,6 +176,12 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
     # and a matching load block, and every block has TEACHING NOTEs.
     "src/engine/save/save_system.cpp":
         "SaveSystem M8 — full ECS round-trip; one save+load block per component with TEACHING NOTEs",
+    # behaviour_tree.hpp: BT framework header — node type hierarchy, blackboard,
+    # and BtTree are intentionally all in one header to make the full framework
+    # readable as a single document.  TEACHING NOTEs on each class explain the
+    # design patterns (Command, Composite, Strategy) in context.
+    "src/engine/ai/behaviour_tree.hpp":
+        "BT framework header — composite node hierarchy + blackboard in one teaching document; TEACHING NOTEs cover Composite, Command, and Strategy patterns",
 }
 
 # ---------------------------------------------------------------------------
