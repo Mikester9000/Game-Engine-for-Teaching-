@@ -1637,6 +1637,15 @@ struct VehicleComponent {
     // -----------------------------------------------------------------------
     engine::math::Vec3  velocity {};           ///< World-space velocity (m/s).
     float               yaw      = 0.0f;       ///< Heading angle (radians, Y-axis).
+    // TEACHING NOTE — std::array vs C-style array for wheelStates
+    // `wheelRestPositions` uses a C-style array because it is a tuning constant
+    // initialised with aggregate syntax at declaration.
+    // `wheelStates` uses std::array because:
+    //   a) std::array supports range-based for and structured bindings.
+    //   b) It default-initialises all elements (WheelState{}) without a
+    //      separate initialiser list.
+    //   c) It is bounds-checked in Debug builds via at().
+    // Both are fine choices; this contrast is intentional for teaching.
     std::array<WheelState, 4> wheelStates{};   ///< Per-wheel suspension snapshot.
 
     /// Jolt body ID of the chassis collision box (0xFFFFFFFF = not created yet).

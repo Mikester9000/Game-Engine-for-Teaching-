@@ -943,6 +943,7 @@ int main(int argc, char* argv[])
                              "(rebuild with joltphysics via vcpkg).\n"
                              "[PASS] vehicle_test: skipped (no Jolt Physics in build).\n";
 #endif
+            }
             else if (scene == "testworld")
             {
                 // -----------------------------------------------------------

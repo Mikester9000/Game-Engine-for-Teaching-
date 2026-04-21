@@ -424,7 +424,12 @@ void VehicleSystem::Update(World& world,
             //
             // We store the canonical radian yaw in VehicleComponent so that
             // steering updates are precise (no rounding from degree conversion).
-            constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
+            //
+            // TEACHING NOTE — Using engine::math::kPi (single source of truth)
+            // Rather than hard-coding 180 / 3.14159..., we use the named
+            // constant from math_types.hpp.  This ensures every file uses the
+            // same precision for π.
+            constexpr float kRadToDeg = 180.0f / engine::math::kPi;
             tc.rotation.y = vc.yaw * kRadToDeg;
 
             // Update the speed field (horizontal only — no vertical component).
