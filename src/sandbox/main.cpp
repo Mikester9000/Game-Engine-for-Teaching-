@@ -140,9 +140,11 @@
 // ---------------------------------------------------------------------------
 // The m8_streaming scene validates the full M8.7 pipeline:
 //   1. Loads assetdb.json produced by cook.exe.
-//   2. Inits a GameStreamingManager with a real AssetLoader.
-//   3. Registers the cell_0_0 GUID for world cell (0,0).
-//   4. Runs 200 Update() calls so the async worker can complete.
+//   2. Inits a GameStreamingManager with cell size TILE_SIZE*40 = 2560 world
+//      units (same as GameRuntime, same coordinate mapping path).
+//   3. Registers the cell_0_0 GUID for world cell (1,1) — matching the
+//      GameRuntime mapping (player starts in cell (1,1) at 2560-unit cells).
+//   4. Runs 200 Update() calls at position (3840, 0, 3840) — centre of (1,1).
 //   5. Asserts: at least 1 cell reached the LOADED state.
 //
 // Run AFTER cook.exe — the test exits with [FAIL] if assetdb.json is absent.
@@ -1059,16 +1061,19 @@ int main(int argc, char* argv[])
                 //      Exits [FAIL] if the file is missing (cook.exe must run
                 //      before this scene is invoked, as enforced in CI).
                 //
-                //   2. STREAMING INIT — Create a GameStreamingManager with the
-                //      real AssetLoader and ECS World.
+                //   2. STREAMING INIT — Create a GameStreamingManager with cell
+                //      size TILE_SIZE * 40 = 2560 world units — matching the
+                //      shipped GameRuntime (same coordinate mapping path).
                 //
                 //   3. GUID REGISTRATION — Register the stable GUID
-                //      "5db40c3b-…" (cell_0_0) for world cell (0,0).
+                //      "5db40c3b-…" (cell_0_0) for world cell (1,1), mirroring
+                //      GameRuntime (player starts at tile 50,50 = world 3200,3200
+                //      which lies in cell (1,1) at 2560-unit cell size).
                 //
                 //   4. UPDATE LOOP — Run 200 Update() calls at position
-                //      (128, 0, 128), which lies in cell (0,0) when cell size
-                //      is 256 world units.  The async worker has enough calls
-                //      to complete the load and trigger PumpCompletions().
+                //      (3840, 0, 3840) — the centre of cell (1,1) at 2560 cell
+                //      size.  The async worker has enough calls to complete the
+                //      load and trigger PumpCompletions().
                 //
                 //   5. LOADED COUNT — Assert ≥ 1 cell reached LOADED state.
                 //
@@ -1100,7 +1105,12 @@ int main(int argc, char* argv[])
                 RegisterAllComponents(*streamWorld);
 
                 auto streamMgr = std::make_unique<GameStreamingManager>();
-                constexpr float kStreamCellSize = 256.0f;  // world units
+                // TEACHING NOTE — Keep this acceptance-test cell size matched to
+                // GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
+                // Using a smaller test-only value exercises a different
+                // world-position → cell-coordinate mapping path and can hide
+                // boundary bugs that would appear in the shipped runtime.
+                constexpr float kStreamCellSize = TILE_SIZE * 40.0f;  // 2560 world units
                 if (!streamMgr->Init(*streamWorld, &streamLoader, kStreamCellSize, 1))
                 {
                     std::cout << "[FAIL] m8_streaming: GameStreamingManager::Init failed.\n";
@@ -1109,16 +1119,19 @@ int main(int argc, char* argv[])
                     return 1;
                 }
 
-                // 3. Register cell_0_0 GUID for world cell (0,0).
-                // This GUID is stable — it matches the 'id' field in
-                // AssetRegistry.json and is preserved verbatim by cook.exe.
+                // 3. Register cell_0_0 GUID for world cell (1,1).
+                // This matches GameRuntime's registration: the player starts at
+                // tile (50,50) = world (3200, 0, 3200), which lies in cell (1,1)
+                // at cell size 2560.  Using the same coord → GUID mapping as the
+                // shipped runtime means this test validates the exact same path.
                 const std::string kCell00Guid = "5db40c3b-a192-4a4c-a1aa-728775cd12fa";
                 const uint32_t    kCellId00   =
-                    engine::world::CellIdFromCoord({ 0, 0 });
+                    engine::world::CellIdFromCoord({ 1, 1 });
                 streamMgr->RegisterCellGuid(kCellId00, kCell00Guid);
 
-                // 4. Update 200 times — camera at (128, 0, 128) → inside cell (0,0).
-                const engine::math::Vec3 kCamPos{ 128.0f, 0.0f, 128.0f };
+                // 4. Update 200 times — camera at (3840, 0, 3840) which is the
+                // centre of cell (1,1) at cell size 2560.
+                const engine::math::Vec3 kCamPos{ 3840.0f, 0.0f, 3840.0f };
                 for (int i = 0; i < 200; ++i)
                     streamMgr->Update(kCamPos);
 
@@ -1137,6 +1150,8 @@ int main(int argc, char* argv[])
                 std::cout << "[PASS] m8_streaming: " << loadedCells
                           << " cell(s) loaded from disk via AssetLoader.\n";
             }
+            else
+            {
                 // M0 baseline: device init succeeded.
                 std::cout << "[PASS] " << renderer->BackendName()
                           << " device initialised. Headless mode: "
