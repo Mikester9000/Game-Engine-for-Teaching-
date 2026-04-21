@@ -168,7 +168,7 @@ Every milestone produces an **executable or headless-validation pass** before
 the next milestone starts.  This is non-negotiable.  See
 `docs/PROJECT_MILESTONES.md` for the detailed definition of each milestone.
 
-> **Current position:** M0–M8 all complete. **Next: Post-M8 work** (PBR, dynamic sky, vehicle physics, behaviour tree, cinematics, Vulkan catch-up).
+> **Current position:** M0–M10 all complete. **Next: Post-M10 work** (vehicle physics, behaviour tree AI, cinematics, Vulkan catch-up).
 
 | Milestone | Name | Status | "Done" means |
 |---|---|---|---|
@@ -182,17 +182,18 @@ the next milestone starts.  This is non-negotiable.  See
 | M6 | **Editor improvements** | ✅ Complete | `SceneHierarchyPanel`, `InspectorPanel`, `SceneSerialiser`, Play-in-Engine, asset drag-drop; editor CI |
 | M7 | **World streaming** | ✅ Complete | `WorldStreamingManager` + `WorldPartition` + `AsyncLoader`; `GameStreamingManager` Zone wiring; cancellation tokens; frame-budget cap; debug overlay; streaming CI |
 | M8 | **Gameplay integration** | ✅ Complete | `GameRuntime` + `InputMapper` + `CameraSystem` + `Hud` + `DialogueSystem` + `SaveSystem` + `GameStreamingManager` → D3D11; `m8_gameplay` + `m8_streaming` CI scenes; 4 authored streaming cells |
+| M9 | **PBR Rendering** | ✅ Complete | `pbr_mesh.vs/ps.hlsl` (GGX NDF + Smith G + Schlick F + Reinhard); UV sphere; 3 CBs; `--scene pbr_mesh` CI |
+| M10 | **Dynamic Sky + Weather VFX** | ✅ Complete | `sky_renderer.hpp/.cpp`; `weather_fx.hpp/.cpp`; `sky.vs/ps.hlsl`; `--scene dynamic_sky` 3-test CI |
 
-**Post-M8 work (in order):**
-1. PBR rendering (IBL + directional shadows + bloom + tonemap) — D3D11 first, then Vulkan catch-up
-2. Dynamic sky + weather VFX — `sky_renderer.hpp/.cpp`, `weather_fx.hpp/.cpp`
-3. Vehicle physics — `VehicleComponent` + wheel-ray suspension
-4. Behaviour tree AI — `src/engine/ai/behaviour_tree.hpp/.cpp`
-5. Formation system — `src/engine/ai/formation_system.hpp/.cpp`
-6. Cinematics — `CinematicSequencer` + camera rig
-7. Vulkan catch-up — all DEFERRED items (vulkan_texture, descriptor sets, Vulkan PBR, Vulkan skinning)
-8. Nav-mesh baker + runtime pathfinding
-9. PAK packager — `src/tools/pak/pak_main.cpp`
+**Post-M10 work (in order):**
+1. ~~PBR rendering~~ — ✅ Done (M9)
+2. ~~Dynamic sky + weather VFX~~ — ✅ Done (M10)
+3. Vehicle physics — `VehicleComponent` + wheel-ray suspension + chase camera (M11)
+4. Behaviour tree AI — `src/engine/ai/behaviour_tree.hpp/.cpp` + formation system (M12)
+5. Cinematics — `CinematicSequencer` + camera rig + cut-scene editor (M13)
+6. Vulkan catch-up — all DEFERRED items (vulkan_texture, descriptor sets, Vulkan PBR, Vulkan skinning, Vulkan sky) (M14)
+7. Nav-mesh baker + runtime pathfinding
+8. PAK packager — `src/tools/pak/pak_main.cpp` (M15)
 
 ---
 
@@ -312,20 +313,24 @@ Current state (M3 in progress):
   "dependencies": [
     "nlohmann-json",
     "directxtex",
-    { "name": "imgui", "features": ["docking", "dx11-binding", "win32-binding"] }
+    { "name": "imgui", "features": ["docking-experimental", "dx11-binding", "win32-binding"] },
+    "joltphysics"
   ]
 }
 ```
+
+> **Note:** At vcpkg tag 2024.12.16, the ImGui docking feature is named
+> `docking-experimental`, NOT `docking`.
 
 Per-milestone dependency log:
 
 | Milestone | vcpkg package | Status | Used by |
 |-----------|-------------|--------|---------|
 | M2 | `nlohmann-json` | ✅ | `cook.exe` — parse/write JSON manifests |
-| M3 | `directxtex` | ✅ | Vulkan texture — DDS/BC7 compress/decompress (D3D11 path uses self-contained parser) |
-| Editor | `imgui[docking,dx11-binding,win32-binding]` | ✅ | Dear ImGui editor (EditorApp + panels) |
-| M4 | `tinygltf` | ⬜ | Animation — load glTF skeleton + clips |
-| M5 | `joltphysics` | ⬜ | Physics — Jolt `PhysicsSystem` wrapper |
+| M3 | `directxtex` | ✅ | Reserved for Vulkan texture path (DEFERRED); D3D11 uses self-contained DDS parser |
+| Editor | `imgui[docking-experimental,dx11-binding,win32-binding]` | ✅ | Dear ImGui editor (EditorApp + panels); CI editor job uses classic-mode vcpkg |
+| M5 | `joltphysics` | ✅ | Physics — Jolt `PhysicsSystem` wrapper; CI physics job uses classic-mode vcpkg install |
+| M11+ | `tinygltf` | ⬜ | Animation — load glTF skeleton + clips (for full mesh import pipeline) |
 
 Integrate with CMake by adding to `CMakePresets.json` `cacheVariables`:
 ```json

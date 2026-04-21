@@ -12375,7 +12375,6 @@ related values together to minimise wasted padding:
 
 sizeof = 5 × 16 = 80 bytes.
 ---------------------------------------------------------------------------
-pragma pack(push, 1)
 struct SkyShaderConstants
 {
 --- float4 block 0: sun direction + intensity ---
@@ -14153,14 +14152,30 @@ static constexpr float kStormFog    = 0.55f;   // Heavy fog, 50% visibility
 -----------------------------------------------------------------------
 We pick the target fog/rain/cloud values for the current WeatherType
 and then lerp the current state toward them each frame.
+WeatherType::FOG (gameplay visibility reduction) is treated as
+Rain-level precipitation with maximum fog density for rendering
+purposes — dense fog without heavy rain matches FF15's misty dungeon look.
 -----------------------------------------------------------------------
 float targetFog   = kClearFog;
 float targetRain  = kClearRain;
 float targetCloud = kClearCloud;
 
+### Rendering WeatherType::FOG
+
+**Source:** [`src/engine/rendering/weather_fx.cpp`](src/engine/rendering/weather_fx.cpp#L107) (line 107)
+
+FOG maps to maximum fog density + light rain + heavy cloud cover.
+Visually this produces a dense, low-visibility atmosphere without
+the driving rain of a full storm.
+targetFog   = kStormFog;
+targetRain  = kCloudyRain;
+targetCloud = kRainCloud;
+break;
+}
+
 ### Approach-Rate Lerp
 
-**Source:** [`src/engine/rendering/weather_fx.cpp`](src/engine/rendering/weather_fx.cpp#L105) (line 105)
+**Source:** [`src/engine/rendering/weather_fx.cpp`](src/engine/rendering/weather_fx.cpp#L118) (line 118)
 
 -----------------------------------------------------------------------
 alpha controls how fast we transition.  alpha = dt * 0.5 means the
@@ -14192,9 +14207,10 @@ This separation respects the engine architecture layer rule:
   game/systems/ → engine/rendering/   (allowed: game may call engine)
   engine/rendering/ → game/systems/   (FORBIDDEN: engine must not depend on game)
 
-The bridge is the plain WeatherType enum, which is defined here in the
-engine/rendering/ layer and mirrored (as a cast) from the game layer's
-WeatherState enum.
+The bridge is the shared ::WeatherType enum defined in engine/core/Types.hpp.
+engine/rendering/ is allowed to include engine/core/ headers — both are in
+the engine layer.  The game layer's WeatherSystem already stores and
+broadcasts a ::WeatherType value, so no cast or mapping table is needed.
 
 ============================================================================
 
@@ -14204,31 +14220,9 @@ WeatherState enum.
 C++ Standard: C++17
 Target: Windows (MSVC) and Linux (GCC/Clang)
 
-### WeatherType Enum
-
-**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L42) (line 42)
-
----------------------------------------------------------------------------
-The four weather states correspond to FF15's day/night weather cycle:
-  Clear  — sunny, minimal fog, full sky color
-  Cloudy — scattered clouds, moderate fog, reduced sun intensity
-  Rain   — heavy clouds, significant fog, reduced visibility
-  Storm  — full overcast, dense fog, maximum rain, darkened sky
-
-The values are assigned explicit integers so they can be cast from the
-game layer's WeatherState enum without a lookup table.
----------------------------------------------------------------------------
-enum class WeatherType : int
-{
-Clear  = 0,  ///< Clear sky, no precipitation
-Cloudy = 1,  ///< Overcast, no precipitation
-Rain   = 2,  ///< Light to medium rain
-Storm  = 3,  ///< Heavy rain, lightning, dense fog
-};
-
 ### WeatherFxState
 
-**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L62) (line 62)
+**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L45) (line 45)
 
 ---------------------------------------------------------------------------
 Plain-data struct that carries all per-frame weather rendering parameters.
@@ -14247,7 +14241,7 @@ float cloudCover    = 0.0f;   ///< 0 = clear sky, 1 = full overcast
 
 ### Smooth State Transitions
 
-**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L81) (line 81)
+**Source:** [`src/engine/rendering/weather_fx.hpp`](src/engine/rendering/weather_fx.hpp#L64) (line 64)
 
 ─────────────────────────────────────────
 Rather than snapping fog density to its target value the moment WeatherType
@@ -21092,7 +21086,7 @@ criteria from FF15_REQUIREMENTS_BLUEPRINT.md §7:
     elevation at midnight (t=0 h).
 
   Test 3 — Weather states: fog density must differ between
-    WeatherType::Clear and WeatherType::Storm.
+    WeatherType::CLEAR and WeatherType::STORM.
 
 All three must pass for the scene to report [PASS].
 -----------------------------------------------------------
@@ -21100,7 +21094,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L546) (line 546)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L547) (line 547)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -21125,7 +21119,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L667) (line 667)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L668) (line 668)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -21146,7 +21140,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L751) (line 751)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L752) (line 752)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -21164,7 +21158,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L765) (line 765)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L766) (line 766)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -21182,7 +21176,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L798) (line 798)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L799) (line 799)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -21208,7 +21202,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L849) (line 849)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L850) (line 850)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -21230,7 +21224,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L868) (line 868)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L869) (line 869)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -21253,7 +21247,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L949) (line 949)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L950) (line 950)
 
 -----------------------------------------------------------
 Verifies that:
@@ -21273,7 +21267,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L966) (line 966)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L967) (line 967)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -21293,7 +21287,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1009) (line 1009)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1010) (line 1010)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -21309,7 +21303,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1051) (line 1051)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1052) (line 1052)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -21335,7 +21329,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1073) (line 1073)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1074) (line 1074)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -21358,7 +21352,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1182) (line 1182)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1183) (line 1183)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -21385,7 +21379,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1206) (line 1206)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1207) (line 1207)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -21396,14 +21390,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1229) (line 1229)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1230) (line 1230)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1234) (line 1234)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1235) (line 1235)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -21420,7 +21414,7 @@ return 1;
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1295) (line 1295)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1296) (line 1296)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -21430,7 +21424,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1303) (line 1303)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1304) (line 1304)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -21460,7 +21454,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1331) (line 1331)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1332) (line 1332)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -21483,7 +21477,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1384) (line 1384)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1385) (line 1385)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -21496,7 +21490,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1400) (line 1400)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1401) (line 1401)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

@@ -220,49 +220,53 @@ and idle tracks blend based on game state.
 
 ## 9. Animation Pipeline
 
-**Status:** ⬜
+**Status:** ✅ Complete (M4 + M4b)
 
 **Purpose:** Characters need skeletal animation: idle, walk, run, attack,
 react-to-hit, death.  FF15's Noctis has hundreds of clips blended in real time.
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/engine/animation/skeleton.hpp/.cpp` — joint hierarchy, bind pose |
-| | `src/engine/animation/anim_clip.hpp/.cpp` — sampled or hermite keyframes |
-| | `src/engine/animation/blend_tree.hpp/.cpp` — 1D/2D blend spaces, transitions |
-| | `src/engine/animation/ik_solver.hpp/.cpp` — two-bone IK (foot planting) |
-| | `src/engine/animation/gpu_skinning.hpp/.cpp` — upload joint matrices to Vulkan |
-| **Tool component(s)** | `tools/anim_authoring/animation_engine` — glTF → cooked `.anim` (vendored in `tools/anim_authoring/`) |
-| **Data formats** | Source: `animations/*.gltf`; Cooked: `cooked/animations/<id>.anim` (binary, schema in docs) |
-| **Acceptance tests** | Cook `test_idle.gltf`; load `.anim`; evaluate frame 0 and frame N; assert joint transforms match golden file |
-| | Blend two clips at weight 0.5; assert output is lerp of the two |
+| **Runtime component(s)** | `src/engine/animation/skeleton.hpp/.cpp` — joint hierarchy, bind pose ✅ |
+| | `src/engine/animation/anim_clip.hpp/.cpp` — sampled keyframe channels, lerp/slerp evaluation ✅ |
+| | `src/engine/animation/blend_tree.hpp/.cpp` — clip nodes + linear blend ✅ |
+| | `src/engine/animation/ik_solver.hpp/.cpp` — Two-Bone analytical IK + FABRIK iterative N-joint IK ✅ |
+| | `src/engine/animation/gpu_skinning.hpp/.cpp` — `GpuSkinningBuffer` (64 × Mat4 DYNAMIC CB); D3D11 path ✅ |
+| | `src/engine/animation/animation_system.hpp/.cpp` — ECS update; advance time, evaluate, update AnimatorComponent ✅ |
+| | `shaders/skinned_mesh.vs.hlsl` + `skinned_mesh.ps.hlsl` — D3D11 SM 4.0 skinned mesh shaders ✅ |
+| **Tool component(s)** | `tools/anim_authoring/animation_engine` — glTF → cooked `.anim`; 11 pytest tests ✅ |
+| **Data formats** | Source: `animations/*.gltf`; Cooked: `Cooked/Anim/*.skelc`, `*.animc` |
+| **Acceptance tests** | `--headless --scene skinned_mesh` — D3D11 WARP GPU skinning pipeline ✅ |
+| | Python anim_authoring: 11 tests pass ✅ |
+| | Vulkan GPU skinning (`shaders/skinned_mesh.vert/.frag` + UBO) — **DEFERRED** |
 
 ---
 
 ## 10. Physics
 
-**Status:** ⬜
+**Status:** ✅ Complete (M5)
 
 **Purpose:** Collision, gravity, character controller, and combat hit queries.
 FF15's open world needs accurate terrain collision for characters and vehicles.
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/engine/physics/physics_world.hpp/.cpp` — Jolt `PhysicsSystem` wrapper |
-| | `src/engine/physics/character_controller.hpp/.cpp` — capsule, step-up, slope |
-| | `src/engine/physics/rigid_body.hpp/.cpp` — ECS component + Jolt body linkage |
-| | `src/engine/physics/raycast.hpp/.cpp` — single/batch ray, shape cast |
-| **Tool component(s)** | `tools/creation_engine.py` — collision mesh baker (`.obj` → cooked convex/mesh shapes) |
+| **Runtime component(s)** | `src/engine/physics/physics_world.hpp/.cpp` — Jolt `PhysicsSystem` pImpl wrapper ✅ |
+| | `src/engine/physics/character_controller.hpp/.cpp` — `JPH::CharacterVirtual`; gravity, step-up, slope-slide, jump ✅ |
+| | `src/engine/physics/rigid_body.hpp/.cpp` — `RigidBodyCreator` + ECS `RigidBodyComponent` (component 22) ✅ |
+| | `src/engine/physics/raycast.hpp/.cpp` — `CastRay`, `CastRayDown`, `CastSphere`; `ShapeCastHit` ✅ |
+| | `src/engine/physics/hit_volume.hpp/.cpp` — `HitVolumeManager`; AABB Attack/Hurt volumes ✅ |
+| | `ColliderComponent` (component 23) — `shapeType` (Box/Sphere/Capsule), `halfExtents`, `radius`, `isTrigger` ✅ |
+| **Tool component(s)** | `tools/creation_engine.py` — collision mesh baker (`.obj` → cooked convex/mesh shapes) — 🔨 stub |
 | **Data formats** | Source: `physics/<id>.phys.json`; Cooked: `cooked/physics/<id>.phys` |
-| **Acceptance tests** | Drop sphere from height; assert it contacts floor within expected time (gravity = 9.8 m/s²) |
-| | Character steps over a 0.25 m ledge; assert position updated correctly |
-| | Raycast from above terrain; assert hit distance matches terrain height |
+| **Acceptance tests** | `--headless --scene physics_test` — Test 1: `drop_sphere` (gravity=9.8 m/s²); Test 2: `step_ledge` (0.25 m step-up); Test 3: `raycast` ✅ |
+| | CI: `build-windows-physics` job (classic-mode vcpkg Jolt, `--scene physics_test`) ✅ |
 
 ---
 
 ## 11. UI
 
-**Status:** ✅ (ncurses terminal UI, EventBus notifications) · ⬜ (Vulkan HUD, menu stack)
+**Status:** 🔨 (ncurses terminal UI ✅, D3D11 ImGui HUD ✅ M8.5) · ⬜ (menu stack, font renderer)
 
 **Purpose:** HUD (HP/MP/ATB bars), menus (inventory, equipment, map), quest
 log, dialogue box, and shop.  FF15 uses a clean minimal HUD that scales to 4K.
@@ -282,7 +286,7 @@ log, dialogue box, and shop.  FF15 uses a clean minimal HUD that scales to 4K.
 
 ## 12. Save System
 
-**Status:** ⬜
+**Status:** ✅ Complete (M8.8)
 
 **Purpose:** Serialise the entire ECS world state (player, party, quests,
 inventory, zone) to disk and restore it.  FF15 supports 15 save slots plus
@@ -302,7 +306,7 @@ auto-save at camp.
 
 ## 13. Build / Release Pipeline
 
-**Status:** ✅ (validate-assets CI) · ⬜ (cook.exe, PAK packager, full headless validation)
+**Status:** ✅ (validate-assets CI ✅, cook.exe ✅, contract CI ✅, headless validation ✅) · ⬜ (PAK packager)
 
 **Purpose:** A one-command build that produces a shippable directory: engine +
 tools + cooked assets + sample project.  FF15 ships a 100 GB PAK set; ours is a
@@ -325,7 +329,7 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-> **Last updated: 2026-04-20 — after M8 (gameplay integration) completion.**
+> **Last updated: 2026-04-21 — after M10 (Dynamic Sky + Weather VFX) completion.**
 > Update each cell as subsystem code is committed and tests pass.
 > The project is complete when every cell shows ✅.
 

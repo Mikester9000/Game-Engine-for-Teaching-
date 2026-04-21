@@ -180,17 +180,127 @@ backend.
 
 ---
 
-## Post-M8 Work
+## Post-M8 Work — Completed
 
-- PBR rendering (IBL + directional shadows + bloom + tonemap) — D3D11 first, then Vulkan
-- Dynamic sky / procedural time-of-day + weather VFX
-- Vehicle physics (`VehicleComponent` + wheel-ray suspension)
-- Behaviour tree AI (`src/engine/ai/behaviour_tree.hpp/.cpp`)
-- Formation system (`src/engine/ai/formation_system.hpp/.cpp`)
-- Cinematic sequencer + camera rig
-- Vulkan catch-up: all DEFERRED items (vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning)
-- Nav-mesh generation + runtime pathfinding
-- PAK file packager
+- ✅ PBR rendering (Cook-Torrance BRDF, UV sphere, 3 CBs, Reinhard tonemap) — D3D11 (M9)
+- ✅ Dynamic sky + weather VFX (SkyRenderer, WeatherFx, sky.vs.hlsl, sky.ps.hlsl) — D3D11 (M10)
+
+## Post-M10 Work (remaining)
+
+- Vehicle physics (`VehicleComponent` + wheel-ray suspension + chase camera) — M11
+- Behaviour tree AI (`src/engine/ai/behaviour_tree.hpp/.cpp`) + formation system — M12
+- Cinematics (`CinematicSequencer` + camera rig + cut-scene editor panel) — M13
+- Vulkan catch-up: all DEFERRED items (vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning) — M14
+- Nav-mesh baker + runtime pathfinding
+- PAK file packager (`src/tools/pak/pak_main.cpp`) — M15
+
+---
+
+## Milestone 9 — PBR Rendering (Cook-Torrance BRDF) ✅ *(complete)*
+
+**Goal:** Physically-based rendering pipeline for D3D11 — the same Cook-Torrance
+BRDF class used in Final Fantasy XV's Luminous engine.
+
+| Item | Status |
+|------|--------|
+| `shaders/pbr_mesh.vs.hlsl` — SM 4.0 vertex shader (model→world→clip, inverse-transpose normal) | ✅ Done |
+| `shaders/pbr_mesh.ps.hlsl` — GGX NDF + Smith geometry + Schlick Fresnel + Reinhard tonemap + gamma | ✅ Done |
+| `D3D11Renderer::PBRScene` struct + `LoadScene("pbr_mesh")` + `DrawPBRMesh()` | ✅ Done |
+| UV sphere geometry (16×16 stacks/slices, 289 verts, 1536 indices) | ✅ Done |
+| 3 constant buffers: perFrameCB (b0), lightCB (b1), materialCB (b2) | ✅ Done |
+| `--scene pbr_mesh` in `engine_sandbox`; `--headless --scene pbr_mesh` CI | ✅ Done |
+| CI: `build-windows.yml` WARP headless smoke test | ✅ Done |
+
+---
+
+## Milestone 10 — Dynamic Sky + Weather VFX ✅ *(complete)*
+
+**Goal:** Procedural time-of-day sky with weather effects (fog, rain, cloud cover)
+matching the visual fidelity of FF15's Duscae region outdoor lighting.
+
+| Item | Status |
+|------|--------|
+| `src/engine/rendering/sky_renderer.hpp/.cpp` — time-of-day clock, sun direction, zenith/horizon colour phases, sunset/sunrise tint, cloud darkening | ✅ Done |
+| `src/engine/rendering/weather_fx.hpp/.cpp` — `WeatherType` (Clear/Cloudy/Rain/Storm), `WeatherFxState`, smooth lerp transitions | ✅ Done |
+| `shaders/sky.vs.hlsl` — SV_VertexID full-screen triangle (no VB needed) | ✅ Done |
+| `shaders/sky.ps.hlsl` — exponential gradient + sun disc + glow + fog + rain darkening + Reinhard + gamma (SM 4.0) | ✅ Done |
+| `D3D11Renderer::SkyScene` + `LoadSkyScene()` + `DrawSky()` + `RecordHeadlessFrame()` sky path | ✅ Done |
+| `--scene dynamic_sky` in `engine_sandbox`; 3-test headless validation | ✅ Done |
+| CI: `build-windows.yml` — `dynamic_sky` WARP headless acceptance (Test 1: GPU pipeline; Test 2: sun elevation; Test 3: fog delta) | ✅ Done |
+
+---
+
+## Milestone 11 — Vehicle Physics ⬜ *(not started)*
+
+**Goal:** The Regalia car traverses roads at speed with wheel-ray physics and a spring-arm chase camera.
+
+| Item | Status |
+|------|--------|
+| `VehicleComponent` — throttle, brake, steerAngle, 4-wheel suspension state, currentSpeed | ⬜ |
+| `src/game/systems/vehicle_system.hpp/.cpp` — input → torque/steer; ECS integration | ⬜ |
+| `src/engine/physics/vehicle_physics.hpp/.cpp` — wheel raycasts, spring suspension, force/torque apply | ⬜ |
+| `src/engine/rendering/chase_camera.hpp/.cpp` — spring-arm follow camera | ⬜ |
+| `--scene vehicle_test` headless CI: apply throttle 5 s; assert velocity > 0 | ⬜ |
+
+---
+
+## Milestone 12 — Behaviour Tree AI ⬜ *(not started)*
+
+**Goal:** Replace/augment the FSM-based `AISystem` with a proper behaviour tree so
+party members and bosses can execute complex multi-step strategies.
+
+| Item | Status |
+|------|--------|
+| `src/engine/ai/behaviour_tree.hpp/.cpp` — composite, sequence, selector, decorator, leaf nodes | ⬜ |
+| `src/engine/ai/formation_system.hpp/.cpp` — slot assignment, follow-target formation | ⬜ |
+| `src/engine/ai/nav_mesh_query.hpp/.cpp` — runtime nav-mesh query interface | ⬜ |
+| `tools/creation_engine.py` — nav-mesh baker (`.obj` → cooked `.navmesh`) | ⬜ |
+| `--scene behaviour_tree_test` headless CI: 3 party members reach waypoint in 300 frames | ⬜ |
+
+---
+
+## Milestone 13 — Cinematics ⬜ *(not started)*
+
+**Goal:** In-engine cut-scenes with camera choreography, character animation, and timed audio.
+
+| Item | Status |
+|------|--------|
+| `src/engine/cinematics/cinematic_sequencer.hpp/.cpp` — timeline, track, keyframe player | ⬜ |
+| `src/engine/cinematics/camera_rig.hpp/.cpp` — animated camera path, focal blend | ⬜ |
+| `tools/creation_engine.py` — cut-scene baker (timeline JSON → cooked `.cinematic`) | ⬜ |
+| Cut-scene editor panel in `editor/` | ⬜ |
+| `--scene cinematic_test` headless CI: camera reaches final transform within ±0.01 | ⬜ |
+
+---
+
+## Milestone 14 — Vulkan Catch-up ⬜ *(not started)*
+
+**Goal:** Bring the Vulkan backend to parity with D3D11 (textures, PBR, GPU skinning, sky).
+
+| Item | Status |
+|------|--------|
+| `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` — DDS/BC7 → `VkImage` (DirectXTex) | ⬜ |
+| `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — pool + layout + set; sampler at binding 0 | ⬜ |
+| `shaders/textured_quad.vert/.frag` — GLSL UV quad shaders; add to `GLSL_SHADERS` | ⬜ |
+| Vulkan depth buffer — `VK_FORMAT_D32_SFLOAT` in `VulkanRenderer::Init` | ⬜ |
+| Vulkan PBR pipeline — `src/engine/rendering/vulkan/pbr_pipeline.hpp/.cpp` | ⬜ |
+| `shaders/skinned_mesh.vert/.frag` — GLSL skinning shaders; Vulkan UBO for joint matrices | ⬜ |
+| `shaders/sky.vert/.frag` — GLSL sky shaders; Vulkan sky pipeline in `VulkanRenderer` | ⬜ |
+| Vulkan HUD — imgui Vulkan backend bound to Vulkan render pass | ⬜ |
+| `build-windows-vulkan` CI job: `--renderer vulkan --headless --scene textured_quad` | ⬜ |
+
+---
+
+## Milestone 15 — PAK Packager + Release ⬜ *(not started)*
+
+**Goal:** One-command distribution build: all cooked assets packed into a `.pak` archive
+with the engine executable; `--validate-project` exits 0 on the packed output.
+
+| Item | Status |
+|------|--------|
+| `src/tools/pak/pak_main.cpp` — PAK packager (directory → `.pak` archive with index) | ⬜ |
+| `AssetDB` PAK mount mode — transparent path resolution from `.pak` at runtime | ⬜ |
+| CI: `pack --project samples/vertical_slice_project/ --out dist/`; headless validate on packed output | ⬜ |
 
 ---
 
