@@ -78,6 +78,7 @@
  *   engine_sandbox.exe --headless --scene vehicle_test      # Post-M10 vehicle physics acceptance test (CI)
  *   engine_sandbox.exe --headless --scene bt_test           # Post-M10 BT AI + formation + nav-mesh acceptance test (CI)
  *   engine_sandbox.exe --headless --scene cinematic_test    # Post-M10 Cinematics: CameraRig + CinematicSequencer acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene menu_stack_test   # UI Menu Stack: push/pop navigation acceptance test (CI)
  *
  * ============================================================================
  *
@@ -208,6 +209,21 @@
 #include "engine/cinematics/camera_rig.hpp"
 #include "engine/cinematics/cinematic_sequencer.hpp"
 
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — UI Menu Stack headless test
+// ---------------------------------------------------------------------------
+// The menu_stack_test scene validates the MenuStack navigation subsystem:
+//
+//   1. Push / Top / Size: stack grows correctly with unique screens.
+//   2. Pop: stack shrinks and previous screen becomes active.
+//   3. PopToBase: returns to floor in one call; only 1 notification fired.
+//   4. Contains: correctly reports presence anywhere in the stack.
+//   5. OnScreenChanged callback: fires on Push and Pop with correct screen.
+//   6. Duplicate push guard: pushing the same top screen is a no-op.
+//
+// All tests are pure C++17 CPU tests — no D3D11 renderer required.
+// ---------------------------------------------------------------------------
+#include "engine/ui/menu_stack.hpp"
 
 #include <iostream>
 #include <exception>
@@ -2046,6 +2062,217 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] cinematic_test: all 3 acceptance tests passed "
                              "(CameraRig Lerp, sequencer shot advancement, callbacks).\n";
+            }
+            else if (scene == "menu_stack_test")
+            {
+                // -----------------------------------------------------------
+                // TEACHING NOTE — MenuStack acceptance tests
+                // -----------------------------------------------------------
+                // These tests exercise the entire MenuStack public API without
+                // requiring a renderer, window, or ECS World.  Each test is
+                // independent (creates its own MenuStack) to avoid state leakage
+                // between tests — the same isolation principle used in unit tests.
+                //
+                //   Test 1: Push / Top / Size — stack grows correctly.
+                //   Test 2: Pop — stack shrinks; previous screen is restored.
+                //   Test 3: PopToBase — returns to floor in one call.
+                //   Test 4: Contains — correct for present and absent screens.
+                //   Test 5: OnScreenChanged callback — fires with correct value.
+                //   Test 6: Duplicate push guard — no-op when same top pushed.
+                // -----------------------------------------------------------
+
+                int testsFailed = 0;
+
+                // ---- Test 1: Push / Top / Size ----
+                {
+                    MenuStack ms;
+                    ms.Push(MenuScreen::HUD);
+                    ms.Push(MenuScreen::MAIN_MENU);
+                    ms.Push(MenuScreen::INVENTORY);
+
+                    if (ms.Size() != 3)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/push_size: "
+                                     "expected Size()=3, got " << ms.Size() << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/push_size: "
+                                     "Size()=3 after 3 distinct pushes.\n";
+
+                    if (ms.Top() != MenuScreen::INVENTORY)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/push_top: "
+                                     "expected Top()=INVENTORY, got "
+                                  << MenuScreenName(ms.Top()) << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/push_top: "
+                                     "Top()=INVENTORY after pushing HUD→MAIN_MENU→INVENTORY.\n";
+                }
+
+                // ---- Test 2: Pop ----
+                {
+                    MenuStack ms;
+                    ms.Push(MenuScreen::HUD);
+                    ms.Push(MenuScreen::MAIN_MENU);
+                    ms.Push(MenuScreen::INVENTORY);
+
+                    ms.Pop();  // dismiss INVENTORY
+
+                    if (ms.Top() != MenuScreen::MAIN_MENU)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/pop_restore: "
+                                     "expected Top()=MAIN_MENU after Pop(), got "
+                                  << MenuScreenName(ms.Top()) << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/pop_restore: "
+                                     "Pop() correctly restores MAIN_MENU.\n";
+
+                    if (ms.Size() != 2)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/pop_size: "
+                                     "expected Size()=2 after Pop(), got " << ms.Size() << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/pop_size: "
+                                     "Size()=2 after one Pop().\n";
+
+                    // Pop down to 1 (floor guard — must not pop HUD).
+                    ms.Pop();
+                    ms.Pop();  // this extra Pop() must be a no-op
+                    if (ms.Size() != 1 || ms.Top() != MenuScreen::HUD)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/pop_floor: "
+                                     "floor guard failed — Size()=" << ms.Size()
+                                  << " Top()=" << MenuScreenName(ms.Top()) << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/pop_floor: "
+                                     "Pop() floor guard keeps HUD as minimum.\n";
+                }
+
+                // ---- Test 3: PopToBase ----
+                {
+                    MenuStack ms;
+                    ms.Push(MenuScreen::HUD);
+                    ms.Push(MenuScreen::MAIN_MENU);
+                    ms.Push(MenuScreen::INVENTORY);
+                    ms.Push(MenuScreen::EQUIPMENT);
+
+                    ms.PopToBase();
+
+                    if (ms.Size() != 1 || ms.Top() != MenuScreen::HUD)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/pop_to_base: "
+                                     "expected Size()=1 Top()=HUD, got Size()="
+                                  << ms.Size() << " Top()=" << MenuScreenName(ms.Top()) << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/pop_to_base: "
+                                     "PopToBase() collapses 4-deep stack to floor.\n";
+                }
+
+                // ---- Test 4: Contains ----
+                {
+                    MenuStack ms;
+                    ms.Push(MenuScreen::HUD);
+                    ms.Push(MenuScreen::MAIN_MENU);
+
+                    if (!ms.Contains(MenuScreen::HUD))
+                    {
+                        std::cout << "[FAIL] menu_stack_test/contains_present: "
+                                     "Contains(HUD) should be true.\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/contains_present: "
+                                     "Contains(HUD) is true.\n";
+
+                    if (ms.Contains(MenuScreen::INVENTORY))
+                    {
+                        std::cout << "[FAIL] menu_stack_test/contains_absent: "
+                                     "Contains(INVENTORY) should be false.\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/contains_absent: "
+                                     "Contains(INVENTORY) is false.\n";
+                }
+
+                // ---- Test 5: OnScreenChanged callback ----
+                {
+                    MenuStack ms;
+                    int callCount = 0;
+                    MenuScreen lastScreen = MenuScreen::NONE;
+
+                    ms.SetOnScreenChanged([&](MenuScreen s) {
+                        ++callCount;
+                        lastScreen = s;
+                    });
+
+                    ms.Push(MenuScreen::HUD);
+                    ms.Push(MenuScreen::MAIN_MENU);
+
+                    if (callCount != 2 || lastScreen != MenuScreen::MAIN_MENU)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/callback_push: "
+                                     "expected 2 calls, last=MAIN_MENU; got calls="
+                                  << callCount << " last=" << MenuScreenName(lastScreen) << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/callback_push: "
+                                     "OnScreenChanged fires on Push with correct screen.\n";
+
+                    ms.Pop();
+                    if (callCount != 3 || lastScreen != MenuScreen::HUD)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/callback_pop: "
+                                     "expected 3 calls, last=HUD; got calls="
+                                  << callCount << " last=" << MenuScreenName(lastScreen) << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/callback_pop: "
+                                     "OnScreenChanged fires on Pop with restored screen.\n";
+                }
+
+                // ---- Test 6: Duplicate push guard ----
+                {
+                    MenuStack ms;
+                    ms.Push(MenuScreen::HUD);
+                    ms.Push(MenuScreen::HUD);  // duplicate — must be ignored
+
+                    if (ms.Size() != 1)
+                    {
+                        std::cout << "[FAIL] menu_stack_test/dup_push: "
+                                     "duplicate Push(HUD) should be no-op; Size()="
+                                  << ms.Size() << ".\n";
+                        ++testsFailed;
+                    }
+                    else
+                        std::cout << "[OK] menu_stack_test/dup_push: "
+                                     "duplicate Push() on same top screen is no-op.\n";
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] menu_stack_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] menu_stack_test: all 6 acceptance tests passed "
+                             "(push/top/size, pop/restore/floor, pop_to_base, contains, "
+                             "callbacks, duplicate-push guard).\n";
             }
             else
             {

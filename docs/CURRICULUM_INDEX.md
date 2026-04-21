@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1515 across 49 subsystems.
+**Total lessons:** 1539 across 49 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (61 lessons)
-- [ci/workflows](#ciworkflows) (48 lessons)
+- [ci/workflows](#ciworkflows) (49 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/ai](#engineai) (49 lessons)
@@ -31,7 +31,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
-- [engine/ui](#engineui) (6 lessons)
+- [engine/ui](#engineui) (27 lessons)
 - [engine/vehicle](#enginevehicle) (25 lessons)
 - [engine/world](#engineworld) (56 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
@@ -42,7 +42,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (58 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (60 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -704,18 +704,20 @@ input_mapper.cpp reads Win32 key state → ECS components.
 dialogue_system.cpp tracks NPC dialogue interaction state.
 camera_system.cpp computes view/proj matrices for the D3D11 renderer.
 hud.cpp extracts HudState snapshots from the ECS World.
+menu_stack.cpp implements the push/pop screen navigation stack (UI milestone).
 save_system.cpp serialises/deserialises the ECS World to JSON save files.
 src/sandbox/game_runtime.cpp
 src/game/systems/input_mapper.cpp
 src/game/systems/dialogue_system.cpp
 src/engine/rendering/camera_system.cpp
 src/engine/ui/hud.cpp
+src/engine/ui/menu_stack.cpp
 src/engine/save/save_system.cpp
 )
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L766) (line 766)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L768) (line 768)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -727,7 +729,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L775) (line 775)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L777) (line 777)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -736,7 +738,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L785) (line 785)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L787) (line 787)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -748,7 +750,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L794) (line 794)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L796) (line 796)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -758,7 +760,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L804) (line 804)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L806) (line 806)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -767,7 +769,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L810) (line 810)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L812) (line 812)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -776,7 +778,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L815) (line 815)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L817) (line 817)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -787,7 +789,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L831) (line 831)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L833) (line 833)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -798,7 +800,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L839) (line 839)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L841) (line 841)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -808,7 +810,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L851) (line 851)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L853) (line 853)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -842,7 +844,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L883) (line 883)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L885) (line 885)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -857,7 +859,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L898) (line 898)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L900) (line 900)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -872,7 +874,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L940) (line 940)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L942) (line 942)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -895,7 +897,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L961) (line 961)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L963) (line 963)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -916,7 +918,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L978) (line 978)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L980) (line 980)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -926,7 +928,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L984) (line 984)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L986) (line 986)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -938,7 +940,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L992) (line 992)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L994) (line 994)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -951,7 +953,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1017) (line 1017)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1019) (line 1019)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -973,7 +975,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1036) (line 1036)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1038) (line 1038)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -984,7 +986,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1044) (line 1044)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1046) (line 1046)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -994,7 +996,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1074) (line 1074)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1076) (line 1076)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -1003,7 +1005,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1081) (line 1081)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1083) (line 1083)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1470,9 +1472,33 @@ No D3D11 renderer needed — all tests are pure C++17 CPU tests.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene cinematic_test
 shell: cmd
 
-### M5 Physics CI Job
+### menu_stack_test CI Gate
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L339) (line 339)
+
+This step validates the MenuStack push/pop navigation subsystem:
+
+  Test 1 — Push / Top / Size: pushing 3 distinct screens produces
+    Size()=3 and Top()==INVENTORY.
+  Test 2 — Pop: popping once restores the previous screen; the
+    floor guard prevents popping below 1 screen.
+  Test 3 — PopToBase: a 4-deep stack collapses to Size()=1 (HUD).
+  Test 4 — Contains: true for a screen in the stack; false for one
+    that has never been pushed.
+  Test 5 — OnScreenChanged callback: fires on Push and Pop with the
+    correct new top-of-stack value.
+  Test 6 — Duplicate push guard: pushing the same screen that is
+    already on top is a no-op (Size() does not grow).
+
+No D3D11 renderer needed — all 6 tests are pure C++17 CPU tests.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (UI Menu Stack — menu_stack_test)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene menu_stack_test
+shell: cmd
+
+### M5 Physics CI Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L363) (line 363)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1498,7 +1524,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L378) (line 378)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L402) (line 402)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1524,7 +1550,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L412) (line 412)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1545,7 +1571,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L460) (line 460)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1558,7 +1584,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L449) (line 449)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L473) (line 473)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1573,7 +1599,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L464) (line 464)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L488) (line 488)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1604,7 +1630,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L492) (line 492)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L516) (line 516)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1613,7 +1639,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L514) (line 514)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L538) (line 538)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1641,7 +1667,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L549) (line 549)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L573) (line 573)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1650,7 +1676,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L563) (line 563)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L587) (line 587)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1672,7 +1698,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L588) (line 588)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L612) (line 612)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1686,7 +1712,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L612) (line 612)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L636) (line 636)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1704,7 +1730,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L637) (line 637)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L661) (line 661)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1715,7 +1741,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L648) (line 648)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L672) (line 672)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1730,7 +1756,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L670) (line 670)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L694) (line 694)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -17187,6 +17213,302 @@ can perform an action.  FF15 uses a real-time variant called the
 "Armiger chain meter" that fills as the player deals damage.
 Here we use the simpler classic ATB: 0 = empty, 1 = full / action ready.
 
+### Lookup Table vs Switch for String Conversion
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L18) (line 18)
+
+─────────────────────────────────────────────────────────────────────────
+Both patterns are valid.  A switch statement is checked at compile time
+(the compiler warns on missing enum cases with -Wswitch).  A lookup table
+is marginally faster (O(1) array index) but loses that compiler safety.
+We use switch here so that adding a new MenuScreen without updating this
+function produces a compiler warning — a useful teaching safety net.
+
+### Reserve to avoid reallocations in the render hot-path
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L50) (line 50)
+
+─────────────────────────────────────────────────────────────────────
+std::vector grows by doubling when capacity is exceeded.  In a tight
+game loop a surprise reallocation (malloc + memcpy + free) on a Push()
+call could cause a one-frame hitch.  Reserving 8 slots covers virtually
+all real-world nesting depths (the deepest FF15 menu chain is ~5 levels)
+and keeps the stack entirely in a single small heap allocation.
+m_stack.reserve(8);
+}
+
+### Guard against duplicate top-of-stack push
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L66) (line 66)
+
+─────────────────────────────────────────────────────────
+If the same screen is already on top, a second Push() is a no-op.
+This prevents the player from accidentally nesting two copies of the
+same screen (e.g., double-tapping the Inventory button).
+if (!m_stack.empty() && m_stack.back() == screen)
+return;
+
+### Floor guard: never pop below 1 screen
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L84) (line 84)
+
+──────────────────────────────────────────────────────
+The HUD (or whatever the caller pushed first) is the "floor".
+Popping below 1 would leave the game with no active screen — a
+logic error.  We silently ignore the call so gameplay code can
+always call Pop() on Back without a guard condition.
+if (m_stack.size() <= 1)
+return;
+
+### Batch pop with a single notification
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L103) (line 103)
+
+──────────────────────────────────────────────────────────────────
+Resizing to 1 rather than calling Pop() in a loop avoids N separate
+OnScreenChanged fires.  The renderer only needs to know the *final*
+active screen, not every intermediate state.  One notification keeps
+the sound/animation system from playing a "menu close" effect N times.
+if (m_stack.size() <= 1)
+return;
+
+### noexcept on a trivial query
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L122) (line 122)
+
+────────────────────────────────────────────
+Marking this noexcept tells the compiler (and callers) that this
+method will never throw.  That allows the compiler to omit exception
+unwind tables in the call site, and allows containers to use move
+semantics on objects that contain a MenuStack.
+if (m_stack.empty())
+return MenuScreen::NONE;
+return m_stack.back();
+}
+
+### std::find on a small vector
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L153) (line 153)
+
+────────────────────────────────────────────
+For a stack that is almost always ≤ 8 elements, a linear scan with
+std::find is optimal: cache-friendly sequential access, no hash overhead.
+A std::unordered_set would be faster for large collections but wasteful
+here because the extra bookkeeping outweighs the O(n) linear scan cost.
+return std::find(m_stack.begin(), m_stack.end(), screen) != m_stack.end();
+}
+
+### std::function move semantics
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L177) (line 177)
+
+─────────────────────────────────────────────
+Taking the callback by value and std::move-ing it into the member
+avoids an extra copy of the callable's internal state.  For a plain
+function pointer the difference is negligible, but for a lambda that
+captures by value (e.g., [this]{...}) it avoids copying captured state.
+m_onChange = std::move(cb);
+}
+
+### operator bool on std::function
+
+**Source:** [`src/engine/ui/menu_stack.cpp`](src/engine/ui/menu_stack.cpp#L192) (line 192)
+
+────────────────────────────────────────────────
+std::function converts to true when it holds a callable target (a
+function pointer, functor, or lambda) and to false when it is empty
+(default-constructed or assigned nullptr).  This is more idiomatic
+than comparing to nullptr directly.
+if (m_onChange)
+m_onChange(Top());
+}
+
+### What is a Menu Stack?
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L6) (line 6)
+
+============================================================================
+
+Modern RPGs present menus in layers: pressing a button opens the Inventory
+screen on top of the HUD; pressing another button opens the Item Detail
+sub-screen on top of the Inventory.  When the player presses Back, the
+sub-screen is dismissed and the Inventory reappears.
+
+This is the classic **stack-based navigation** pattern — the same model
+used in mobile apps (Android back-stack), web browsers (history API), and
+AAA games (Uncharted, God of War, FF15's system menu).
+
+─── Stack invariant ────────────────────────────────────────────────────────
+
+The TOP of the stack is the ACTIVE screen.  Only the active screen receives
+input and is rendered.  Screens below it are paused but not destroyed — so
+when you pop the active screen the previous one resumes immediately without
+reloading any data.
+
+  Stack before:        Stack after Push(INVENTORY):
+  ┌───────────┐        ┌───────────────┐  ← TOP (active)
+  │    HUD    │ ← TOP  │  INVENTORY    │
+  └───────────┘        ├───────────────┤
+                       │      HUD      │
+                       └───────────────┘
+
+─── Screen types ─────────────────────────────────────────────────────────
+
+### Enum vs Class Hierarchy for Screens
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L34) (line 34)
+
+Two common designs exist:
+
+  1. Enum-based   (this design): each screen is identified by a MenuScreen
+     value.  The render and input code is in a switch statement elsewhere.
+     Simple, zero overhead, easy to serialise (save/load last screen).
+
+  2. Class hierarchy: each screen is a MenuScreen subclass with its own
+     Render() / HandleInput() virtual methods.  Flexible, supports custom
+     per-screen state, but requires heap allocation and vtable dispatch.
+
+For a teaching engine the enum design is clearer because all logic stays
+in one place (the GameRuntime render loop) where students can read the
+whole picture at once.  A production engine would typically use the class
+hierarchy to isolate each screen's complexity.
+
+─── Thread safety ────────────────────────────────────────────────────────
+
+### Single-Threaded Menu Updates
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L53) (line 53)
+
+MenuStack is NOT thread-safe.  All calls must occur on the game (main)
+thread.  This is correct for a single-threaded game loop.  If menu updates
+need to happen from a background thread (unusual) you would add a mutex or
+move all mutations into a command queue processed on the main thread.
+
+─── Usage example ────────────────────────────────────────────────────────
+
+@code
+  MenuStack menus;
+
+  // Game starts at the HUD.
+  menus.Push(MenuScreen::HUD);
+
+  // Player opens the main menu.
+  menus.Push(MenuScreen::MAIN_MENU);
+
+  // Player opens inventory from the main menu.
+  menus.Push(MenuScreen::INVENTORY);
+
+  // Player presses Back — inventory closes; main menu is top again.
+  menus.Pop();
+  assert(menus.Top() == MenuScreen::MAIN_MENU);
+
+  // Player presses Back again — main menu closes; HUD is top again.
+  menus.Pop();
+  assert(menus.Top() == MenuScreen::HUD);
+@endcode
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2025
+C++ Standard: C++17
+Platform: Windows / Linux (no platform dependencies)
+
+### Naming Screens as Enum Values
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L106) (line 106)
+
+─────────────────────────────────────────────
+Each enum value represents one "page" of UI.  The enum is the single
+source of truth: add a new screen here, handle it in the renderer switch,
+and the whole system knows about it.  No new classes or files needed.
+
+The NONE sentinel is used as a "no screen" / empty-stack indicator so
+callers can check `Top() == MenuScreen::NONE` instead of `IsEmpty()`.
+
+### Debugging with Names
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L132) (line 132)
+
+Storing only an integer in the stack makes logs unreadable ("screen=3").
+This helper converts the enum to a string so log lines say
+"pushed INVENTORY" instead of "pushed 3".  It is marked constexpr so
+the compiler may optimise it away in release builds.
+
+### Stack vs Queue for UI Navigation
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L149) (line 149)
+
+─────────────────────────────────────────────────
+A stack (LIFO) is the right data structure for nested menus because:
+
+  • Opening a sub-screen is always a "deeper" layer → Push.
+  • Pressing Back always dismisses the current layer → Pop.
+  • The game never needs to "jump" to an arbitrary layer by index.
+
+A queue (FIFO) would be the wrong choice here — it models ordered
+processing (tasks, events) not layered navigation.
+
+std::vector<MenuScreen> gives O(1) push_back / pop_back — exactly what
+we need.  A std::stack<MenuScreen> adaptor would also work but hides the
+underlying container from students; the raw vector is more transparent.
+
+### Capacity Reserve
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L164) (line 164)
+
+The maximum useful nesting depth for game menus is around 8 levels
+(HUD → Main → Items → Item Detail → Confirm → …).  Reserving 8 slots
+at construction avoids any heap reallocation during gameplay, which
+could cause micro-stutters on a frame boundary.
+
+### Preventing Duplicate Pushes
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L203) (line 203)
+
+If the caller pushes the same screen that is already on top,
+Push() silently ignores the request.  This avoids the common bug
+where a player presses the Inventory button twice and gets two
+INVENTORY entries on the stack (requiring two Back presses to exit).
+
+### Why not pop the HUD?
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L219) (line 219)
+
+The HUD is the base layer — it is always visible beneath all menus.
+Popping the last screen would leave the stack empty and the game with
+no active screen.  The convention is: the caller pushes HUD first at
+startup and the stack always retains at least one element.
+
+### PopAll vs Multiple Pop calls
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L233) (line 233)
+
+PopAll fires OnScreenChanged once (after the batch pop) rather than
+firing it N times.  This prevents intermediate screen transitions
+from triggering unintended side-effects (sound effects, animations,
+save-game queries) on each intermediate state.
+
+### Contains() vs Top() == screen
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L265) (line 265)
+
+Top() only checks the active layer.  Contains() searches the whole
+stack — useful when you need to know "is the player currently in any
+kind of menu" (e.g., to pause AI updates while any menu is open).
+
+@param screen  Screen to search for.
+
+### Optional Callbacks via std::function
+
+**Source:** [`src/engine/ui/menu_stack.hpp`](src/engine/ui/menu_stack.hpp#L291) (line 291)
+
+We store the callback as a std::function<void(MenuScreen)>.  If no
+callback is registered (or it is explicitly reset to nullptr), every
+Push/Pop is a no-op for the callback path — no null-check in the
+hot path needed because std::function's operator bool handles it.
+
 ---
 
 ## engine/vehicle
@@ -22921,6 +23243,7 @@ Usage:
   engine_sandbox.exe --headless --scene vehicle_test      # Post-M10 vehicle physics acceptance test (CI)
   engine_sandbox.exe --headless --scene bt_test           # Post-M10 BT AI + formation + nav-mesh acceptance test (CI)
   engine_sandbox.exe --headless --scene cinematic_test    # Post-M10 Cinematics: CameraRig + CinematicSequencer acceptance test (CI)
+  engine_sandbox.exe --headless --scene menu_stack_test   # UI Menu Stack: push/pop navigation acceptance test (CI)
 
 ============================================================================
 
@@ -22932,7 +23255,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L99) (line 99)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L100) (line 100)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -22951,7 +23274,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L114) (line 114)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L115) (line 115)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -22959,7 +23282,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L120) (line 120)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L121) (line 121)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -22977,7 +23300,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L136) (line 136)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L137) (line 137)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -22992,7 +23315,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L149) (line 149)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L150) (line 150)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -23012,7 +23335,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L168) (line 168)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -23026,7 +23349,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L179) (line 179)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L180) (line 180)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -23046,7 +23369,7 @@ include "engine/ai/nav_mesh.hpp"
 
 ### Post-M10 Cinematics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L197) (line 197)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L198) (line 198)
 
 ---------------------------------------------------------------------------
 The cinematic_test scene validates the two new engine/cinematics/ subsystems:
@@ -23061,9 +23384,27 @@ All tests are pure C++17 CPU tests — no D3D11 renderer required.
 include "engine/cinematics/camera_rig.hpp"
 include "engine/cinematics/cinematic_sequencer.hpp"
 
+### UI Menu Stack headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L213) (line 213)
+
+---------------------------------------------------------------------------
+The menu_stack_test scene validates the MenuStack navigation subsystem:
+
+  1. Push / Top / Size: stack grows correctly with unique screens.
+  2. Pop: stack shrinks and previous screen becomes active.
+  3. PopToBase: returns to floor in one call; only 1 notification fired.
+  4. Contains: correctly reports presence anywhere in the stack.
+  5. OnScreenChanged callback: fires on Push and Pop with correct screen.
+  6. Duplicate push guard: pushing the same top screen is a no-op.
+
+All tests are pure C++17 CPU tests — no D3D11 renderer required.
+---------------------------------------------------------------------------
+include "engine/ui/menu_stack.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L221) (line 221)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L237) (line 237)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -23080,7 +23421,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L236) (line 236)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L252) (line 252)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -23097,7 +23438,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L249) (line 249)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L265) (line 265)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -23109,7 +23450,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L271) (line 271)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L287) (line 287)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -23128,7 +23469,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L286) (line 286)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L302) (line 302)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -23141,7 +23482,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L299) (line 299)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L315) (line 315)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -23152,7 +23493,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L328) (line 328)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L344) (line 344)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -23167,7 +23508,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L353) (line 353)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L369) (line 369)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -23177,7 +23518,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L383) (line 383)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L399) (line 399)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -23193,7 +23534,7 @@ return 1;
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L432) (line 432)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L448) (line 448)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -23219,7 +23560,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L454) (line 454)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L470) (line 470)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -23248,7 +23589,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L479) (line 479)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L495) (line 495)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -23272,7 +23613,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L587) (line 587)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L603) (line 603)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -23297,7 +23638,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L708) (line 708)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L724) (line 724)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -23318,7 +23659,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L792) (line 792)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L808) (line 808)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -23336,7 +23677,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L806) (line 806)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L822) (line 822)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -23367,7 +23708,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L835) (line 835)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L851) (line 851)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -23375,7 +23716,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L897) (line 897)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L913) (line 913)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -23398,7 +23739,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L972) (line 972)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L988) (line 988)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -23416,7 +23757,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L986) (line 986)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1002) (line 1002)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -23434,7 +23775,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1019) (line 1019)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1035) (line 1035)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -23460,7 +23801,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1070) (line 1070)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1086) (line 1086)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -23482,7 +23823,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1089) (line 1089)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1105) (line 1105)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -23505,7 +23846,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1170) (line 1170)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1186) (line 1186)
 
 -----------------------------------------------------------
 Verifies that:
@@ -23525,7 +23866,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1187) (line 1187)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1203) (line 1203)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -23545,7 +23886,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1230) (line 1230)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1246) (line 1246)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -23561,7 +23902,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1272) (line 1272)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1288) (line 1288)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -23587,7 +23928,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1294) (line 1294)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1310) (line 1310)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -23610,7 +23951,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1403) (line 1403)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1419) (line 1419)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -23637,7 +23978,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1427) (line 1427)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1443) (line 1443)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -23648,14 +23989,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1450) (line 1450)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1466) (line 1466)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1455) (line 1455)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1471) (line 1471)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -23672,7 +24013,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1503) (line 1503)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1519) (line 1519)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -23707,7 +24048,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1561) (line 1561)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1577) (line 1577)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -23717,7 +24058,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1652) (line 1652)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1668) (line 1668)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -23727,7 +24068,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1720) (line 1720)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1736) (line 1736)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -23735,7 +24076,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1771) (line 1771)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1787) (line 1787)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -23764,7 +24105,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1805) (line 1805)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1821) (line 1821)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -23787,7 +24128,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1856) (line 1856)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1872) (line 1872)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -23810,7 +24151,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1897) (line 1897)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1913) (line 1913)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -23827,7 +24168,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1972) (line 1972)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1988) (line 1988)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -23837,9 +24178,27 @@ the expected argument.
 {
 CinematicSequencer seq;
 
+### MenuStack acceptance tests
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2069) (line 2069)
+
+-----------------------------------------------------------
+These tests exercise the entire MenuStack public API without
+requiring a renderer, window, or ECS World.  Each test is
+independent (creates its own MenuStack) to avoid state leakage
+between tests — the same isolation principle used in unit tests.
+
+  Test 1: Push / Top / Size — stack grows correctly.
+  Test 2: Pop — stack shrinks; previous screen is restored.
+  Test 3: PopToBase — returns to floor in one call.
+  Test 4: Contains — correct for present and absent screens.
+  Test 5: OnScreenChanged callback — fires with correct value.
+  Test 6: Duplicate push guard — no-op when same top pushed.
+-----------------------------------------------------------
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2066) (line 2066)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2293) (line 2293)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -23849,7 +24208,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2074) (line 2074)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2301) (line 2301)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -23879,7 +24238,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2102) (line 2102)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2329) (line 2329)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -23902,7 +24261,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2155) (line 2155)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2382) (line 2382)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -23915,7 +24274,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2171) (line 2171)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2398) (line 2398)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

@@ -735,12 +735,14 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         # dialogue_system.cpp tracks NPC dialogue interaction state.
         # camera_system.cpp computes view/proj matrices for the D3D11 renderer.
         # hud.cpp extracts HudState snapshots from the ECS World.
+        # menu_stack.cpp implements the push/pop screen navigation stack (UI milestone).
         # save_system.cpp serialises/deserialises the ECS World to JSON save files.
         src/sandbox/game_runtime.cpp
         src/game/systems/input_mapper.cpp
         src/game/systems/dialogue_system.cpp
         src/engine/rendering/camera_system.cpp
         src/engine/ui/hud.cpp
+        src/engine/ui/menu_stack.cpp
         src/engine/save/save_system.cpp
     )
 
