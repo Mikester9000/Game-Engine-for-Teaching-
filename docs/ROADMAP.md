@@ -230,6 +230,80 @@ matching the visual fidelity of FF15's Duscae region outdoor lighting.
 
 ---
 
+## Milestone 11 — Vehicle Physics ⬜ *(not started)*
+
+**Goal:** The Regalia car traverses roads at speed with wheel-ray physics and a spring-arm chase camera.
+
+| Item | Status |
+|------|--------|
+| `VehicleComponent` — throttle, brake, steerAngle, 4-wheel suspension state, currentSpeed | ⬜ |
+| `src/game/systems/vehicle_system.hpp/.cpp` — input → torque/steer; ECS integration | ⬜ |
+| `src/engine/physics/vehicle_physics.hpp/.cpp` — wheel raycasts, spring suspension, force/torque apply | ⬜ |
+| `src/engine/rendering/chase_camera.hpp/.cpp` — spring-arm follow camera | ⬜ |
+| `--scene vehicle_test` headless CI: apply throttle 5 s; assert velocity > 0 | ⬜ |
+
+---
+
+## Milestone 12 — Behaviour Tree AI ⬜ *(not started)*
+
+**Goal:** Replace/augment the FSM-based `AISystem` with a proper behaviour tree so
+party members and bosses can execute complex multi-step strategies.
+
+| Item | Status |
+|------|--------|
+| `src/engine/ai/behaviour_tree.hpp/.cpp` — composite, sequence, selector, decorator, leaf nodes | ⬜ |
+| `src/engine/ai/formation_system.hpp/.cpp` — slot assignment, follow-target formation | ⬜ |
+| `src/engine/ai/nav_mesh_query.hpp/.cpp` — runtime nav-mesh query interface | ⬜ |
+| `tools/creation_engine.py` — nav-mesh baker (`.obj` → cooked `.navmesh`) | ⬜ |
+| `--scene behaviour_tree_test` headless CI: 3 party members reach waypoint in 300 frames | ⬜ |
+
+---
+
+## Milestone 13 — Cinematics ⬜ *(not started)*
+
+**Goal:** In-engine cut-scenes with camera choreography, character animation, and timed audio.
+
+| Item | Status |
+|------|--------|
+| `src/engine/cinematics/cinematic_sequencer.hpp/.cpp` — timeline, track, keyframe player | ⬜ |
+| `src/engine/cinematics/camera_rig.hpp/.cpp` — animated camera path, focal blend | ⬜ |
+| `tools/creation_engine.py` — cut-scene baker (timeline JSON → cooked `.cinematic`) | ⬜ |
+| Cut-scene editor panel in `editor/` | ⬜ |
+| `--scene cinematic_test` headless CI: camera reaches final transform within ±0.01 | ⬜ |
+
+---
+
+## Milestone 14 — Vulkan Catch-up ⬜ *(not started)*
+
+**Goal:** Bring the Vulkan backend to parity with D3D11 (textures, PBR, GPU skinning, sky).
+
+| Item | Status |
+|------|--------|
+| `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` — DDS/BC7 → `VkImage` (DirectXTex) | ⬜ |
+| `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — pool + layout + set; sampler at binding 0 | ⬜ |
+| `shaders/textured_quad.vert/.frag` — GLSL UV quad shaders; add to `GLSL_SHADERS` | ⬜ |
+| Vulkan depth buffer — `VK_FORMAT_D32_SFLOAT` in `VulkanRenderer::Init` | ⬜ |
+| Vulkan PBR pipeline — `src/engine/rendering/vulkan/pbr_pipeline.hpp/.cpp` | ⬜ |
+| `shaders/skinned_mesh.vert/.frag` — GLSL skinning shaders; Vulkan UBO for joint matrices | ⬜ |
+| `shaders/sky.vert/.frag` — GLSL sky shaders; Vulkan sky pipeline in `VulkanRenderer` | ⬜ |
+| Vulkan HUD — imgui Vulkan backend bound to Vulkan render pass | ⬜ |
+| `build-windows-vulkan` CI job: `--renderer vulkan --headless --scene textured_quad` | ⬜ |
+
+---
+
+## Milestone 15 — PAK Packager + Release ⬜ *(not started)*
+
+**Goal:** One-command distribution build: all cooked assets packed into a `.pak` archive
+with the engine executable; `--validate-project` exits 0 on the packed output.
+
+| Item | Status |
+|------|--------|
+| `src/tools/pak/pak_main.cpp` — PAK packager (directory → `.pak` archive with index) | ⬜ |
+| `AssetDB` PAK mount mode — transparent path resolution from `.pak` at runtime | ⬜ |
+| CI: `pack --project samples/vertical_slice_project/ --out dist/`; headless validate on packed output | ⬜ |
+
+---
+
 ## Ongoing Work (every milestone)
 
 - Add `// TEACHING NOTE` comments to every new subsystem
