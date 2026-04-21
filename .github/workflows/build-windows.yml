@@ -279,6 +279,32 @@ jobs:
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_streaming
         shell: cmd
 
+      # -----------------------------------------------------------------------
+      # Post-M10 — Behaviour Tree AI acceptance tests (CPU-only, no GPU needed).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — bt_test CI Gate
+      # This step validates the three new engine/ai/ subsystems:
+      #
+      #   Test 1 — BT Sequence short-circuit: a failing condition must cause
+      #     the Sequence to return FAILURE without running subsequent children.
+      #   Test 1b — BT Sequence RUNNING: a multi-frame action returns RUNNING
+      #     on tick 1 and SUCCESS on tick 2 (resuming from the same child).
+      #   Test 2a — BT Selector fallback: the Selector returns SUCCESS when
+      #     the SECOND child succeeds (first child failed).
+      #   Test 2b — Blackboard: an action writes an int key; the outer test
+      #     reads it back correctly.
+      #   Test 3 — Formation offsets: LINE, V_SHAPE, and CIRCLE each produce
+      #     4 non-zero slot offsets (followers not stacked on the leader).
+      #   Test 4a — NavMesh basic path: A* finds a path from {0,0} to {4,4}
+      #     on an all-walkable 5×5 grid.
+      #   Test 4b — NavMesh obstacle: A* routes around a blocked column.
+      #
+      # No D3D11 renderer needed — all four tests are pure C++17 CPU tests.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (Post-M10 — bt_test)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bt_test
+        shell: cmd
+
   # --------------------------------------------------------------------------
   # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
   # --------------------------------------------------------------------------
