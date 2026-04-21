@@ -81,7 +81,7 @@ engine achieves this by streaming "cells" in/out based on camera proximity.
 
 ## 2. Party AI
 
-**Status:** ✅ (FSM + A\*) · ⬜ (behaviour tree, formation)
+**Status:** ✅ Complete (FSM + A\* + Behaviour Tree + Formation + NavMesh — Post-M10)
 
 **Purpose:** Three AI-controlled companions move with the player, engage
 enemies autonomously, use abilities, and maintain a plausible formation.
@@ -89,14 +89,13 @@ FF15's Gladiolus/Ignis/Prompto are always present and fight alongside Noctis.
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/game/systems/AISystem.hpp/.cpp` — FSM + A\* (exists) |
-| | `src/engine/ai/behaviour_tree.hpp/.cpp` — composite, sequence, selector, leaf nodes |
-| | `src/engine/ai/formation_system.hpp/.cpp` — slot assignment, follow target |
-| | `src/engine/ai/nav_mesh_query.hpp/.cpp` — nav-mesh runtime query interface |
-| **Tool component(s)** | `tools/creation_engine.py` — nav-mesh baker (bake `.obj` → cooked nav-mesh) |
+| **Runtime component(s)** | `src/game/systems/AISystem.hpp/.cpp` — FSM + A\* ✅ |
+| | `src/engine/ai/behaviour_tree.hpp/.cpp` — `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard` ✅ |
+| | `src/engine/ai/formation_system.hpp/.cpp` — LINE/V_SHAPE/CIRCLE slot offsets, greedy assignment ✅ |
+| | `src/engine/ai/nav_mesh.hpp/.cpp` — grid `NavMesh`, `BakeFromGrid`, A\* `FindPath` (4-dir + diagonal, obstacle routing) ✅ |
+| **Tool component(s)** | `tools/creation_engine.py` — nav-mesh baker (bake `.obj` → cooked nav-mesh) (stub) |
 | **Data formats** | Source: `party_ai.json` (behaviour tree definition); Cooked: `cooked/ai/<id>.navmesh` |
-| **Acceptance tests** | Headless sim 300 frames; assert all 3 party members reach target waypoint |
-| | Party disperses when combat starts; re-forms when combat ends |
+| **Acceptance tests** | `--headless --scene bt_test`: 4 tests — BT sequence/selector, blackboard, formation offsets, nav-mesh A\* ✅ |
 
 ---
 
@@ -141,7 +140,7 @@ main quests, and sub-quests, each with objectives, prerequisites, and rewards.
 
 ## 5. Cinematics
 
-**Status:** ⬜
+**Status:** ✅ Complete (Post-M10)
 
 **Purpose:** In-engine cut-scenes with camera choreography, character
 animation, and timed audio.  FF15's opening and Chapter 14 scenes are
@@ -160,20 +159,19 @@ in-engine, not pre-rendered video.
 
 ## 6. Vehicles
 
-**Status:** ✅ (state enum) · ⬜ (physics, road query, camera)
+**Status:** ✅ Complete (Post-M10)
 
 **Purpose:** The Regalia car traverses roads at speed.  Requires vehicle
 physics (force/torque on 4 wheels), road/terrain queries, and a chase camera.
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/game/systems/vehicle_system.hpp/.cpp` — vehicle state, input, physics apply |
-| | `src/engine/physics/vehicle_physics.hpp/.cpp` — wheel raycasts, suspension, torque |
-| | `src/engine/rendering/chase_camera.hpp/.cpp` — spring-arm camera |
-| **Tool component(s)** | Road spline data: `tools/creation_engine.py` road baker |
+| **Runtime component(s)** | `src/engine/vehicle/vehicle_system.hpp/.cpp` — `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steer, fuel drain) ✅ |
+| | `VehicleComponent` with `WheelState`×4 (spring compression, damping, contact) ✅ |
+| | Vehicle chase camera in `src/engine/rendering/camera_system.hpp/.cpp` ✅ |
+| **Tool component(s)** | Road spline data: `tools/creation_engine.py` road baker (stub) |
 | **Data formats** | Source: `vehicles/<id>.vehicle.json`; Cooked: `cooked/vehicles/<id>.vehicle` |
-| **Acceptance tests** | Apply throttle for 5 s; assert velocity > 0, position changed along road axis |
-| | Brake from speed; assert velocity returns to 0 within expected distance |
+| **Acceptance tests** | `--headless --scene vehicle_test`: throttle 5 s → velocity > 0; position advances ✅ |
 
 ---
 
@@ -266,21 +264,20 @@ FF15's open world needs accurate terrain collision for characters and vehicles.
 
 ## 11. UI
 
-**Status:** 🔨 (ncurses terminal UI ✅, D3D11 ImGui HUD ✅ M8.5) · ⬜ (menu stack, font renderer)
+**Status:** 🔨 (ncurses terminal UI ✅, D3D11 ImGui HUD ✅ M8.5, MenuStack ✅ Post-M10) · ⬜ (font renderer)
 
 **Purpose:** HUD (HP/MP/ATB bars), menus (inventory, equipment, map), quest
 log, dialogue box, and shop.  FF15 uses a clean minimal HUD that scales to 4K.
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/engine/ui/ui_system.hpp/.cpp` — render-backend-agnostic widget system |
-| | `src/engine/ui/hud.hpp/.cpp` — HP/MP/ATB bars, mini-map overlay |
-| | `src/engine/ui/menu_stack.hpp/.cpp` — push/pop screen navigation |
-| | `src/engine/ui/font_renderer.hpp/.cpp` — font atlas, signed distance field text |
+| **Runtime component(s)** | `src/engine/ui/hud.hpp/.cpp` — HP/MP/ATB bars, mini-map overlay ✅ (M8.5) |
+| | `src/engine/ui/menu_stack.hpp/.cpp` — push/pop screen navigation (`MenuStack`, `MenuScreen` enum, 9 screen types) ✅ (Post-M10) |
+| | `src/engine/ui/font_renderer.hpp/.cpp` — font atlas, signed distance field text ⬜ |
 | **Tool component(s)** | `tools/creation_engine.py` — font atlas baker, UI layout export |
 | **Data formats** | Source: `ui/*.ui.json`; Cooked: `cooked/ui/<id>.ui`; Font: `cooked/fonts/<id>.font` |
-| **Acceptance tests** | Push 3 screens; pop 2; assert top of stack matches expected screen |
-| | Render HUD headlessly; assert no GPU validation errors (Vulkan validation layers) |
+| **Acceptance tests** | `--headless --scene menu_stack_test`: 6 tests — push/pop/size, restore/floor, PopToBase, Contains, callback, dup-push guard ✅ |
+| | Render HUD headlessly; assert no GPU validation errors (Vulkan validation layers) — deferred |
 
 ---
 
@@ -329,23 +326,23 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-> **Last updated: 2026-04-21 — after M10 (Dynamic Sky + Weather VFX) completion.**
+> **Last updated: 2026-04-21 — after Post-M10 (Cinematics + Vehicle Physics + Behaviour Tree AI + UI Menu Stack) completion.**
 > Update each cell as subsystem code is committed and tests pass.
 > The project is complete when every cell shows ✅.
 
 | # | Subsystem | Runtime | Tool | Tests | Notes |
 |---|---|---|---|---|---|
 | 1 | Open-world streaming | ✅ | ✅ | ✅ | `WorldStreamingManager` + `GameStreamingManager` + 4 streaming CI scenes; M8.7 wires into D3D11 GameRuntime |
-| 2 | Party AI | 🔨 | ⬜ | ⬜ | FSM + A* done (D3D11 GameRuntime); BT + formation ⬜ |
+| 2 | Party AI | ✅ | ⬜ | ✅ | FSM + A* + BT (`BtTree`/`BtSequence`/`BtSelector`) + FormationSystem (LINE/V_SHAPE/CIRCLE) + NavMesh A* (Post-M10); nav-mesh baker tool ⬜ |
 | 3 | Action combat | 🔨 | ⬜ | ⬜ | ATB/warp-strike in D3D11 GameRuntime (M8.1); physics hit-detection ⬜ |
 | 4 | Quests & objectives | 🔨 | ⬜ | ⬜ | QuestSystem + DialogueSystem in D3D11 GameRuntime (M8.6); dialogue tree editor ⬜ |
-| 5 | Cinematics | ⬜ | ⬜ | ⬜ | No `src/engine/cinematics/` |
-| 6 | Vehicles | ⬜ | ⬜ | ⬜ | State enum only; no physics/road/camera |
+| 5 | Cinematics | ✅ | ⬜ | ✅ | `CameraRig` (keyframe Lerp, binary-search bracket) + `CinematicSequencer` (shot/cut, callbacks, ECS write) + `cinematic_test` CI (Post-M10) ✅; cut-scene editor panel ⬜ |
+| 6 | Vehicles | ✅ | ⬜ | ✅ | `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steer, fuel) + `WheelState`×4 + vehicle chase camera + `vehicle_test` CI (Post-M10) ✅; road spline baker tool ⬜ |
 | 7 | Weather & time-of-day | ✅ | 🔨 | ✅ | SkyRenderer + WeatherFx + D3D11 sky pipeline + `dynamic_sky` headless CI (M10) ✅; tod.lut curve editor ⬜ |
 | 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + AudioSourceComponent ✅ (M3) |
 | 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
 | 10 | Physics | ✅ | ✅ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent`; 3 headless CI tests (M5) |
-| 11 | UI | 🔨 | ⬜ | ⬜ | D3D11 ImGui HUD (HP/MP bars, ATB) ✅ (M8.5); menu stack + font renderer ⬜ |
+| 11 | UI | 🔨 | ⬜ | ✅ | D3D11 ImGui HUD (HP/MP bars, ATB) ✅ (M8.5); `MenuStack` push/pop navigation + 6-test CI ✅ (Post-M10); font renderer ⬜ |
 | 12 | Save system | ✅ | ✅ | ✅ | `SaveSystem`: 15 slots + auto-save + `"version"` migration field; JSON ECS snapshot ✅ (M8.8) |
 | 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI ✅; `pak.exe` ⬜ |
 

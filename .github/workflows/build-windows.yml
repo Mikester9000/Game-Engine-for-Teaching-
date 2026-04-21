@@ -333,6 +333,30 @@ jobs:
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene cinematic_test
         shell: cmd
 
+      # -----------------------------------------------------------------------
+      # UI Menu Stack acceptance tests (CPU-only, no GPU needed).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — menu_stack_test CI Gate
+      # This step validates the MenuStack push/pop navigation subsystem:
+      #
+      #   Test 1 — Push / Top / Size: pushing 3 distinct screens produces
+      #     Size()=3 and Top()==INVENTORY.
+      #   Test 2 — Pop: popping once restores the previous screen; the
+      #     floor guard prevents popping below 1 screen.
+      #   Test 3 — PopToBase: a 4-deep stack collapses to Size()=1 (HUD).
+      #   Test 4 — Contains: true for a screen in the stack; false for one
+      #     that has never been pushed.
+      #   Test 5 — OnScreenChanged callback: fires on Push and Pop with the
+      #     correct new top-of-stack value.
+      #   Test 6 — Duplicate push guard: pushing the same screen that is
+      #     already on top is a no-op (Size() does not grow).
+      #
+      # No D3D11 renderer needed — all 6 tests are pure C++17 CPU tests.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (UI Menu Stack — menu_stack_test)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene menu_stack_test
+        shell: cmd
+
   # --------------------------------------------------------------------------
   # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
   # --------------------------------------------------------------------------
