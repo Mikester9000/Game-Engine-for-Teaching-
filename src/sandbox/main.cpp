@@ -84,6 +84,8 @@
  *   engine_sandbox.exe --headless --scene bloom_test        # M17 Bloom: bright-pass + blur + composite acceptance test (CI)
  *   engine_sandbox.exe --headless --scene audio_3d_test     # M18 X3DAudio: listener init + distance rolloff acceptance test (CI)
  *   engine_sandbox.exe --headless --scene combat_test        # M19 Action Combat: combo FSM + damage formula acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene quest_test         # M20 Quest system: accept/progress/complete/prereq acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene dialogue_test      # M20 Dialogue system: proximity/begin/advance acceptance test (CI)
  *
  * ============================================================================
  *
@@ -286,6 +288,65 @@
 // ---------------------------------------------------------------------------
 #include "engine/combat/combo_system.hpp"
 #include "game/systems/CombatSystem.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M20 Quest system headless test
+// ---------------------------------------------------------------------------
+// The quest_test scene validates the QuestSystem lifecycle without any
+// rendering or audio calls:
+//
+//   Test 1 (quest_accept):
+//     AcceptQuest(player, 1) must return true; the quest must then appear
+//     as active in GetActiveQuests().  Validates the happy-path acceptance
+//     flow: GameDatabase lookup → prerequisite check → QuestEntry allocation.
+//
+//   Test 2 (quest_objective):
+//     After accepting quest 1 (objective: kill 3 goblins, targetID=1),
+//     calling OnEnemyKilled(player, 1) twice must advance progress to 2.
+//     Calling it a third time must complete the quest automatically.
+//     Validates the event-driven objective hook and auto-complete logic.
+//
+//   Test 3 (quest_prereq):
+//     Quest 6 ("Imperial Threat") lists quest 1 as a prerequisite.
+//     CanAcceptQuest(player, 6) must return false for a fresh player.
+//     After quest 1 is completed it must return true.
+//     Validates the prerequisite gate that enables branching quest chains.
+//
+//   Test 4 (quest_fail):
+//     FailQuest() sets isFailed on the entry.  IsQuestActive() must then
+//     return false and IsQuestComplete() must also return false.
+//     Validates that failed quests are distinct from active and complete.
+//
+// All four tests are pure C++17 CPU tests — no GPU or audio device needed.
+// ---------------------------------------------------------------------------
+#include "game/systems/QuestSystem.hpp"
+#include "game/GameData.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M20 Dialogue system headless test
+// ---------------------------------------------------------------------------
+// The dialogue_test scene validates the DialogueSystem proximity and
+// conversation state machine without any rendering calls:
+//
+//   Test 1 (dialogue_out_of_range):
+//     Create an NPC at (100, 0, 100) with interactRange=5 and a player at
+//     origin.  After Update(), isInteractable must be false.
+//     Validates the proximity check: NPCs far away cannot be talked to.
+//
+//   Test 2 (dialogue_in_range):
+//     Move player to (99, 0, 99) — within interactRange=5.  After Update(),
+//     isInteractable must be true.
+//     Validates that the system correctly sets the flag when in range.
+//
+//   Test 3 (dialogue_begin_and_advance):
+//     With an interactable NPC, call BeginDialogue(); IsActive() must be true.
+//     Call AdvanceDialogue() on the stub terminal node; IsActive() must be
+//     false (conversation ended).
+//     Validates the full open → advance → close lifecycle.
+//
+// All three tests are pure C++17 CPU tests — no GPU or audio device needed.
+// ---------------------------------------------------------------------------
+#include "game/systems/dialogue_system.hpp"
 
 #include <iostream>
 #include <exception>
@@ -3135,6 +3196,384 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] combat_test: 4 acceptance tests passed "
                              "(combo_populate, combo_sequence, window_expiry, damage_formula).\n";
+            }
+            else if (scene == "quest_test")
+            {
+                // -----------------------------------------------------------
+                // M20: Quest system acceptance tests (4 tests).
+                //
+                // TEACHING NOTE — What the quest_test validates:
+                //   All four tests are pure C++17 CPU tests — no D3D11
+                //   renderer, Jolt physics, or XAudio2 is required.
+                //   A minimal ECS World is created from the heap (see
+                //   combat_test teaching note on why heap-allocation is
+                //   required for World — EntityManager::m_signatures is
+                //   512 KB alone).
+                //
+                //   Test 1 (quest_accept):
+                //     AcceptQuest(player, 1) must return true.
+                //     GetActiveQuests() must include quest 1's QuestData.
+                //     Validates: GameDatabase lookup, free-slot allocation,
+                //     QuestEntry initialisation.
+                //
+                //   Test 2 (quest_objective):
+                //     OnEnemyKilled(player, 1) x3 advances then auto-completes
+                //     quest 1 (3 goblins required, targetID=1).
+                //     IsQuestComplete(player, 1) must be true.
+                //     Validates: event-driven hook, progress accumulation,
+                //     and auto-complete when progress == required.
+                //
+                //   Test 3 (quest_prereq):
+                //     Quest 6 has prereqQuestIDs=[1].  CanAcceptQuest(player,6)
+                //     must be false for a fresh player and true after quest 1
+                //     is completed.
+                //     Validates the prerequisite gate for quest chaining.
+                //
+                //   Test 4 (quest_fail):
+                //     AcceptQuest then FailQuest(player, questID) sets
+                //     isFailed=true.  IsQuestActive() and IsQuestComplete()
+                //     must both return false afterwards.
+                //     Validates the fail path is distinct from active/complete.
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+
+                // -----------------------------------------------------------
+                // Shared world setup — heap-allocate to avoid stack overflow.
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Why heap-allocate World?
+                // EntityManager::m_signatures is a std::array<bitset<64>, 65536>
+                // which alone is 512 KB.  Stack-allocating World on Windows
+                // causes STATUS_STACK_OVERFLOW.  All test worlds in this file
+                // are created via std::make_unique for this reason.
+                auto questWorld = std::make_unique<World>();
+                RegisterAllComponents(*questWorld);
+
+                EntityID playerID = questWorld->CreateEntity();
+                questWorld->AddComponent<QuestComponent>(playerID);
+                questWorld->AddComponent<LevelComponent>(playerID);
+                questWorld->AddComponent<CurrencyComponent>(playerID);
+                questWorld->AddComponent<InventoryComponent>(playerID);
+                questWorld->AddComponent<NameComponent>(playerID).name = "Noctis";
+
+                QuestSystem questSys(questWorld.get(),
+                                     &EventBus<QuestEvent>::Instance(),
+                                     &EventBus<UIEvent>::Instance());
+
+                // -----------------------------------------------------------
+                // Test 1 — quest_accept
+                // -----------------------------------------------------------
+                {
+                    // TEACHING NOTE — Quest 1 "The Road to Dawn" is defined
+                    // in GameDatabase with no prerequisites so it should always
+                    // be acceptable for a fresh player entity.
+                    const bool accepted = questSys.AcceptQuest(playerID, 1);
+                    const bool isActive = questSys.IsQuestActive(playerID, 1);
+                    const auto active   = questSys.GetActiveQuests(playerID);
+                    const bool inList   = !active.empty() &&
+                                         active[0]->id == 1;
+
+                    if (!accepted || !isActive || !inList)
+                    {
+                        std::cout << "[FAIL] quest_test/quest_accept: "
+                                     "accepted=" << accepted
+                                  << " isActive=" << isActive
+                                  << " inList=" << inList
+                                  << " (expected all true).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] quest_test/quest_accept: "
+                                     "Quest 1 accepted; active=true; "
+                                     "GetActiveQuests() includes Quest 1.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 2 — quest_objective + auto-complete
+                // -----------------------------------------------------------
+                {
+                    // Quest 1 objective: kill 3 goblins (targetID=1).
+                    // Two kills should leave the quest active; the third
+                    // should trigger auto-complete (CompleteQuest is called
+                    // internally by UpdateObjective when progress == required).
+                    questSys.OnEnemyKilled(playerID, 1);  // kill 1
+                    questSys.OnEnemyKilled(playerID, 1);  // kill 2
+
+                    const bool stillActive = questSys.IsQuestActive(playerID, 1);
+
+                    questSys.OnEnemyKilled(playerID, 1);  // kill 3 → auto-complete
+
+                    const bool isComplete = questSys.IsQuestComplete(playerID, 1);
+
+                    // Verify XP was awarded (quest 1 gives 100 XP).
+                    // TEACHING NOTE — GainXP() accumulates XP in pendingXP
+                    // (banked in the field); it only moves to currentXP when
+                    // the player rests at camp (ApplyBankedXP).  We check
+                    // the sum of both to confirm the reward was credited.
+                    const auto& lc       = questWorld->GetComponent<LevelComponent>(playerID);
+                    const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
+
+                    if (!stillActive || !isComplete || !xpGranted)
+                    {
+                        std::cout << "[FAIL] quest_test/quest_objective: "
+                                     "stillActive=" << stillActive
+                                  << " isComplete=" << isComplete
+                                  << " xpGranted=" << xpGranted
+                                  << " (expected all true).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] quest_test/quest_objective: "
+                                     "3 goblin kills completed quest 1; "
+                                     "XP awarded.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 3 — quest_prereq: prerequisite gate
+                // -----------------------------------------------------------
+                {
+                    // Quest 6 ("Imperial Threat") has prereqQuestIDs=[1].
+                    // Quest 1 is now complete → CanAcceptQuest(6) must be true.
+                    const bool canAccept6 = questSys.CanAcceptQuest(playerID, 6);
+
+                    // Also verify that without the prereq it was false.
+                    // We test this indirectly: create a second fresh world
+                    // to confirm the gate blocks a player without quest 1 done.
+                    auto world2 = std::make_unique<World>();
+                    RegisterAllComponents(*world2);
+                    EntityID p2 = world2->CreateEntity();
+                    world2->AddComponent<QuestComponent>(p2);
+                    world2->AddComponent<LevelComponent>(p2);
+                    world2->AddComponent<CurrencyComponent>(p2);
+                    world2->AddComponent<InventoryComponent>(p2);
+                    QuestSystem qs2(world2.get(),
+                                    &EventBus<QuestEvent>::Instance(),
+                                    &EventBus<UIEvent>::Instance());
+
+                    // TEACHING NOTE — A fresh player has not completed quest 1
+                    // so CanAcceptQuest(6) should return false.
+                    const bool blockedWithoutPrereq =
+                        !qs2.CanAcceptQuest(p2, 6);
+
+                    if (!canAccept6 || !blockedWithoutPrereq)
+                    {
+                        std::cout << "[FAIL] quest_test/quest_prereq: "
+                                     "canAccept6=" << canAccept6
+                                  << " blockedWithoutPrereq=" << blockedWithoutPrereq
+                                   << " (expected both true).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] quest_test/quest_prereq: "
+                                     "Quest 6 gated behind quest 1; "
+                                     "unlocked after completion.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 4 — quest_fail
+                // -----------------------------------------------------------
+                {
+                    // Accept quest 2 ("Stolen Goods") and then fail it.
+                    auto world3 = std::make_unique<World>();
+                    RegisterAllComponents(*world3);
+                    EntityID p3 = world3->CreateEntity();
+                    world3->AddComponent<QuestComponent>(p3);
+                    world3->AddComponent<LevelComponent>(p3);
+                    world3->AddComponent<CurrencyComponent>(p3);
+                    world3->AddComponent<InventoryComponent>(p3);
+                    QuestSystem qs3(world3.get(),
+                                    &EventBus<QuestEvent>::Instance(),
+                                    &EventBus<UIEvent>::Instance());
+
+                    qs3.AcceptQuest(p3, 2);
+                    const bool activeBefore = qs3.IsQuestActive(p3, 2);
+
+                    qs3.FailQuest(p3, 2);
+                    const bool activeAfter   = qs3.IsQuestActive(p3, 2);
+                    const bool completeAfter = qs3.IsQuestComplete(p3, 2);
+
+                    // TEACHING NOTE — A failed quest is neither active nor
+                    // complete.  The player could potentially re-accept it
+                    // (if the QuestSystem allows it) or it remains failed for
+                    // narrative reasons.  Either way the flags must be clear.
+                    if (!activeBefore || activeAfter || completeAfter)
+                    {
+                        std::cout << "[FAIL] quest_test/quest_fail: "
+                                     "activeBefore=" << activeBefore
+                                  << " activeAfter=" << activeAfter
+                                  << " completeAfter=" << completeAfter
+                                  << " (expected true, false, false).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] quest_test/quest_fail: "
+                                     "Failed quest 2: active=false, complete=false.\n";
+                    }
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] quest_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] quest_test: 4 acceptance tests passed "
+                             "(quest_accept, quest_objective, quest_prereq, quest_fail).\n";
+            }
+            else if (scene == "dialogue_test")
+            {
+                // -----------------------------------------------------------
+                // M20: Dialogue system acceptance tests (3 tests).
+                //
+                // TEACHING NOTE — What the dialogue_test validates:
+                //   All three tests are pure C++17 CPU tests — no renderer,
+                //   no audio, no physics.  A minimal ECS World is created
+                //   with a player entity and one NPC entity.
+                //
+                //   Test 1 (dialogue_out_of_range):
+                //     NPC is placed at (100, 0, 100), player at (0, 0, 0).
+                //     interactRange = 5.  After DialogueSystem::Update() the
+                //     NPC's DialogueComponent::isInteractable must be false.
+                //     Validates: distance > range → not interactable.
+                //
+                //   Test 2 (dialogue_in_range):
+                //     Player is moved to (99, 0, 99) — XZ distance ≈ 1.4,
+                //     well within interactRange=5.  After Update() the NPC
+                //     must be interactable.
+                //     Validates: distance < range → interactable set to true.
+                //
+                //   Test 3 (dialogue_begin_and_advance):
+                //     With the NPC interactable, BeginDialogue() must open the
+                //     stub conversation (IsActive() == true).
+                //     AdvanceDialogue() on the stub terminal node must close
+                //     it (IsActive() == false).
+                //     Validates: the open → advance → close lifecycle.
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+
+                // -----------------------------------------------------------
+                // Shared world: one player + one NPC.
+                // -----------------------------------------------------------
+                auto dlgWorld = std::make_unique<World>();
+                RegisterAllComponents(*dlgWorld);
+
+                EntityID playerID = dlgWorld->CreateEntity();
+                dlgWorld->AddComponent<TransformComponent>(playerID).position =
+                    { 0.0f, 0.0f, 0.0f };
+
+                EntityID npcID = dlgWorld->CreateEntity();
+                dlgWorld->AddComponent<TransformComponent>(npcID).position =
+                    { 100.0f, 0.0f, 100.0f };   // far away
+
+                dlgWorld->AddComponent<DialogueComponent>(npcID).interactRange = 5.0f;
+                dlgWorld->GetComponent<DialogueComponent>(npcID).isInteractable = false;
+
+                DialogueSystem dlgSys(dlgWorld.get());
+
+                // -----------------------------------------------------------
+                // Test 1 — dialogue_out_of_range
+                // -----------------------------------------------------------
+                {
+                    dlgSys.Update(*dlgWorld, playerID, 0.016f);
+
+                    const bool notInteractable =
+                        !dlgWorld->GetComponent<DialogueComponent>(npcID).isInteractable;
+
+                    if (!notInteractable)
+                    {
+                        std::cout << "[FAIL] dialogue_test/dialogue_out_of_range: "
+                                     "NPC at (100,0,100) with player at origin "
+                                     "was marked interactable (should be false).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] dialogue_test/dialogue_out_of_range: "
+                                     "NPC out of range → isInteractable=false.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 2 — dialogue_in_range
+                // -----------------------------------------------------------
+                {
+                    // Move player close to NPC.
+                    // TEACHING NOTE — We only change XZ (horizontal plane);
+                    // DialogueSystem uses XZ distance, matching the 2.5D
+                    // world layout where Y is the vertical axis.
+                    dlgWorld->GetComponent<TransformComponent>(playerID).position =
+                        { 99.0f, 0.0f, 99.0f };
+
+                    dlgSys.Update(*dlgWorld, playerID, 0.016f);
+
+                    const bool isInteractable =
+                        dlgWorld->GetComponent<DialogueComponent>(npcID).isInteractable;
+
+                    if (!isInteractable)
+                    {
+                        std::cout << "[FAIL] dialogue_test/dialogue_in_range: "
+                                     "NPC at (100,0,100) with player at (99,0,99) "
+                                     "was NOT marked interactable (should be true).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] dialogue_test/dialogue_in_range: "
+                                     "Player within range=5 → isInteractable=true.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 3 — dialogue_begin_and_advance
+                // -----------------------------------------------------------
+                {
+                    // NPC is now interactable (from test 2).
+                    const bool opened  = dlgSys.BeginDialogue(*dlgWorld, playerID);
+                    const bool isActive = dlgSys.IsActive();
+
+                    // TEACHING NOTE — The stub DialogueSystem (M8.6) uses a
+                    // single terminal node.  AdvanceDialogue() on a terminal
+                    // node should close the conversation (IsActive() → false).
+                    const bool moreNodes = dlgSys.AdvanceDialogue(*dlgWorld);
+                    const bool closedOk  = !dlgSys.IsActive();
+
+                    if (!opened || !isActive || moreNodes || !closedOk)
+                    {
+                        std::cout << "[FAIL] dialogue_test/dialogue_begin_and_advance: "
+                                     "opened=" << opened
+                                  << " isActive=" << isActive
+                                  << " moreNodes=" << moreNodes
+                                  << " closedOk=" << closedOk
+                                  << " (expected true, true, false, true).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] dialogue_test/dialogue_begin_and_advance: "
+                                     "Opened dialogue; advanced to terminal; "
+                                     "IsActive()=false.\n";
+                    }
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] dialogue_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] dialogue_test: 3 acceptance tests passed "
+                             "(dialogue_out_of_range, dialogue_in_range, "
+                             "dialogue_begin_and_advance).\n";
             }
             else
             {
