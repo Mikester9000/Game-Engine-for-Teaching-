@@ -50,6 +50,16 @@ Usage
   # List all assets registered in the demo seed:
   python3 tools/creation_engine.py list
 
+  # Bake nav-mesh grid from OBJ geometry (M21):
+  python3 tools/creation_engine.py bake-navmesh \
+      --input samples/vertical_slice_project/Content/AI/arena_plane.obj \
+      --output samples/vertical_slice_project/Cooked/AI/arena_plane.navmesh
+
+  # Bake time-of-day LUT from keyframe JSON (M21):
+  python3 tools/creation_engine.py bake-tod \
+      --input samples/vertical_slice_project/Content/environment/tod.json \
+      --output samples/vertical_slice_project/Cooked/environment/tod.lut
+
 Exit codes
 ----------
   0 — success
@@ -63,6 +73,7 @@ import argparse
 import dataclasses
 import hashlib
 import json
+import struct
 import os
 import sys
 from pathlib import Path
@@ -410,6 +421,255 @@ def _die(msg: str, code: int = 2) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Bakers (M21)
+# ---------------------------------------------------------------------------
+
+def bake_navmesh(
+    obj_path: Path | str,
+    out_path: Path | str,
+    *,
+    grid_width: int = 64,
+    grid_height: int = 64,
+) -> Dict[str, int]:
+    """
+    TEACHING NOTE — Simple Nav-Mesh Baker for Teaching
+    -----------------------------------------------
+    This baker turns OBJ triangle faces into a lightweight walkability grid:
+    each cell touched by triangle bounds is marked walkable (1), others remain 0.
+    The runtime can load this compact binary quickly without reparsing OBJ text.
+    """
+    if grid_width <= 0 or grid_height <= 0:
+        raise ValueError("grid_width and grid_height must be positive integers")
+
+    vertices, faces = _parse_obj_for_navmesh(Path(obj_path))
+    if not vertices:
+        raise ValueError("OBJ contains no vertices")
+    if not faces:
+        raise ValueError("OBJ contains no faces")
+
+    xs = [v[0] for v in vertices]
+    zs = [v[2] for v in vertices]
+    min_x, max_x = min(xs), max(xs)
+    min_z, max_z = min(zs), max(zs)
+
+    # TEACHING NOTE — Degenerate bounds guard
+    # A flat line of vertices (min == max) would divide by zero during cell
+    # mapping, so we expand the range by a tiny epsilon.
+    epsilon = 1e-6
+    if abs(max_x - min_x) < epsilon:
+        max_x = min_x + 1.0
+    if abs(max_z - min_z) < epsilon:
+        max_z = min_z + 1.0
+
+    grid = bytearray(grid_width * grid_height)
+
+    for face in faces:
+        points = [vertices[idx] for idx in face]
+        face_min_x = min(p[0] for p in points)
+        face_max_x = max(p[0] for p in points)
+        face_min_z = min(p[2] for p in points)
+        face_max_z = max(p[2] for p in points)
+
+        x0 = _world_to_cell(face_min_x, min_x, max_x, grid_width)
+        x1 = _world_to_cell(face_max_x, min_x, max_x, grid_width)
+        z0 = _world_to_cell(face_min_z, min_z, max_z, grid_height)
+        z1 = _world_to_cell(face_max_z, min_z, max_z, grid_height)
+
+        for z in range(min(z0, z1), max(z0, z1) + 1):
+            row = z * grid_width
+            for x in range(min(x0, x1), max(x0, x1) + 1):
+                grid[row + x] = 1
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Binary layout:
+    #   4s  magic ("NVM1")
+    #   H   version (1)
+    #   H   grid_width
+    #   H   grid_height
+    #   ffff bounds (min_x, max_x, min_z, max_z)
+    #   bytes walkability payload (grid_width * grid_height)
+    header = struct.pack(
+        "<4sHHHffff",
+        b"NVM1",
+        1,
+        grid_width,
+        grid_height,
+        min_x,
+        max_x,
+        min_z,
+        max_z,
+    )
+    out_path.write_bytes(header + bytes(grid))
+
+    walkable = sum(1 for value in grid if value != 0)
+    return {"walkableCells": walkable, "totalCells": len(grid)}
+
+
+def bake_tod(
+    json_path: Path | str,
+    out_path: Path | str,
+    *,
+    sample_count: int = 256,
+) -> Dict[str, int]:
+    """
+    TEACHING NOTE — Time-of-Day LUT Baker
+    -------------------------------------
+    This baker converts designer-authored colour keys over normalised time
+    [0..1] into a precomputed RGBA8 lookup table. The runtime then samples this
+    LUT directly, avoiding per-frame curve interpolation in hot rendering paths.
+    """
+    if sample_count <= 0:
+        raise ValueError("sample_count must be a positive integer")
+
+    src = Path(json_path)
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {src}: {exc}") from exc
+
+    keys = _parse_tod_keys(data)
+    payload = bytearray()
+    for i in range(sample_count):
+        t = 0.0 if sample_count == 1 else i / float(sample_count - 1)
+        r, g, b, a = _sample_tod_rgba(keys, t)
+        payload.extend(
+            (
+                _to_u8(r),
+                _to_u8(g),
+                _to_u8(b),
+                _to_u8(a),
+            )
+        )
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Binary layout:
+    #   4s magic ("TDL1")
+    #   H  sample_count
+    #   bytes RGBA payload (sample_count * 4)
+    header = struct.pack("<4sH", b"TDL1", sample_count)
+    out_path.write_bytes(header + bytes(payload))
+    return {"samples": sample_count, "bytes": len(payload)}
+
+
+def _parse_obj_for_navmesh(obj_path: Path) -> tuple[List[tuple[float, float, float]], List[List[int]]]:
+    """Parse minimal OBJ data needed for baking (v/f records)."""
+    vertices: List[tuple[float, float, float]] = []
+    faces: List[List[int]] = []
+
+    for raw_line in obj_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+
+        if line.startswith("v "):
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            vertices.append((float(parts[1]), float(parts[2]), float(parts[3])))
+            continue
+
+        if line.startswith("f "):
+            parts = line.split()[1:]
+            if len(parts) < 3:
+                continue
+            indices: List[int] = []
+            for token in parts:
+                idx_str = token.split("/")[0]
+                if not idx_str:
+                    continue
+                idx = int(idx_str)
+                # OBJ indices are 1-based; negative indices are relative to end.
+                if idx > 0:
+                    resolved = idx - 1
+                else:
+                    resolved = len(vertices) + idx
+                if 0 <= resolved < len(vertices):
+                    indices.append(resolved)
+            if len(indices) >= 3:
+                # Triangulate fan for polygons with >3 vertices.
+                for i in range(1, len(indices) - 1):
+                    faces.append([indices[0], indices[i], indices[i + 1]])
+
+    return vertices, faces
+
+
+def _world_to_cell(value: float, min_value: float, max_value: float, extent: int) -> int:
+    """Map a world coordinate to a [0..extent-1] cell index."""
+    t = (value - min_value) / (max_value - min_value)
+    t = max(0.0, min(1.0, t))
+    return min(extent - 1, int(t * extent))
+
+
+def _parse_tod_keys(data: Dict[str, Any]) -> List[tuple[float, tuple[float, float, float, float]]]:
+    """Parse and validate ToD keyframes from JSON."""
+    keys_raw = data.get("keys")
+    if not isinstance(keys_raw, list) or len(keys_raw) < 2:
+        raise ValueError("ToD JSON must contain a 'keys' array with at least 2 entries")
+
+    parsed: List[tuple[float, tuple[float, float, float, float]]] = []
+    for idx, key in enumerate(keys_raw):
+        if not isinstance(key, dict):
+            raise ValueError(f"keys[{idx}] must be an object")
+        if "time" not in key or "color" not in key:
+            raise ValueError(f"keys[{idx}] must contain 'time' and 'color'")
+
+        time_value = float(key["time"])
+        if not (0.0 <= time_value <= 1.0):
+            raise ValueError(f"keys[{idx}].time must be in range [0, 1]")
+
+        color = key["color"]
+        if not isinstance(color, list) or len(color) not in (3, 4):
+            raise ValueError(f"keys[{idx}].color must have 3 or 4 floats")
+
+        rgba = [float(component) for component in color]
+        if len(rgba) == 3:
+            rgba.append(1.0)
+        rgba4 = tuple(max(0.0, min(1.0, c)) for c in rgba)
+        parsed.append((time_value, rgba4))  # type: ignore[arg-type]
+
+    parsed.sort(key=lambda pair: pair[0])
+    for i in range(1, len(parsed)):
+        if parsed[i][0] <= parsed[i - 1][0]:
+            raise ValueError("ToD keys must have strictly increasing 'time' values")
+
+    return parsed
+
+
+def _sample_tod_rgba(
+    keys: List[tuple[float, tuple[float, float, float, float]]],
+    t: float,
+) -> tuple[float, float, float, float]:
+    """Linearly interpolate colour keys at time *t*."""
+    if t <= keys[0][0]:
+        return keys[0][1]
+    if t >= keys[-1][0]:
+        return keys[-1][1]
+
+    for i in range(1, len(keys)):
+        left_t, left_c = keys[i - 1]
+        right_t, right_c = keys[i]
+        if t <= right_t:
+            alpha = (t - left_t) / (right_t - left_t)
+            return (
+                left_c[0] + (right_c[0] - left_c[0]) * alpha,
+                left_c[1] + (right_c[1] - left_c[1]) * alpha,
+                left_c[2] + (right_c[2] - left_c[2]) * alpha,
+                left_c[3] + (right_c[3] - left_c[3]) * alpha,
+            )
+
+    return keys[-1][1]
+
+
+def _to_u8(value: float) -> int:
+    """Convert [0..1] float to uint8."""
+    return int(round(max(0.0, min(1.0, value)) * 255.0))
+
+
+# ---------------------------------------------------------------------------
 # CLI helpers
 # ---------------------------------------------------------------------------
 
@@ -640,6 +900,33 @@ def _cmd_list(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_bake_navmesh(args: argparse.Namespace) -> int:
+    try:
+        stats = bake_navmesh(
+            args.input,
+            args.output,
+            grid_width=args.grid_width,
+            grid_height=args.grid_height,
+        )
+    except (OSError, ValueError) as exc:
+        _die(str(exc), code=1)
+    print(_bold("\n=== creation_engine — baked nav-mesh ===\n"))
+    print(f"  {_green('Output:')} {args.output}")
+    print(f"  Walkable cells: {stats['walkableCells']} / {stats['totalCells']}")
+    return 0
+
+
+def _cmd_bake_tod(args: argparse.Namespace) -> int:
+    try:
+        stats = bake_tod(args.input, args.output, sample_count=args.samples)
+    except (OSError, ValueError) as exc:
+        _die(str(exc), code=1)
+    print(_bold("\n=== creation_engine — baked tod.lut ===\n"))
+    print(f"  {_green('Output:')} {args.output}")
+    print(f"  Samples: {stats['samples']} ({stats['bytes']} bytes payload)")
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -782,6 +1069,32 @@ def _build_parser() -> argparse.ArgumentParser:
     # ------------------------------------------------------------------ list
     sub.add_parser("list", help="List the built-in demo assets.")
 
+    # ------------------------------------------------------------------ bake-navmesh
+    bake_nav = sub.add_parser(
+        "bake-navmesh",
+        help="Bake an OBJ mesh into a cooked walkability nav-mesh grid.",
+    )
+    bake_nav.add_argument("--input", required=True, metavar="OBJ",
+                          help="Source OBJ file path.")
+    bake_nav.add_argument("--output", required=True, metavar="NAVMESH",
+                          help="Output cooked nav-mesh binary path.")
+    bake_nav.add_argument("--grid-width", type=int, default=64,
+                          help="Nav-mesh grid width (default: 64).")
+    bake_nav.add_argument("--grid-height", type=int, default=64,
+                          help="Nav-mesh grid height (default: 64).")
+
+    # ------------------------------------------------------------------ bake-tod
+    bake_tod_p = sub.add_parser(
+        "bake-tod",
+        help="Bake a time-of-day keyframe JSON file into a cooked RGBA8 LUT.",
+    )
+    bake_tod_p.add_argument("--input", required=True, metavar="JSON",
+                            help="Source ToD JSON with 'keys' curve data.")
+    bake_tod_p.add_argument("--output", required=True, metavar="LUT",
+                            help="Output cooked tod.lut binary path.")
+    bake_tod_p.add_argument("--samples", type=int, default=256,
+                            help="Number of LUT samples (default: 256).")
+
     return parser
 
 
@@ -798,6 +1111,8 @@ def main(argv: List[str] | None = None) -> int:
         "emit":     _cmd_emit,
         "consume":  _cmd_consume,
         "list":     _cmd_list,
+        "bake-navmesh": _cmd_bake_navmesh,
+        "bake-tod": _cmd_bake_tod,
     }
     handler = dispatch.get(args.command)
     if handler is None:

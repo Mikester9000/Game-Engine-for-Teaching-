@@ -1,0 +1,7 @@
+# arena_plane.obj — Minimal teaching sample for nav-mesh baking.
+v 0.0 0.0 0.0
+v 8.0 0.0 0.0
+v 8.0 0.0 8.0
+v 0.0 0.0 8.0
+f 1 2 3
+f 1 3 4
