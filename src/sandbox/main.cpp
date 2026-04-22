@@ -3573,6 +3573,8 @@ int main(int argc, char* argv[])
                              "(dialogue_out_of_range, dialogue_in_range, "
                              "dialogue_begin_and_advance).\n";
             }
+            else
+            {
                 // M0 baseline: device init succeeded.
                 std::cout << "[PASS] " << renderer->BackendName()
                           << " device initialised. Headless mode: "

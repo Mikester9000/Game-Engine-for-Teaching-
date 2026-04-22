@@ -27547,7 +27547,7 @@ const bool closedOk  = !dlgSys.IsActive();
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3590) (line 3590)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3592) (line 3592)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -27557,7 +27557,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3598) (line 3598)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3600) (line 3600)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -27587,7 +27587,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3626) (line 3626)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3628) (line 3628)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -27610,7 +27610,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3679) (line 3679)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3681) (line 3681)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -27623,7 +27623,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3695) (line 3695)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3697) (line 3697)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
