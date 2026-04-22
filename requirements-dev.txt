@@ -7,3 +7,5 @@
 #   python3 -m pip install -r requirements-dev.txt
 pytest==8.3.5
 jsonschema==4.23.0
+numpy>=1.24.0
+scipy>=1.10.0
