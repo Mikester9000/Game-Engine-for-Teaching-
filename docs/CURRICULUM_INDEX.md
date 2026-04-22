@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1746 across 52 subsystems.
+**Total lessons:** 1748 across 53 subsystems.
 
 ---
 
@@ -40,6 +40,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
 - [game/systems](#gamesystems) (99 lessons)
 - [game/world](#gameworld) (90 lessons)
+- [requirements-dev.txt](#requirements-dev.txt) (1 lesson)
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (21 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
@@ -63,7 +64,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/pak](#toolspak) (14 lessons)
 - [tools/quest_baker](#toolsquest_baker) (14 lessons)
 - [tools/tests](#toolstests) (4 lessons)
-- [tools/validate-assets.py](#toolsvalidate-assets.py) (2 lessons)
+- [tools/validate-assets.py](#toolsvalidate-assets.py) (3 lessons)
 
 ---
 
@@ -25529,6 +25530,23 @@ a sorted std::vector + tombstone approach would be faster.
 
 ---
 
+## requirements-dev.txt
+
+### Root Python dev dependencies
+
+**Source:** [`requirements-dev.txt`](requirements-dev.txt#L1) (line 1)
+
+--------------------------------------------
+This file centralises lightweight repository-level Python tooling deps used by
+local validation commands and CI-adjacent checks.
+
+Install with:
+  python3 -m pip install -r requirements-dev.txt
+pytest==8.3.5
+jsonschema==4.23.0
+
+---
+
 ## samples/vertical_slice_project
 
 ### What is "Cooking"?
@@ -29560,7 +29578,7 @@ return result
 
 ### importing a module whose filename contains a hyphen
 
-**Source:** [`tools/tests/test_validate_assets.py`](tools/tests/test_validate_assets.py#L46) (line 46)
+**Source:** [`tools/tests/test_validate_assets.py`](tools/tests/test_validate_assets.py#L49) (line 49)
 
 Python identifiers cannot contain hyphens, so the normal `import` statement
 does not work for validate-assets.py.  importlib.util.spec_from_file_location
@@ -29573,7 +29591,7 @@ _spec.loader.exec_module(va)  # type: ignore[union-attr]
 
 ### JSON Schema draft-07 cannot express cross-property
 
-**Source:** [`tools/tests/test_validate_assets.py`](tools/tests/test_validate_assets.py#L193) (line 193)
+**Source:** [`tools/tests/test_validate_assets.py`](tools/tests/test_validate_assets.py#L196) (line 196)
 
 numeric comparisons (loopEnd > loopStart).  That constraint lives in
 the built-in structural checker.  We call it directly here so the test
@@ -29598,9 +29616,13 @@ f"Expected loop-point error from built-in checker, got: {errors}",
 
 **Source:** [`tools/validate-assets.py`](tools/validate-assets.py#L6) (line 6)
 
+### Backward-compatible manifest detection
+
+**Source:** [`tools/validate-assets.py`](tools/validate-assets.py#L120) (line 120)
+
 ### type narrowing: if an extension block exists we validate
 
-**Source:** [`tools/validate-assets.py`](tools/validate-assets.py#L209) (line 209)
+**Source:** [`tools/validate-assets.py`](tools/validate-assets.py#L287) (line 287)
 
 it; we only *warn* (not error) if the extension is absent, because some
 pipeline steps add it lazily.
