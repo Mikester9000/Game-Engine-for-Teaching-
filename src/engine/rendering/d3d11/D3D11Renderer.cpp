@@ -56,9 +56,12 @@
 
 #include <iostream>
 #include <cassert>
+#include <cctype>     // std::isspace
+#include <cstdlib>    // std::strtof
 #include <cstring>    // std::memset
 #include <cmath>      // std::sin (used in DrawSkinnedMesh animation)
 #include <filesystem> // std::filesystem::path (C++17) — for wide-char path conversion
+#include <fstream>    // std::ifstream for authored material ingestion
 
 namespace engine {
 namespace rendering {
@@ -2276,6 +2279,116 @@ static const char* kPBRPsFallback =
 // -----------------------------------------------------------------------
 static constexpr float kPi = 3.14159265358979323846f;
 
+// -----------------------------------------------------------------------
+// TEACHING NOTE — M23 authored material ingestion (JSON-lite parser)
+// -----------------------------------------------------------------------
+// The first M23 runtime step is reading authored PBR material parameters from
+// cooked material files so rendering is no longer hard-coded to demo values.
+//
+// We intentionally use a tiny parser here instead of pulling JSON library
+// headers into the renderer translation unit.  The format is machine-authored
+// and stable (material.schema.json), so key-based extraction is sufficient.
+// If parsing fails, we safely fall back to existing demo defaults.
+// -----------------------------------------------------------------------
+struct AuthoredMaterialParams
+{
+    float       albedo[3] = { 1.0f, 1.0f, 1.0f };
+    float       metallic  = 0.0f;
+    float       roughness = 1.0f;
+    float       ao        = 1.0f;
+    std::string loadedFromPath;
+};
+
+static void SkipJsonWhitespace(const char*& p)
+{
+    while (*p && std::isspace(static_cast<unsigned char>(*p))) { ++p; }
+}
+
+static bool ExtractJsonNumber(const std::string& json, const char* key, float& outValue)
+{
+    const std::string token = std::string("\"") + key + "\"";
+    std::size_t pos = json.find(token);
+    if (pos == std::string::npos) return false;
+    pos = json.find(':', pos + token.size());
+    if (pos == std::string::npos) return false;
+
+    const char* p = json.c_str() + pos + 1;
+    SkipJsonWhitespace(p);
+
+    char* end = nullptr;
+    float v = std::strtof(p, &end);
+    if (end == p) return false;
+    outValue = v;
+    return true;
+}
+
+static bool ExtractJsonFloat3(const std::string& json, const char* key, float out3[3])
+{
+    const std::string token = std::string("\"") + key + "\"";
+    std::size_t pos = json.find(token);
+    if (pos == std::string::npos) return false;
+    pos = json.find('[', pos + token.size());
+    if (pos == std::string::npos) return false;
+
+    const char* p = json.c_str() + pos + 1;
+    for (int i = 0; i < 3; ++i)
+    {
+        SkipJsonWhitespace(p);
+        char* end = nullptr;
+        float v = std::strtof(p, &end);
+        if (end == p) return false;
+        out3[i] = v;
+        p = end;
+        SkipJsonWhitespace(p);
+        if (i < 2)
+        {
+            if (*p != ',') return false;
+            ++p;
+        }
+    }
+    return true;
+}
+
+static bool TryLoadAuthoredMaterial(AuthoredMaterialParams& outMat)
+{
+    namespace fs = std::filesystem;
+
+    const fs::path candidates[] = {
+        fs::path("samples/vertical_slice_project/Cooked/Materials/default_armor.material"),
+        fs::path("samples/vertical_slice_project/Content/Materials/default_armor.material.json"),
+        fs::path("../../samples/vertical_slice_project/Cooked/Materials/default_armor.material"),
+        fs::path("../../samples/vertical_slice_project/Content/Materials/default_armor.material.json")
+    };
+
+    for (const fs::path& relPath : candidates)
+    {
+        const fs::path absPath = fs::absolute(relPath);
+        if (!fs::exists(absPath))
+            continue;
+
+        std::ifstream f(absPath, std::ios::in);
+        if (!f.is_open())
+            continue;
+
+        std::string json((std::istreambuf_iterator<char>(f)),
+                          std::istreambuf_iterator<char>());
+        if (json.empty())
+            continue;
+
+        AuthoredMaterialParams parsed;
+        if (!ExtractJsonFloat3(json, "albedoColor", parsed.albedo)) continue;
+        if (!ExtractJsonNumber(json, "metallic", parsed.metallic)) continue;
+        if (!ExtractJsonNumber(json, "roughness", parsed.roughness)) continue;
+        if (!ExtractJsonNumber(json, "ao", parsed.ao)) continue;
+
+        parsed.loadedFromPath = absPath.string();
+        outMat = parsed;
+        return true;
+    }
+
+    return false;
+}
+
 static bool LoadPBRMeshScene(
     ID3D11Device*            device,
     const std::string&       shaderDir,
@@ -2627,6 +2740,19 @@ static bool LoadPBRMeshScene(
     matData.roughness = 0.25f;
     matData.ao        = 1.0f;
     matData.matPad[0] = matData.matPad[1] = 0.0f;
+
+    AuthoredMaterialParams authoredMat;
+    if (TryLoadAuthoredMaterial(authoredMat))
+    {
+        matData.albedo[0] = authoredMat.albedo[0];
+        matData.albedo[1] = authoredMat.albedo[1];
+        matData.albedo[2] = authoredMat.albedo[2];
+        matData.metallic  = authoredMat.metallic;
+        matData.roughness = authoredMat.roughness;
+        matData.ao        = authoredMat.ao;
+        std::cout << "[D3D11Renderer] Loaded authored material params from: "
+                  << authoredMat.loadedFromPath << "\n";
+    }
 
     {
         ID3D11DeviceContext* ctx = nullptr;
@@ -3730,6 +3856,19 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
             m->ao         = 1.0f;
             m->pad[0]     = 0.0f;
             m->pad[1]     = 0.0f;
+
+            AuthoredMaterialParams authoredMat;
+            if (TryLoadAuthoredMaterial(authoredMat))
+            {
+                m->albedo[0]  = authoredMat.albedo[0];
+                m->albedo[1]  = authoredMat.albedo[1];
+                m->albedo[2]  = authoredMat.albedo[2];
+                m->metallic   = authoredMat.metallic;
+                m->roughness  = authoredMat.roughness;
+                m->ao         = authoredMat.ao;
+                std::cout << "[D3D11Renderer] Loaded authored IBL material params from: "
+                          << authoredMat.loadedFromPath << "\n";
+            }
             ctx->Unmap(scene.materialCB, 0);
         }
 
