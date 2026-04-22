@@ -160,6 +160,19 @@ private:
     void DrawPBRMesh();
 
     // -----------------------------------------------------------------------
+    // TEACHING NOTE — DrawPBRIBLMesh (M16)
+    // -----------------------------------------------------------------------
+    // Renders the same UV sphere as DrawPBRMesh() but with a full IBL ambient
+    // contribution from three procedurally-generated textures:
+    //   • BRDF LUT (64×64 RG8_UNORM) — precomputed split-sum lookup.
+    //   • Irradiance cubemap (16×16×6 RGB8) — diffuse environment integral.
+    //   • Prefiltered env cubemap (16×16×6 RGB8, 5 mip levels) — specular.
+    // Also uses the depth buffer (m_depthStencilView) added in M16.
+    // -----------------------------------------------------------------------
+    /** Draw the PBR+IBL sphere scene to the currently bound render target (M16). */
+    void DrawPBRIBLMesh();
+
+    // -----------------------------------------------------------------------
     // TEACHING NOTE — DrawSky (M10)
     // -----------------------------------------------------------------------
     // DrawSky() renders a full-screen procedural sky using SV_VertexID (no
@@ -169,6 +182,27 @@ private:
     // -----------------------------------------------------------------------
     /** Draw the procedural sky to the currently bound render target (M10). */
     void DrawSky();
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Depth Buffer Helpers (M16)
+    // -----------------------------------------------------------------------
+    // D3D11 does not automatically create a depth buffer when you create a
+    // swap chain.  You must explicitly:
+    //   1. Create an ID3D11Texture2D with D3D11_BIND_DEPTH_STENCIL.
+    //   2. Create an ID3D11DepthStencilView from that texture.
+    //   3. Create an ID3D11DepthStencilState that enables depth testing.
+    //   4. Bind the DSV alongside the RTV in OMSetRenderTargets().
+    //   5. Clear the DSV at the start of each frame.
+    //
+    // The helpers below are called from CreateSwapChainResources (create) and
+    // ReleaseSwapChainResources (release) so the depth buffer is always
+    // sized to match the current back buffer.
+    // -----------------------------------------------------------------------
+    /** Create the depth-stencil buffer for the given back-buffer dimensions. */
+    bool CreateDepthStencilBuffer(uint32_t width, uint32_t height);
+
+    /** Release the depth-stencil texture, view, and state. */
+    void ReleaseDepthStencilBuffer();
 
     /** Release all scene resources (called from Shutdown and before LoadScene). */
     void UnloadScene();
@@ -185,6 +219,35 @@ private:
     ID3D11DeviceContext*    m_context       = nullptr;
     IDXGISwapChain*         m_swapChain     = nullptr;
     ID3D11RenderTargetView* m_renderTarget  = nullptr;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Depth-Stencil Buffer (M16)
+    // -----------------------------------------------------------------------
+    // Before M16 the renderer had no depth buffer.  All scenes rendered either
+    // a 2D quad (no depth needed) or a sphere that only ever occupies the
+    // centre of the screen (depth wasn't visible).  Adding a DSV is necessary
+    // to correctly composite multiple 3D objects — later milestones will have
+    // foreground geometry occlude background geometry correctly.
+    //
+    // Three objects work together:
+    //   m_depthStencilTex   — the raw D3D11 Texture2D.
+    //                         Format: DXGI_FORMAT_D24_UNORM_S8_UINT
+    //                         (24-bit depth + 8-bit stencil — the most
+    //                         compatible depth format across all FL 10_0 GPUs).
+    //
+    //   m_depthStencilView  — allows D3D11 to use the texture as a depth
+    //                         attachment.  Passed to OMSetRenderTargets().
+    //
+    //   m_depthStencilState — enables depth testing and writing.
+    //                         D3D11_COMPARISON_LESS: keep the fragment with
+    //                         the SMALLER depth value (the closer fragment).
+    //
+    // All three are recreated in CreateSwapChainResources() and released in
+    // ReleaseSwapChainResources() so they always match the back-buffer size.
+    // -----------------------------------------------------------------------
+    ID3D11Texture2D*         m_depthStencilTex   = nullptr;
+    ID3D11DepthStencilView*  m_depthStencilView  = nullptr;
+    ID3D11DepthStencilState* m_depthStencilState = nullptr;
 
     D3D_FEATURE_LEVEL       m_featureLevel  = D3D_FEATURE_LEVEL_10_0;
 
@@ -286,6 +349,60 @@ public:
     };
 
     // -----------------------------------------------------------------------
+    // TEACHING NOTE — PBRIBLScene (M16: Image-Based Lighting)
+    // -----------------------------------------------------------------------
+    // PBRIBLScene extends PBRScene with three IBL textures that implement
+    // the split-sum ambient lighting model (Epic 2013):
+    //
+    //   brdfLutSRV      (t0) — 2D lookup table for BRDF scale + bias.
+    //                          Indexed by (NoV, roughness); precomputed on CPU.
+    //
+    //   irradianceSRV   (t1) — Diffuse irradiance cubemap.
+    //                          Encodes ∫ L_env(L) × (N·L) dΩ per direction.
+    //                          Computed from a procedural sky gradient.
+    //
+    //   prefilteredSRV  (t2) — Prefiltered specular cubemap, 5 mip levels.
+    //                          Mip k ↔ roughness = k/4.  GGX importance sampled.
+    //
+    //   linearSampler        — Linear clamp sampler bound to s0 for all IBL
+    //                          textures.
+    //
+    // The raw ID3D11Texture2D* members are kept separately so UnloadScene()
+    // can Release() them (the SRVs do NOT release the underlying textures when
+    // their ref-count goes to zero if the device also holds a reference).
+    //
+    // This struct stores the same geometry + CB resources as PBRScene (it
+    // renders the same UV sphere), plus the IBL additions above.
+    // -----------------------------------------------------------------------
+    struct PBRIBLScene
+    {
+        ID3D11VertexShader*       vs             = nullptr;
+        ID3D11PixelShader*        ps             = nullptr;
+        ID3D11InputLayout*        inputLayout    = nullptr;
+        ID3D11Buffer*             vertexBuf      = nullptr;
+        ID3D11Buffer*             indexBuf       = nullptr;
+        ID3D11Buffer*             perFrameCB     = nullptr;  ///< b0 (VS): transform matrices
+        ID3D11Buffer*             lightCB        = nullptr;  ///< b1 (PS): camera pos + dir light
+        ID3D11Buffer*             materialCB     = nullptr;  ///< b2 (PS): material parameters
+
+        // IBL textures
+        ID3D11ShaderResourceView* brdfLutSRV     = nullptr;  ///< t0: BRDF LUT 2D
+        ID3D11ShaderResourceView* irradianceSRV  = nullptr;  ///< t1: irradiance cubemap
+        ID3D11ShaderResourceView* prefilteredSRV = nullptr;  ///< t2: prefiltered env cubemap
+
+        // Raw textures (kept for Release() in UnloadScene)
+        ID3D11Texture2D*          brdfLutTex     = nullptr;
+        ID3D11Texture2D*          irradianceTex  = nullptr;
+        ID3D11Texture2D*          prefilteredTex = nullptr;
+
+        ID3D11SamplerState*       linearSampler  = nullptr;  ///< s0: linear clamp
+        ID3D11RasterizerState*    rastState      = nullptr;
+
+        int   indexCount = 0;
+        bool  loaded     = false;
+    };
+
+    // -----------------------------------------------------------------------
     // TEACHING NOTE — SkyScene (M10: Dynamic Sky + Weather VFX)
     // -----------------------------------------------------------------------
     // SkyScene is the simplest scene struct: it only needs a VS, PS, and a
@@ -320,6 +437,7 @@ private:
 
     SkinnedMeshScene    m_skinnedScene;
     PBRScene            m_pbrScene;
+    PBRIBLScene         m_pbrIblScene;    ///< M16: PBR + IBL sphere scene
     SkyScene            m_skyScene;
 
     // TEACHING NOTE — SkyRenderer member

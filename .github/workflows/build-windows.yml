@@ -385,6 +385,31 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M16: PBR + IBL headless acceptance test
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M16 CI Gate
+      # This step validates the full PBR + Image-Based Lighting (IBL) pipeline:
+      #   Test 1 — LoadScene('pbr_ibl'):
+      #             BRDF LUT (64×64), irradiance cubemap (16×16×6), and
+      #             prefiltered environment cubemap (16×16×6 × 5 mips) are
+      #             generated on the CPU and uploaded to WARP without HRESULT
+      #             failures.
+      #   Test 2 — Depth buffer state check:
+      #             Graceful SKIP in headless mode (no swap chain → no DSV).
+      #   Test 3 — RecordHeadlessFrame():
+      #             The pbr_ibl draw call executes (IBL SRV binds, VS+PS run,
+      #             DrawIndexed completes) without crash or device-removed error.
+      #   Test 4 — Unload + reload:
+      #             UnloadScene() releases all IBL COM resources cleanly;
+      #             a second LoadScene('pbr_ibl') succeeds (no leaked refs).
+      #
+      # All tests run on WARP (no GPU required) so they pass on GitHub runners.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M16 — pbr_ibl scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_ibl
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # PAK packager acceptance test
       # -----------------------------------------------------------------------
       # TEACHING NOTE — PAK Packager CI Test

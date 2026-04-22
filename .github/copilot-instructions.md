@@ -56,14 +56,15 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Win32 window + headless mode | ✅ | `src/engine/platform/win32/Win32Window.hpp/.cpp`; `--headless` arg in `src/sandbox/main.cpp` |
 | Vulkan bootstrap (optional, M0) | ✅ | Instance, device, swapchain, render pass, framebuffers, command buffers, sync primitives |
 | SPIR-V pipeline + colored triangle (M1, Vulkan) | ✅ | `VulkanPipeline`, `VulkanMesh`, `VulkanBuffer`; `shaders/triangle.vert/.frag` |
-| D3D11 depth buffer | ⬜ | Needed for 3D geometry; add DSV + DepthStencilState in D3D11Renderer |
+| D3D11 depth buffer | ✅ | D24_UNORM_S8_UINT DSV + DepthStencilState; wired into DrawFrame (ClearDepthStencilView + OMSetRenderTargets); recreated on resize (M16) |
 | **Vulkan depth buffer** | **(DEFERRED)** | Needed for 3D geometry in the Vulkan path — implement when Vulkan work resumes |
 | D3D11 textures (DDS/BC7) | ✅ | `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` — self-contained DDS loader (RGBA8, BC1, BC3, BC7/DX10); no directxtex needed |
 | **Vulkan textures (DDS/BC7)** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` — implement when Vulkan work resumes |
 | **Vulkan descriptor sets** | **(DEFERRED)** | `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — implement when Vulkan work resumes |
 | D3D11 textured quad scene | ✅ | HLSL shaders `shaders/textured_quad.vs.hlsl` + `textured_quad.ps.hlsl`; `LoadScene("textured_quad")` + `DrawTexturedQuad()` + `UnloadScene()` in D3D11Renderer; 1×1 white fallback if no DDS |
 | D3D11 PBR rendering (M9) | ✅ | `shaders/pbr_mesh.vs.hlsl` + `pbr_mesh.ps.hlsl` (SM 4.0); GGX NDF + Smith G + Schlick F + Reinhard tonemap + gamma; `LoadScene("pbr_mesh")`; UV sphere 16×16; 3 CBs (perFrameCB/lightCB/materialCB); `--headless --scene pbr_mesh` CI |
-| **PBR: IBL + shadow maps + bloom** | **(DEFERRED)** | Full IBL cubemaps, directional shadow map, bloom post-processing — deferred to M11+ |
+| **PBR: IBL (M16 complete)** | ✅ | BRDF LUT (64×64 RG8, Hammersley+GGX integration), irradiance cubemap (16×16×6 cosine-weighted hemisphere avg), prefiltered env cubemap (16×16×6×5mip GGX importance sampling), all CPU-generated from procedural sky; `--headless --scene pbr_ibl` CI |
+| **PBR: shadow maps + bloom** | **(DEFERRED)** | Directional shadow map, bloom post-processing — M17 |
 | **Directional shadow map** | **(DEFERRED)** | Shadow pass render target + shadow sampling |
 | **Post-processing (bloom + tonemap)** | **(DEFERRED)** | Full-screen pass pipeline |
 | Dynamic sky / procedural time-of-day (M10) | ✅ | `src/engine/rendering/sky_renderer.hpp/.cpp` — time-of-day clock, sun direction, zenith/horizon colour phases, sunset/sunrise tint, cloud darkening; `--headless --scene dynamic_sky` CI |
@@ -136,7 +137,7 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
 | X3DAudio 3D positional audio | ⬜ | `AudioSourceComponent.is3D` + `maxDistance` are scaffolded in ECS, but `AudioSystem::Update` does NOT compute distance from a listener or call X3DAudio APIs. True 3D attenuation is not implemented. Tracked as **M18**. |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** **Post-M10 Vehicle Physics is ✅ complete.** **Post-M10 Behaviour Tree AI is ✅ complete:** `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard` (engine/ai/behaviour_tree); `FormationSystem` (LINE/V_SHAPE/CIRCLE slot layouts, greedy assignment, world-space transform); grid `NavMesh` (BakeFromGrid, A* FindPath, obstacle routing); `--scene bt_test` 4-test headless CI. **Post-M10 SDF Font Renderer is ✅ complete:** `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI). **`pak.exe` PAK1 packager is ✅ complete:** `src/tools/pak/pak_main.cpp` (PAK1 format, `--input`/`--list`/`--extract`, CI test). **Post-M10 Cinematics runtime is ✅ complete:** `CinematicSequencer` + `CameraRig` + `CameraComponent.cinematicOverride` + `--scene cinematic_test` 3-test headless CI. Cut-scene baker tool + editor panel remain ⬜ (M22). Next: D3D11 DoD quality items (M16 depth buffer + IBL, M17 shadows + bloom, M18 X3DAudio), then combat/quest/tool stubs, then Vulkan catch-up.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** **Post-M10 Vehicle Physics is ✅ complete.** **Post-M10 Behaviour Tree AI is ✅ complete:** `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard` (engine/ai/behaviour_tree); `FormationSystem` (LINE/V_SHAPE/CIRCLE slot layouts, greedy assignment, world-space transform); grid `NavMesh` (BakeFromGrid, A* FindPath, obstacle routing); `--scene bt_test` 4-test headless CI. **Post-M10 SDF Font Renderer is ✅ complete:** `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI). **`pak.exe` PAK1 packager is ✅ complete:** `src/tools/pak/pak_main.cpp` (PAK1 format, `--input`/`--list`/`--extract`, CI test). **Post-M10 Cinematics runtime is ✅ complete:** `CinematicSequencer` + `CameraRig` + `CameraComponent.cinematicOverride` + `--scene cinematic_test` 3-test headless CI. Cut-scene baker tool + editor panel remain ⬜ (M22). **M16 (D3D11 depth buffer + IBL) is ✅ complete:** D24_UNORM_S8_UINT depth buffer wired into DrawFrame; CPU-generated BRDF LUT + irradiance cubemap + prefiltered env cubemap (Hammersley, GGX importance sampling); `pbr_ibl.vs/ps.hlsl`; `--scene pbr_ibl` 4-test headless CI. Next: M17 shadow maps + bloom → M18 X3DAudio → M19–M22 combat/quest/tool stubs → Vulkan catch-up.
 
 ---
 
@@ -265,7 +266,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: Post-M10 Cinematics runtime ✅ complete (CinematicSequencer + CameraRig + cinematic_test CI). Cut-scene baker tool + editor panel ⬜. Next: M16 D3D11 depth buffer + IBL → M17 shadow maps + bloom → M18 X3DAudio → M19–M22 combat/quest/tool gaps → M14 Vulkan.**
+> **Current position: M16 (D3D11 depth buffer + IBL) ✅ complete. Cut-scene baker tool + editor panel ⬜. Next: M17 shadow maps + bloom → M18 X3DAudio → M19–M22 combat/quest/tool gaps → M14 Vulkan.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -280,8 +281,8 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | ~~**1 — Now**~~ | ~~**Post-M10: Behaviour tree AI**~~ | ✅ done — `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard`; `FormationSystem` (LINE/V_SHAPE/CIRCLE); grid `NavMesh` (BakeFromGrid, A* with obstacle routing); `--scene bt_test` CI |
 | ~~**1 — Now**~~ | ~~**Post-M10: SDF Font Renderer + pak.exe**~~ | ✅ done — `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI); `pak.exe` (PAK1 format, `--input`/`--list`/`--extract`, CI test) |
 | ~~**1 — Now**~~ | ~~**Post-M10: Cinematics**~~ | ✅ done (runtime + tests) — `CinematicSequencer` + `CameraRig` + `CameraComponent.cinematicOverride` + `--scene cinematic_test` 3-test headless CI; cut-scene baker tool + editor panel remain ⬜ (M22) |
-| **1 — Now** | **M16: D3D11 depth buffer + IBL** | DSV + `DepthStencilState`; PBR texture maps; irradiance cubemap + prefiltered env + BRDF LUT; `--headless --scene pbr_ibl` CI |
-| **2** | **M17: D3D11 shadow maps + bloom** | Shadow pass + PCF sampling; bright-pass + Gaussian blur + composite; `--headless --scene shadow_test` + `bloom_test` CI |
+| ~~**1 — Now**~~ | ~~**M16: D3D11 depth buffer + IBL**~~ | ✅ done — D24 DSV + DepthStencilState wired into DrawFrame; CPU-generated BRDF LUT (64×64) + irradiance cube (16×16×6) + prefiltered env cube (16×16×6×5mip); `pbr_ibl.vs/ps.hlsl`; `--scene pbr_ibl` 4-test CI |
+| **1 — Now** | **M17: D3D11 shadow maps + bloom** | Shadow pass + PCF sampling; bright-pass + Gaussian blur + composite; `--headless --scene shadow_test` + `bloom_test` CI |
 | **3** | **M18: X3DAudio 3D positional audio** | X3DAudio init; `Update3DListener`; per-voice emitter; distance rolloff; `--headless --scene audio_3d_test` CI |
 | **4** | **M19: Action combat completion** | `combo_system.hpp/.cpp`; `combat_config.json` loader; `--headless --scene combat_test` CI |
 | **5** | **M20: Quest/dialogue tools + tests** | Quest baker; `--headless --scene quest_test` + `dialogue_test` CI |
@@ -823,7 +824,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | Post-M10 | SDF Font Renderer (FontRenderer, sdf_text.vs/ps.hlsl, font_test CI) + pak.exe (PAK1 packager) | ✅ |
 | Post-M10 | Cinematics runtime (CinematicSequencer + CameraRig + cinematic_test CI) | ✅ |
 | M13 partial | Cinematics tool (cut-scene baker) + editor panel | ⬜ (M22) |
-| M16 | D3D11 depth buffer + IBL | ⬜ |
+| M16 | D3D11 depth buffer + IBL | ✅ |
 | M17 | D3D11 shadow maps + bloom | ⬜ |
 | M18 | X3DAudio 3D positional audio | ⬜ |
 | M19 | Action combat completion (combo FSM + config + tests) | ⬜ |

@@ -1011,6 +1011,19 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             #   anti-aliasing to reconstruct crisp glyph edges at any scale.
             "${CMAKE_SOURCE_DIR}/shaders/sdf_text.vs.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/sdf_text.ps.hlsl"
+            # TEACHING NOTE — M16: PBR + Image-Based Lighting (IBL) shaders.
+            # pbr_ibl.vs.hlsl is structurally identical to pbr_mesh.vs.hlsl —
+            #   it outputs worldPos, worldNrm, and UV to the pixel shader.
+            # pbr_ibl.ps.hlsl adds the full split-sum IBL ambient:
+            #   • BRDF LUT (t0) — precomputed scale+bias for split-sum Fresnel.
+            #   • Irradiance cubemap (t1) — diffuse environment light (sampled
+            #     with N; convoluted with a cosine-weighted hemisphere kernel).
+            #   • Prefiltered env cubemap (t2) — specular reflections at every
+            #     roughness level (5 mip levels, sampled via SampleLevel(r*4)).
+            #   FresnelSchlickRoughness() is used for the ambient kS term so
+            #   very rough metals don't have unrealistically high ambient specular.
+            "${CMAKE_SOURCE_DIR}/shaders/pbr_ibl.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/pbr_ibl.ps.hlsl"
         )
 
         add_custom_command(TARGET engine_sandbox POST_BUILD
