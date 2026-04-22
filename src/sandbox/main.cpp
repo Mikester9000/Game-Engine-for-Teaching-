@@ -3466,16 +3466,15 @@ int main(int argc, char* argv[])
                 RegisterAllComponents(*dlgWorld);
 
                 EntityID playerID = dlgWorld->CreateEntity();
-                auto& playerTf    = dlgWorld->AddComponent<TransformComponent>(playerID);
-                playerTf.position = { 0.0f, 0.0f, 0.0f };
+                dlgWorld->AddComponent<TransformComponent>(playerID).position =
+                    { 0.0f, 0.0f, 0.0f };
 
                 EntityID npcID = dlgWorld->CreateEntity();
-                auto& npcTf    = dlgWorld->AddComponent<TransformComponent>(npcID);
-                npcTf.position = { 100.0f, 0.0f, 100.0f };   // far away
+                dlgWorld->AddComponent<TransformComponent>(npcID).position =
+                    { 100.0f, 0.0f, 100.0f };   // far away
 
-                auto& dlgComp          = dlgWorld->AddComponent<DialogueComponent>(npcID);
-                dlgComp.interactRange  = 5.0f;
-                dlgComp.isInteractable = false;
+                dlgWorld->AddComponent<DialogueComponent>(npcID).interactRange = 5.0f;
+                dlgWorld->GetComponent<DialogueComponent>(npcID).isInteractable = false;
 
                 DialogueSystem dlgSys(dlgWorld.get());
 
@@ -3485,7 +3484,8 @@ int main(int argc, char* argv[])
                 {
                     dlgSys.Update(*dlgWorld, playerID, 0.016f);
 
-                    const bool notInteractable = !dlgComp.isInteractable;
+                    const bool notInteractable =
+                        !dlgWorld->GetComponent<DialogueComponent>(npcID).isInteractable;
 
                     if (!notInteractable)
                     {
@@ -3509,11 +3509,13 @@ int main(int argc, char* argv[])
                     // TEACHING NOTE — We only change XZ (horizontal plane);
                     // DialogueSystem uses XZ distance, matching the 2.5D
                     // world layout where Y is the vertical axis.
-                    playerTf.position = { 99.0f, 0.0f, 99.0f };
+                    dlgWorld->GetComponent<TransformComponent>(playerID).position =
+                        { 99.0f, 0.0f, 99.0f };
 
                     dlgSys.Update(*dlgWorld, playerID, 0.016f);
 
-                    const bool isInteractable = dlgComp.isInteractable;
+                    const bool isInteractable =
+                        dlgWorld->GetComponent<DialogueComponent>(npcID).isInteractable;
 
                     if (!isInteractable)
                     {

@@ -27536,11 +27536,12 @@ int testsFailed = 0;
 
 DialogueSystem uses XZ distance, matching the 2.5D
 world layout where Y is the vertical axis.
-playerTf.position = { 99.0f, 0.0f, 99.0f };
+dlgWorld->GetComponent<TransformComponent>(playerID).position =
+{ 99.0f, 0.0f, 99.0f };
 
 ### The stub DialogueSystem (M8.6) uses a
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3540) (line 3540)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3542) (line 3542)
 
 single terminal node.  AdvanceDialogue() on a terminal
 node should close the conversation (IsActive() → false).
@@ -27549,7 +27550,7 @@ const bool closedOk  = !dlgSys.IsActive();
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3592) (line 3592)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3594) (line 3594)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -27559,7 +27560,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3600) (line 3600)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3602) (line 3602)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -27589,7 +27590,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3628) (line 3628)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3630) (line 3630)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -27612,7 +27613,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3681) (line 3681)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3683) (line 3683)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -27625,7 +27626,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3697) (line 3697)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3699) (line 3699)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
