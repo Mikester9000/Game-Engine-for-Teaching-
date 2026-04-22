@@ -25,9 +25,11 @@
  * TEACHING NOTE — SamplerComparisonState vs SamplerState
  * ============================================================================
  * D3D11 provides a special sampler type, SamplerComparisonState, that
- * performs a depth comparison as part of the hardware texture fetch:
+ * performs a depth comparison as part of the hardware texture fetch.
+ * The comparison method is called on the TEXTURE object, passing the
+ * SamplerComparisonState as the first argument:
  *
- *   SamplerComparisonState::SampleCmpLevelZero(shadowMap, uv, referenceDepth)
+ *   g_shadowMap.SampleCmpLevelZero(g_cmpSampler, uv, referenceDepth)
  *
  * This returns 1.0 if the sampled depth PASSES the comparison (≥ or ≤
  * depending on the ComparisonFunc), 0.0 if it fails, and a bilinear blend
@@ -134,8 +136,8 @@ float4 main(float4 clipPos  : SV_POSITION,
         [unroll] for (int dx = -1; dx <= 1; ++dx)
         {
             float2 off = float2(dx, dy) * kTexelSize;
-            shadow += g_cmpSampler.SampleCmpLevelZero(
-                g_shadowMap,
+            shadow += g_shadowMap.SampleCmpLevelZero(
+                g_cmpSampler,
                 saturate(shadowUV + off),   // clamp to [0,1] to avoid border wrap
                 refDepth);
         }
