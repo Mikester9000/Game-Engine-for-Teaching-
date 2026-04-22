@@ -32,7 +32,10 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
+import tempfile
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -134,7 +137,7 @@ class QuestBaker:
 
     The cooked output adds:
       - "source_hash"  — SHA-256 of the source file.
-      - "baked_at"     — ISO-8601 timestamp.
+      - "baked_at"     — ISO-8601 UTC timestamp of when bake() ran.
       - "quest_index"  — dict mapping str(quest_id) → list index for O(1)
                          runtime lookup by ID.
 
@@ -278,6 +281,7 @@ class QuestBaker:
             "$schema": "quest_bank.schema.json",
             "version": data.get("version", "1.0.0"),
             "source_hash": _sha256_file(source),
+            "baked_at": datetime.now(timezone.utc).isoformat(),
             "quest_count": len(quests),
             "quest_index": quest_index,
             "quests": quests,
@@ -311,11 +315,18 @@ class QuestBaker:
         BakeResult
             result.success is True if the source is valid.
         """
-        import tempfile, os
-        tmp = Path(tempfile.mktemp(suffix=".cooked.json"))
-        result = self.bake(source, tmp)
-        if tmp.exists():
-            os.unlink(tmp)
+        # TEACHING NOTE — Use NamedTemporaryFile instead of mktemp().
+        # tempfile.mktemp() is race-prone: it reserves a name without creating
+        # the file, so another process (or attacker) could create that path
+        # before bake() opens it.  NamedTemporaryFile(delete=False) atomically
+        # creates the file, giving bake() a real on-disk path to write to.
+        with tempfile.NamedTemporaryFile(suffix=".cooked.json", delete=False) as fh:
+            tmp = Path(fh.name)
+        try:
+            result = self.bake(source, tmp)
+        finally:
+            if tmp.exists():
+                os.unlink(tmp)
         return result
 
 
@@ -486,6 +497,7 @@ class DialogueBaker:
             "version": data.get("version", "1.0.0"),
             "id": data.get("id", "unknown"),
             "source_hash": _sha256_file(source),
+            "baked_at": datetime.now(timezone.utc).isoformat(),
             "node_count": len(nodes),
             "node_index": node_index,
             "nodes": nodes,
@@ -515,9 +527,16 @@ class DialogueBaker:
         -------
         BakeResult
         """
-        import tempfile, os
-        tmp = Path(tempfile.mktemp(suffix=".cooked.json"))
-        result = self.bake(source, tmp)
-        if tmp.exists():
-            os.unlink(tmp)
+        # TEACHING NOTE — Use NamedTemporaryFile instead of mktemp().
+        # tempfile.mktemp() is race-prone: it reserves a name without creating
+        # the file, so another process (or attacker) could create that path
+        # before bake() opens it.  NamedTemporaryFile(delete=False) atomically
+        # creates the file, giving bake() a real on-disk path to write to.
+        with tempfile.NamedTemporaryFile(suffix=".cooked.json", delete=False) as fh:
+            tmp = Path(fh.name)
+        try:
+            result = self.bake(source, tmp)
+        finally:
+            if tmp.exists():
+                os.unlink(tmp)
         return result

@@ -13,13 +13,12 @@ file-processing tools without side effects.
 """
 
 import json
-import tempfile
 from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
 
-from quest_baker import QuestBaker, DialogueBaker, BakeResult
+from quest_baker import QuestBaker, DialogueBaker
 
 
 # ---------------------------------------------------------------------------

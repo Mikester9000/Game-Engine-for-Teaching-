@@ -540,8 +540,10 @@ jobs:
       #   Test 2 (quest_objective):
       #     OnEnemyKilled(player, 1) x3 triggers auto-complete for quest 1
       #     (requires 3 goblin kills).  IsQuestComplete() returns true and
-      #     LevelComponent::currentXP is incremented by the quest's xpReward.
-      #     Validates the event-driven objective hook and auto-complete path.
+      #     the quest's xpReward is banked into LevelComponent::pendingXP
+      #     (equivalently, total accrued XP is currentXP + pendingXP until
+      #     camp rest applies the banked amount).  Validates the event-driven
+      #     objective hook and auto-complete path.
       #
       #   Test 3 (quest_prereq):
       #     Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player, 7) is

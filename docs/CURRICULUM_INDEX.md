@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1731 across 52 subsystems.
+**Total lessons:** 1734 across 52 subsystems.
 
 ---
 
@@ -61,7 +61,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/cook](#toolscook) (12 lessons)
 - [tools/creation_engine.py](#toolscreation_engine.py) (5 lessons)
 - [tools/pak](#toolspak) (14 lessons)
-- [tools/quest_baker](#toolsquest_baker) (11 lessons)
+- [tools/quest_baker](#toolsquest_baker) (14 lessons)
 - [tools/tests](#toolstests) (3 lessons)
 - [tools/validate-assets.py](#toolsvalidate-assets.py) (2 lessons)
 
@@ -1794,8 +1794,10 @@ This step validates four M20 criteria without any rendering API calls:
   Test 2 (quest_objective):
     OnEnemyKilled(player, 1) x3 triggers auto-complete for quest 1
     (requires 3 goblin kills).  IsQuestComplete() returns true and
-    LevelComponent::currentXP is incremented by the quest's xpReward.
-    Validates the event-driven objective hook and auto-complete path.
+    the quest's xpReward is banked into LevelComponent::pendingXP
+    (equivalently, total accrued XP is currentXP + pendingXP until
+    camp rest applies the banked amount).  Validates the event-driven
+    objective hook and auto-complete path.
 
   Test 3 (quest_prereq):
     Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player, 7) is
@@ -1815,7 +1817,7 @@ shell: cmd
 
 ### M20 dialogue_test CI
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L565) (line 565)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L567) (line 567)
 
 This step validates three M20 criteria without any rendering API calls:
 
@@ -1842,7 +1844,7 @@ shell: cmd
 
 ### PAK Packager CI Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L592) (line 592)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L594) (line 594)
 
 This step validates pak.exe by packing the vertical_slice_project Cooked/
 directory into a PAK1 archive.  A non-zero exit code (file-not-found,
@@ -1856,7 +1858,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L606) (line 606)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L608) (line 608)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1882,7 +1884,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L645) (line 645)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L647) (line 647)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1908,7 +1910,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L679) (line 679)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L681) (line 681)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1929,7 +1931,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L703) (line 703)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L705) (line 705)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1942,7 +1944,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L716) (line 716)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L718) (line 718)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1957,7 +1959,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L731) (line 731)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L733) (line 733)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1988,7 +1990,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L759) (line 759)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L761) (line 761)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1997,7 +1999,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L781) (line 781)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L783) (line 783)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -2025,7 +2027,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L816) (line 816)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L818) (line 818)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -2034,7 +2036,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L830) (line 830)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L832) (line 832)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -2056,7 +2058,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L855) (line 855)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L857) (line 857)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -2070,7 +2072,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L879) (line 879)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L881) (line 881)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -2088,7 +2090,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L904) (line 904)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L906) (line 906)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -2099,7 +2101,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L915) (line 915)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L917) (line 917)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -2114,7 +2116,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L937) (line 937)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L939) (line 939)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -29304,11 +29306,11 @@ std::string outputArg; // --output
 
 ### Result objects vs. exceptions
 
-**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L49) (line 49)
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L52) (line 52)
 
 ### Why compute a SHA-256 hash of the source?
 
-**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L92) (line 92)
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L95) (line 95)
 
 The engine uses this hash to detect *stale caches*: if the source hash in
 assetdb.json differs from the cooked file's "source_hash" field, the engine
@@ -29323,11 +29325,11 @@ return h.hexdigest()
 
 ### Quest Bank Layout
 
-**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L113) (line 113)
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L116) (line 116)
 
 ### Two-pass validation for cross-references.
 
-**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L196) (line 196)
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L199) (line 199)
 
 Pass 1: collect all quest IDs so we can validate prerequisites.
 Pass 2: validate objectives and prerequisites against the full set.
@@ -29345,7 +29347,7 @@ quest_ids.add(qid)
 
 ### The quest_index lets the runtime do O(1) ID lookups.
 
-**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L269) (line 269)
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L272) (line 272)
 
 Without it the runtime would scan the entire quests array each time
 it needs to find a quest by ID — O(N) for every combat kill, item
@@ -29354,13 +29356,30 @@ quest_index: Dict[str, int] = {
 str(q["id"]): i for i, q in enumerate(quests)
 }
 
+### Use NamedTemporaryFile instead of mktemp().
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L318) (line 318)
+
+tempfile.mktemp() is race-prone: it reserves a name without creating
+the file, so another process (or attacker) could create that path
+before bake() opens it.  NamedTemporaryFile(delete=False) atomically
+creates the file, giving bake() a real on-disk path to write to.
+with tempfile.NamedTemporaryFile(suffix=".cooked.json", delete=False) as fh:
+tmp = Path(fh.name)
+try:
+result = self.bake(source, tmp)
+finally:
+if tmp.exists():
+os.unlink(tmp)
+return result
+
 ### Dialogue Tree Structure
 
-**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L330) (line 330)
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L341) (line 341)
 
 ### Root node requirement.
 
-**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L413) (line 413)
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L424) (line 424)
 
 DialogueSystem always starts at node ID 0.  Requiring a root node
 means the tree has a deterministic entry point regardless of array
@@ -29371,6 +29390,27 @@ result.errors.append(
 "entry point for DialogueSystem)."
 )
 return result
+
+### Use NamedTemporaryFile instead of mktemp().
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L530) (line 530)
+
+tempfile.mktemp() is race-prone: it reserves a name without creating
+the file, so another process (or attacker) could create that path
+before bake() opens it.  NamedTemporaryFile(delete=False) atomically
+creates the file, giving bake() a real on-disk path to write to.
+with tempfile.NamedTemporaryFile(suffix=".cooked.json", delete=False) as fh:
+tmp = Path(fh.name)
+try:
+result = self.bake(source, tmp)
+finally:
+if tmp.exists():
+os.unlink(tmp)
+return result
+
+### Console script entry points
+
+**Source:** [`tools/quest_baker/quest_baker/cli.py`](tools/quest_baker/quest_baker/cli.py#L4) (line 4)
 
 ### Testing a baker
 
