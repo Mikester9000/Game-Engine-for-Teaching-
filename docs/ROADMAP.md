@@ -414,7 +414,7 @@ Implemented via `shared/schemas/cinematic.schema.json`, `tools/creation_engine.p
 | M10 | Dynamic sky + weather VFX | ✅ Complete |
 | M11 | Vehicle physics | ✅ Complete (Post-M10) |
 | M12 | Behaviour tree AI + formation + NavMesh | ✅ Complete (Post-M10) |
-| M13 | Cinematics | 🔨 Runtime + tests ✅; baker tool + editor panel ⬜ |
+| M13 | Cinematics | ✅ Complete (runtime + tooling via M22) |
 | M14 | Vulkan catch-up | ⬜ Deferred |
 | M15 | PAK packager + SDF font renderer | ✅ Complete (Post-M10) |
 | M16 | D3D11 depth buffer + IBL | ✅ Complete |
@@ -424,7 +424,6 @@ Implemented via `shared/schemas/cinematic.schema.json`, `tools/creation_engine.p
 | M20 | Quest / dialogue tools + tests | ✅ Complete |
 | M21 | Nav-mesh baker + ToD LUT baker | ✅ Complete (stub tooling milestone) |
 | M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
-| M14 | Vulkan catch-up (full D3D11 parity) | ⬜ Deferred (see M14 section above; no separate M23) |
 
 ---
 

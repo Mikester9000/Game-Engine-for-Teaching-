@@ -8,6 +8,8 @@
 > Cross-reference with `docs/PROJECT_MILESTONES.md` for the order in which
 > these subsystems are built, and `docs/COPILOT_CONTINUATION.md` for coding
 > standards and CI rules.
+>
+> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
 
 ---
 
