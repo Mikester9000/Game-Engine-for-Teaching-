@@ -2899,8 +2899,10 @@ static std::tuple<float,float,float> ImportanceSampleGGX(float xi1, float xi2,
 {
     float a        = roughness * roughness;
     float phi      = 2.0f * kPi * xi1;
+    // TEACHING NOTE — epsilon placement: add to the full denominator expression
+    // so the protection is clearly outside the main formula term.
     float cosTheta = std::sqrt((1.0f - xi2) /
-                               (1.0f + (a * a - 1.0f) * xi2 + 1e-8f));
+                               ((1.0f + (a * a - 1.0f) * xi2) + 1e-8f));
     float sinTheta = std::sqrt(std::max(0.0f, 1.0f - cosTheta * cosTheta));
     return { sinTheta * std::cos(phi),
              sinTheta * std::sin(phi),
@@ -3531,12 +3533,20 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
         if (ctx && SUCCEEDED(ctx->Map(scene.lightCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr)))
         {
             auto* d = static_cast<LightData*>(msr.pData);
-            d->cameraPos[0] = 0.0f; d->cameraPos[1] = 0.5f; d->cameraPos[2] = 4.0f; d->p0 = 0;
+            d->cameraPos[0] = 0.0f;
+            d->cameraPos[1] = 0.5f;
+            d->cameraPos[2] = 4.0f;
+            d->p0           = 0.0f;
             // Light direction: normalized (0.5, 0.8, 0.3) — slightly elevated.
-            float len = std::sqrt(0.5f*0.5f + 0.8f*0.8f + 0.3f*0.3f);
-            d->lightDir[0] = 0.5f/len; d->lightDir[1] = 0.8f/len; d->lightDir[2] = 0.3f/len; d->p1 = 0;
-            d->lightColor[0] = 1.0f; d->lightColor[1] = 0.96f; d->lightColor[2] = 0.9f;
-            d->lightIntensity = 3.0f;
+            float len        = std::sqrt(0.5f*0.5f + 0.8f*0.8f + 0.3f*0.3f);
+            d->lightDir[0]  = 0.5f / len;
+            d->lightDir[1]  = 0.8f / len;
+            d->lightDir[2]  = 0.3f / len;
+            d->p1           = 0.0f;
+            d->lightColor[0]   = 1.0f;
+            d->lightColor[1]   = 0.96f;
+            d->lightColor[2]   = 0.9f;
+            d->lightIntensity  = 3.0f;
             ctx->Unmap(scene.lightCB, 0);
         }
 
@@ -3548,11 +3558,14 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
         if (ctx && SUCCEEDED(ctx->Map(scene.materialCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr)))
         {
             auto* m = static_cast<MatData*>(msr.pData);
-            m->albedo[0] = 1.00f; m->albedo[1] = 0.76f; m->albedo[2] = 0.33f;  // gold
+            m->albedo[0]  = 1.00f;   // gold base colour
+            m->albedo[1]  = 0.76f;
+            m->albedo[2]  = 0.33f;
             m->metallic   = 1.0f;
             m->roughness  = 0.3f;
             m->ao         = 1.0f;
-            m->pad[0] = m->pad[1] = 0.0f;
+            m->pad[0]     = 0.0f;
+            m->pad[1]     = 0.0f;
             ctx->Unmap(scene.materialCB, 0);
         }
 

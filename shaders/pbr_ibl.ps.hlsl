@@ -171,6 +171,12 @@ struct PSInput
 static const float kPi         = 3.14159265f;
 static const float kMaxMipLevel = 4.0f;  // Mip levels 0..4 → roughness 0..1
 
+// TEACHING NOTE — kInvGamma constant
+// The gamma correction exponent 1/2.2 is applied at the very end of the PS.
+// Defining it as a named constant avoids repeating the magic literal three
+// times (once per channel) in the pow() call and makes the intent clear.
+static const float kInvGamma   = 1.0f / 2.2f;
+
 // ===========================================================================
 // PBR Helper Functions
 // ===========================================================================
@@ -432,7 +438,7 @@ float4 main(PSInput i) : SV_TARGET
     color = color / (color + float3(1.0f, 1.0f, 1.0f));
 
     // Approximate sRGB gamma (pow(c, 1/2.2)).
-    color = pow(max(color, float3(0.0f, 0.0f, 0.0f)), float3(1.0f/2.2f, 1.0f/2.2f, 1.0f/2.2f));
+    color = pow(max(color, float3(0.0f, 0.0f, 0.0f)), float3(kInvGamma, kInvGamma, kInvGamma));
 
     return float4(color, 1.0f);
 }
