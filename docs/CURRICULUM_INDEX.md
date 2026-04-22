@@ -1800,7 +1800,7 @@ This step validates four M20 criteria without any rendering API calls:
     objective hook and auto-complete path.
 
   Test 3 (quest_prereq):
-    Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player, 7) is
+    Quest 6 has prereqQuestIDs=[1].  CanAcceptQuest(player, 6) is
     false for a fresh player and true after quest 1 is complete.
     Validates the prerequisite gate that enables quest chaining.
 
@@ -26281,8 +26281,8 @@ rendering or audio calls:
     Validates the event-driven objective hook and auto-complete logic.
 
   Test 3 (quest_prereq):
-    Quest 7 ("The Crystal's Call") lists quest 1 as a prerequisite.
-    CanAcceptQuest(player, 7) must return false while quest 1 is active.
+    Quest 6 ("Imperial Threat") lists quest 1 as a prerequisite.
+    CanAcceptQuest(player, 6) must return false for a fresh player.
     After quest 1 is completed it must return true.
     Validates the prerequisite gate that enables branching quest chains.
 
@@ -27424,9 +27424,9 @@ All four tests are pure C++17 CPU tests — no D3D11
     and auto-complete when progress == required.
 
   Test 3 (quest_prereq):
-    Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player,7)
-    must be false while quest 1 is active (not complete).
-    After quest 1 is completed it must be true.
+    Quest 6 has prereqQuestIDs=[1].  CanAcceptQuest(player,6)
+    must be false for a fresh player and true after quest 1
+    is completed.
     Validates the prerequisite gate for quest chaining.
 
   Test 4 (quest_fail):
@@ -27474,9 +27474,9 @@ const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
 
 **Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3356) (line 3356)
 
-so CanAcceptQuest(7) should return false.
+so CanAcceptQuest(6) should return false.
 const bool blockedWithoutPrereq =
-!qs2.CanAcceptQuest(p2, 7);
+!qs2.CanAcceptQuest(p2, 6);
 
 ### A failed quest is neither active nor
 

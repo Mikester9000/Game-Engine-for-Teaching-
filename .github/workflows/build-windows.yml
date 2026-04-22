@@ -546,7 +546,7 @@ jobs:
       #     objective hook and auto-complete path.
       #
       #   Test 3 (quest_prereq):
-      #     Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player, 7) is
+      #     Quest 6 has prereqQuestIDs=[1].  CanAcceptQuest(player, 6) is
       #     false for a fresh player and true after quest 1 is complete.
       #     Validates the prerequisite gate that enables quest chaining.
       #

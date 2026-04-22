@@ -307,8 +307,8 @@
 //     Validates the event-driven objective hook and auto-complete logic.
 //
 //   Test 3 (quest_prereq):
-//     Quest 7 ("The Crystal's Call") lists quest 1 as a prerequisite.
-//     CanAcceptQuest(player, 7) must return false while quest 1 is active.
+//     Quest 6 ("Imperial Threat") lists quest 1 as a prerequisite.
+//     CanAcceptQuest(player, 6) must return false for a fresh player.
 //     After quest 1 is completed it must return true.
 //     Validates the prerequisite gate that enables branching quest chains.
 //
@@ -3224,9 +3224,9 @@ int main(int argc, char* argv[])
                 //     and auto-complete when progress == required.
                 //
                 //   Test 3 (quest_prereq):
-                //     Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player,7)
-                //     must be false while quest 1 is active (not complete).
-                //     After quest 1 is completed it must be true.
+                //     Quest 6 has prereqQuestIDs=[1].  CanAcceptQuest(player,6)
+                //     must be false for a fresh player and true after quest 1
+                //     is completed.
                 //     Validates the prerequisite gate for quest chaining.
                 //
                 //   Test 4 (quest_fail):
@@ -3335,9 +3335,9 @@ int main(int argc, char* argv[])
                 // Test 3 — quest_prereq: prerequisite gate
                 // -----------------------------------------------------------
                 {
-                    // Quest 7 ("The Crystal's Call") has prereqQuestIDs=[1].
-                    // Quest 1 is now complete → CanAcceptQuest(7) must be true.
-                    const bool canAccept7 = questSys.CanAcceptQuest(playerID, 7);
+                    // Quest 6 ("Imperial Threat") has prereqQuestIDs=[1].
+                    // Quest 1 is now complete → CanAcceptQuest(6) must be true.
+                    const bool canAccept6 = questSys.CanAcceptQuest(playerID, 6);
 
                     // Also verify that without the prereq it was false.
                     // We test this indirectly: create a second fresh world
@@ -3354,22 +3354,22 @@ int main(int argc, char* argv[])
                                     &EventBus<UIEvent>::Instance());
 
                     // TEACHING NOTE — A fresh player has not completed quest 1
-                    // so CanAcceptQuest(7) should return false.
+                    // so CanAcceptQuest(6) should return false.
                     const bool blockedWithoutPrereq =
-                        !qs2.CanAcceptQuest(p2, 7);
+                        !qs2.CanAcceptQuest(p2, 6);
 
-                    if (!canAccept7 || !blockedWithoutPrereq)
+                    if (!canAccept6 || !blockedWithoutPrereq)
                     {
                         std::cout << "[FAIL] quest_test/quest_prereq: "
-                                     "canAccept7=" << canAccept7
+                                     "canAccept6=" << canAccept6
                                   << " blockedWithoutPrereq=" << blockedWithoutPrereq
-                                  << " (expected both true).\n";
+                                   << " (expected both true).\n";
                         ++testsFailed;
                     }
                     else
                     {
                         std::cout << "[OK] quest_test/quest_prereq: "
-                                     "Quest 7 gated behind quest 1; "
+                                     "Quest 6 gated behind quest 1; "
                                      "unlocked after completion.\n";
                     }
                 }
