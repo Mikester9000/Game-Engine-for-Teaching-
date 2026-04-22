@@ -327,7 +327,7 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-> **Last updated: 2025-07 — after Post-M10 (SDF Font Renderer + pak.exe) completion.**
+> **Last updated: 2026-04-22 — after Post-M10 (SDF Font Renderer + pak.exe) completion.**
 > Update each cell as subsystem code is committed and tests pass.
 > The project is complete when every cell shows ✅.
 

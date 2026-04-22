@@ -454,10 +454,15 @@ int main(int argc, char* argv[])
         // -------------------------------------------------------------------
         // Step 4 — Load the requested scene (M1+).
         // -------------------------------------------------------------------
+        // TEACHING NOTE — shaderDir scope
+        // shaderDir is computed once here (outside the scene-load block) so
+        // that headless acceptance tests that need to create D3D11 resources
+        // (e.g. font_test, which builds its own FontRenderer) can also access
+        // the shader directory without re-computing it or duplicating the call.
+        std::string shaderDir = GetShaderDir(argv[0]);
+
         if (!scene.empty())
         {
-            std::string shaderDir = GetShaderDir(argv[0]);
-
             if (!renderer->LoadScene(scene, shaderDir))
             {
                 std::cerr << "[FAIL] Failed to load scene '" << scene << "'.\n";

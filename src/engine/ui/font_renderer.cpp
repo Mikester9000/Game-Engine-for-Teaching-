@@ -29,6 +29,7 @@
 #include "engine/core/Logger.hpp"
 
 #include <d3dcompiler.h>   // D3DCompileFromFile
+#include <filesystem>      // std::filesystem::path — safe path joining for shader paths
 #include <cmath>           // std::sqrt, std::min
 #include <algorithm>       // std::min, std::max, std::sort
 #include <cstring>         // std::memset
@@ -271,8 +272,20 @@ bool FontRenderer::Init(ID3D11Device*        device,
                         ID3D11DeviceContext* context,
                         const std::string&   shaderDir)
 {
-    if (m_initialised)
-        return true;
+    // TEACHING NOTE — Validate inputs before touching any state.
+    // Accepting a null device/context would cause silent GPU crashes later.
+    if (!device || !context)
+    {
+        LOG_ERROR("[FontRenderer] Init() received null D3D11 device or context.");
+        return false;
+    }
+
+    // TEACHING NOTE — Transactional Init pattern.
+    // If a previous Init() call failed mid-way, the object may hold partial
+    // CPU/GPU state (e.g. an atlas texture but no SRV).  Calling Shutdown()
+    // first resets every member to nullptr, guaranteeing we start from a
+    // known-clean baseline.  This also makes repeated Init() calls safe.
+    Shutdown();
 
     m_device  = device;
     m_context = context;
@@ -280,24 +293,28 @@ bool FontRenderer::Init(ID3D11Device*        device,
     if (!BuildAtlas())
     {
         LOG_ERROR("[FontRenderer] BuildAtlas() failed.");
+        Shutdown();
         return false;
     }
 
     if (!UploadAtlas())
     {
         LOG_ERROR("[FontRenderer] UploadAtlas() failed.");
+        Shutdown();
         return false;
     }
 
     if (!CreateShaders(shaderDir))
     {
         LOG_ERROR("[FontRenderer] CreateShaders() failed.");
+        Shutdown();
         return false;
     }
 
     if (!CreateBuffers())
     {
         LOG_ERROR("[FontRenderer] CreateBuffers() failed.");
+        Shutdown();
         return false;
     }
 
@@ -490,6 +507,13 @@ bool FontRenderer::UploadAtlas()
     hr = m_device->CreateShaderResourceView(m_atlasTex, &srvd, &m_atlasSRV);
     if (FAILED(hr))
     {
+        // TEACHING NOTE — Release already-created resources before returning.
+        // m_atlasTex was successfully created above.  If we return false here
+        // without releasing it, the GPU resource leaks.  Shutdown() also
+        // releases it (called by Init on failure), but releasing it here
+        // immediately keeps the object consistent even if Shutdown is skipped.
+        m_atlasTex->Release();
+        m_atlasTex = nullptr;
         LOG_ERROR("[FontRenderer] CreateShaderResourceView (atlas) failed: 0x%08X", hr);
         return false;
     }
@@ -512,6 +536,9 @@ bool FontRenderer::UploadAtlas()
     hr = m_device->CreateSamplerState(&sd, &m_sampler);
     if (FAILED(hr))
     {
+        // Release all resources created in this function before returning.
+        m_atlasSRV->Release(); m_atlasSRV = nullptr;
+        m_atlasTex->Release(); m_atlasTex = nullptr;
         LOG_ERROR("[FontRenderer] CreateSamplerState failed: 0x%08X", hr);
         return false;
     }
@@ -545,8 +572,16 @@ bool FontRenderer::CreateShaders(const std::string& shaderDir)
         return w;
     };
 
+    // TEACHING NOTE — std::filesystem::path for safe path joining.
+    // Using operator/ on fs::path correctly handles trailing-separator edge
+    // cases: fs::path("shaders") / "sdf_text.vs.hlsl" and
+    // fs::path("shaders/") / "sdf_text.vs.hlsl" both produce the same result.
+    // Plain string concatenation (`shaderDir + "sdf_text.vs.hlsl"`) silently
+    // produces a broken path if the caller omits the trailing separator.
+    namespace fs = std::filesystem;
+
     // Compile Vertex Shader.
-    std::string vsPath = shaderDir + "sdf_text.vs.hlsl";
+    std::string vsPath = (fs::path(shaderDir) / "sdf_text.vs.hlsl").string();
     HRESULT hr = D3DCompileFromFile(
         toWide(vsPath).c_str(),
         nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
@@ -568,7 +603,7 @@ bool FontRenderer::CreateShaders(const std::string& shaderDir)
     if (errBlob) { errBlob->Release(); errBlob = nullptr; }
 
     // Compile Pixel Shader.
-    std::string psPath = shaderDir + "sdf_text.ps.hlsl";
+    std::string psPath = (fs::path(shaderDir) / "sdf_text.ps.hlsl").string();
     hr = D3DCompileFromFile(
         toWide(psPath).c_str(),
         nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,

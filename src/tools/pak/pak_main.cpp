@@ -149,6 +149,14 @@ static T ReadLE(std::ifstream& in)
 {
     T val{};
     in.read(reinterpret_cast<char*>(&val), sizeof(val));
+    // TEACHING NOTE — Fail fast on truncated/corrupt binary input.
+    // Binary container readers must validate every primitive read.  If we
+    // returned a default/partially-read value here, later code could treat
+    // it as a trusted count, size, or offset and attempt huge allocations or
+    // invalid seeks.  Throwing at the read boundary keeps the archive parser
+    // in a well-defined state and preserves correct behaviour for valid files.
+    if (!in)
+        throw std::runtime_error("[pak] ReadLE: truncated or corrupt pak stream.");
     return val;
 }
 
@@ -248,6 +256,17 @@ static int CreatePak(const std::string& inputDir, const std::string& outputPath)
     // Write file table.
     for (const auto& e : entries)
     {
+        // TEACHING NOTE — Path length guard before uint16_t truncation.
+        // The PAK1 format stores pathLen as uint16_t (max 65535 bytes).
+        // A path exceeding this limit would silently truncate, desynchronising
+        // the reader from the file table.  Reject oversized paths early so
+        // the archive is always well-formed.
+        if (e.path.size() > 0xFFFF)
+        {
+            std::cerr << "[pak] ERROR: path too long (>" << 0xFFFF
+                      << " bytes) for PAK1 format: " << e.path << "\n";
+            return 1;
+        }
         uint16_t pathLen = static_cast<uint16_t>(e.path.size());
         WriteLE(out, pathLen);
         out.write(e.path.data(), pathLen);
@@ -304,45 +323,57 @@ static int ListPak(const std::string& pakPath)
         return 1;
     }
 
-    // Validate magic + version.
-    uint32_t magic   = ReadLE<uint32_t>(in);
-    uint32_t version = ReadLE<uint32_t>(in);
-
-    if (magic != kMagic)
+    try
     {
-        std::cerr << "[pak] ERROR: bad magic (got 0x"
-                  << std::hex << magic << ", expected 0x"
-                  << kMagic << std::dec << ")\n";
+        // Validate magic + version.
+        uint32_t magic   = ReadLE<uint32_t>(in);
+        uint32_t version = ReadLE<uint32_t>(in);
+
+        if (magic != kMagic)
+        {
+            std::cerr << "[pak] ERROR: bad magic (got 0x"
+                      << std::hex << magic << ", expected 0x"
+                      << kMagic << std::dec << ")\n";
+            return 1;
+        }
+        if (version != kVersion)
+        {
+            std::cerr << "[pak] WARNING: unexpected version " << version
+                      << " (expected " << kVersion << ")\n";
+        }
+
+        uint32_t fileCount = ReadLE<uint32_t>(in);
+        std::cout << "[pak] " << pakPath << "  (version=" << version
+                  << ", " << fileCount << " file(s))\n";
+        std::cout << "  Offset            Size            Path\n";
+        std::cout << "  ──────────────    ────────────    ────────────────────────\n";
+
+        uint64_t totalDataSize = 0;
+        for (uint32_t i = 0; i < fileCount; ++i)
+        {
+            uint16_t pathLen = ReadLE<uint16_t>(in);
+            std::string path(pathLen, '\0');
+            in.read(path.data(), pathLen);
+            if (!in) throw std::runtime_error("[pak] ReadLE: truncated path string.");
+            uint64_t dataOffset = ReadLE<uint64_t>(in);
+            uint64_t dataSize   = ReadLE<uint64_t>(in);
+
+            // TEACHING NOTE — Column alignment using std::setw
+            // We use tab characters here for a quick, readable listing.
+            // For fixed-column output (e.g. when piping to other tools) you
+            // would use std::left / std::setw(N) from <iomanip> instead.
+            std::cout << "  " << dataOffset
+                      << "\t" << dataSize
+                      << "\t" << path << "\n";
+            totalDataSize += dataSize;
+        }
+        std::cout << "[pak] Total data: " << totalDataSize << " bytes\n";
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[pak] ERROR reading pak: " << ex.what() << "\n";
         return 1;
     }
-    if (version != kVersion)
-    {
-        std::cerr << "[pak] WARNING: unexpected version " << version
-                  << " (expected " << kVersion << ")\n";
-    }
-
-    uint32_t fileCount = ReadLE<uint32_t>(in);
-    std::cout << "[pak] " << pakPath << "  (version=" << version
-              << ", " << fileCount << " file(s))\n";
-    std::cout << "  Offset            Size            Path\n";
-    std::cout << "  ──────────────    ────────────    ────────────────────────\n";
-
-    uint64_t totalDataSize = 0;
-    for (uint32_t i = 0; i < fileCount; ++i)
-    {
-        uint16_t pathLen = ReadLE<uint16_t>(in);
-        std::string path(pathLen, '\0');
-        in.read(path.data(), pathLen);
-        uint64_t dataOffset = ReadLE<uint64_t>(in);
-        uint64_t dataSize   = ReadLE<uint64_t>(in);
-
-        // TEACHING NOTE — Printf-style column alignment via std::cout width
-        std::cout << "  " << dataOffset
-                  << "\t" << dataSize
-                  << "\t" << path << "\n";
-        totalDataSize += dataSize;
-    }
-    std::cout << "[pak] Total data: " << totalDataSize << " bytes\n";
     return 0;
 }
 
@@ -358,44 +389,67 @@ static int ExtractPak(const std::string& pakPath, const std::string& outputDir)
         return 1;
     }
 
-    // Validate header.
-    uint32_t magic   = ReadLE<uint32_t>(in);
-    uint32_t version = ReadLE<uint32_t>(in);
+    uint32_t fileCount = 0;
+    std::vector<Entry> entries;
 
-    if (magic != kMagic)
+    try
     {
-        std::cerr << "[pak] ERROR: bad magic\n";
+        // Validate header.
+        uint32_t magic   = ReadLE<uint32_t>(in);
+        uint32_t version = ReadLE<uint32_t>(in);
+
+        if (magic != kMagic)
+        {
+            std::cerr << "[pak] ERROR: bad magic\n";
+            return 1;
+        }
+        (void)version;
+
+        fileCount = ReadLE<uint32_t>(in);
+
+        // Read the file table.
+        entries.resize(fileCount);
+        for (uint32_t i = 0; i < fileCount; ++i)
+        {
+            uint16_t pathLen = ReadLE<uint16_t>(in);
+            entries[i].path.resize(pathLen);
+            in.read(entries[i].path.data(), pathLen);
+            if (!in) throw std::runtime_error("[pak] ReadLE: truncated path string.");
+            entries[i].dataOffset = ReadLE<uint64_t>(in);
+            entries[i].dataSize   = ReadLE<uint64_t>(in);
+        }
+    }
+    catch (const std::exception& ex)
+    {
+        std::cerr << "[pak] ERROR reading pak header/table: " << ex.what() << "\n";
         return 1;
     }
-    (void)version;
 
-    uint32_t fileCount = ReadLE<uint32_t>(in);
-
-    // Read the file table.
-    std::vector<Entry> entries(fileCount);
-    for (uint32_t i = 0; i < fileCount; ++i)
-    {
-        uint16_t pathLen = ReadLE<uint16_t>(in);
-        entries[i].path.resize(pathLen);
-        in.read(entries[i].path.data(), pathLen);
-        entries[i].dataOffset = ReadLE<uint64_t>(in);
-        entries[i].dataSize   = ReadLE<uint64_t>(in);
-    }
-
-    fs::path outBase(outputDir);
+    fs::path outBase = fs::weakly_canonical(fs::path(outputDir));
     fs::create_directories(outBase);
 
     std::vector<char> copyBuf(1 << 16);
     for (const auto& e : entries)
     {
-        // TEACHING NOTE — Path Traversal Safety
-        // In production code you must validate that the relative path does NOT
-        // contain ".." segments that would escape the output directory.  A
-        // maliciously crafted PAK could otherwise overwrite arbitrary files.
-        // We rely on the canonical path check here:
-        fs::path outPath = outBase / e.path;
-        fs::path canonical = fs::weakly_canonical(outPath);
-        if (canonical.string().find(fs::weakly_canonical(outBase).string()) != 0)
+        // TEACHING NOTE — Path Traversal Safety (iterator-based check)
+        // A naive string prefix check (`canonical.string().find(base) == 0`)
+        // is bypassed by paths like "C:\out" vs "C:\out2" — "C:\out" is a
+        // prefix of "C:\out2" so the check falsely passes.
+        //
+        // The correct check uses std::filesystem path iterators:
+        //   • Compute canonical output path.
+        //   • Use std::mismatch on the path component iterators to find the
+        //     first differing segment.
+        //   • If the base exhausted first (all base components matched the
+        //     start of canonical), the path is safely inside the base.
+        //
+        // This handles separator normalisation, case differences (on case-
+        // insensitive file systems) and ".." segments correctly because
+        // weakly_canonical() resolves them before we compare.
+        fs::path outPath  = fs::weakly_canonical(outBase / e.path);
+        auto mismatchResult = std::mismatch(outBase.begin(), outBase.end(),
+                                            outPath.begin(),  outPath.end());
+        if (mismatchResult.first != outBase.end())
         {
             std::cerr << "[pak] SECURITY: path traversal detected: "
                       << e.path << " — skipped.\n";
