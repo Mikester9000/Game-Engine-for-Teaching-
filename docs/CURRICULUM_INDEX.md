@@ -6,20 +6,20 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1666 across 50 subsystems.
+**Total lessons:** 1678 across 50 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (68 lessons)
-- [ci/workflows](#ciworkflows) (54 lessons)
+- [ci/workflows](#ciworkflows) (55 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/ai](#engineai) (49 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
-- [engine/audio](#engineaudio) (32 lessons)
+- [engine/audio](#engineaudio) (42 lessons)
 - [engine/cinematics](#enginecinematics) (32 lessons)
 - [engine/core](#enginecore) (50 lessons)
 - [engine/ecs](#engineecs) (41 lessons)
@@ -42,7 +42,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (70 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (71 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -1701,9 +1701,37 @@ All tests run on WARP — no GPU required.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bloom_test
 shell: cmd
 
-### PAK Packager CI Test
+### M18 X3DAudio CI Gate
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L471) (line 471)
+
+This step validates the X3DAudio 3D positional audio subsystem (M18):
+  Test 1 — Init:
+            XAudio2Backend::Init() is called.  On headless Windows runners
+            with no audio device, XAudio2 may fail (returns false), but
+            the backend continues — Compute3DVolume() falls back to the
+            linear rolloff formula, which is CPU-only and always works.
+  Test 2 — At-listener volume:
+            Emitter at distance 0 from the listener must return volume
+            >= 0.95 from Compute3DVolume().  Validates the near-unity
+            result of the rolloff curve at zero distance.
+  Test 3 — At-maxDistance volume:
+            Emitter placed at exactly maxDistance from the listener must
+            return volume <= 0.05.  Satisfies the M18 acceptance criterion:
+            "assert volume <= 0.05 at maxDistance".
+  Test 4 — Half-distance volume:
+            Emitter at maxDist/2 must return volume <= 0.5.  Confirms
+            the rolloff is monotonically decreasing (linear or X3DAudio).
+
+All tests are purely CPU-side math — no audio hardware or GPU required.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M18 -- audio_3d_test scene)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene audio_3d_test
+shell: cmd
+
+### PAK Packager CI Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L499) (line 499)
 
 This step validates pak.exe by packing the vertical_slice_project Cooked/
 directory into a PAK1 archive.  A non-zero exit code (file-not-found,
@@ -1717,7 +1745,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L485) (line 485)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L513) (line 513)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1743,7 +1771,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L524) (line 524)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L552) (line 552)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1769,7 +1797,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L558) (line 558)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L586) (line 586)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1790,7 +1818,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L582) (line 582)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L610) (line 610)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1803,7 +1831,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L595) (line 595)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L623) (line 623)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1818,7 +1846,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L610) (line 610)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L638) (line 638)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1849,7 +1877,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L638) (line 638)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L666) (line 666)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1858,7 +1886,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L660) (line 660)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L688) (line 688)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1886,7 +1914,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L695) (line 695)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L723) (line 723)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1895,7 +1923,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L709) (line 709)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L737) (line 737)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1917,7 +1945,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L734) (line 734)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L762) (line 762)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1931,7 +1959,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L758) (line 758)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L786) (line 786)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1949,7 +1977,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L783) (line 783)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L811) (line 811)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1960,7 +1988,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L794) (line 794)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L822) (line 822)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1975,7 +2003,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L816) (line 816)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L844) (line 844)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -6553,9 +6581,25 @@ Treating them differently lets us:
 C++ Standard: C++17
 Target: Windows (MSVC)
 
-### Music Track Registry
+### Forwarding Listener Position to the Backend
 
 **Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L70) (line 70)
+
+-----------------------------------------------------------------------
+AudioSystem is the game-facing API; it knows about ECS and music state
+but not low-level XAudio2 handles.  It delegates all 3D math to the
+backend which owns the X3DAUDIO_HANDLE and the listener cache.
+
+Call this once per frame (in GameRuntime::Update or the game loop)
+before calling AudioSystem::Update(), so that the listener position is
+already up-to-date when 3D attenuation is computed for each voice.
+-----------------------------------------------------------------------
+m_backend.SetListenerPosition(x, y, z);
+}
+
+### Music Track Registry
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L90) (line 90)
 
 -----------------------------------------------------------------------
 We store one MusicTrack per MusicState in a fixed-size array indexed
@@ -6577,7 +6621,7 @@ LOG_INFO("AudioSystem: registered music track state="
 
 ### Music State Transition
 
-**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L96) (line 96)
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L116) (line 116)
 
 -----------------------------------------------------------------------
 If the new state is the same as the current one, do nothing.
@@ -6594,14 +6638,17 @@ curve would be equal-power (√(t)), but linear is easier to teach.
 
 ### ECS View over AudioSourceComponent
 
-**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L183) (line 183)
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L203) (line 203)
 
 ──────────────────────────────────────────────────
 World::View iterates only the entities that have AudioSourceComponent.
 Entities without it are skipped at zero cost.
+
+We capture `world` by reference so we can query TransformComponent for
+3D emitters inside the same lambda (EntityID is available to us there).
 -----------------------------------------------------------------------
 world.View<AudioSourceComponent>(
-[this](EntityID /*id*/, AudioSourceComponent& src)
+[this, &world](EntityID id, AudioSourceComponent& src)
 {
 if (src.isPlaying && src.voiceIndex == -1)
 {
@@ -6624,12 +6671,42 @@ Voice finished naturally (non-looping clip completed).
 src.voiceIndex = -1;
 src.isPlaying  = false;
 }
+
+### Per-Frame 3D Attenuation (M18)
+
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L237) (line 237)
+
+---------------------------------------------------------------
+For every 3D source that has an active voice slot, we read the
+entity's TransformComponent position (world space) and ask the
+backend to recompute and apply the distance-based volume.
+
+We check HasComponent<TransformComponent> first: a 3D audio
+source without a transform makes no sense, but we guard against
+it rather than crash.  Non-3D (is3D == false) sources are skipped
+entirely — they play at full volume regardless of position.
+---------------------------------------------------------------
+if (src.is3D && src.voiceIndex >= 0)
+{
+if (world.HasComponent<TransformComponent>(id))
+{
+const auto& tr = world.GetComponent<TransformComponent>(id);
+m_backend.Apply3DAttenuation(
+src.voiceIndex,
+tr.position.x,
+tr.position.y,
+tr.position.z,
+src.maxDistance,
+src.volume * m_sfxVolume
+);
+}
+}
 }
 );
 
 ### Linear Volume Crossfade
 
-**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L228) (line 228)
+**Source:** [`src/engine/audio/audio_system.cpp`](src/engine/audio/audio_system.cpp#L279) (line 279)
 
 -----------------------------------------------------------------------
 t ∈ [0, 1] where 0 = crossfade begins, 1 = crossfade complete.
@@ -6718,6 +6795,19 @@ SystemBase::Update(float dt) does not give us the World pointer.
 We override the extended version AudioSystem::Update(World&, float) and
 leave the base version as a no-op to satisfy the interface.
 
+### Who Calls This?
+
+**Source:** [`src/engine/audio/audio_system.hpp`](src/engine/audio/audio_system.hpp#L191) (line 191)
+
+──────────────────────────────────
+In GameRuntime, the camera position is read from CameraSystem each frame
+and forwarded to AudioSystem::SetListenerPosition().  This ensures 3D
+sounds are always attenuated relative to the current camera location.
+
+@param x  World-space X coordinate.
+@param y  World-space Y coordinate.
+@param z  World-space Z coordinate.
+
 ### XAudio2 Initialisation Sequence
 
 **Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L6) (line 6)
@@ -6784,7 +6874,7 @@ pragma comment(lib, "ole32.lib")
 
 ### COM Initialisation
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L92) (line 92)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L93) (line 93)
 
 -----------------------------------------------------------------------
 XAudio2 is a COM object.  Before calling any COM API we must initialise
@@ -6806,7 +6896,7 @@ return false;
 
 ### XAudio2Create
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L112) (line 112)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L113) (line 113)
 
 -----------------------------------------------------------------------
 XAudio2Create creates the central audio engine object.  Parameters:
@@ -6826,7 +6916,7 @@ return false;
 
 ### Mastering Voice
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L130) (line 130)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L131) (line 131)
 
 -----------------------------------------------------------------------
 The mastering voice is the final stage in the audio graph:
@@ -6858,9 +6948,55 @@ m_xaudio2 = nullptr;
 return false;
 }
 
+### X3DAudio Initialisation (M18)
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L166) (line 166)
+
+-----------------------------------------------------------------------
+X3DAudio extends XAudio2 with 3D spatialization math.  It does NOT
+create COM objects — it is a set of CPU-only routines that compute DSP
+coefficients (volume, panning, Doppler) from listener/emitter geometry.
+
+Initialisation requires two parameters:
+
+  SpeakerChannelMask  — bitmask describing the speaker layout (e.g.
+                        SPEAKER_STEREO, SPEAKER_5POINT1).  Obtained from
+                        IXAudio2MasteringVoice::GetChannelMask().
+
+  SpeedOfSound        — X3DAUDIO_SPEED_OF_SOUND = 343.5 m/s.
+                        Used for Doppler shift calculations.
+
+We call GetChannelMask() on the mastering voice we just created so that
+X3DAudio knows the speaker topology.  If this fails (headless CI with no
+audio device), we skip X3DAudio and fall back to pure-math rolloff.
+-----------------------------------------------------------------------
+{
+DWORD channelMask = 0;
+HRESULT hrMask = m_masterVoice->GetChannelMask(&channelMask);
+if (SUCCEEDED(hrMask))
+{
+-----------------------------------------------------------------------
+
+### Channel Count from Channel Mask
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L191) (line 191)
+
+-----------------------------------------------------------------------
+The channel mask is a bitmask where each set bit represents one
+speaker channel (e.g. SPEAKER_FRONT_LEFT, SPEAKER_FRONT_RIGHT, …).
+Counting the set bits gives the number of output channels.
+
+We store this count so Compute3DVolume() can allocate the correct
+number of matrix coefficients when calling X3DAudioCalculate.
+-----------------------------------------------------------------------
+UINT32 chCount = 0;
+DWORD tmp = channelMask;
+while (tmp) { chCount += (tmp & 1u); tmp >>= 1; }
+m_dstChannels = (chCount > 0u) ? chCount : 2u;
+
 ### XAudio2 Teardown Order
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L177) (line 177)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L244) (line 244)
 
 -----------------------------------------------------------------------
 Shutdown order matters:
@@ -6873,9 +7009,91 @@ Destroying the engine (step 3) while voices are running would leave
 dangling IXAudio2SourceVoice pointers — always stop voices first.
 -----------------------------------------------------------------------
 
+### Listener vs Emitter
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L298) (line 298)
+
+-----------------------------------------------------------------------
+In 3D audio there are two actors:
+
+  Listener — where the "ears" are.  Typically the camera position or
+             the player's head.  Updated once per frame by calling
+             SetListenerPosition() with the camera world position.
+
+  Emitter  — where the sound originates.  Each entity that makes a 3D
+             sound has its own emitter position, derived from its
+             TransformComponent::position.
+
+X3DAudioCalculate() computes the DSP coefficients (volume, panning,
+reverb send) by comparing the listener and emitter positions.
+-----------------------------------------------------------------------
+m_listenerPos = { x, y, z };
+}
+
+### Two Rolloff Paths
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L324) (line 324)
+
+-----------------------------------------------------------------------
+Path A — X3DAudio DSP (when m_x3dReady):
+  We set up X3DAUDIO_LISTENER and X3DAUDIO_EMITTER structs and call
+  X3DAudioCalculate with the X3DAUDIO_CALCULATE_MATRIX flag.  The
+  result is a matrix of output channel gain coefficients.  For a mono
+  source into a stereo master (2 channels), the matrix is float[2].
+  The mean of those coefficients gives us the overall volume level.
+
+  CurveDistanceScaler maps "world-unit distance" to "X3DAudio distance".
+  Setting it to maxDist means the default curve reaches zero at maxDist.
+
+Path B — Linear fallback (when X3DAudio is not available):
+  volume = clamp(1.0 - dist / maxDist, 0.0, 1.0)
+  Simple, teachable, zero dependencies.
+
+Both paths satisfy the M18 acceptance criterion:
+  Compute3DVolume(maxDist, 0, 0, maxDist) ≈ 0.0
+  Compute3DVolume(0, 0, 0, maxDist)       ≈ 1.0
+-----------------------------------------------------------------------
+
+### Dynamic Matrix Allocation
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L383) (line 383)
+
+──────────────────────────────────────────
+The matrix size is (SrcChannelCount × DstChannelCount) floats.
+We use a small fixed-size array on the stack.  X3DAudio guarantees
+DstChannelCount <= XAUDIO2_MAX_AUDIO_CHANNELS (64) and we query the
+actual count from the mastering voice, so the array is always sized
+correctly.  Using std::vector would add a heap allocation per call.
+static constexpr UINT32 MAX_CHANNELS = 8u; // mono up to 7.1 surround
+const UINT32 dstCh = m_dstChannels <= MAX_CHANNELS ? m_dstChannels : MAX_CHANNELS;
+float matrix[MAX_CHANNELS] = {};
+for (UINT32 i = 0; i < dstCh; ++i) matrix[i] = 1.0f;
+
+### Per-Frame 3D Update
+
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L425) (line 425)
+
+-----------------------------------------------------------------------
+3D audio must be recalculated every frame because both the listener
+(camera) and the emitter (enemy, NPC, projectile) can move.  The call
+chain is:
+
+  AudioSystem::Update()
+    → XAudio2Backend::Apply3DAttenuation()  (for each is3D voice)
+      → Compute3DVolume()                    (distance → gain scalar)
+        → SetSlotVolume()                    (push to XAudio2 voice)
+
+Separating Compute3DVolume() from Apply3DAttenuation() makes the math
+unit-testable without a live XAudio2 session.
+-----------------------------------------------------------------------
+if (slotIndex < 0 || slotIndex >= static_cast<int>(XAUDIO2_VOICE_POOL_SIZE))
+return;
+if (!m_pool[slotIndex].inUse)
+return;
+
 ### Resolving Asset IDs to File Paths
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L239) (line 239)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L464) (line 464)
 
 -----------------------------------------------------------------------
 The AssetDB maps GUID strings (like "3a7f-...") to absolute paths of
@@ -6895,7 +7113,7 @@ return -1;
 
 ### XAUDIO2_BUFFER and PCM Lifetime
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L276) (line 276)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L501) (line 501)
 
 -----------------------------------------------------------------------
 The XAUDIO2_BUFFER struct describes one submitted audio buffer.
@@ -6918,7 +7136,7 @@ as the slot is in use.  Stop() clears pcmCache after flushing.
 
 ### Stopping a Source Voice
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L342) (line 342)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L567) (line 567)
 
 -----------------------------------------------------------------------
 IXAudio2SourceVoice::Stop() pauses the voice but does not reset it.
@@ -6937,7 +7155,7 @@ s.pcmCache.clear();  // safe to free now that XAudio2 has no reference
 
 ### Per-Voice Volume for Crossfading
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L389) (line 389)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L614) (line 614)
 
 -----------------------------------------------------------------------
 IXAudio2SourceVoice::SetVolume() applies a scalar gain to the voice's
@@ -6957,7 +7175,7 @@ s.voice->SetVolume(volume);
 
 ### Parsing RIFF/WAVE
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L428) (line 428)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L653) (line 653)
 
 -----------------------------------------------------------------------
 We walk the chunk tree manually using a byte offset.  Each chunk has:
@@ -6973,7 +7191,7 @@ All integer fields in RIFF are little-endian.
 
 ### WAVEFORMATEX layout
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L475) (line 475)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L700) (line 700)
 
 ---------------------------------------------------------------
 Minimum size is 16 bytes (WAVEFORMATEX without cbSize).
@@ -6985,7 +7203,7 @@ return wav;
 
 ### Source Voice Format
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L535) (line 535)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L760) (line 760)
 
 -----------------------------------------------------------------------
 A source voice is created for a specific WAVEFORMATEX.  If the existing
@@ -6999,7 +7217,7 @@ auto& s = m_pool[slotIndex];
 
 ### CreateSourceVoice
 
-**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L571) (line 571)
+**Source:** [`src/engine/audio/xaudio2_backend.cpp`](src/engine/audio/xaudio2_backend.cpp#L796) (line 796)
 
 -----------------------------------------------------------------------
 Parameters:
@@ -7069,7 +7287,7 @@ Requires: xaudio2.lib (Windows SDK — always present)
 
 ### RIFF/WAVE Format
 
-**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L86) (line 86)
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L87) (line 87)
 
 ────────────────────────────────
 A .wav file is a RIFF container with a "WAVE" form type.  The two
@@ -7083,7 +7301,7 @@ chunk as an XAUDIO2_BUFFER.
 
 ### PCM Buffer Lifetime
 
-**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L111) (line 111)
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L112) (line 112)
 
 ──────────────────────────────────────
 XAudio2 source voices operate asynchronously on an audio thread.  When
@@ -7098,7 +7316,7 @@ here.  When Stop() frees the slot, the vector is cleared.
 
 ### Backend vs System
 
-**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L142) (line 142)
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L143) (line 143)
 
 ──────────────────────────────────
 The *backend* owns the low-level XAudio2 objects and knows nothing about
@@ -7110,9 +7328,32 @@ AudioSourceComponent data and forwards commands to this backend.
 This separation means we could swap XAudio2 for FMOD/SDL_mixer without
 changing any gameplay code — only the backend changes.
 
+### Distance Rolloff Curve
+
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L251) (line 251)
+
+────────────────────────────────────────
+X3DAudio supports several built-in distance curves (linear, inverse,
+inverse-square, etc.).  We use the default linear curve for clarity:
+
+  volume = clamp(1.0 - dist / maxDistance, 0.0, 1.0)
+
+At distance  = 0          → volume = 1.0 (full)
+At distance  = maxDist/2  → volume = 0.5 (half)
+At distance >= maxDist    → volume = 0.0 (inaudible)
+
+This satisfies the M18 acceptance criterion:
+  volume ≤ 0.05 when emitter is placed at maxDistance.
+
+@param emitX     World-space X of the emitter.
+@param emitY     World-space Y of the emitter.
+@param emitZ     World-space Z of the emitter.
+@param maxDist   Distance at which volume reaches 0 (world units).
+@return          Volume scalar in [0.0, 1.0].
+
 ### Voice Reuse
 
-**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L262) (line 262)
+**Source:** [`src/engine/audio/xaudio2_backend.hpp`](src/engine/audio/xaudio2_backend.hpp#L322) (line 322)
 
 ─────────────────────────────
 A source voice is format-bound at creation time.  When a new clip has
@@ -25368,6 +25609,7 @@ Usage:
   engine_sandbox.exe --headless --scene font_test         # Font Renderer: SDF atlas init + render acceptance test (CI)
   engine_sandbox.exe --headless --scene shadow_test       # M17 Shadow Maps: shadow-pass + PCF lit-pass acceptance test (CI)
   engine_sandbox.exe --headless --scene bloom_test        # M17 Bloom: bright-pass + blur + composite acceptance test (CI)
+  engine_sandbox.exe --headless --scene audio_3d_test     # M18 X3DAudio: listener init + distance rolloff acceptance test (CI)
 
 ============================================================================
 
@@ -25379,7 +25621,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L103) (line 103)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L104) (line 104)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -25398,7 +25640,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L118) (line 118)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L119) (line 119)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -25406,7 +25648,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L124) (line 124)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L125) (line 125)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -25424,7 +25666,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L140) (line 140)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L141) (line 141)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -25439,7 +25681,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L153) (line 153)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L154) (line 154)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -25459,7 +25701,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L171) (line 171)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L172) (line 172)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -25473,7 +25715,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L183) (line 183)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L184) (line 184)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -25493,7 +25735,7 @@ include "engine/ai/nav_mesh.hpp"
 
 ### Post-M10 Cinematics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L201) (line 201)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L202) (line 202)
 
 ---------------------------------------------------------------------------
 The cinematic_test scene validates the two new engine/cinematics/ subsystems:
@@ -25510,7 +25752,7 @@ include "engine/cinematics/cinematic_sequencer.hpp"
 
 ### UI Menu Stack headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L216) (line 216)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L217) (line 217)
 
 ---------------------------------------------------------------------------
 The menu_stack_test scene validates the MenuStack navigation subsystem:
@@ -25528,7 +25770,7 @@ include "engine/ui/menu_stack.hpp"
 
 ### SDF Font Renderer headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L232) (line 232)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L233) (line 233)
 
 ---------------------------------------------------------------------------
 The font_test scene validates the SDF FontRenderer subsystem:
@@ -25542,7 +25784,7 @@ The font_test scene validates the SDF FontRenderer subsystem:
 
 ### Why headless font tests?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L243) (line 243)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L244) (line 244)
 
 The SDF atlas generation (CPU) and texture upload (GPU) happen inside Init().
 Running this in headless (WARP) mode on a CI Windows runner exercises the
@@ -25553,11 +25795,12 @@ failing the CI job.
 ifdef ENGINE_ENABLE_D3D11
 include "engine/ui/font_renderer.hpp"
 include "engine/rendering/d3d11/D3D11Renderer.hpp"
+include "engine/audio/xaudio2_backend.hpp"
 endif
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L264) (line 264)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L266) (line 266)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -25574,7 +25817,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L279) (line 279)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L281) (line 281)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -25591,7 +25834,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L292) (line 292)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L294) (line 294)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -25603,7 +25846,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L314) (line 314)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L316) (line 316)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -25622,7 +25865,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L329) (line 329)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L331) (line 331)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -25635,7 +25878,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L342) (line 342)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L344) (line 344)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -25646,7 +25889,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L371) (line 371)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L373) (line 373)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -25661,7 +25904,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L396) (line 396)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L398) (line 398)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -25671,7 +25914,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L426) (line 426)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L428) (line 428)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -25687,7 +25930,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L459) (line 459)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L461) (line 461)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -25697,7 +25940,7 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L480) (line 480)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L482) (line 482)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -25723,7 +25966,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L502) (line 502)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L504) (line 504)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -25752,7 +25995,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L527) (line 527)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L529) (line 529)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -25776,7 +26019,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L635) (line 635)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L637) (line 637)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -25801,7 +26044,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L756) (line 756)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L758) (line 758)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -25822,7 +26065,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L840) (line 840)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L842) (line 842)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -25840,7 +26083,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L854) (line 854)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L856) (line 856)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -25871,7 +26114,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L883) (line 883)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L885) (line 885)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -25879,7 +26122,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L945) (line 945)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L947) (line 947)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -25902,7 +26145,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1020) (line 1020)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1022) (line 1022)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -25920,7 +26163,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1034) (line 1034)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1036) (line 1036)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -25938,7 +26181,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1067) (line 1067)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1069) (line 1069)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -25964,7 +26207,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1118) (line 1118)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1120) (line 1120)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -25986,7 +26229,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1137) (line 1137)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1139) (line 1139)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -26009,7 +26252,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1218) (line 1218)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1220) (line 1220)
 
 -----------------------------------------------------------
 Verifies that:
@@ -26029,7 +26272,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1235) (line 1235)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1237) (line 1237)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -26049,7 +26292,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1278) (line 1278)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1280) (line 1280)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -26065,7 +26308,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1320) (line 1320)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1322) (line 1322)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -26091,7 +26334,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1342) (line 1342)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1344) (line 1344)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -26114,7 +26357,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1451) (line 1451)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1453) (line 1453)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -26141,7 +26384,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1475) (line 1475)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1477) (line 1477)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -26152,14 +26395,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1498) (line 1498)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1500) (line 1500)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1503) (line 1503)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1505) (line 1505)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -26176,7 +26419,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1551) (line 1551)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1553) (line 1553)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -26211,7 +26454,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1609) (line 1609)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1611) (line 1611)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -26221,7 +26464,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1700) (line 1700)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1702) (line 1702)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -26231,7 +26474,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1768) (line 1768)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1770) (line 1770)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -26239,7 +26482,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1819) (line 1819)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1821) (line 1821)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -26268,7 +26511,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1853) (line 1853)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1855) (line 1855)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -26291,7 +26534,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1904) (line 1904)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1906) (line 1906)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -26314,7 +26557,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1945) (line 1945)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1947) (line 1947)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -26331,7 +26574,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2020) (line 2020)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2022) (line 2022)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -26343,7 +26586,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2101) (line 2101)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2103) (line 2103)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -26361,7 +26604,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2315) (line 2315)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2317) (line 2317)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -26374,7 +26617,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2396) (line 2396)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2398) (line 2398)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -26390,7 +26633,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2409) (line 2409)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2411) (line 2411)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -26407,7 +26650,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2450) (line 2450)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2452) (line 2452)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -26425,7 +26668,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2481) (line 2481)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2483) (line 2483)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -26451,7 +26694,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2525) (line 2525)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2527) (line 2527)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -26491,7 +26734,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2612) (line 2612)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2614) (line 2614)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -26530,9 +26773,38 @@ std::cout << "[OK] bloom_test/load: "
 "4x RGBA8 256x256 RTs, bloom shaders, CBs created.\n";
 }
 
+### What the audio_3d_test validates:
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2703) (line 2703)
+
+Test 1 (init):
+    XAudio2Backend::Init() is called.  On headless CI with no
+    audio hardware it gracefully degrades (X3DAudio falls back
+    to the linear rolloff path).  Either way the backend is
+    usable and Compute3DVolume() works correctly.
+
+  Test 2 (at-listener volume ≈ 1.0):
+    Emitter at the listener position (distance = 0) must return
+    volume ≈ 1.0 from Compute3DVolume().  Tolerance: >= 0.95.
+
+  Test 3 (at-maxDistance volume ≈ 0.0):
+    Emitter at exactly maxDistance must return volume <= 0.05.
+    This satisfies the M18 acceptance criterion:
+      "assert volume <= 0.05 at maxDistance"
+
+  (Bonus) Test 4 (half-distance volume <= 0.5):
+    Emitter at maxDist/2 must return volume <= 0.5.  Verifies
+    that the rolloff is monotonically decreasing.
+
+All tests are CPU-only — they exercise Compute3DVolume()
+which uses X3DAudio DSP when available and linear math as a
+fallback.  No audio hardware or GPU is required.
+-----------------------------------------------------------
+int testsFailed = 0;
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2712) (line 2712)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2832) (line 2832)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -26542,7 +26814,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2720) (line 2720)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2840) (line 2840)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -26572,7 +26844,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2748) (line 2748)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2868) (line 2868)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -26595,7 +26867,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2801) (line 2801)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2921) (line 2921)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -26608,7 +26880,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2817) (line 2817)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2937) (line 2937)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

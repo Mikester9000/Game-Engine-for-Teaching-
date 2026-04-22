@@ -466,6 +466,34 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M18: X3DAudio 3D positional audio headless acceptance test
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M18 X3DAudio CI Gate
+      # This step validates the X3DAudio 3D positional audio subsystem (M18):
+      #   Test 1 — Init:
+      #             XAudio2Backend::Init() is called.  On headless Windows runners
+      #             with no audio device, XAudio2 may fail (returns false), but
+      #             the backend continues — Compute3DVolume() falls back to the
+      #             linear rolloff formula, which is CPU-only and always works.
+      #   Test 2 — At-listener volume:
+      #             Emitter at distance 0 from the listener must return volume
+      #             >= 0.95 from Compute3DVolume().  Validates the near-unity
+      #             result of the rolloff curve at zero distance.
+      #   Test 3 — At-maxDistance volume:
+      #             Emitter placed at exactly maxDistance from the listener must
+      #             return volume <= 0.05.  Satisfies the M18 acceptance criterion:
+      #             "assert volume <= 0.05 at maxDistance".
+      #   Test 4 — Half-distance volume:
+      #             Emitter at maxDist/2 must return volume <= 0.5.  Confirms
+      #             the rolloff is monotonically decreasing (linear or X3DAudio).
+      #
+      # All tests are purely CPU-side math — no audio hardware or GPU required.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M18 -- audio_3d_test scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene audio_3d_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # PAK packager acceptance test
       # -----------------------------------------------------------------------
       # TEACHING NOTE — PAK Packager CI Test

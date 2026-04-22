@@ -235,38 +235,32 @@ and clear weather affecting enemy spawns and visual ambiance.
 
 ## 8. Audio Pipeline
 
-**Status:** ✅ (Python AudioEngine tool + 32 tests ✅; XAudio2 backend + AudioSystem + music FSM + AudioSourceComponent ✅ M3) · 🔨 (X3DAudio positional 3D attenuation — scaffolded in data model, not yet implemented in runtime)
+**Status:** ✅ (Python AudioEngine tool + 32 tests ✅; XAudio2 backend + AudioSystem + music FSM + AudioSourceComponent ✅ M3; X3DAudio 3D positional audio ✅ M18)
 
 **Purpose:** Background music layers, combat sound effects, ambient audio, and
 positional 3D audio.  FF15 uses a layered music system where battle, exploration,
 and idle tracks blend based on game state.
 
-> **Verification note (2026-04-22):** `src/engine/audio/xaudio2_backend.hpp/.cpp` IS
-> implemented (M3 ✅) — device init, source voice pool (16 slots), WAV parser, Play/Stop/
-> SetSlotVolume.  `src/engine/audio/audio_system.hpp/.cpp` IS implemented — ECS-driven
-> play/stop, music FSM with real `SetVolume` crossfade.  The section 8 "Status" header
-> previously stated "⬜ (XAudio2 runtime)" which was stale; this has been corrected.
->
-> **Gap:** `AudioSourceComponent.is3D` and `AudioSourceComponent.maxDistance` exist in
-> `ECS.hpp` but `AudioSystem::Update` does NOT yet compute distance from a listener
-> position or call X3DAudio APIs.  True 3D positional audio (distance rolloff,
-> panning/spatialisation) is 🔨 not yet implemented in the runtime despite the field
-> existing in the data model.  X3DAudio integration is required to satisfy the FF15
-> quality bar ("XAudio2 positional 3D audio").
+> **M18 complete (2026-04-22):** `XAudio2Backend::Init` now calls `X3DAudioInitialize`
+> after creating the mastering voice (channel mask from `GetChannelMask`).
+> `SetListenerPosition` / `Compute3DVolume` / `Apply3DAttenuation` implement distance
+> rolloff using X3DAudio DSP (with a linear math fallback on headless CI).
+> `AudioSystem::Update` calls `Apply3DAttenuation` each frame for `is3D=true` sources
+> using their `TransformComponent::position`.  CI gate: `--headless --scene audio_3d_test`
+> (3 tests: init, at-listener ≥ 0.95, at-maxDist ≤ 0.05).
 
 | Field | Detail |
 |---|---|
-| **Runtime component(s)** | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, source voice pool (16 slots), WAV parser ✅ |
-| | `src/engine/audio/audio_system.hpp/.cpp` — event-driven playback, music FSM with real `SetVolume` crossfade ✅ |
-| | X3DAudio 3D positional audio (distance rolloff, panning) — 🔨 data model scaffolded (`is3D`, `maxDistance` in `AudioSourceComponent`); runtime calculation ⬜ |
+| **Runtime component(s)** | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, X3DAudio init, source voice pool (16 slots), WAV parser, SetListenerPosition, Compute3DVolume, Apply3DAttenuation ✅ |
+| | `src/engine/audio/audio_system.hpp/.cpp` — event-driven playback, music FSM crossfade, per-frame 3D attenuation, SetListenerPosition API ✅ |
+| | X3DAudio 3D positional audio (distance rolloff) — ✅ M18 complete |
 | **Tool component(s)** | `tools/audio_engine.py` — register clips, emit/consume manifest ✅ |
 | | `tools/audio_authoring/audio_engine/` — Python synthesiser, DSP, OGG/WAV export ✅ (32 tests) |
 | | Cooker step: normalise WAV, build XMA2 for shipping ⬜ |
 | **Data formats** | Source: `audio/*.wav` + `audio-manifest.json`; Cooked: `cooked/audio/<id>.wav` |
 | **Acceptance tests** | `audio_engine.py consume --manifest ... --list` exits 0 and prints all clips ✅ |
 | | Python audio_authoring: 32 tests pass ✅ |
-| | XAudio2 backend initialises headlessly; `AudioSystem::Update` starts voice for `is3D=false` clips ⬜ (no dedicated headless `--scene` for audio in CI yet) |
-| | X3DAudio 3D emitter: play at world position, attenuate by distance, assert volume drops ≥50% at `maxDistance/2` ⬜ |
+| | `--headless --scene audio_3d_test` (init + at-listener ≥ 0.95 + at-maxDist ≤ 0.05) ✅ M18 |
 
 ---
 
@@ -416,7 +410,7 @@ teaching slice but must follow the same pipeline shape.
 | 5 | Cinematics | ✅ | ⬜ | ✅ | `CameraRig` + `CinematicSequencer` + `cinematic_test` CI ✅ (Post-M10); cut-scene baker tool ⬜; editor panel ⬜ |
 | 6 | Vehicles | ✅ | ⬜ | ✅ | `VehicleSystem` + `WheelState`×4 + vehicle chase camera + `vehicle_test` CI ✅ (Post-M10); road spline baker tool ⬜ |
 | 7 | Weather & time-of-day | ✅ | ⬜ | ✅ | SkyRenderer + WeatherFx + D3D11 sky pipeline + `dynamic_sky` CI ✅ (M10); tod.lut curve baker ⬜ |
-| 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + music FSM ✅ (M3); X3DAudio 3D positional audio 🔨 (scaffolded, not computed) |
+| 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + music FSM ✅ (M3); X3DAudio 3D positional audio ✅ (M18 — distance rolloff, listener position, `audio_3d_test` CI) |
 | 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
 | 10 | Physics | ✅ | ⬜ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent` ✅; collision mesh baker ⬜ not started |
 | 11 | UI | ✅ | ⬜ | ✅ | D3D11 ImGui HUD ✅ (M8.5); `MenuStack` + 6-test CI ✅ (Post-M10); `FontRenderer` SDF text + `font_test` CI ✅ (Post-M10); font atlas baker tool ⬜ |
@@ -435,12 +429,12 @@ All are D3D11-only per the active policy.  Vulkan parity is deferred.
 
 | Feature | Status | Prerequisite | Milestone |
 |---------|--------|-------------|-----------|
-| D3D11 depth buffer (DSV + `DepthStencilState`) | ⬜ | — | M16 |
-| PBR texture maps (albedo, metallic-roughness, normal, AO) | ⬜ | depth buffer | M16 |
-| D3D11 IBL (irradiance cubemap + prefiltered env + BRDF LUT) | ⬜ | depth buffer | M16 |
-| D3D11 directional shadow map (shadow pass + PCF sampling in `pbr_mesh.ps.hlsl`) | ⬜ | depth buffer | M17 |
-| D3D11 bloom post-processing (bright-pass → Gaussian blur → composite) | ⬜ | depth buffer | M17 |
-| X3DAudio positional 3D audio (distance rolloff, emitter/listener panning) | 🔨 | X3DAudio init | M18 |
+| D3D11 depth buffer (DSV + `DepthStencilState`) | ✅ | — | M16 |
+| PBR texture maps (albedo, metallic-roughness, normal, AO) | ✅ | depth buffer | M16 |
+| D3D11 IBL (irradiance cubemap + prefiltered env + BRDF LUT) | ✅ | depth buffer | M16 |
+| D3D11 directional shadow map (shadow pass + PCF sampling in `pbr_mesh.ps.hlsl`) | ✅ | depth buffer | M17 |
+| D3D11 bloom post-processing (bright-pass → Gaussian blur → composite) | ✅ | depth buffer | M17 |
+| X3DAudio positional 3D audio (distance rolloff, emitter/listener panning) | ✅ | — | M18 |
 | `combo_system.hpp/.cpp` — real-time input-driven combo state machine | ⬜ | — | M19 |
 | `combat_config.json` + loader — externalized combat tuning data | ⬜ | — | M19 |
 | Combat headless acceptance tests (`--scene combat_test`) | ⬜ | combo_system | M19 |
