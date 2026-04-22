@@ -507,7 +507,7 @@ def cook_materials(registry: list[dict]) -> int:
     from editable source JSON.
     """
     materials_src = CONTENT_DIR / "Materials"
-    materials_dst = COOKED_DIR  / "Materials"
+    materials_dst = COOKED_DIR / "Materials"
     ensure_dir(materials_dst)
 
     count = 0
@@ -524,8 +524,18 @@ def cook_materials(registry: list[dict]) -> int:
         # Cooked/ where the runtime would otherwise fail much later.
         try:
             json.loads(src.read_text(encoding="utf-8"))
-        except Exception as exc:
-            print(f"  [WARN] {src.name}: invalid material JSON ({exc}) — skipping")
+        except json.JSONDecodeError as exc:
+            print(
+                "  [WARN] "
+                f"{src.name}: invalid material JSON syntax at line {exc.lineno}, "
+                f"column {exc.colno} ({exc.msg}) — skipping. "
+                "Hint: validate against shared/schemas/material.schema.json."
+            )
+            continue
+        except OSError as exc:
+            print(
+                f"  [WARN] {src.name}: failed to read material file ({exc}) — skipping"
+            )
             continue
 
         if should_recook(source_rel, source_hash):
