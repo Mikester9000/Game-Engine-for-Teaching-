@@ -2301,6 +2301,7 @@ struct AuthoredMaterialParams
 
 static void SkipJsonWhitespace(const char*& p)
 {
+    if (!p) return;
     while (*p && std::isspace(static_cast<unsigned char>(*p))) { ++p; }
 }
 
@@ -2308,16 +2309,25 @@ static bool ExtractJsonNumber(const std::string& json, const char* key, float& o
 {
     const std::string token = std::string("\"") + key + "\"";
     std::size_t pos = json.find(token);
-    if (pos == std::string::npos) return false;
+    if (pos == std::string::npos) {
+        std::cerr << "[D3D11Renderer] Authored material parse: missing key '" << key << "'.\n";
+        return false;
+    }
     pos = json.find(':', pos + token.size());
-    if (pos == std::string::npos) return false;
+    if (pos == std::string::npos) {
+        std::cerr << "[D3D11Renderer] Authored material parse: missing ':' for key '" << key << "'.\n";
+        return false;
+    }
 
     const char* p = json.c_str() + pos + 1;
     SkipJsonWhitespace(p);
 
     char* end = nullptr;
     float v = std::strtof(p, &end);
-    if (end == p) return false;
+    if (end == p) {
+        std::cerr << "[D3D11Renderer] Authored material parse: non-numeric value for key '" << key << "'.\n";
+        return false;
+    }
     outValue = v;
     return true;
 }
@@ -2326,9 +2336,15 @@ static bool ExtractJsonFloat3(const std::string& json, const char* key, float ou
 {
     const std::string token = std::string("\"") + key + "\"";
     std::size_t pos = json.find(token);
-    if (pos == std::string::npos) return false;
+    if (pos == std::string::npos) {
+        std::cerr << "[D3D11Renderer] Authored material parse: missing key '" << key << "'.\n";
+        return false;
+    }
     pos = json.find('[', pos + token.size());
-    if (pos == std::string::npos) return false;
+    if (pos == std::string::npos) {
+        std::cerr << "[D3D11Renderer] Authored material parse: key '" << key << "' is not an array.\n";
+        return false;
+    }
 
     const char* p = json.c_str() + pos + 1;
     for (int i = 0; i < 3; ++i)
@@ -2336,13 +2352,21 @@ static bool ExtractJsonFloat3(const std::string& json, const char* key, float ou
         SkipJsonWhitespace(p);
         char* end = nullptr;
         float v = std::strtof(p, &end);
-        if (end == p) return false;
+        if (end == p) {
+            std::cerr << "[D3D11Renderer] Authored material parse: failed float at index "
+                      << i << " for key '" << key << "'.\n";
+            return false;
+        }
         out3[i] = v;
         p = end;
         SkipJsonWhitespace(p);
         if (i < 2)
         {
-            if (*p != ',') return false;
+            if (*p != ',') {
+                std::cerr << "[D3D11Renderer] Authored material parse: expected comma at index "
+                          << i << " for key '" << key << "'.\n";
+                return false;
+            }
             ++p;
         }
     }
@@ -2376,10 +2400,26 @@ static bool TryLoadAuthoredMaterial(AuthoredMaterialParams& outMat)
             continue;
 
         AuthoredMaterialParams parsed;
-        if (!ExtractJsonFloat3(json, "albedoColor", parsed.albedo)) continue;
-        if (!ExtractJsonNumber(json, "metallic", parsed.metallic)) continue;
-        if (!ExtractJsonNumber(json, "roughness", parsed.roughness)) continue;
-        if (!ExtractJsonNumber(json, "ao", parsed.ao)) continue;
+        if (!ExtractJsonFloat3(json, "albedoColor", parsed.albedo)) {
+            std::cerr << "[D3D11Renderer] Authored material parse failed in " << absPath.string()
+                      << " (albedoColor).\n";
+            continue;
+        }
+        if (!ExtractJsonNumber(json, "metallic", parsed.metallic)) {
+            std::cerr << "[D3D11Renderer] Authored material parse failed in " << absPath.string()
+                      << " (metallic).\n";
+            continue;
+        }
+        if (!ExtractJsonNumber(json, "roughness", parsed.roughness)) {
+            std::cerr << "[D3D11Renderer] Authored material parse failed in " << absPath.string()
+                      << " (roughness).\n";
+            continue;
+        }
+        if (!ExtractJsonNumber(json, "ao", parsed.ao)) {
+            std::cerr << "[D3D11Renderer] Authored material parse failed in " << absPath.string()
+                      << " (ao).\n";
+            continue;
+        }
 
         parsed.loadedFromPath = absPath.string();
         outMat = parsed;
