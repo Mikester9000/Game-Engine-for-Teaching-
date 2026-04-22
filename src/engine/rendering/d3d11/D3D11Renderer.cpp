@@ -620,6 +620,14 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
         DrawSky();
     }
 
+    // M17: Shadow map demo — two-pass (depth pass + lit PCF pass).
+    if (m_shadowScene.loaded && m_currentScene == "shadow_test")
+        DrawShadowScene();
+
+    // M17: Bloom post-processing demo — bright-pass + blur + composite.
+    if (m_bloomScene.loaded && m_currentScene == "bloom_test")
+        DrawBloomScene();
+
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Present interval
     // -----------------------------------------------------------------------
@@ -854,6 +862,62 @@ bool D3D11Renderer::RecordHeadlessFrame()
         DrawSky();
     }
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Headless validation for the shadow map scene (M17).
+    // -----------------------------------------------------------------------
+    // DrawShadowScene() executes two passes:
+    //   Pass 1 (shadow): renders the sphere to the 512×512 shadow map DSV.
+    //                    We set the offscreen RTV as the current target so
+    //                    DrawShadowScene can restore it after the shadow pass.
+    //   Pass 2 (lit):    renders the sphere from the camera view, sampling
+    //                    the shadow map via PCF.  Output goes to the 64×64
+    //                    offscreen RTV (restored by DrawShadowScene).
+    //
+    // A successful WARP execution (no device removal, no HRESULT failures)
+    // confirms: shadow map creation, depth rendering, SRV binding,
+    // SamplerComparisonState, and PCF sampling all work correctly.
+    // -----------------------------------------------------------------------
+    if (m_shadowScene.loaded && m_currentScene == "shadow_test")
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = 64.0f;
+        vp.Height   = 64.0f;
+        vp.MaxDepth = 1.0f;
+        m_context->RSSetViewports(1, &vp);
+
+        // Bind the 64×64 offscreen RTV so DrawShadowScene can save + restore it.
+        m_context->OMSetRenderTargets(1, &offscreenRTV, nullptr);
+        DrawShadowScene();
+    }
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Headless validation for the bloom scene (M17).
+    // -----------------------------------------------------------------------
+    // DrawBloomScene() executes four full-screen triangle passes:
+    //   1. ClearRenderTargetView on sceneRTV (bright HDR colour).
+    //   2. bright-pass: sceneRTV → brightRTV.
+    //   3. blur-X:      brightRTV → blurARTV.
+    //   4. blur-Y:      blurARTV  → blurBRTV.
+    //   5. composite:   blurBRTV + sceneRTV → 64×64 offscreenRTV.
+    //
+    // This validates all bloom shaders (bloom_bright.ps.hlsl,
+    // bloom_blur.ps.hlsl, bloom_composite.ps.hlsl) plus sky.vs.hlsl (reused
+    // as the full-screen VS), all CB uploads, and the 4×(RTV+SRV) RT set.
+    // -----------------------------------------------------------------------
+    if (m_bloomScene.loaded && m_currentScene == "bloom_test")
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = 64.0f;
+        vp.Height   = 64.0f;
+        vp.MaxDepth = 1.0f;
+        m_context->RSSetViewports(1, &vp);
+
+        // Bind the 64×64 offscreen RTV so DrawBloomScene can restore it for
+        // the final composite pass.
+        m_context->OMSetRenderTargets(1, &offscreenRTV, nullptr);
+        DrawBloomScene();
+    }
+
     // Step 4 — Flush to ensure the GPU (or WARP) processes the work.
     m_context->Flush();
 
@@ -892,6 +956,20 @@ static bool LoadPBRIBLScene(
     const std::string&           shaderDir,
     D3D11Renderer::PBRIBLScene&  scene);
 
+// Forward declaration for the directional shadow map demo (M17).
+// LoadShadowScene sets up both the depth-only shadow pass and the PCF lit pass.
+static bool LoadShadowScene(
+    ID3D11Device*                device,
+    const std::string&           shaderDir,
+    D3D11Renderer::ShadowScene&  scene);
+
+// Forward declaration for the HDR bloom post-processing demo (M17).
+// LoadBloomScene creates four offscreen RTs plus bright-pass/blur/composite shaders.
+static bool LoadBloomScene(
+    ID3D11Device*               device,
+    const std::string&          shaderDir,
+    D3D11Renderer::BloomScene&  scene);
+
 // ===========================================================================
 // LoadScene — load scene resources (M3+)
 // ===========================================================================
@@ -907,10 +985,12 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
 
     // Unknown scene names are accepted silently — they may be handled by
     // higher-level systems.  Only "textured_quad", "skinned_mesh",
-    // "pbr_mesh", "pbr_ibl", and "dynamic_sky" have D3D11 implementations.
+    // "pbr_mesh", "pbr_ibl", "dynamic_sky", "shadow_test", and "bloom_test"
+    // have D3D11 implementations.
     if (sceneName != "textured_quad" && sceneName != "skinned_mesh" &&
         sceneName != "pbr_mesh"      && sceneName != "pbr_ibl" &&
-        sceneName != "dynamic_sky")
+        sceneName != "dynamic_sky"   && sceneName != "shadow_test" &&
+        sceneName != "bloom_test")
     {
         std::cout << "[D3D11Renderer] LoadScene('" << sceneName
                   << "') — no D3D11 scene handler; accepted as no-op.\n";
@@ -965,6 +1045,28 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
             return false;
         }
         m_currentScene = "pbr_ibl";
+        return true;
+    }
+
+    if (sceneName == "shadow_test")
+    {
+        if (!LoadShadowScene(m_device, shaderDir, m_shadowScene))
+        {
+            std::cerr << "[D3D11Renderer] LoadScene('shadow_test') failed.\n";
+            return false;
+        }
+        m_currentScene = "shadow_test";
+        return true;
+    }
+
+    if (sceneName == "bloom_test")
+    {
+        if (!LoadBloomScene(m_device, shaderDir, m_bloomScene))
+        {
+            std::cerr << "[D3D11Renderer] LoadScene('bloom_test') failed.\n";
+            return false;
+        }
+        m_currentScene = "bloom_test";
         return true;
     }
 
@@ -1800,6 +1902,68 @@ void D3D11Renderer::UnloadScene()
     if (m_pbrIblScene.vertexBuf)      { m_pbrIblScene.vertexBuf->Release();       m_pbrIblScene.vertexBuf      = nullptr; }
     m_pbrIblScene.indexCount = 0;
     m_pbrIblScene.loaded     = false;
+
+    // --- Shadow map scene (M17) ---
+    // TEACHING NOTE — Release Order for Shadow Resources
+    // The shadow map SRV and DSV both reference the same underlying texture
+    // (shadowTex).  The SRV and DSV each add a COM reference when created, so
+    // we must release the SRV and DSV BEFORE releasing the texture pointer —
+    // otherwise the texture is released while views still hold references to it.
+    // Releasing the SRV/DSV does NOT destroy the texture; it only decrements
+    // the ref count.  Our explicit Release() of shadowTex decrements our ref
+    // to zero (assuming only we hold it) and frees the GPU memory.
+    if (m_shadowScene.cmpSampler)   { m_shadowScene.cmpSampler->Release();   m_shadowScene.cmpSampler   = nullptr; }
+    if (m_shadowScene.litCB)        { m_shadowScene.litCB->Release();        m_shadowScene.litCB        = nullptr; }
+    if (m_shadowScene.litPS)        { m_shadowScene.litPS->Release();        m_shadowScene.litPS        = nullptr; }
+    if (m_shadowScene.litVS)        { m_shadowScene.litVS->Release();        m_shadowScene.litVS        = nullptr; }
+    if (m_shadowScene.shadowRast)   { m_shadowScene.shadowRast->Release();   m_shadowScene.shadowRast   = nullptr; }
+    if (m_shadowScene.shadowDSS)    { m_shadowScene.shadowDSS->Release();    m_shadowScene.shadowDSS    = nullptr; }
+    if (m_shadowScene.shadowCB)     { m_shadowScene.shadowCB->Release();     m_shadowScene.shadowCB     = nullptr; }
+    if (m_shadowScene.shadowLayout) { m_shadowScene.shadowLayout->Release(); m_shadowScene.shadowLayout = nullptr; }
+    if (m_shadowScene.shadowVS)     { m_shadowScene.shadowVS->Release();     m_shadowScene.shadowVS     = nullptr; }
+    if (m_shadowScene.shadowSRV)    { m_shadowScene.shadowSRV->Release();    m_shadowScene.shadowSRV    = nullptr; }
+    if (m_shadowScene.shadowDSV)    { m_shadowScene.shadowDSV->Release();    m_shadowScene.shadowDSV    = nullptr; }
+    if (m_shadowScene.shadowTex)    { m_shadowScene.shadowTex->Release();    m_shadowScene.shadowTex    = nullptr; }
+    if (m_shadowScene.indexBuf)     { m_shadowScene.indexBuf->Release();     m_shadowScene.indexBuf     = nullptr; }
+    if (m_shadowScene.vertexBuf)    { m_shadowScene.vertexBuf->Release();    m_shadowScene.vertexBuf    = nullptr; }
+    m_shadowScene.indexCount = 0;
+    m_shadowScene.loaded     = false;
+
+    // --- Bloom post-processing scene (M17) ---
+    // TEACHING NOTE — Releasing Render Targets
+    // Each offscreen RT consists of three objects: the ID3D11Texture2D (raw
+    // GPU memory), an ID3D11RenderTargetView (write access), and an
+    // ID3D11ShaderResourceView (read access).  All three hold independent COM
+    // references to the underlying resource.  We must release all three, and
+    // we release the views before the texture to keep the release order clear:
+    //   SRV → RTV → Texture2D
+    // (The D3D11 runtime handles the actual memory free when all ref counts
+    // reach zero, so strict ordering is not required — but LIFO is good style.)
+    if (m_bloomScene.linearSampler) { m_bloomScene.linearSampler->Release(); m_bloomScene.linearSampler = nullptr; }
+    if (m_bloomScene.compCB)        { m_bloomScene.compCB->Release();        m_bloomScene.compCB        = nullptr; }
+    if (m_bloomScene.blurCB)        { m_bloomScene.blurCB->Release();        m_bloomScene.blurCB        = nullptr; }
+    if (m_bloomScene.bloomCB)       { m_bloomScene.bloomCB->Release();       m_bloomScene.bloomCB       = nullptr; }
+    if (m_bloomScene.compositePS)   { m_bloomScene.compositePS->Release();   m_bloomScene.compositePS   = nullptr; }
+    if (m_bloomScene.blurPS)        { m_bloomScene.blurPS->Release();        m_bloomScene.blurPS        = nullptr; }
+    if (m_bloomScene.brightPS)      { m_bloomScene.brightPS->Release();      m_bloomScene.brightPS      = nullptr; }
+    if (m_bloomScene.fullscreenVS)  { m_bloomScene.fullscreenVS->Release();  m_bloomScene.fullscreenVS  = nullptr; }
+    // Blur-B RT (pong)
+    if (m_bloomScene.blurBSRV)  { m_bloomScene.blurBSRV->Release();  m_bloomScene.blurBSRV  = nullptr; }
+    if (m_bloomScene.blurBRTV)  { m_bloomScene.blurBRTV->Release();  m_bloomScene.blurBRTV  = nullptr; }
+    if (m_bloomScene.blurBTex)  { m_bloomScene.blurBTex->Release();  m_bloomScene.blurBTex  = nullptr; }
+    // Blur-A RT (ping)
+    if (m_bloomScene.blurASRV)  { m_bloomScene.blurASRV->Release();  m_bloomScene.blurASRV  = nullptr; }
+    if (m_bloomScene.blurARTV)  { m_bloomScene.blurARTV->Release();  m_bloomScene.blurARTV  = nullptr; }
+    if (m_bloomScene.blurATex)  { m_bloomScene.blurATex->Release();  m_bloomScene.blurATex  = nullptr; }
+    // Bright-pass RT
+    if (m_bloomScene.brightSRV) { m_bloomScene.brightSRV->Release(); m_bloomScene.brightSRV = nullptr; }
+    if (m_bloomScene.brightRTV) { m_bloomScene.brightRTV->Release(); m_bloomScene.brightRTV = nullptr; }
+    if (m_bloomScene.brightTex) { m_bloomScene.brightTex->Release(); m_bloomScene.brightTex = nullptr; }
+    // Scene RT
+    if (m_bloomScene.sceneSRV)  { m_bloomScene.sceneSRV->Release();  m_bloomScene.sceneSRV  = nullptr; }
+    if (m_bloomScene.sceneRTV)  { m_bloomScene.sceneRTV->Release();  m_bloomScene.sceneRTV  = nullptr; }
+    if (m_bloomScene.sceneTex)  { m_bloomScene.sceneTex->Release();  m_bloomScene.sceneTex  = nullptr; }
+    m_bloomScene.loaded = false;
 
     m_currentScene.clear();
 }
@@ -3913,6 +4077,1099 @@ void D3D11Renderer::DrawPBRIBLMesh()
     ID3D11ShaderResourceView* nullSRVs[3] = { nullptr, nullptr, nullptr };
     m_context->PSSetShaderResources(0, 3, nullSRVs);
     m_context->RSSetState(nullptr);
+}
+
+// ===========================================================================
+// LoadShadowScene — build the directional shadow map demo (M17)
+// ===========================================================================
+// TEACHING NOTE — Two-Pass Shadow Rendering Setup
+// Shadow map rendering requires:
+//   (a) A depth texture that the GPU can WRITE to (DepthStencilView).
+//   (b) The same texture bound as an SRV that the PS can READ from.
+// D3D11 enforces a constraint: a resource bound as a DSV cannot simultaneously
+// be bound as an SRV.  Between the shadow pass and the lit pass we must
+// OMSetRenderTargets(0, nullptr, nullptr) to unbind the DSV before binding the
+// SRV to the pixel shader.  DrawShadowScene() handles this ordering.
+//
+// shadow.vs.hlsl   — depth-only VS: one matrix multiply, output SV_POSITION.
+// shadow_lit.vs.hlsl — lit VS: outputs worldPos + worldNrm for PCF lookup.
+// shadow_lit.ps.hlsl — lit PS: 3×3 PCF shadow comparison + Lambert diffuse.
+// ===========================================================================
+
+// CB layout for the shadow pass: just the light view-projection matrix.
+struct alignas(16) ShadowCBData
+{
+    float lightViewProj[4][4];   // 64 bytes
+};
+
+// CB layout shared by the lit VS and lit PS.
+struct alignas(16) ShadowLitCBData
+{
+    float world[4][4];           // 64 bytes
+    float view[4][4];            // 64 bytes
+    float proj[4][4];            // 64 bytes
+    float lightViewProj[4][4];   // 64 bytes
+    float lightDir[4];           // 16 bytes (w = unused padding)
+    // Total: 272 bytes — multiple of 16 ✓
+};
+
+static bool LoadShadowScene(ID3D11Device*                device,
+                             const std::string&           shaderDir,
+                             D3D11Renderer::ShadowScene&  scene)
+{
+    namespace fs = std::filesystem;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Shadow Map Texture Format
+    // -----------------------------------------------------------------------
+    // DXGI_FORMAT_R32_TYPELESS lets us create BOTH a DSV (write-only depth)
+    // and an SRV (read-only depth) from the same texture resource.
+    // The DSV uses DXGI_FORMAT_D32_FLOAT.
+    // The SRV uses DXGI_FORMAT_R32_FLOAT — the depth values are accessible
+    // as the R channel, which the HLSL reads as Texture2D<float>.
+    //
+    // Why TYPELESS?  D3D11 requires the base texture format to be "compatible"
+    // with both the DSV and SRV formats.  DXGI_FORMAT_D32_FLOAT itself cannot
+    // be used as an SRV format; TYPELESS is the bridge.
+    // -----------------------------------------------------------------------
+
+    // Step 1 — Create the shadow map texture (typeless for DSV + SRV).
+    {
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width            = 512;
+        td.Height           = 512;
+        td.MipLevels        = 1;
+        td.ArraySize        = 1;
+        td.Format           = DXGI_FORMAT_R32_TYPELESS;  // typeless = bindable as DSV and SRV
+        td.SampleDesc.Count = 1;
+        td.Usage            = D3D11_USAGE_DEFAULT;
+        td.BindFlags        = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+        HRESULT hr = device->CreateTexture2D(&td, nullptr, &scene.shadowTex);
+        if (FAILED(hr)) {
+            std::cerr << "[Shadow] Shadow map texture creation failed.\n";
+            return false;
+        }
+    }
+
+    // Step 2 — Create the DSV (depth-stencil view for the shadow pass).
+    {
+        D3D11_DEPTH_STENCIL_VIEW_DESC dvd = {};
+        dvd.Format        = DXGI_FORMAT_D32_FLOAT;
+        dvd.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+        HRESULT hr = device->CreateDepthStencilView(scene.shadowTex, &dvd, &scene.shadowDSV);
+        if (FAILED(hr)) {
+            std::cerr << "[Shadow] DSV creation failed.\n";
+            scene.shadowTex->Release(); scene.shadowTex = nullptr;
+            return false;
+        }
+    }
+
+    // Step 3 — Create the SRV (shader resource view for the lit pass).
+    {
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvd = {};
+        srvd.Format                    = DXGI_FORMAT_R32_FLOAT;
+        srvd.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvd.Texture2D.MipLevels       = 1;
+        srvd.Texture2D.MostDetailedMip = 0;
+        HRESULT hr = device->CreateShaderResourceView(scene.shadowTex, &srvd, &scene.shadowSRV);
+        if (FAILED(hr)) {
+            std::cerr << "[Shadow] SRV creation failed.\n";
+            scene.shadowDSV->Release(); scene.shadowDSV = nullptr;
+            scene.shadowTex->Release(); scene.shadowTex = nullptr;
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 4 — Compile shadow pass shaders.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Compile Helper Lambda (same pattern as other scenes)
+    // Try the .hlsl file from shaderDir first; return failure if not found.
+    // The shadow shaders have no embedded fallback string — they require the
+    // .hlsl files to be present in the shader directory.
+    // -----------------------------------------------------------------------
+    auto compile = [&](const fs::path& path, const char* entry, const char* target) -> ID3DBlob*
+    {
+        ID3DBlob* code   = nullptr;
+        ID3DBlob* errors = nullptr;
+        HRESULT   hr     = E_FAIL;
+        if (fs::exists(path))
+        {
+            std::wstring wp = path.wstring();
+            hr = D3DCompileFromFile(wp.c_str(), nullptr, nullptr,
+                                    entry, target,
+                                    D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                                    &code, &errors);
+        }
+        if (FAILED(hr)) {
+            if (errors) {
+                std::cerr << "[Shadow] HLSL compile error ("
+                          << path.filename().string() << "): "
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release();
+            } else {
+                std::cerr << "[Shadow] Missing shader: " << path.string() << "\n";
+            }
+            return nullptr;
+        }
+        if (errors) errors->Release();
+        return code;
+    };
+
+    // Shadow pass VS (depth-only — shadow.vs.hlsl).
+    ID3DBlob* shadowVsBlob = compile(fs::path(shaderDir) / "shadow.vs.hlsl", "main", "vs_4_0");
+    if (!shadowVsBlob) {
+        scene.shadowSRV->Release(); scene.shadowSRV = nullptr;
+        scene.shadowDSV->Release(); scene.shadowDSV = nullptr;
+        scene.shadowTex->Release(); scene.shadowTex = nullptr;
+        return false;
+    }
+    HRESULT hr = device->CreateVertexShader(shadowVsBlob->GetBufferPointer(),
+                                            shadowVsBlob->GetBufferSize(),
+                                            nullptr, &scene.shadowVS);
+    if (FAILED(hr)) {
+        shadowVsBlob->Release();
+        scene.shadowSRV->Release(); scene.shadowSRV = nullptr;
+        scene.shadowDSV->Release(); scene.shadowDSV = nullptr;
+        scene.shadowTex->Release(); scene.shadowTex = nullptr;
+        return false;
+    }
+
+    // Step 5 — Create the shared input layout (POSITION + NORMAL + TEXCOORD0).
+    // TEACHING NOTE — Shared Input Layout for Shadow and Lit Passes
+    // Both the shadow VS and the lit VS accept the same vertex layout
+    // (position + normal + UV).  We create ONE input layout using the shadow
+    // VS bytecode — the layout is validated against the VS input signature.
+    // The lit pass can reuse the same ID3D11InputLayout object because the
+    // input element descriptors match the lit VS signature too.
+    {
+        const D3D11_INPUT_ELEMENT_DESC kLayout[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        };
+        hr = device->CreateInputLayout(kLayout, 3,
+                                       shadowVsBlob->GetBufferPointer(),
+                                       shadowVsBlob->GetBufferSize(),
+                                       &scene.shadowLayout);
+    }
+    shadowVsBlob->Release();
+    if (FAILED(hr)) {
+        scene.shadowVS->Release(); scene.shadowVS = nullptr;
+        scene.shadowSRV->Release(); scene.shadowSRV = nullptr;
+        scene.shadowDSV->Release(); scene.shadowDSV = nullptr;
+        scene.shadowTex->Release(); scene.shadowTex = nullptr;
+        return false;
+    }
+
+    // Step 6 — Compile lit-pass shaders (shadow_lit.vs.hlsl + shadow_lit.ps.hlsl).
+    ID3DBlob* litVsBlob = compile(fs::path(shaderDir) / "shadow_lit.vs.hlsl", "main", "vs_4_0");
+    if (!litVsBlob) {
+        scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+        scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+        scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+        scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+        scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+        return false;
+    }
+    hr = device->CreateVertexShader(litVsBlob->GetBufferPointer(),
+                                    litVsBlob->GetBufferSize(),
+                                    nullptr, &scene.litVS);
+    litVsBlob->Release();
+    if (FAILED(hr)) {
+        scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+        scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+        scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+        scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+        scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+        return false;
+    }
+
+    ID3DBlob* litPsBlob = compile(fs::path(shaderDir) / "shadow_lit.ps.hlsl", "main", "ps_4_0");
+    if (!litPsBlob) {
+        scene.litVS->Release();        scene.litVS        = nullptr;
+        scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+        scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+        scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+        scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+        scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+        return false;
+    }
+    hr = device->CreatePixelShader(litPsBlob->GetBufferPointer(),
+                                   litPsBlob->GetBufferSize(),
+                                   nullptr, &scene.litPS);
+    litPsBlob->Release();
+    if (FAILED(hr)) {
+        scene.litVS->Release();        scene.litVS        = nullptr;
+        scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+        scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+        scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+        scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+        scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 7 — Create constant buffers.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Shadow CB (64 bytes, b0 of shadow VS)
+    // The shadow pass only needs the combined lightViewProj matrix (one float4x4
+    // = 64 bytes).  We upload it once at the start of each shadow draw call.
+    // DYNAMIC + MAP_WRITE_DISCARD lets the CPU write new data each frame.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_BUFFER_DESC cbd = {};
+        cbd.ByteWidth      = sizeof(ShadowCBData);
+        cbd.Usage          = D3D11_USAGE_DYNAMIC;
+        cbd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+        cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        hr = device->CreateBuffer(&cbd, nullptr, &scene.shadowCB);
+        if (FAILED(hr)) {
+            std::cerr << "[Shadow] shadowCB creation failed.\n";
+            scene.litPS->Release();        scene.litPS        = nullptr;
+            scene.litVS->Release();        scene.litVS        = nullptr;
+            scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+            scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+            scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+            scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+            scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+            return false;
+        }
+    }
+
+    // TEACHING NOTE — Lit CB (272 bytes, b0 of lit VS + lit PS)
+    // Contains: world, view, proj, lightViewProj, lightDir.
+    // Both stages share the same CB object — we bind it to VS slot 0 and
+    // PS slot 0 simultaneously in DrawShadowScene().
+    {
+        D3D11_BUFFER_DESC cbd = {};
+        cbd.ByteWidth      = sizeof(ShadowLitCBData);
+        cbd.Usage          = D3D11_USAGE_DYNAMIC;
+        cbd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+        cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        hr = device->CreateBuffer(&cbd, nullptr, &scene.litCB);
+        if (FAILED(hr)) {
+            std::cerr << "[Shadow] litCB creation failed.\n";
+            scene.shadowCB->Release();     scene.shadowCB     = nullptr;
+            scene.litPS->Release();        scene.litPS        = nullptr;
+            scene.litVS->Release();        scene.litVS        = nullptr;
+            scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+            scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+            scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+            scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+            scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 8 — Create depth stencil state (depth test + write, no stencil).
+    // -----------------------------------------------------------------------
+    {
+        D3D11_DEPTH_STENCIL_DESC dsd = {};
+        dsd.DepthEnable    = TRUE;
+        dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+        dsd.DepthFunc      = D3D11_COMPARISON_LESS;
+        hr = device->CreateDepthStencilState(&dsd, &scene.shadowDSS);
+        if (FAILED(hr)) {
+            scene.litCB->Release();        scene.litCB        = nullptr;
+            scene.shadowCB->Release();     scene.shadowCB     = nullptr;
+            scene.litPS->Release();        scene.litPS        = nullptr;
+            scene.litVS->Release();        scene.litVS        = nullptr;
+            scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+            scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+            scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+            scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+            scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 9 — Create rasterizer state for the shadow pass.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Depth Bias for Shadow Maps
+    // Shadow acne arises because the shadow map depth and the re-computed
+    // surface depth differ by a tiny floating-point error.  The rasterizer
+    // depth-bias feature offsets depth values written to the shadow map:
+    //
+    //   DepthBias            — constant offset (added after depth clamp)
+    //   SlopeScaledDepthBias — scales with the surface slope (higher = more bias
+    //                          on steep surfaces where acne is worst)
+    //
+    // Values are highly application-specific.  For a normalised D32_FLOAT map
+    // the values below (bias=100, slope=1.5) are a reasonable starting point.
+    //
+    // CullMode = BACK: standard back-face culling is used during the shadow
+    // pass.  Front-face culling (CULL_FRONT) is an alternative that can reduce
+    // "peter-panning" on thick objects, but requires closed meshes and is not
+    // used here to keep the demo geometry requirements minimal.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_RASTERIZER_DESC rd = {};
+        rd.FillMode              = D3D11_FILL_SOLID;
+        rd.CullMode              = D3D11_CULL_BACK;
+        rd.FrontCounterClockwise = FALSE;
+        rd.DepthBias             = 100;
+        rd.DepthBiasClamp        = 0.0f;
+        rd.SlopeScaledDepthBias  = 1.5f;
+        rd.DepthClipEnable       = TRUE;
+        hr = device->CreateRasterizerState(&rd, &scene.shadowRast);
+        if (FAILED(hr)) {
+            scene.shadowDSS->Release();    scene.shadowDSS    = nullptr;
+            scene.litCB->Release();        scene.litCB        = nullptr;
+            scene.shadowCB->Release();     scene.shadowCB     = nullptr;
+            scene.litPS->Release();        scene.litPS        = nullptr;
+            scene.litVS->Release();        scene.litVS        = nullptr;
+            scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+            scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+            scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+            scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+            scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 10 — Create the comparison sampler for PCF shadow lookup.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — SamplerComparisonState (hardware PCF)
+    // D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT enables bilinear PCF:
+    //   • Takes a 2×2 neighbourhood, compares each texel, and bilinearly
+    //     blends the 4 binary results.  This gives soft-edged shadows.
+    //
+    // D3D11_COMPARISON_LESS_EQUAL: the comparison passes (→ lit, value 1.0)
+    // when the stored depth value is GREATER THAN OR EQUAL TO the reference.
+    // In D3D11 shadow maps:
+    //   stored value = depth of nearest occluder from the light.
+    //   reference    = depth of current surface from the light (minus bias).
+    // If stored ≥ reference → surface is CLOSER to the light than occluder → LIT.
+    // If stored < reference → surface is DEEPER than occluder → IN SHADOW.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_SAMPLER_DESC sd = {};
+        sd.Filter         = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+        sd.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+        sd.MaxLOD         = D3D11_FLOAT32_MAX;
+        hr = device->CreateSamplerState(&sd, &scene.cmpSampler);
+        if (FAILED(hr)) {
+            scene.shadowRast->Release();   scene.shadowRast   = nullptr;
+            scene.shadowDSS->Release();    scene.shadowDSS    = nullptr;
+            scene.litCB->Release();        scene.litCB        = nullptr;
+            scene.shadowCB->Release();     scene.shadowCB     = nullptr;
+            scene.litPS->Release();        scene.litPS        = nullptr;
+            scene.litVS->Release();        scene.litVS        = nullptr;
+            scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+            scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+            scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+            scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+            scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+            return false;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 11 — Generate UV sphere geometry (16 stacks × 16 slices).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Reuse the UV Sphere for the Shadow Demo
+    // The same sphere geometry used in the PBR scenes (M9, M16) serves as
+    // both the shadow caster and the lit object in this demo.  Using a sphere
+    // keeps the focus on the shadow algorithm rather than asset loading.
+    // The vertex format (pos + normal + uv) matches the shadow VS input layout.
+    // -----------------------------------------------------------------------
+    {
+        constexpr int NStacks = 16;
+        constexpr int NSlices = 16;
+        struct Vtx { float pos[3]; float nrm[3]; float uv[2]; };
+        const int nVerts   = (NStacks + 1) * (NSlices + 1);
+        const int nIndices = NStacks * NSlices * 6;
+        std::vector<Vtx>      verts(static_cast<size_t>(nVerts));
+        std::vector<uint16_t> idx(static_cast<size_t>(nIndices));
+
+        for (int st = 0; st <= NStacks; ++st)
+        {
+            float phi = kPi * static_cast<float>(st) / static_cast<float>(NStacks);
+            float y   = std::cos(phi);
+            float r   = std::sin(phi);
+            for (int sl = 0; sl <= NSlices; ++sl)
+            {
+                float theta = 2.0f * kPi * static_cast<float>(sl) / static_cast<float>(NSlices);
+                float x     = r * std::cos(theta);
+                float z     = r * std::sin(theta);
+                int   i     = st * (NSlices + 1) + sl;
+                verts[i] = { {x, y, z}, {x, y, z},
+                             { static_cast<float>(sl) / NSlices,
+                               static_cast<float>(st) / NStacks } };
+            }
+        }
+        int ii = 0;
+        for (int st = 0; st < NStacks; ++st)
+        {
+            for (int sl = 0; sl < NSlices; ++sl)
+            {
+                auto v0 = static_cast<uint16_t>( st      * (NSlices + 1) + sl);
+                auto v1 = static_cast<uint16_t>( st      * (NSlices + 1) + (sl + 1));
+                auto v2 = static_cast<uint16_t>((st + 1) * (NSlices + 1) + sl);
+                auto v3 = static_cast<uint16_t>((st + 1) * (NSlices + 1) + (sl + 1));
+                idx[ii++] = v0; idx[ii++] = v2; idx[ii++] = v1;
+                idx[ii++] = v1; idx[ii++] = v2; idx[ii++] = v3;
+            }
+        }
+        scene.indexCount = nIndices;
+
+        D3D11_BUFFER_DESC vbd = {};
+        vbd.ByteWidth  = static_cast<UINT>(nVerts * sizeof(Vtx));
+        vbd.Usage      = D3D11_USAGE_IMMUTABLE;
+        vbd.BindFlags  = D3D11_BIND_VERTEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA vsd = {};
+        vsd.pSysMem = verts.data();
+        hr = device->CreateBuffer(&vbd, &vsd, &scene.vertexBuf);
+        if (FAILED(hr)) {
+            scene.cmpSampler->Release();   scene.cmpSampler   = nullptr;
+            scene.shadowRast->Release();   scene.shadowRast   = nullptr;
+            scene.shadowDSS->Release();    scene.shadowDSS    = nullptr;
+            scene.litCB->Release();        scene.litCB        = nullptr;
+            scene.shadowCB->Release();     scene.shadowCB     = nullptr;
+            scene.litPS->Release();        scene.litPS        = nullptr;
+            scene.litVS->Release();        scene.litVS        = nullptr;
+            scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+            scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+            scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+            scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+            scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+            return false;
+        }
+
+        D3D11_BUFFER_DESC ibd = {};
+        ibd.ByteWidth  = static_cast<UINT>(nIndices * sizeof(uint16_t));
+        ibd.Usage      = D3D11_USAGE_IMMUTABLE;
+        ibd.BindFlags  = D3D11_BIND_INDEX_BUFFER;
+        D3D11_SUBRESOURCE_DATA isd = {};
+        isd.pSysMem = idx.data();
+        hr = device->CreateBuffer(&ibd, &isd, &scene.indexBuf);
+        if (FAILED(hr)) {
+            scene.vertexBuf->Release();    scene.vertexBuf    = nullptr;
+            scene.cmpSampler->Release();   scene.cmpSampler   = nullptr;
+            scene.shadowRast->Release();   scene.shadowRast   = nullptr;
+            scene.shadowDSS->Release();    scene.shadowDSS    = nullptr;
+            scene.litCB->Release();        scene.litCB        = nullptr;
+            scene.shadowCB->Release();     scene.shadowCB     = nullptr;
+            scene.litPS->Release();        scene.litPS        = nullptr;
+            scene.litVS->Release();        scene.litVS        = nullptr;
+            scene.shadowLayout->Release(); scene.shadowLayout = nullptr;
+            scene.shadowVS->Release();     scene.shadowVS     = nullptr;
+            scene.shadowSRV->Release();    scene.shadowSRV    = nullptr;
+            scene.shadowDSV->Release();    scene.shadowDSV    = nullptr;
+            scene.shadowTex->Release();    scene.shadowTex    = nullptr;
+            return false;
+        }
+    }
+
+    scene.loaded = true;
+    return true;
+}
+
+// ===========================================================================
+// DrawShadowScene — execute both shadow pass and lit pass (M17)
+// ===========================================================================
+
+void D3D11Renderer::DrawShadowScene()
+{
+    if (!m_shadowScene.loaded || !m_context)
+        return;
+
+    using namespace engine::math;
+
+    // Orthographic light camera: the "sun" comes from above-and-to-the-side.
+    // Light direction (towards the scene origin) = (-0.5, -1, -0.5) normalised.
+    const float kLightDirX = -0.4082f;  // normalise of (-0.5,-1,-0.5)
+    const float kLightDirY = -0.8165f;
+    const float kLightDirZ = -0.4082f;
+
+    // Build orthographic light view-projection matrix.
+    // TEACHING NOTE — Orthographic Projection for Directional Lights
+    // A directional light has parallel rays (infinite distance), so it uses
+    // an ORTHOGRAPHIC projection — no perspective foreshortening.
+    // The view volume is a box: width=6, height=6, depth=10.
+    // LookAt: eye = -lightDir * 5 (5 units back from scene), target = origin.
+    const float eyeX = -kLightDirX * 5.0f;
+    const float eyeY = -kLightDirY * 5.0f;
+    const float eyeZ = -kLightDirZ * 5.0f;
+
+    // LookAt (RH convention, row-major):
+    Vec3 zAxis = Vec3{ kLightDirX, kLightDirY, kLightDirZ }.Normalized();  // eye→target normalised
+    Vec3 up    = (std::abs(kLightDirY) > 0.9f)
+                     ? Vec3{ 1.0f, 0.0f, 0.0f }
+                     : Vec3{ 0.0f, 1.0f, 0.0f };
+    Vec3 xAxis = up.Cross(zAxis).Normalized();
+    Vec3 yAxis = zAxis.Cross(xAxis);
+
+    Mat4 lightView;
+    lightView.m[0][0] = xAxis.x;           lightView.m[0][1] = yAxis.x;           lightView.m[0][2] = zAxis.x;           lightView.m[0][3] = 0;
+    lightView.m[1][0] = xAxis.y;           lightView.m[1][1] = yAxis.y;           lightView.m[1][2] = zAxis.y;           lightView.m[1][3] = 0;
+    lightView.m[2][0] = xAxis.z;           lightView.m[2][1] = yAxis.z;           lightView.m[2][2] = zAxis.z;           lightView.m[2][3] = 0;
+    lightView.m[3][0] = -(xAxis.x*eyeX + xAxis.y*eyeY + xAxis.z*eyeZ);
+    lightView.m[3][1] = -(yAxis.x*eyeX + yAxis.y*eyeY + yAxis.z*eyeZ);
+    lightView.m[3][2] = -(zAxis.x*eyeX + zAxis.y*eyeY + zAxis.z*eyeZ);
+    lightView.m[3][3] = 1;
+
+    // Orthographic projection: box [-3,+3] × [-3,+3] × [0.1, 10]
+    const float kW = 3.0f, kH = 3.0f, kN = 0.1f, kF = 10.0f;
+    Mat4 lightProj;
+    lightProj.m[0][0] = 1.0f / kW;
+    lightProj.m[1][1] = 1.0f / kH;
+    lightProj.m[2][2] = -1.0f / (kF - kN);
+    lightProj.m[3][2] = -kN / (kF - kN);
+    lightProj.m[3][3] = 1.0f;
+
+    // Combined light matrix (lightView × lightProj = row-major multiply).
+    // TEACHING NOTE — Row-Major Matrix Multiply
+    // In row-vector × matrix convention, the chain is:
+    //   clipPos = pos_model × world × lightView × lightProj
+    // For the shadow pass world is identity (sphere centred at origin).
+    // We precompute lightView × lightProj on the CPU to save the VS multiply.
+    Mat4 lightVP;
+    for (int r = 0; r < 4; ++r)
+        for (int c = 0; c < 4; ++c)
+        {
+            lightVP.m[r][c] = 0.0f;
+            for (int k = 0; k < 4; ++k)
+                lightVP.m[r][c] += lightView.m[r][k] * lightProj.m[k][c];
+        }
+
+    // -----------------------------------------------------------------------
+    // SHADOW PASS — render sphere depth from the light's viewpoint.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — No Colour Output
+    // We bind the shadow DSV but NO colour RTV (first argument = 0, second =
+    // nullptr).  The rasteriser will still write depth — only colour output
+    // is suppressed.  Omitting the colour RTV halves the memory bandwidth
+    // compared to a dummy colour target.
+    // -----------------------------------------------------------------------
+
+    // Save the currently-bound RTV and DSV so we can restore them for the lit pass.
+    // TEACHING NOTE — OMGetRenderTargets increments the COM ref count of the
+    // returned pointers.  We MUST call Release() on them after restoring.
+    ID3D11RenderTargetView* prevRTV = nullptr;
+    ID3D11DepthStencilView* prevDSV = nullptr;
+    m_context->OMGetRenderTargets(1, &prevRTV, &prevDSV);
+
+    uint32_t numVP = 1;
+    D3D11_VIEWPORT prevVP = {};
+    m_context->RSGetViewports(&numVP, &prevVP);
+
+    // Bind only the shadow DSV (no colour RTV).
+    m_context->OMSetRenderTargets(0, nullptr, m_shadowScene.shadowDSV);
+    m_context->OMSetDepthStencilState(m_shadowScene.shadowDSS, 0);
+    m_context->ClearDepthStencilView(m_shadowScene.shadowDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+    D3D11_VIEWPORT shadowVP = {};
+    shadowVP.Width    = 512.0f;
+    shadowVP.Height   = 512.0f;
+    shadowVP.MaxDepth = 1.0f;
+    m_context->RSSetViewports(1, &shadowVP);
+    m_context->RSSetState(m_shadowScene.shadowRast);
+
+    // Upload lightViewProj to the shadow CB.
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (SUCCEEDED(m_context->Map(m_shadowScene.shadowCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+        {
+            auto* cbData = static_cast<ShadowCBData*>(mapped.pData);
+            std::memcpy(cbData->lightViewProj, lightVP.Data(), 64);
+            m_context->Unmap(m_shadowScene.shadowCB, 0);
+        }
+    }
+
+    // Set shadow pass pipeline state.
+    m_context->VSSetShader(m_shadowScene.shadowVS, nullptr, 0);
+    m_context->PSSetShader(nullptr, nullptr, 0);   // no PS needed for depth-only
+    m_context->VSSetConstantBuffers(0, 1, &m_shadowScene.shadowCB);
+    m_context->IASetInputLayout(m_shadowScene.shadowLayout);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    UINT stride = 8 * sizeof(float);
+    UINT offset = 0;
+    m_context->IASetVertexBuffers(0, 1, &m_shadowScene.vertexBuf, &stride, &offset);
+    m_context->IASetIndexBuffer(m_shadowScene.indexBuf, DXGI_FORMAT_R16_UINT, 0);
+    m_context->DrawIndexed(static_cast<UINT>(m_shadowScene.indexCount), 0, 0);
+
+    // Unbind the shadow DSV before binding the shadow SRV.
+    // TEACHING NOTE — DSV ↔ SRV Mutual Exclusion
+    // D3D11 does not allow the same sub-resource to be bound simultaneously
+    // as a DSV (write) and an SRV (read).  We must unbind the DSV first by
+    // restoring the previous render target, then bind the SRV for the lit pass.
+    m_context->OMSetRenderTargets(1, &prevRTV, prevDSV);
+    m_context->RSSetViewports(1, &prevVP);
+    m_context->OMSetDepthStencilState(nullptr, 0);
+    m_context->RSSetState(nullptr);
+
+    // -----------------------------------------------------------------------
+    // LIT PASS — render sphere from camera's view, sampling the shadow map.
+    // -----------------------------------------------------------------------
+    // Camera: eye at (0, 0.5, 4), looking at origin (same as PBR scene).
+    Vec3 eye    = { 0.0f, 0.5f, 4.0f };
+    Vec3 target = { 0.0f, 0.0f, 0.0f };
+    Vec3 camUp  = { 0.0f, 1.0f, 0.0f };
+    Vec3 camZ   = (eye - target).Normalized();
+    Vec3 camX   = camUp.Cross(camZ).Normalized();
+    Vec3 camY   = camZ.Cross(camX);
+
+    Mat4 viewMat;
+    viewMat.m[0][0] = camX.x;           viewMat.m[0][1] = camY.x;           viewMat.m[0][2] = camZ.x;           viewMat.m[0][3] = 0;
+    viewMat.m[1][0] = camX.y;           viewMat.m[1][1] = camY.y;           viewMat.m[1][2] = camZ.y;           viewMat.m[1][3] = 0;
+    viewMat.m[2][0] = camX.z;           viewMat.m[2][1] = camY.z;           viewMat.m[2][2] = camZ.z;           viewMat.m[2][3] = 0;
+    viewMat.m[3][0] = -camX.Dot(eye);   viewMat.m[3][1] = -camY.Dot(eye);   viewMat.m[3][2] = -camZ.Dot(eye);   viewMat.m[3][3] = 1;
+
+    const float kFovY = 3.14159265f / 3.0f;
+    const float kNear = 0.1f;
+    const float kFar  = 100.0f;
+    float aspect = (prevVP.Height > 0.0f) ? (prevVP.Width / prevVP.Height) : 1.0f;
+    float f      = 1.0f / std::tan(kFovY * 0.5f);
+    Mat4 projMat;
+    projMat.m[0][0] = f / aspect;
+    projMat.m[1][1] = f;
+    projMat.m[2][2] = -kFar / (kFar - kNear);
+    projMat.m[2][3] = -1.0f;
+    projMat.m[3][2] = -(kNear * kFar) / (kFar - kNear);
+
+    // Sphere rotates slowly so shadows visibly change over time.
+    float angle = m_sceneTime * 0.5f;
+    Mat4 worldMat = Mat4::Rotation(Quat::FromAxisAngle(Vec3::Up(), angle));
+
+    // Upload the lit CB.
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (SUCCEEDED(m_context->Map(m_shadowScene.litCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+        {
+            auto* cbData = static_cast<ShadowLitCBData*>(mapped.pData);
+            std::memcpy(cbData->world,         worldMat.Data(), 64);
+            std::memcpy(cbData->view,          viewMat.Data(),  64);
+            std::memcpy(cbData->proj,          projMat.Data(),  64);
+            std::memcpy(cbData->lightViewProj, lightVP.Data(),  64);
+            cbData->lightDir[0] = kLightDirX;
+            cbData->lightDir[1] = kLightDirY;
+            cbData->lightDir[2] = kLightDirZ;
+            cbData->lightDir[3] = 0.0f;
+            m_context->Unmap(m_shadowScene.litCB, 0);
+        }
+    }
+
+    m_context->VSSetShader(m_shadowScene.litVS, nullptr, 0);
+    m_context->PSSetShader(m_shadowScene.litPS,  nullptr, 0);
+    m_context->VSSetConstantBuffers(0, 1, &m_shadowScene.litCB);
+    m_context->PSSetConstantBuffers(0, 1, &m_shadowScene.litCB);
+    m_context->PSSetShaderResources(0, 1, &m_shadowScene.shadowSRV);
+    m_context->PSSetSamplers(0, 1, &m_shadowScene.cmpSampler);
+
+    m_context->DrawIndexed(static_cast<UINT>(m_shadowScene.indexCount), 0, 0);
+
+    // Unbind the shadow SRV to avoid D3D11 debug layer warnings.
+    ID3D11ShaderResourceView* nullSRV = nullptr;
+    m_context->PSSetShaderResources(0, 1, &nullSRV);
+
+    // Release the COM references that OMGetRenderTargets added.
+    if (prevRTV) prevRTV->Release();
+    if (prevDSV) prevDSV->Release();
+}
+
+// ===========================================================================
+// LoadBloomScene — build the HDR bloom post-processing demo (M17)
+// ===========================================================================
+// TEACHING NOTE — Offscreen Render Target Pattern
+// Bloom requires rendering to TEXTURES that are not the swap-chain back buffer.
+// Each bloom RT follows the same three-object pattern:
+//
+//   ID3D11Texture2D          — GPU texture memory (RGBA8 UNORM, 256×256).
+//   ID3D11RenderTargetView   — write handle: bind as RTV to draw into it.
+//   ID3D11ShaderResourceView — read handle: bind as SRV to sample from it.
+//
+// Creating both RTV and SRV from the same texture is allowed because we never
+// write (RTV) and read (SRV) the same texture at the same time — the pipeline
+// always alternates: write to tex A → read from tex A (write next tex B).
+// ===========================================================================
+
+// Helper: create a 256×256 RGBA8 render target with RTV + SRV.
+static bool CreateBloomRT(ID3D11Device*             device,
+                           ID3D11Texture2D**         texOut,
+                           ID3D11RenderTargetView**  rtvOut,
+                           ID3D11ShaderResourceView** srvOut,
+                           const char*               debugName)
+{
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width            = D3D11Renderer::BloomScene::kRTSize;
+    td.Height           = D3D11Renderer::BloomScene::kRTSize;
+    td.MipLevels        = 1;
+    td.ArraySize        = 1;
+    td.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+    td.SampleDesc.Count = 1;
+    td.Usage            = D3D11_USAGE_DEFAULT;
+    td.BindFlags        = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+    HRESULT hr = device->CreateTexture2D(&td, nullptr, texOut);
+    if (FAILED(hr)) { std::cerr << "[Bloom] " << debugName << " texture failed.\n"; return false; }
+
+    hr = device->CreateRenderTargetView(*texOut, nullptr, rtvOut);
+    if (FAILED(hr)) {
+        std::cerr << "[Bloom] " << debugName << " RTV failed.\n";
+        (*texOut)->Release(); *texOut = nullptr;
+        return false;
+    }
+
+    hr = device->CreateShaderResourceView(*texOut, nullptr, srvOut);
+    if (FAILED(hr)) {
+        std::cerr << "[Bloom] " << debugName << " SRV failed.\n";
+        (*rtvOut)->Release(); *rtvOut = nullptr;
+        (*texOut)->Release(); *texOut = nullptr;
+        return false;
+    }
+    return true;
+}
+
+struct alignas(16) BloomCBData  { float threshold;     float pad[3]; };
+struct alignas(16) BlurCBData   { float dirX, dirY;    float texW, texH; };
+struct alignas(16) CompCBData   { float bloomStrength; float pad[3]; };
+
+static bool LoadBloomScene(ID3D11Device*              device,
+                            const std::string&         shaderDir,
+                            D3D11Renderer::BloomScene& scene)
+{
+    namespace fs = std::filesystem;
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Create four offscreen render targets.
+    // -----------------------------------------------------------------------
+    if (!CreateBloomRT(device, &scene.sceneTex,  &scene.sceneRTV,  &scene.sceneSRV,  "scene"))  return false;
+    if (!CreateBloomRT(device, &scene.brightTex, &scene.brightRTV, &scene.brightSRV, "bright")) {
+        scene.sceneSRV->Release(); scene.sceneRTV->Release(); scene.sceneTex->Release();
+        scene.sceneSRV = nullptr; scene.sceneRTV = nullptr; scene.sceneTex = nullptr;
+        return false;
+    }
+    if (!CreateBloomRT(device, &scene.blurATex, &scene.blurARTV, &scene.blurASRV, "blurA")) {
+        scene.brightSRV->Release(); scene.brightRTV->Release(); scene.brightTex->Release();
+        scene.sceneSRV->Release();  scene.sceneRTV->Release();  scene.sceneTex->Release();
+        scene.brightSRV = nullptr; scene.brightRTV = nullptr; scene.brightTex = nullptr;
+        scene.sceneSRV  = nullptr; scene.sceneRTV  = nullptr; scene.sceneTex  = nullptr;
+        return false;
+    }
+    if (!CreateBloomRT(device, &scene.blurBTex, &scene.blurBRTV, &scene.blurBSRV, "blurB")) {
+        scene.blurASRV->Release();  scene.blurARTV->Release();  scene.blurATex->Release();
+        scene.brightSRV->Release(); scene.brightRTV->Release(); scene.brightTex->Release();
+        scene.sceneSRV->Release();  scene.sceneRTV->Release();  scene.sceneTex->Release();
+        scene.blurASRV = nullptr; scene.blurARTV = nullptr; scene.blurATex = nullptr;
+        scene.brightSRV = nullptr; scene.brightRTV = nullptr; scene.brightTex = nullptr;
+        scene.sceneSRV  = nullptr; scene.sceneRTV  = nullptr; scene.sceneTex  = nullptr;
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — Compile shaders.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Reusing sky.vs.hlsl as the Full-Screen VS
+    // The full-screen triangle trick (SV_VertexID) generates 3 vertices that
+    // cover the entire viewport without any vertex buffer.  sky.vs.hlsl already
+    // implements this; we compile it again here for the bloom VS slot.
+    // Compiling the same file twice is fine — each compile produces an
+    // independent ID3D11VertexShader object with its own COM reference count.
+    // -----------------------------------------------------------------------
+    auto compile = [&](const fs::path& path, const char* entry, const char* target) -> ID3DBlob*
+    {
+        ID3DBlob* code   = nullptr;
+        ID3DBlob* errors = nullptr;
+        HRESULT   hr     = E_FAIL;
+        if (fs::exists(path))
+        {
+            std::wstring wp = path.wstring();
+            hr = D3DCompileFromFile(wp.c_str(), nullptr, nullptr,
+                                    entry, target,
+                                    D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                                    &code, &errors);
+        }
+        if (FAILED(hr)) {
+            if (errors) {
+                std::cerr << "[Bloom] HLSL compile error ("
+                          << path.filename().string() << "): "
+                          << static_cast<const char*>(errors->GetBufferPointer()) << "\n";
+                errors->Release();
+            } else {
+                std::cerr << "[Bloom] Missing shader: " << path.string() << "\n";
+            }
+            return nullptr;
+        }
+        if (errors) errors->Release();
+        return code;
+    };
+
+    // Full-screen VS (reuse sky.vs.hlsl — SV_VertexID trick).
+    ID3DBlob* vsBlob = compile(fs::path(shaderDir) / "sky.vs.hlsl", "main", "vs_4_0");
+    if (!vsBlob) goto fail_after_rts;
+    {
+        HRESULT hr = device->CreateVertexShader(vsBlob->GetBufferPointer(),
+                                                vsBlob->GetBufferSize(),
+                                                nullptr, &scene.fullscreenVS);
+        vsBlob->Release(); vsBlob = nullptr;
+        if (FAILED(hr)) { std::cerr << "[Bloom] fullscreenVS creation failed.\n"; goto fail_after_rts; }
+    }
+
+    // Bright-pass PS.
+    {
+        ID3DBlob* psBlob = compile(fs::path(shaderDir) / "bloom_bright.ps.hlsl", "main", "ps_4_0");
+        if (!psBlob) goto fail_after_fs_vs;
+        HRESULT hr = device->CreatePixelShader(psBlob->GetBufferPointer(),
+                                               psBlob->GetBufferSize(),
+                                               nullptr, &scene.brightPS);
+        psBlob->Release();
+        if (FAILED(hr)) { std::cerr << "[Bloom] brightPS creation failed.\n"; goto fail_after_fs_vs; }
+    }
+
+    // Blur PS.
+    {
+        ID3DBlob* psBlob = compile(fs::path(shaderDir) / "bloom_blur.ps.hlsl", "main", "ps_4_0");
+        if (!psBlob) goto fail_after_bright_ps;
+        HRESULT hr = device->CreatePixelShader(psBlob->GetBufferPointer(),
+                                               psBlob->GetBufferSize(),
+                                               nullptr, &scene.blurPS);
+        psBlob->Release();
+        if (FAILED(hr)) { std::cerr << "[Bloom] blurPS creation failed.\n"; goto fail_after_bright_ps; }
+    }
+
+    // Composite PS.
+    {
+        ID3DBlob* psBlob = compile(fs::path(shaderDir) / "bloom_composite.ps.hlsl", "main", "ps_4_0");
+        if (!psBlob) goto fail_after_blur_ps;
+        HRESULT hr = device->CreatePixelShader(psBlob->GetBufferPointer(),
+                                               psBlob->GetBufferSize(),
+                                               nullptr, &scene.compositePS);
+        psBlob->Release();
+        if (FAILED(hr)) { std::cerr << "[Bloom] compositePS creation failed.\n"; goto fail_after_blur_ps; }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3 — Create constant buffers.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_BUFFER_DESC cbd = { sizeof(BloomCBData), D3D11_USAGE_DYNAMIC,
+                                  D3D11_BIND_CONSTANT_BUFFER, D3D11_CPU_ACCESS_WRITE, 0, 0 };
+        HRESULT hr = device->CreateBuffer(&cbd, nullptr, &scene.bloomCB);
+        if (FAILED(hr)) { std::cerr << "[Bloom] bloomCB failed.\n"; goto fail_after_composite_ps; }
+    }
+    {
+        D3D11_BUFFER_DESC cbd = { sizeof(BlurCBData), D3D11_USAGE_DYNAMIC,
+                                  D3D11_BIND_CONSTANT_BUFFER, D3D11_CPU_ACCESS_WRITE, 0, 0 };
+        HRESULT hr = device->CreateBuffer(&cbd, nullptr, &scene.blurCB);
+        if (FAILED(hr)) { std::cerr << "[Bloom] blurCB failed.\n"; goto fail_after_bloom_cb; }
+    }
+    {
+        D3D11_BUFFER_DESC cbd = { sizeof(CompCBData), D3D11_USAGE_DYNAMIC,
+                                  D3D11_BIND_CONSTANT_BUFFER, D3D11_CPU_ACCESS_WRITE, 0, 0 };
+        HRESULT hr = device->CreateBuffer(&cbd, nullptr, &scene.compCB);
+        if (FAILED(hr)) { std::cerr << "[Bloom] compCB failed.\n"; goto fail_after_blur_cb; }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 4 — Create a linear clamp sampler for all bloom passes.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_SAMPLER_DESC sd = {};
+        sd.Filter   = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        sd.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.MaxLOD   = D3D11_FLOAT32_MAX;
+        HRESULT hr = device->CreateSamplerState(&sd, &scene.linearSampler);
+        if (FAILED(hr)) { std::cerr << "[Bloom] linearSampler failed.\n"; goto fail_after_comp_cb; }
+    }
+
+    scene.loaded = true;
+    return true;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Structured Cleanup via goto Labels
+    // -----------------------------------------------------------------------
+    // Cascaded cleanup with goto mimics the RAII pattern in systems where
+    // constructors are not available (C-style APIs, COM).  Each label releases
+    // only the resources created up to that point.  This avoids nested if/else
+    // and keeps the happy path readable at the top of the function.
+    // In production C++ code, RAII wrappers (ComPtr<T>, std::unique_ptr) are
+    // preferred — goto is used here only for pedagogical clarity.
+    // -----------------------------------------------------------------------
+fail_after_comp_cb:
+    scene.compCB->Release(); scene.compCB = nullptr;
+fail_after_blur_cb:
+    scene.blurCB->Release(); scene.blurCB = nullptr;
+fail_after_bloom_cb:
+    scene.bloomCB->Release(); scene.bloomCB = nullptr;
+fail_after_composite_ps:
+    scene.compositePS->Release(); scene.compositePS = nullptr;
+fail_after_blur_ps:
+    scene.blurPS->Release(); scene.blurPS = nullptr;
+fail_after_bright_ps:
+    scene.brightPS->Release(); scene.brightPS = nullptr;
+fail_after_fs_vs:
+    scene.fullscreenVS->Release(); scene.fullscreenVS = nullptr;
+fail_after_rts:
+    scene.blurBSRV->Release();  scene.blurBRTV->Release();  scene.blurBTex->Release();
+    scene.blurASRV->Release();  scene.blurARTV->Release();  scene.blurATex->Release();
+    scene.brightSRV->Release(); scene.brightRTV->Release(); scene.brightTex->Release();
+    scene.sceneSRV->Release();  scene.sceneRTV->Release();  scene.sceneTex->Release();
+    scene.blurBSRV = nullptr; scene.blurBRTV = nullptr; scene.blurBTex = nullptr;
+    scene.blurASRV = nullptr; scene.blurARTV = nullptr; scene.blurATex = nullptr;
+    scene.brightSRV = nullptr; scene.brightRTV = nullptr; scene.brightTex = nullptr;
+    scene.sceneSRV  = nullptr; scene.sceneRTV  = nullptr; scene.sceneTex  = nullptr;
+    return false;
+}
+
+// ===========================================================================
+// DrawBloomScene — execute the four-pass bloom pipeline (M17)
+// ===========================================================================
+
+void D3D11Renderer::DrawBloomScene()
+{
+    if (!m_bloomScene.loaded || !m_context)
+        return;
+
+    // Save caller's RTV (we restore it for the final composite pass).
+    ID3D11RenderTargetView* prevRTV = nullptr;
+    ID3D11DepthStencilView* prevDSV = nullptr;
+    m_context->OMGetRenderTargets(1, &prevRTV, &prevDSV);
+    uint32_t numVP = 1;
+    D3D11_VIEWPORT prevVP = {};
+    m_context->RSGetViewports(&numVP, &prevVP);
+
+    // All bloom passes use 256×256 viewport.
+    D3D11_VIEWPORT bloomVP = {};
+    bloomVP.Width    = static_cast<float>(D3D11Renderer::BloomScene::kRTSize);
+    bloomVP.Height   = static_cast<float>(D3D11Renderer::BloomScene::kRTSize);
+    bloomVP.MaxDepth = 1.0f;
+
+    // No vertex buffer / input layout needed (SV_VertexID generates vertices).
+    m_context->IASetInputLayout(nullptr);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_context->VSSetShader(m_bloomScene.fullscreenVS, nullptr, 0);
+    m_context->PSSetSamplers(0, 1, &m_bloomScene.linearSampler);
+    m_context->OMSetDepthStencilState(nullptr, 0);
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Fill the scene RT with a bright test colour (simulates scene).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Simulated Scene Content For Bloom
+    // For the bloom demo we bypass a full scene render and simply clear the
+    // scene RT to a bright orange test colour stored in a UNORM render target.
+    // In a production engine the scene RT is filled by the main render pass
+    // (geometry + lighting) and the bloom pipeline then processes its output.
+    // Using ClearRenderTargetView keeps the demo self-contained and focuses
+    // attention on the bloom pipeline itself.
+    //
+    // This demo does not use a floating-point HDR render target: the colour
+    // stays in the normal [0, 1] range of DXGI_FORMAT_R8G8B8A8_UNORM.
+    // With the threshold at 0.7, this bright orange clear colour still
+    // produces bright-pass output without needing true HDR values.
+    // -----------------------------------------------------------------------
+    {
+        m_context->RSSetViewports(1, &bloomVP);
+        float bright[] = { 1.0f, 0.85f, 0.2f, 1.0f };  // bright orange — channels exceed the bright-pass threshold
+        m_context->OMSetRenderTargets(1, &m_bloomScene.sceneRTV, nullptr);
+        m_context->ClearRenderTargetView(m_bloomScene.sceneRTV, bright);
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — Bright-pass: extract pixels with luminance > threshold.
+    // -----------------------------------------------------------------------
+    {
+        // Upload BloomCB: threshold = 0.7.
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (SUCCEEDED(m_context->Map(m_bloomScene.bloomCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+            auto* cb   = static_cast<BloomCBData*>(mapped.pData);
+            cb->threshold = 0.7f;
+            cb->pad[0] = cb->pad[1] = cb->pad[2] = 0.0f;
+            m_context->Unmap(m_bloomScene.bloomCB, 0);
+        }
+        m_context->OMSetRenderTargets(1, &m_bloomScene.brightRTV, nullptr);
+        m_context->PSSetShader(m_bloomScene.brightPS, nullptr, 0);
+        m_context->PSSetConstantBuffers(0, 1, &m_bloomScene.bloomCB);
+        m_context->PSSetShaderResources(0, 1, &m_bloomScene.sceneSRV);
+        m_context->Draw(3, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3 — Horizontal Gaussian blur (brightRTV → blurARTV).
+    // -----------------------------------------------------------------------
+    {
+        const float kTexel = 1.0f / static_cast<float>(D3D11Renderer::BloomScene::kRTSize);
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (SUCCEEDED(m_context->Map(m_bloomScene.blurCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+            auto* cb   = static_cast<BlurCBData*>(mapped.pData);
+            cb->dirX   = 1.0f; cb->dirY = 0.0f;  // horizontal
+            cb->texW   = kTexel; cb->texH = kTexel;
+            m_context->Unmap(m_bloomScene.blurCB, 0);
+        }
+        // Unbind brightSRV from the output and bind it as input.
+        ID3D11ShaderResourceView* nullSRV = nullptr;
+        m_context->PSSetShaderResources(0, 1, &nullSRV);
+        m_context->OMSetRenderTargets(1, &m_bloomScene.blurARTV, nullptr);
+        m_context->PSSetShader(m_bloomScene.blurPS, nullptr, 0);
+        m_context->PSSetConstantBuffers(0, 1, &m_bloomScene.blurCB);
+        m_context->PSSetShaderResources(0, 1, &m_bloomScene.brightSRV);
+        m_context->Draw(3, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 4 — Vertical Gaussian blur (blurARTV → blurBRTV).
+    // -----------------------------------------------------------------------
+    {
+        const float kTexel = 1.0f / static_cast<float>(D3D11Renderer::BloomScene::kRTSize);
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (SUCCEEDED(m_context->Map(m_bloomScene.blurCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+            auto* cb   = static_cast<BlurCBData*>(mapped.pData);
+            cb->dirX   = 0.0f; cb->dirY = 1.0f;  // vertical
+            cb->texW   = kTexel; cb->texH = kTexel;
+            m_context->Unmap(m_bloomScene.blurCB, 0);
+        }
+        ID3D11ShaderResourceView* nullSRV = nullptr;
+        m_context->PSSetShaderResources(0, 1, &nullSRV);
+        m_context->OMSetRenderTargets(1, &m_bloomScene.blurBRTV, nullptr);
+        m_context->PSSetShader(m_bloomScene.blurPS, nullptr, 0);
+        m_context->PSSetShaderResources(0, 1, &m_bloomScene.blurASRV);
+        m_context->Draw(3, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 5 — Composite: sceneRTV + blurBRTV → caller's RTV (back buffer or offscreen).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Restoring the Caller's Render Target
+    // The final composite outputs to the render target that the CALLER set up
+    // (either the swap-chain back buffer in windowed mode, or the 64×64 off-
+    // screen RT in headless CI mode).  By restoring prevRTV here, DrawBloomScene
+    // works transparently in both contexts without needing a "mode" parameter.
+    {
+        D3D11_MAPPED_SUBRESOURCE mapped = {};
+        if (SUCCEEDED(m_context->Map(m_bloomScene.compCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) {
+            auto* cb            = static_cast<CompCBData*>(mapped.pData);
+            cb->bloomStrength   = 1.0f;
+            cb->pad[0] = cb->pad[1] = cb->pad[2] = 0.0f;
+            m_context->Unmap(m_bloomScene.compCB, 0);
+        }
+        ID3D11ShaderResourceView* nullSRV = nullptr;
+        m_context->PSSetShaderResources(0, 1, &nullSRV);
+        m_context->OMSetRenderTargets(1, &prevRTV, prevDSV);
+        m_context->RSSetViewports(1, &prevVP);
+        m_context->PSSetShader(m_bloomScene.compositePS, nullptr, 0);
+        m_context->PSSetConstantBuffers(0, 1, &m_bloomScene.compCB);
+        ID3D11ShaderResourceView* srvs[2] = { m_bloomScene.sceneSRV, m_bloomScene.blurBSRV };
+        m_context->PSSetShaderResources(0, 2, srvs);
+        m_context->Draw(3, 0);
+    }
+
+    // Unbind all SRVs.
+    ID3D11ShaderResourceView* nullSRVs[2] = { nullptr, nullptr };
+    m_context->PSSetShaderResources(0, 2, nullSRVs);
+
+    // Release OMGetRenderTargets COM references.
+    if (prevRTV) prevRTV->Release();
+    if (prevDSV) prevDSV->Release();
 }
 
 } // namespace rendering

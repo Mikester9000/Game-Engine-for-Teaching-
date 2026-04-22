@@ -184,6 +184,39 @@ private:
     void DrawSky();
 
     // -----------------------------------------------------------------------
+    // TEACHING NOTE — DrawShadowScene (M17)
+    // -----------------------------------------------------------------------
+    // DrawShadowScene() executes both shadow-rendering passes:
+    //   Pass 1 (shadow): binds the shadow-map DSV (no colour RTV), renders
+    //                    the sphere from the light's view, writes depth.
+    //   Pass 2 (lit):    restores the caller's RTV, renders the sphere from
+    //                    the camera view with PCF shadow sampling.
+    //
+    // Using OMGetRenderTargets / OMSetRenderTargets to save and restore the
+    // active RTV makes DrawShadowScene independent of context — it can be
+    // called from both DrawFrame (windowed) and RecordHeadlessFrame (CI).
+    // -----------------------------------------------------------------------
+    /** Execute both shadow-map and lit passes for the shadow demo (M17). */
+    void DrawShadowScene();
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — DrawBloomScene (M17)
+    // -----------------------------------------------------------------------
+    // DrawBloomScene() executes the four-pass bloom pipeline:
+    //   1. Fill scene RT with a bright procedural colour (simulated HDR).
+    //   2. Bright-pass: extract luminance > threshold → brightRTV.
+    //   3. Horizontal Gaussian blur → blurARTV (ping).
+    //   4. Vertical   Gaussian blur → blurBRTV (pong = final bloom).
+    //   5. Composite: sceneRTV + blurBRTV → caller's current RTV.
+    //
+    // Step 5 composites back to whatever RTV the caller had bound, so this
+    // method works identically in both windowed (back buffer) and headless
+    // (64×64 offscreen texture) contexts.
+    // -----------------------------------------------------------------------
+    /** Execute the full bloom pipeline and composite to the current RTV (M17). */
+    void DrawBloomScene();
+
+    // -----------------------------------------------------------------------
     // TEACHING NOTE — Depth Buffer Helpers (M16)
     // -----------------------------------------------------------------------
     // D3D11 does not automatically create a depth buffer when you create a
@@ -431,6 +464,123 @@ public:
         bool                loaded         = false;
     };
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — ShadowScene (M17: Directional Shadow Maps)
+    // -----------------------------------------------------------------------
+    // ShadowScene implements a classic two-pass shadow algorithm:
+    //
+    //   Pass 1 — Shadow Pass (shadow.vs.hlsl, no PS, no colour RTV):
+    //     Renders the scene from the LIGHT'S viewpoint into a 512×512 depth
+    //     texture (shadowTex / shadowDSV).  The depth values record how far
+    //     each surface is from the light — the "shadow map".
+    //
+    //   Pass 2 — Lit Pass (shadow_lit.vs/ps.hlsl, camera RTV):
+    //     Renders the scene from the CAMERA'S viewpoint.  Each fragment re-
+    //     projects its world position into light space and samples the shadow
+    //     map via a 3×3 PCF kernel (SamplerComparisonState in the PS).
+    //     Fragments deeper than the stored value are "in shadow".
+    //
+    // Key resources:
+    //   shadowTex / shadowDSV — the 512×512 D32_FLOAT depth render target.
+    //   shadowSRV             — read-only SRV bound to the lit PS (t0).
+    //   cmpSampler            — D3D11_COMPARISON_LESS_EQUAL hardware PCF sampler.
+    //   shadowCB (b0, shadow VS) — 64-byte lightViewProj matrix (ortho).
+    //   litCB    (b0, lit VS+PS) — 272-byte world/view/proj + lightViewProj + lightDir.
+    //   shadowRast             — cull-back rasterizer with depth bias.
+    //   shadowDSS              — depth test + write enabled (no stencil).
+    // -----------------------------------------------------------------------
+    struct ShadowScene
+    {
+        // Shadow map texture + views.
+        ID3D11Texture2D*          shadowTex    = nullptr;  ///< 512×512 D32_FLOAT depth texture
+        ID3D11DepthStencilView*   shadowDSV    = nullptr;  ///< DSV: shadow pass renders here
+        ID3D11ShaderResourceView* shadowSRV    = nullptr;  ///< SRV: lit PS samples this (t0)
+
+        // Shadow pass (depth-only, no colour output).
+        ID3D11VertexShader*       shadowVS     = nullptr;  ///< shadow.vs.hlsl
+        ID3D11InputLayout*        shadowLayout = nullptr;  ///< pos+normal+uv (shared with lit)
+        ID3D11Buffer*             shadowCB     = nullptr;  ///< b0: lightViewProj (64 B)
+        ID3D11DepthStencilState*  shadowDSS    = nullptr;  ///< depth test + write
+        ID3D11RasterizerState*    shadowRast   = nullptr;  ///< depth bias, cull-back
+
+        // Lit pass (camera view, PCF shadow lookup).
+        ID3D11VertexShader*       litVS        = nullptr;  ///< shadow_lit.vs.hlsl
+        ID3D11PixelShader*        litPS        = nullptr;  ///< shadow_lit.ps.hlsl
+        ID3D11Buffer*             litCB        = nullptr;  ///< b0: ShadowLitCB (272 B)
+        ID3D11SamplerState*       cmpSampler   = nullptr;  ///< s0: comparison sampler (PCF)
+
+        // Shared sphere geometry (UV sphere, 16×16 stacks/slices).
+        ID3D11Buffer*             vertexBuf    = nullptr;
+        ID3D11Buffer*             indexBuf     = nullptr;
+        int                       indexCount   = 0;
+
+        bool loaded = false;
+    };
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — BloomScene (M17: HDR Bloom Post-Processing)
+    // -----------------------------------------------------------------------
+    // BloomScene implements a standard four-pass HDR bloom pipeline:
+    //
+    //   Scene RT  → bright-pass → blur-X → blur-Y → composite → back buffer
+    //
+    //   1. sceneRTV  — RGBA8 render target for the original scene colour.
+    //   2. brightRTV — bright-pass: extract pixels with luminance > threshold.
+    //   3. blurARTV  — horizontal Gaussian blur of the bright-pass result.
+    //   4. blurBRTV  — vertical Gaussian blur = final bloom texture.
+    //   5. Composite — blurBSRV + sceneSRV → back buffer (Reinhard tonemap).
+    //
+    // All four passes use the same full-screen triangle VS (sky.vs.hlsl,
+    // SV_VertexID trick) — no vertex buffers are needed.
+    //
+    // Constant buffers:
+    //   bloomCB (b0, bright PS) — luminance threshold (16 B).
+    //   blurCB  (b0, blur  PS) — direction float2 + texelSize float2 (16 B).
+    //   compCB  (b0, comp  PS) — bloom strength scalar (16 B).
+    //
+    // All bloom RTs are 256×256 RGBA8_UNORM — large enough to show the
+    // effect but small enough for WARP headless validation to complete quickly.
+    // -----------------------------------------------------------------------
+    struct BloomScene
+    {
+        static constexpr uint32_t kRTSize = 256;  ///< Bloom RT dimensions (256×256)
+
+        // Scene render target (source for bright-pass).
+        ID3D11Texture2D*          sceneTex  = nullptr;
+        ID3D11RenderTargetView*   sceneRTV  = nullptr;
+        ID3D11ShaderResourceView* sceneSRV  = nullptr;
+
+        // Bright-pass render target.
+        ID3D11Texture2D*          brightTex = nullptr;
+        ID3D11RenderTargetView*   brightRTV = nullptr;
+        ID3D11ShaderResourceView* brightSRV = nullptr;
+
+        // Blur ping RT (horizontal-blur output).
+        ID3D11Texture2D*          blurATex  = nullptr;
+        ID3D11RenderTargetView*   blurARTV  = nullptr;
+        ID3D11ShaderResourceView* blurASRV  = nullptr;
+
+        // Blur pong RT (vertical-blur output = final bloom).
+        ID3D11Texture2D*          blurBTex  = nullptr;
+        ID3D11RenderTargetView*   blurBRTV  = nullptr;
+        ID3D11ShaderResourceView* blurBSRV  = nullptr;
+
+        // Full-screen triangle pipeline (sky.vs.hlsl reused as VS).
+        ID3D11VertexShader*       fullscreenVS = nullptr;  ///< sky.vs.hlsl
+        ID3D11PixelShader*        brightPS     = nullptr;  ///< bloom_bright.ps.hlsl
+        ID3D11PixelShader*        blurPS       = nullptr;  ///< bloom_blur.ps.hlsl
+        ID3D11PixelShader*        compositePS  = nullptr;  ///< bloom_composite.ps.hlsl
+
+        // Constant buffers.
+        ID3D11Buffer*             bloomCB      = nullptr;  ///< b0 (bright PS): threshold
+        ID3D11Buffer*             blurCB       = nullptr;  ///< b0 (blur  PS): direction+texelSize
+        ID3D11Buffer*             compCB       = nullptr;  ///< b0 (comp  PS): bloomStrength
+
+        ID3D11SamplerState*       linearSampler = nullptr;  ///< s0: linear clamp (all passes)
+
+        bool loaded = false;
+    };
+
 private:
     TexturedQuadScene   m_quadScene;
     std::string         m_currentScene;   ///< Name of the active scene, or "".
@@ -439,6 +589,8 @@ private:
     PBRScene            m_pbrScene;
     PBRIBLScene         m_pbrIblScene;    ///< M16: PBR + IBL sphere scene
     SkyScene            m_skyScene;
+    ShadowScene         m_shadowScene;    ///< M17: directional shadow maps
+    BloomScene          m_bloomScene;     ///< M17: HDR bloom post-processing
 
     // TEACHING NOTE — SkyRenderer member
     // m_skyRenderer owns the CPU-side procedural sky simulation (time-of-day,

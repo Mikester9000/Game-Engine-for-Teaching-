@@ -410,6 +410,62 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M17: Directional shadow map headless acceptance test
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M17 Shadow Map CI Gate
+      # This step validates the two-pass directional shadow map pipeline:
+      #   Test 1 — LoadScene('shadow_test'):
+      #             Creates 512×512 DXGI_FORMAT_R32_TYPELESS depth texture,
+      #             DSV (D32_FLOAT) and SRV (R32_FLOAT), compiles shadow.vs.hlsl,
+      #             shadow_lit.vs.hlsl, shadow_lit.ps.hlsl, creates comparison
+      #             sampler (D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT +
+      #             D3D11_COMPARISON_LESS_EQUAL) and both constant buffers.
+      #   Test 2 — RecordHeadlessFrame():
+      #             Shadow pass: renders the sphere from the light's viewpoint
+      #             (no colour RTV, only DSV) using the shadow VS.
+      #             Lit pass:    renders from the camera, samples the shadow map
+      #             with PCF (SamplerComparisonState.SampleCmpLevelZero).
+      #             Both passes execute on WARP without a device-removed error.
+      #   Test 3 — Unload + reload:
+      #             UnloadScene() releases the DSV + SRV + texture and all other
+      #             COM objects; a second LoadScene('shadow_test') succeeds.
+      #
+      # All tests run on WARP — no GPU required.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M17 — shadow_test scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene shadow_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # M17: HDR bloom post-processing headless acceptance test
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M17 Bloom CI Gate
+      # This step validates the four-pass HDR bloom pipeline:
+      #   Test 1 — LoadScene('bloom_test'):
+      #             Creates 4× RGBA8 UNORM 256×256 offscreen render targets,
+      #             each with RTV + SRV.  Compiles bloom_bright.ps.hlsl,
+      #             bloom_blur.ps.hlsl, bloom_composite.ps.hlsl, and sky.vs.hlsl
+      #             (reused as the full-screen SV_VertexID triangle VS).
+      #             Creates three 16-byte constant buffers (BloomCB, BlurCB,
+      #             CompCB) and a linear-clamp SamplerState.
+      #   Test 2 — RecordHeadlessFrame():
+      #             Pass 1: fills sceneRTV with a bright colour (simulated HDR).
+      #             Pass 2: bright-pass extracts luminance > 0.7 → brightRTV.
+      #             Pass 3: horizontal Gaussian blur → blurARTV (ping).
+      #             Pass 4: vertical   Gaussian blur → blurBRTV (pong).
+      #             Pass 5: composite blurBRTV + sceneRTV → 64×64 offscreen RT.
+      #             All five passes execute on WARP without crash.
+      #   Test 3 — Unload + reload:
+      #             UnloadScene() releases all 12 RT COM objects (4×Tex+RTV+SRV)
+      #             plus shaders and CBs cleanly.
+      #
+      # All tests run on WARP — no GPU required.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M17 — bloom_test scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bloom_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # PAK packager acceptance test
       # -----------------------------------------------------------------------
       # TEACHING NOTE — PAK Packager CI Test
