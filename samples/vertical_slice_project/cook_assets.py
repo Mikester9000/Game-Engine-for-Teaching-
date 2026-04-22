@@ -109,6 +109,7 @@ def new_guid() -> str:
 # Populated by load_existing_guids() early in main() so that every cook
 # step can call stable_guid() and reuse the GUID the asset already has.
 _EXISTING_GUIDS: dict[str, str] = {}
+_EXISTING_ASSETS: dict[str, dict] = {}
 
 
 def load_existing_guids() -> None:
@@ -131,7 +132,9 @@ def load_existing_guids() -> None:
          new_guid() directly — it returns the existing ID if known, or a
          fresh UUID4 for truly new assets.
     """
-    global _EXISTING_GUIDS
+    global _EXISTING_GUIDS, _EXISTING_ASSETS
+    _EXISTING_GUIDS = {}
+    _EXISTING_ASSETS = {}
     if not REGISTRY_FILE.exists():
         return
     try:
@@ -141,6 +144,8 @@ def load_existing_guids() -> None:
             gid = entry.get("id", "")
             if src and gid:
                 _EXISTING_GUIDS[src] = gid
+            if src:
+                _EXISTING_ASSETS[src] = entry
     except Exception:
         pass  # If the file is malformed, ignore and generate fresh GUIDs.
 
@@ -162,6 +167,27 @@ def stable_guid(source_rel: str) -> str:
         The existing UUID v4 string for this asset, or a new UUID4.
     """
     return _EXISTING_GUIDS.get(source_rel) or new_guid()
+
+
+def should_recook(source_rel: str, source_hash: str) -> bool:
+    """Return True when the source asset should be re-cooked.
+
+    TEACHING NOTE — Incremental cook
+    We use the existing registry to skip redundant work:
+      1. If the source hash changed, re-cook.
+      2. If the cooked file is missing, re-cook.
+      3. Otherwise, keep the previous cooked output and just refresh the
+         in-memory registry entry for this run.
+    """
+    existing = _EXISTING_ASSETS.get(source_rel)
+    if not existing:
+        return True
+    if existing.get("hash") != source_hash:
+        return True
+    cooked_rel = existing.get("cooked", "")
+    if not cooked_rel:
+        return True
+    return not (SCRIPT_DIR / cooked_rel).exists()
 
 
 def ensure_dir(path: Path) -> None:
@@ -191,24 +217,30 @@ def cook_textures(registry: list[dict]) -> int:
     count = 0
     for src in sorted(list(texture_src.glob("**/*.png")) + list(texture_src.glob("**/*.jpg"))):
         rel    = src.relative_to(texture_src)   # relative to Textures/
+        source_rel = "Textures/" + str(rel)
+        source_hash = sha256_file(src)
         dst    = texture_dst / rel.with_suffix(".tex")  # rename extension
         dst.parent.mkdir(parents=True, exist_ok=True)
 
-        # STUB: just copy; real cook would compress
-        shutil.copy2(src, dst)
+        if should_recook(source_rel, source_hash):
+            # STUB: just copy; real cook would compress
+            shutil.copy2(src, dst)
+            action = "TEX"
+        else:
+            action = "SKIP-TEX"
 
         registry.append({
-            "id":     stable_guid("Textures/" + str(rel)),
+            "id":     stable_guid(source_rel),
             "type":   "texture",
             "name":   src.stem,
-            "source": "Textures/" + str(rel),
+            "source": source_rel,
             "cooked": str(dst.relative_to(SCRIPT_DIR)),
-            "hash":   sha256_file(src),
+            "hash":   source_hash,
             "dependencies": [],
             "tags":   ["texture"],
         })
         count += 1
-        print(f"  [TEX] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -244,49 +276,55 @@ def cook_audio(registry: list[dict]) -> int:
 
     for src in source_wavs:
         rel = src.relative_to(audio_src)   # relative to Audio/
+        source_rel = "Audio/" + str(rel)
+        source_hash = sha256_file(src)
         dst = audio_dst / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
 
-        # ------------------------------------------------------------------
-        # Path A: use audio_engine DSP to normalise (if package installed)
-        # ------------------------------------------------------------------
-        processed = False
-        if _HAS_AUDIO_ENGINE:
-            try:
-                from audio_engine.export.audio_exporter import AudioExporter  # type: ignore
-                from audio_engine.render.offline_bounce import OfflineBounce   # type: ignore
-                import numpy as np  # type: ignore
+        if should_recook(source_rel, source_hash):
+            # ------------------------------------------------------------------
+            # Path A: use audio_engine DSP to normalise (if package installed)
+            # ------------------------------------------------------------------
+            processed = False
+            if _HAS_AUDIO_ENGINE:
+                try:
+                    from audio_engine.export.audio_exporter import AudioExporter  # type: ignore
+                    from audio_engine.render.offline_bounce import OfflineBounce   # type: ignore
+                    import numpy as np  # type: ignore
 
-                # Read the source WAV via the exporter's importer helper
-                from audio_engine.dsp.normaliser import Normaliser  # type: ignore
-                normaliser = Normaliser(target_lufs=-16.0, ceiling_db=-1.0)
-                import scipy.io.wavfile as sio_wav  # type: ignore
-                sr, data = sio_wav.read(str(src))
-                audio = data.astype(np.float32) / 32768.0
-                if audio.ndim > 1:
-                    audio = audio.mean(axis=1)
-                normalised = normaliser.process(audio)
-                AudioExporter(sample_rate=sr, bit_depth=16).export(normalised, dst, fmt="wav")
-                processed = True
-            except Exception as exc:
-                print(f"  [WARN] audio_engine DSP failed for {src.name}: {exc} — falling back to copy")
+                    # Read the source WAV via the exporter's importer helper
+                    from audio_engine.dsp.normaliser import Normaliser  # type: ignore
+                    normaliser = Normaliser(target_lufs=-16.0, ceiling_db=-1.0)
+                    import scipy.io.wavfile as sio_wav  # type: ignore
+                    sr, data = sio_wav.read(str(src))
+                    audio = data.astype(np.float32) / 32768.0
+                    if audio.ndim > 1:
+                        audio = audio.mean(axis=1)
+                    normalised = normaliser.process(audio)
+                    AudioExporter(sample_rate=sr, bit_depth=16).export(normalised, dst, fmt="wav")
+                    processed = True
+                except Exception as exc:
+                    print(f"  [WARN] audio_engine DSP failed for {src.name}: {exc} — falling back to copy")
 
-        if not processed:
-            # Path B: simple file copy (stub / fallback)
-            shutil.copy2(src, dst)
+            if not processed:
+                # Path B: simple file copy (stub / fallback)
+                shutil.copy2(src, dst)
+            action = "AUD"
+        else:
+            action = "SKIP-AUD"
 
-        clip_id = stable_guid("Audio/" + str(rel))
+        clip_id = stable_guid(source_rel)
         clips.append({
             "id":      clip_id,
             "name":    src.stem,
-            "source":  "Audio/" + str(rel),
+            "source":  source_rel,
             "cooked":  str(dst.relative_to(SCRIPT_DIR)),
             "volume":  1.0,
             "loopable": False,
             "is3D":    False,
             "tags":    [],
         })
-        print(f"  [AUD] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     if clips:
         bank_id = stable_guid("Content/Audio")
@@ -332,22 +370,28 @@ def cook_scenes(registry: list[dict]) -> int:
     count = 0
     for src in sorted(maps_src.glob("**/*.json")):
         rel = src.relative_to(maps_src)   # relative to Maps/, not Content/
+        source_rel = "Maps/" + str(rel)
+        source_hash = sha256_file(src)
         dst = maps_dst / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
+        if should_recook(source_rel, source_hash):
+            shutil.copy2(src, dst)
+            action = "MAP"
+        else:
+            action = "SKIP-MAP"
 
         registry.append({
-            "id":     stable_guid("Maps/" + str(rel)),
+            "id":     stable_guid(source_rel),
             "type":   "scene",
             "name":   src.stem.replace(".scene", ""),
-            "source": "Maps/" + str(rel),
+            "source": source_rel,
             "cooked": str(dst.relative_to(SCRIPT_DIR)),
-            "hash":   sha256_file(src),
+            "hash":   source_hash,
             "dependencies": [],
             "tags":   ["scene", "map"],
         })
         count += 1
-        print(f"  [MAP] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -417,22 +461,28 @@ def cook_animations(registry: list[dict]) -> int:
         # ------------------------------------------------------------------
         for src in sorted(anim_src.glob("**/*.json")):
             rel = src.relative_to(anim_src)     # relative to Animations/
+            source_rel = "Animations/" + str(rel)
+            source_hash = sha256_file(src)
             dst = anim_dst / rel.with_suffix(".animc")
             dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)  # STUB: copy; real cook converts to binary
+            if should_recook(source_rel, source_hash):
+                shutil.copy2(src, dst)  # STUB: copy; real cook converts to binary
+                action = "ANI"
+            else:
+                action = "SKIP-ANI"
 
             registry.append({
-                "id":     stable_guid("Animations/" + str(rel)),
+                "id":     stable_guid(source_rel),
                 "type":   "anim_clip",
                 "name":   src.stem,
-                "source": "Animations/" + str(rel),
+                "source": source_rel,
                 "cooked": str(dst.relative_to(SCRIPT_DIR)),
-                "hash":   sha256_file(src),
+                "hash":   source_hash,
                 "dependencies": [],
                 "tags":   ["animation"],
             })
             count += 1
-            print(f"  [ANI] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+            print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -470,6 +520,8 @@ def cook_levels(registry: list[dict]) -> int:
     count = 0
     for src in sorted(levels_src.glob("**/*.cell.json")):
         rel = src.relative_to(levels_src)            # relative to Levels/
+        source_rel = "Levels/" + str(rel)
+        source_hash = sha256_file(src)
         # TEACHING NOTE — Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
         # Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
         # leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -489,21 +541,25 @@ def cook_levels(registry: list[dict]) -> int:
             print(f"  [WARN] {src.name}: JSON parse failed ({exc}) — skipping")
             continue
 
-        # STUB: copy file as-is (real cook could convert to binary for faster loading)
-        shutil.copy2(src, dst)
+        if should_recook(source_rel, source_hash):
+            # STUB: copy file as-is (real cook could convert to binary for faster loading)
+            shutil.copy2(src, dst)
+            action = "LVL"
+        else:
+            action = "SKIP-LVL"
 
         registry.append({
-            "id":     stable_guid("Levels/" + str(rel)),
+            "id":     stable_guid(source_rel),
             "type":   "level",
             "name":   src.name[: -len(".cell.json")],  # "cell_0_0.cell.json" → "cell_0_0"
-            "source": "Levels/" + str(rel),
+            "source": source_rel,
             "cooked": str(dst.relative_to(SCRIPT_DIR)),
-            "hash":   sha256_file(src),
+            "hash":   source_hash,
             "dependencies": [],
             "tags":   ["level", "streaming-cell"],
         })
         count += 1
-        print(f"  [LVL] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
