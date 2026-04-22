@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1748 across 53 subsystems.
+**Total lessons:** 1749 across 54 subsystems.
 
 ---
 
@@ -14,6 +14,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 
 - [CMakeLists.txt](#cmakelists.txt) (70 lessons)
 - [ci/workflows](#ciworkflows) (58 lessons)
+- [conftest.py](#conftest.py) (1 lesson)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (104 lessons)
 - [engine/ai](#engineai) (49 lessons)
@@ -2201,6 +2202,29 @@ Grant only the minimum permissions required.  This workflow only reads
 repository contents, so no other GITHUB_TOKEN scopes are needed.
 permissions:
 contents: read
+
+---
+
+## conftest.py
+
+### Root pytest import bootstrap
+
+**Source:** [`conftest.py`](conftest.py#L9) (line 9)
+
+--------------------------------------------
+CI executes Python tool tests from each tool directory after `pip install -e`,
+but many contributors run `python -m pytest` once from the repository root.
+In that mode, `audio_engine`, `animation_engine`, and `quest_baker` are not on
+sys.path by default, so collection fails before tests even start.
+
+We prepend each tool root to sys.path so the full suite can run from the repo
+root without requiring per-tool editable installs.
+REPO_ROOT = Path(__file__).resolve().parent
+TOOL_IMPORT_ROOTS = (
+REPO_ROOT / "tools" / "audio_authoring",
+REPO_ROOT / "tools" / "anim_authoring",
+REPO_ROOT / "tools" / "quest_baker",
+)
 
 ---
 
@@ -25548,6 +25572,8 @@ Install with:
   python3 -m pip install -r requirements-dev.txt
 pytest==8.3.5
 jsonschema==4.23.0
+numpy>=1.24.0
+scipy>=1.10.0
 
 ---
 
