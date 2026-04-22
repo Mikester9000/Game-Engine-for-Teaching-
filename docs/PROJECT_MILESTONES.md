@@ -501,21 +501,107 @@ sun elevation formula validated; weather fog transitions validated.
 
 ---
 
-## Future Milestones (Post-M10)
+## Milestone M11 — Vehicle Physics ✅ *(complete — Post-M10)*
 
-| ID | Name | Key deliverable |
-|---|---|---|
-| M9 | PBR Rendering | ✅ Cook-Torrance BRDF + metallic-roughness + UV sphere (D3D11) |
-| M10 | Dynamic Sky | ✅ Procedural time-of-day + weather VFX (rain, fog) — D3D11 |
-| M11 | Vehicle Physics | Wheel-ray suspension + chase camera + `VehicleComponent` |
-| M12 | Behaviour Tree AI | Boss patterns; formation system; nav-mesh baker |
-| M13 | Cinematics | `CinematicSequencer` + camera rig + cut-scene editor |
-| M14 | Vulkan Catch-up | Resume all DEFERRED Vulkan items (textures, descriptors, PBR, skinning) |
-| M15 | PAK Packager + Release | `pak.exe`; distribution directory; installer |
+> **What's done:** `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steering,
+> fuel drain), `WheelState`×4 per-wheel snapshot in `VehicleComponent`, vehicle chase camera
+> in `CameraSystem`, `--scene vehicle_test` headless CI.
+
+| Deliverable | Status |
+|---|---|
+| `src/engine/vehicle/vehicle_system.hpp/.cpp` — `VehicleSystem`: throttle/steer → axle torque; wheel raycast; spring-damper suspension; Ackermann correction; fuel drain | ✅ |
+| `VehicleComponent` (ECS) — `throttleInput`, `brakeInput`, `steerInput`, `velocity`, `yaw`, `wheelStates[4]` (WheelState), `physicsBodyID`, fuel | ✅ |
+| Vehicle chase camera in `src/engine/rendering/camera_system.hpp/.cpp` | ✅ |
+| `--headless --scene vehicle_test` CI: throttle 5 s → velocity > 0; position advances | ✅ |
+| Road spline baker tool | ⬜ (M21) |
+
+**Done means:** `--headless --scene vehicle_test` exits 0 in CI.
+
+---
+
+## Milestone M12 — Behaviour Tree AI ✅ *(complete — Post-M10)*
+
+> **What's done:** Full behaviour tree node library (`BtTree`/`BtSequence`/`BtSelector`/
+> `BtCondition`/`BtAction`/`BtBlackboard`), `FormationSystem` (LINE/V_SHAPE/CIRCLE slot
+> layouts, greedy entity assignment, world-space transform), grid `NavMesh` with A\*
+> pathfinding (4-dir + diagonal, obstacle routing), `--scene bt_test` headless CI
+> with 4 acceptance tests.
+
+| Deliverable | Status |
+|---|---|
+| `src/engine/ai/behaviour_tree.hpp/.cpp` — `BtBlackboard` (key/value store), `BtNode` base, `BtSequence`, `BtSelector`, `BtCondition`, `BtAction`, `BtTree` executor | ✅ |
+| `src/engine/ai/formation_system.hpp/.cpp` — `FormationSystem`; LINE/V_SHAPE/CIRCLE slot offset generation; `AssignFormation`; world-space transform | ✅ |
+| `src/engine/ai/nav_mesh.hpp/.cpp` — grid `NavMesh`; `BakeFromGrid`/`BakeEmpty`/`SetWalkable`; A\* `FindPath` (4-dir + diagonal, obstacle routing) | ✅ |
+| `--headless --scene bt_test` CI: 4 tests (BT sequence, BT selector, blackboard, nav-mesh A\*) | ✅ |
+| Nav-mesh baker tool | ⬜ (M21) |
+
+**Done means:** `--headless --scene bt_test` exits 0 in CI.
+
+---
+
+## Milestone M13 — Cinematics 🔨 *(runtime + tests complete; tool + editor panel pending)*
+
+> **What's done:** `CinematicSequencer` (shot/cut, carry-over `Tick`, `OnShotChanged`/
+> `OnComplete` callbacks, `ApplyToCamera()` ECS write), `CameraRig` (keyframe Lerp,
+> binary-search bracket), `CameraComponent.cinematicOverride` ECS integration,
+> `--scene cinematic_test` headless CI.
+
+| Deliverable | Status |
+|---|---|
+| `src/engine/cinematics/camera_rig.hpp/.cpp` — `CameraRig`: `AddKeyframe`, binary-search `Evaluate(t)`, `Duration()`, `KeyframeCount()` | ✅ |
+| `src/engine/cinematics/cinematic_sequencer.hpp/.cpp` — `CinematicSequencer`: `AddShot`, `Play`/`Stop`, `Tick(dt)`, shot advance, `ApplyToCamera(world, entityID)` | ✅ |
+| `CameraComponent.cinematicOverride` + `cinematicEyePos` + `cinematicLookAt` in `ECS.hpp` | ✅ |
+| `CameraSystem` reads `cinematicOverride` flag to bypass orbit math | ✅ |
+| `--headless --scene cinematic_test` CI: 3 tests (camera position, shot advance, callback) | ✅ |
+| `shared/schemas/cinematic.schema.json` — JSON Schema for source cinematic format | ⬜ (M22) |
+| `tools/creation_engine.py` `bake_cinematic()` — timeline JSON → cooked `.cinematic` | ⬜ (M22) |
+| Cinematic editor panel in `editor/` — shot timeline, keyframe edit, preview | ⬜ (M22) |
+
+**Done means (partial):** `--headless --scene cinematic_test` exits 0 in CI.  
+**Remaining:** baker tool + editor panel (tracked as M22).
+
+---
+
+## Milestone M15 — SDF Font Renderer + PAK Packager ✅ *(complete — Post-M10)*
+
+> **What's done:** `FontRenderer` (SDF atlas of 96 glyphs, 8×8 bitmap→SDF conversion,
+> R8_UNORM D3D11 texture, `sdf_text.vs.hlsl` + `sdf_text.ps.hlsl`, dynamic VB quads,
+> alpha blend state), `--scene font_test` 3-test CI; `pak.exe` PAK1 format
+> (magic + TOC header + blobs), `--input`/`--list`/`--extract` modes, path traversal
+> protection, CI acceptance test.
+
+| Deliverable | Status |
+|---|---|
+| `src/engine/ui/font_renderer.hpp/.cpp` — SDF atlas gen (96 printable ASCII glyphs, 8×8 bitmap→SDF); R8_UNORM D3D11 texture; dynamic VB per text string; `sdf_text.vs/ps.hlsl` | ✅ |
+| `--headless --scene font_test` CI: 3 tests (Init + D3D11 resources, RenderText no-crash, Shutdown COM release) | ✅ |
+| `src/tools/pak/pak_main.cpp` — PAK1 packager: magic `PAK1`, 4-byte entry count, per-entry (path hash, offset, size), blobs; `--input`/`--output`/`--list`/`--extract` | ✅ |
+| Path traversal protection in `--extract` mode | ✅ |
+| CI acceptance test in `build-windows.yml` | ✅ |
+
+**Done means:** Both `--scene font_test` and the PAK CI test exit 0.
+
+---
+
+## Future Milestones (Post-M15)
+
+> **Last verified: 2026-04-22**
+
+| ID | Name | Key deliverable | Status |
+|---|---|---|---|
+| M16 | D3D11 Depth Buffer + IBL | DSV; irradiance cube + prefiltered env + BRDF LUT; `--headless --scene pbr_ibl` | ⬜ Not started |
+| M17 | D3D11 Shadow Maps + Bloom | Shadow pass + PCF; bright-pass + blur + composite; `--headless --scene shadow_test` + `bloom_test` | ⬜ Not started |
+| M18 | X3DAudio 3D Positional Audio | X3DAudio init; listener update; per-voice emitter; `--headless --scene audio_3d_test` | ⬜ Not started |
+| M19 | Action Combat Completion | `combo_system.hpp/.cpp`; `combat_config.json` loader; `--headless --scene combat_test` | ⬜ Not started |
+| M20 | Quest / Dialogue Tools + Tests | Quest baker; `--headless --scene quest_test` + `dialogue_test` | ⬜ Not started |
+| M21 | Tool Stubs: Nav-mesh + ToD LUT | Nav-mesh baker; tod.lut baker | ⬜ Not started |
+| M22 | Cinematic Baker + Editor Panel | `bake_cinematic()`; `CinematicEditorPanel.hpp/.cpp` | ⬜ Not started |
+| M14 | Vulkan Catch-up | All DEFERRED Vulkan items (textures, descriptors, PBR, skinning, sky, HUD) — see M14 section; no separate M23 | ⬜ Deferred |
 
 ---
 
 ## Milestone Progress Summary
+
+> **Last verified: 2026-04-22** — deep reconciliation pass.
 
 | Milestone | Name | Status |
 |---|---|---|
@@ -528,6 +614,20 @@ sun elevation formula validated; weather fog transitions validated.
 | M5 | Physics integration | ✅ Complete |
 | M6 | Editor shell | ✅ Complete |
 | M7 | World streaming | ✅ Complete |
-| M8 | Gameplay integration | ✅ Complete |
+| M8 | Gameplay integration (all M8.1–M8.9) | ✅ Complete |
 | M9 | PBR Rendering (Cook-Torrance BRDF) | ✅ Complete |
 | M10 | Dynamic Sky + Weather VFX | ✅ Complete |
+| M11 | Vehicle Physics | ✅ Complete (Post-M10) |
+| M12 | Behaviour Tree AI + FormationSystem + NavMesh | ✅ Complete (Post-M10) |
+| M13 | Cinematics | 🔨 Runtime + tests ✅; baker tool + editor panel ⬜ |
+| M14 | Vulkan Catch-up | ⬜ Deferred |
+| M15 | SDF Font Renderer + PAK Packager | ✅ Complete (Post-M10) |
+| M16 | D3D11 depth buffer + IBL | ⬜ Not started (required for DoD) |
+| M17 | D3D11 shadow maps + bloom | ⬜ Not started (required for DoD) |
+| M18 | X3DAudio 3D positional audio | ⬜ Not started (required for DoD) |
+| M19 | Action combat completion | ⬜ Not started (required for DoD) |
+| M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
+| M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |
+| M22 | Cut-scene baker + cinematic editor panel | ⬜ Not started (required for DoD) |
+| M23 | Merged into M14 Vulkan Catch-up (do not track separately) | — |
+

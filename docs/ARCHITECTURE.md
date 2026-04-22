@@ -27,6 +27,10 @@
 │  tools/anim_authoring/ (Python)                          │
 │  ├─ animation_engine.io.Exporter                         │
 │  └─ exports  →  Cooked/Anim/*.skelc, *.animc             │
+│                                                          │
+│  tools/creation_engine.py (Python) — asset manifest     │
+│  src/tools/cook/cook_main.cpp — cook.exe                 │
+│  src/tools/pak/pak_main.cpp  — pak.exe (PAK1)   ← M15   │
 └─────────────────────────────────────────────────────────┘
            │                    │
            ▼  cook step         ▼  cook step
@@ -52,27 +56,31 @@
 │      │   ├─ EntityManager                                │
 │      │   └─ ComponentPool<T>[N]                          │
 │      ├─ D3D11Renderer        ← IRenderer interface       │
-│      │   ├─ PBR pipeline     ← M9: Cook-Torrance BRDF     │
-│      │   ├─ SkyRenderer      ← M10: time-of-day sky       │
-│      │   └─ WeatherFx        ← M10: fog/rain/cloud        │
+│      │   ├─ PBR pipeline     ← M9: Cook-Torrance BRDF    │
+│      │   ├─ SkyRenderer      ← M10: time-of-day sky      │
+│      │   ├─ WeatherFx        ← M10: fog/rain/cloud       │
+│      │   ├─ FontRenderer     ← Post-M10: SDF text        │
+│      │   └─ [depth buffer ⬜; IBL ⬜; shadows ⬜; bloom ⬜]│
 │      ├─ GameRuntime (M8)     ← drives all gameplay       │
-│      │   ├─ CombatSystem     ← ATB + damage              │
+│      │   ├─ CombatSystem     ← ATB + damage (🔨 combo⬜) │
 │      │   ├─ AISystem         ← FSM + A* pathfinding      │
 │      │   ├─ WeatherSystem    ← day/night cycle           │
 │      │   ├─ QuestSystem      ← objective tracking        │
+│      │   ├─ DialogueSystem   ← NPC interactions (M8.6)   │
 │      │   ├─ InputMapper      ← keyboard → ECS (M8.2)     │
 │      │   ├─ CameraSystem     ← third-person orbit (M8.3) │
-│      │   ├─ DialogueSystem   ← NPC interactions (M8.6)   │
-│      │   ├─ SaveSystem       ← 15 slots + auto-save (M8.8)│
+│      │   ├─ SaveSystem       ← 15 slots + auto-save      │
 │      │   └─ GameStreamingMgr ← live cell streaming (M8.7)│
-│      │       ├─ WorldStreamingManager (engine layer)     │
-│      │       ├─ WorldPartition (spatial grid)            │
-│      │       ├─ AsyncLoader (worker thread)              │
-│      │       └─ Zone (per-cell entity lifecycle)         │
 │      ├─ AnimationSystem      ← M4 CPU + GPU skinning     │
 │      ├─ PhysicsWorld         ← M5 Jolt Physics           │
-│      ├─ AudioSystem          ← M3 XAudio2                │
-│      ├─ Hud                  ← M8.5 ImGui overlay        │
+│      ├─ AudioSystem          ← M3 XAudio2 (🔨 3D attn⬜) │
+│      ├─ VehicleSystem        ← M11 wheel-ray physics     │
+│      ├─ BehaviourTree        ← M12 BtTree/Seq/Sel        │
+│      ├─ FormationSystem      ← M12 LINE/V/CIRCLE         │
+│      ├─ NavMesh (grid A*)    ← M12 pathfinding           │
+│      ├─ CinematicSequencer   ← M13 shot/cut runtime      │
+│      ├─ CameraRig            ← M13 keyframe Lerp          │
+│      ├─ Hud + MenuStack      ← M8.5 + Post-M10           │
 │      ├─ LuaEngine            ← Lua 5.4 scripting         │
 │      └─ EventBus<T>          ← Combat/Quest/World/UI     │
 └─────────────────────────────────────────────────────────┘
@@ -134,7 +142,13 @@ QuestSystem; it just emits a CombatEvent and QuestSystem subscribes.
 - **Windows (default):** D3D11 (`src/engine/rendering/d3d11/D3D11Renderer.hpp/.cpp`).
   Win32 window + D3D11 device + swapchain + per-frame clear.  Runs on GT610-era GPUs.
   Uses D3D11 WARP (CPU software rasteriser) in headless CI mode — no GPU driver needed.
-  Scenes: `textured_quad`, `skinned_mesh`, `pbr_mesh` (M9 Cook-Torrance BRDF), `dynamic_sky` (M10).
+  **Active scenes:** `textured_quad`, `skinned_mesh`, `pbr_mesh` (M9 Cook-Torrance BRDF),
+  `dynamic_sky` (M10), `vehicle_test` (M11), `bt_test` (M12), `cinematic_test` (M13),
+  `font_test` (M15), `menu_stack_test` (Post-M10), `m8_gameplay`, `m8_streaming`,
+  `streaming_load`, `streaming_evict`, `streaming_async`, `physics_test`.
+  > **Depth buffer note:** D3D11 depth buffer (DSV + `DepthStencilState`) is **⬜ not yet
+  > created**.  The `DrawFrame` path binds the RTV with `nullptr` DSV (confirmed in source).
+  > This is required before shadow maps (M17) and recommended before IBL (M16).
 - **Windows (optional):** Vulkan (`src/engine/rendering/vulkan/VulkanRenderer.hpp/.cpp`).
   High-end modern API; requires Vulkan SDK.  Select with `--renderer vulkan`.
 - **Linux:** ncurses ASCII renderer (`src/engine/rendering/Renderer.hpp`).
@@ -164,6 +178,78 @@ Scripts in `scripts/` define hook functions called by C++:
 `on_combat_start`, `on_camp_rest`, `on_level_up`, `on_explore_update`.
 
 ---
+
+### Post-M10 Subsystems (all ✅)
+
+#### Vehicle Physics (M11)
+
+`src/engine/vehicle/vehicle_system.hpp/.cpp` — `VehicleSystem`:
+- Per-wheel ray cast suspension; spring-damper forces; Ackermann steering correction.
+- `VehicleComponent` with `WheelState`×4 (spring compression, damping, contact point).
+- Fuel drain; velocity damping; ECS integration.
+- Vehicle chase camera wired in `src/engine/rendering/camera_system.hpp/.cpp`.
+
+#### Behaviour Tree AI (M12)
+
+`src/engine/ai/behaviour_tree.hpp/.cpp`:
+- `BtBlackboard` — type-erased key/value store for inter-node communication.
+- `BtNode` base; `BtSequence` (AND); `BtSelector` (OR); `BtCondition`; `BtAction`.
+- `BtTree` — owns the root node, drives `Tick(blackboard)` each frame.
+
+`src/engine/ai/formation_system.hpp/.cpp` — `FormationSystem`:
+- Supports LINE, V_SHAPE, CIRCLE formation types.
+- `AssignFormation(entityIDs, leader, type)` → greedy slot assignment.
+- `GetWorldOffset(slot, leaderTransform)` → world-space position per member.
+
+`src/engine/ai/nav_mesh.hpp/.cpp` — grid `NavMesh`:
+- `BakeFromGrid(walkabilityGrid, width, height)` / `BakeEmpty(w, h)` / `SetWalkable(x, y, v)`.
+- `FindPath(start, goal)` → `std::vector<Vec3>`; A\* with 4-dir + diagonal movement; obstacle routing.
+
+#### Cinematics (M13 — runtime ✅, tool ⬜)
+
+`src/engine/cinematics/camera_rig.hpp/.cpp` — `CameraRig`:
+- Stores a sorted list of `{time, eyePos, lookAtPos}` keyframes.
+- `Evaluate(t)` — binary-search bracket + linear Lerp for smooth interpolation.
+- `Duration()`, `KeyframeCount()`.
+
+`src/engine/cinematics/cinematic_sequencer.hpp/.cpp` — `CinematicSequencer`:
+- Owns a sequence of shots, each referencing a `CameraRig` + optional audio event.
+- `Play()` / `Stop()` / `Tick(dt)` — advances time across shot boundaries.
+- `ApplyToCamera(world, entityID)` — writes `cinematicEyePos` / `cinematicLookAt` into the
+  entity's `CameraComponent`; sets `cinematicOverride = true` so `CameraSystem` bypasses orbit math.
+- `OnShotChanged` and `OnComplete` callbacks for game-layer notification.
+
+ECS integration: `CameraComponent` has `cinematicOverride` (bool), `cinematicEyePos` (Vec3),
+`cinematicLookAt` (Vec3) fields.  `CameraSystem::Update` checks `cinematicOverride` first.
+
+#### UI Systems (Post-M10)
+
+`src/engine/ui/menu_stack.hpp/.cpp` — `MenuStack`:
+- Push/pop/PopToBase navigation; `Contains(screen)` predicate; `OnScreenChanged` callback.
+- `MenuScreen` enum: 9 screen types (NONE/MAIN/INVENTORY/EQUIPMENT/MAP/QUEST/SHOP/CAMP/PAUSE).
+
+`src/engine/ui/font_renderer.hpp/.cpp` — `FontRenderer`:
+- Generates an 8×8 bitmap SDF atlas covering 96 printable ASCII glyphs at construction time.
+- Uploads as `DXGI_FORMAT_R8_UNORM` D3D11 texture (single-channel, mipmapped).
+- `RenderText(device, context, text, x, y, scale, rgba)` — builds a dynamic VB of quads (6 verts each).
+- Uses `shaders/sdf_text.vs.hlsl` + `shaders/sdf_text.ps.hlsl` (SM 4.0).
+- Alpha-blending state (`D3D11_BLEND_SRC_ALPHA` / `D3D11_BLEND_INV_SRC_ALPHA`).
+
+#### PAK Packager (M15)
+
+`src/tools/pak/pak_main.cpp` — `pak.exe`:
+- PAK1 binary format: 4-byte magic `PAK1` + 4-byte entry count + per-entry (32-byte path hash, 8-byte offset, 8-byte size) TOC + blobs.
+- `--input <dir> --output <file>` — packs an entire directory tree.
+- `--list <pakfile>` — lists all entries with path + size.
+- `--extract <pakfile> --output <dir>` — extracts with path traversal protection.
+
+#### Save System (M8.8)
+
+`src/engine/save/save_system.hpp/.cpp` — `SaveSystem`:
+- 15 numbered save slots + auto-save slot; JSON ECS snapshot format.
+- Serialises all ECS component state per-entity via `SceneSerialiser`.
+- `"version"` field supports forward migration for future schema changes.
+- Wired to `CampSystem` auto-save hook in `GameRuntime`.
 
 ## Dear ImGui Editor Architecture
 
