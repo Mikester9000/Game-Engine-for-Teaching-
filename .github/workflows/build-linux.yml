@@ -171,3 +171,7 @@ jobs:
         run: |
           cd tools/quest_baker
           python -m pytest tests/ -q --tb=short
+
+      - name: Run creation_engine baker tests (M21)
+        run: |
+          python -m pytest tools/tests/test_creation_engine_bakers.py -q --tb=short

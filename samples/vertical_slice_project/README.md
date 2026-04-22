@@ -11,6 +11,8 @@ vertical_slice_project/
 ├── AssetRegistry.json    ← Asset catalog (updated by cook_assets.py)
 ├── cook_assets.py        ← One-command asset cook script
 ├── Content/              ← Raw source assets (version-controlled)
+│   ├── AI/               ← Sample OBJ geometry for nav-mesh baking (M21)
+│   ├── environment/      ← Sample time-of-day curve JSON (M21)
 │   ├── Textures/         ← PNG placeholder textures
 │   ├── Audio/            ← WAV placeholder audio
 │   ├── Maps/             ← Scene JSON files (MainTown, Dungeon, etc.)
@@ -71,6 +73,20 @@ Expected output:
 
 4. **Animations**: Use `tools/anim_authoring/` to export animation clips as
    JSON to `Content/Animations/`. Run cook. They appear in `Cooked/Anim/`.
+
+5. **Nav-mesh (M21)**: Bake OBJ geometry to a cooked nav-mesh:
+   ```bash
+   python ../../tools/creation_engine.py bake-navmesh \
+       --input Content/AI/arena_plane.obj \
+       --output Cooked/AI/arena_plane.navmesh
+   ```
+
+6. **Time-of-day LUT (M21)**: Bake ToD curves to `tod.lut`:
+   ```bash
+   python ../../tools/creation_engine.py bake-tod \
+       --input Content/environment/tod.json \
+       --output Cooked/environment/tod.lut
+   ```
 
 ## Next steps (Milestone 2)
 
