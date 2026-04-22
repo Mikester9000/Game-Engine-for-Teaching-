@@ -265,7 +265,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: Post-M10 Cinematics runtime ✅ complete (CinematicSequencer + CameraRig + cinematic_test CI). Cut-scene baker tool + editor panel ⬜. Next: M16 D3D11 depth buffer + IBL → M17 shadow maps + bloom → M18 X3DAudio → M19–M22 combat/quest/tool gaps → M23 Vulkan.**
+> **Current position: Post-M10 Cinematics runtime ✅ complete (CinematicSequencer + CameraRig + cinematic_test CI). Cut-scene baker tool + editor panel ⬜. Next: M16 D3D11 depth buffer + IBL → M17 shadow maps + bloom → M18 X3DAudio → M19–M22 combat/quest/tool gaps → M14 Vulkan.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -287,7 +287,7 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | **5** | **M20: Quest/dialogue tools + tests** | Quest baker; `--headless --scene quest_test` + `dialogue_test` CI |
 | **6** | **M21: Tool stubs** | Nav-mesh baker; tod.lut baker; pytest for each |
 | **7** | **M22: Cinematic baker + editor panel** | `bake_cinematic()`; `CinematicEditorPanel` |
-| **Future** | **M23: Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
+| **Future** | **M14: Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
 
@@ -830,7 +830,7 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | M20 | Quest/dialogue tools + tests | ⬜ |
 | M21 | Nav-mesh baker + tod.lut baker | ⬜ |
 | M22 | Cut-scene baker + cinematic editor panel | ⬜ |
-| M23 | Vulkan catch-up | ⬜ Deferred |
+| M23 | Vulkan catch-up | ⬜ Deferred — merged into M14, no separate M23 |
 
 ---
 

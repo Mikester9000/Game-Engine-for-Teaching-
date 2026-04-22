@@ -207,7 +207,7 @@ The following items are needed to satisfy the "Project Completion Definition" in
 | **M20** | Quest/dialogue tools + tests | `creation_engine.py` quest baker; `--headless --scene quest_test` CI (start→complete→reward cycle; prereq guard) |
 | **M21** | Missing tool stubs | Nav-mesh baker (`.obj` → `.navmesh`); tod.lut baker (`tod.json` → `cooked/environment/tod.lut`) |
 | **M22** | Cinematic tool + editor | Cut-scene baker (timeline JSON → cooked `.cinematic`); cinematic editor panel in Dear ImGui editor |
-| **M23** | Vulkan catch-up | All DEFERRED Vulkan items: textures, descriptors, depth buffer, PBR, skinning, sky, HUD |
+| **M14** | Vulkan catch-up | All DEFERRED Vulkan items: textures, descriptors, depth buffer, PBR, skinning, sky, HUD (no separate M23) |
 
 ---
 
@@ -327,12 +327,13 @@ with the engine executable; `--validate-project` exits 0 on the packed output.
 (IBL) so the PBR pipeline has physically correct ambient lighting from an environment map.
 This is required by the "visuals quality bar" in the Project Completion Definition.
 
-> **D3D11 policy:** This is D3D11-only. Vulkan IBL is deferred to M23.
+> **D3D11 policy:** This is D3D11-only. Vulkan IBL is deferred to M14.
 
 | Item | Status |
 |------|--------|
 | D3D11 depth buffer — create `ID3D11Texture2D` + `ID3D11DepthStencilView` + `ID3D11DepthStencilState`; bind DSV in `DrawFrame`; resolve in `RecreateSwapchain` | ⬜ |
-| PBR texture maps — albedo (BC1/BC7), metallic-roughness (BC5), normal (BC5), AO (R8); D3D11 sampler + SRV in `PBRScene`; update `pbr_mesh.ps.hlsl` to sample textures | ⬜ |
+| Extend `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` DDS support to include BC5 (`DXGI_FORMAT_BC5_UNORM`) and R8 (`DXGI_FORMAT_R8_UNORM`) so M16 PBR textures match the runtime loader's supported formats | ⬜ |
+| PBR texture maps — albedo (BC1/BC7), metallic-roughness (BC5), normal (BC5), AO (R8); create D3D11 sampler + SRVs in `PBRScene`; update `pbr_mesh.ps.hlsl` to sample textures after BC5/R8 loader support is in place | ⬜ |
 | IBL irradiance cubemap — precomputed diffuse irradiance; load DDS cubemap array; `shaders/ibl_irradiance.cs.hlsl` offline bake tool or pre-baked DDS asset | ⬜ |
 | IBL prefiltered environment map — split-sum approximation (Epic Games method); roughness-mipped specular cube | ⬜ |
 | IBL BRDF LUT — precomputed `IntegrateBRDF` table; R16G16 texture; use in `pbr_mesh.ps.hlsl` | ⬜ |
@@ -449,22 +450,8 @@ produces cooked quest data and a headless acceptance test validating quest lifec
 
 ---
 
-## Milestone 23 — Vulkan Catch-up ⬜ *(deferred — do NOT start until explicitly instructed)*
-
-**Goal:** Bring the Vulkan backend to parity with D3D11 (textures, PBR, GPU skinning, sky, HUD).
-See **"Vulkan — Deferred Requirements Reference"** in `.github/copilot-instructions.md` for the full list.
-
-| Item | Status |
-|------|--------|
-| `src/engine/rendering/vulkan/vulkan_texture.hpp/.cpp` — DDS/BC7 → `VkImage` (DirectXTex) | ⬜ |
-| `src/engine/rendering/vulkan/vulkan_descriptor.hpp/.cpp` — pool + layout + set; sampler at binding 0 | ⬜ |
-| `shaders/textured_quad.vert/.frag` — GLSL UV quad shaders; add to `GLSL_SHADERS` | ⬜ |
-| Vulkan depth buffer — `VK_FORMAT_D32_SFLOAT` in `VulkanRenderer::Init` | ⬜ |
-| Vulkan PBR pipeline — IBL + directional light; metallic-roughness workflow | ⬜ |
-| `shaders/skinned_mesh.vert/.frag` — GLSL skinning shaders; Vulkan UBO for joint matrices | ⬜ |
-| `shaders/sky.vert/.frag` — GLSL sky shaders; Vulkan sky pipeline in `VulkanRenderer` | ⬜ |
-| Vulkan HUD — imgui Vulkan backend bound to Vulkan render pass | ⬜ |
-| `build-windows-vulkan` CI job: `--renderer vulkan --headless --scene textured_quad` | ⬜ |
+> **Note:** Vulkan catch-up is tracked as **Milestone 14** (see the M14 section above).
+> There is no separate M23; all Vulkan deferred items are consolidated under M14.
 
 ---
 
@@ -508,7 +495,7 @@ See **"Vulkan — Deferred Requirements Reference"** in `.github/copilot-instruc
 | M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
 | M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |
 | M22 | Cut-scene baker + cinematic editor panel | ⬜ Not started (required for DoD) |
-| M23 | Vulkan catch-up (full D3D11 parity) | ⬜ Deferred |
+| M14 | Vulkan catch-up (full D3D11 parity) | ⬜ Deferred (see M14 section above; no separate M23) |
 
 ---
 

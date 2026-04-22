@@ -175,7 +175,7 @@ in-engine, not pre-rendered video.
 | | `ECS.hpp` — `CameraComponent.cinematicOverride` flag + `cinematicEyePos` / `cinematicLookAt` fields ✅ |
 | **Tool component(s)** | `tools/creation_engine.py` — cut-scene baker (timeline JSON → cooked `.cinematic`) ⬜ not yet implemented |
 | | Cut-scene editor panel in `editor/` ⬜ not yet implemented |
-| **Data formats** | Source: `scenes/*.cinematic.json`; Cooked: `cooked/scenes/<id>.cinematic` ⬜ schema defined but baker ⬜ |
+| **Data formats** | Source: `scenes/*.cinematic.json`; Cooked: `cooked/scenes/<id>.cinematic` ⬜ source schema `shared/schemas/cinematic.schema.json` not yet created; baker ⬜ not yet implemented (M22) |
 | **Acceptance tests** | `--headless --scene cinematic_test`: 3 tests (camera position, shot advance, callback) ✅ (Post-M10) |
 | | Timed audio event fires within ±1 frame of declared time ⬜ |
 
@@ -265,7 +265,7 @@ and idle tracks blend based on game state.
 | **Data formats** | Source: `audio/*.wav` + `audio-manifest.json`; Cooked: `cooked/audio/<id>.wav` |
 | **Acceptance tests** | `audio_engine.py consume --manifest ... --list` exits 0 and prints all clips ✅ |
 | | Python audio_authoring: 32 tests pass ✅ |
-| | XAudio2 backend initialises headlessly; `AudioSystem::Update` starts voice for `is3D=false` clips ✅ |
+| | XAudio2 backend initialises headlessly; `AudioSystem::Update` starts voice for `is3D=false` clips ⬜ (no dedicated headless `--scene` for audio in CI yet) |
 | | X3DAudio 3D emitter: play at world position, attenuate by distance, assert volume drops ≥50% at `maxDistance/2` ⬜ |
 
 ---
@@ -296,18 +296,16 @@ react-to-hit, death.  FF15's Noctis has hundreds of clips blended in real time.
 
 ## 10. Physics
 
-**Status:** ✅ Runtime + Tests complete (M5) · 🔨 collision mesh baker tool (stub)
+**Status:** ✅ Runtime + Tests complete (M5) · ⬜ collision mesh baker tool not started
 
 **Purpose:** Collision, gravity, character controller, and combat hit queries.
 FF15's open world needs accurate terrain collision for characters and vehicles.
 
 > **Verification note (2026-04-22):** All runtime components fully implemented (M5 ✅).
-> `tools/creation_engine.py` collision mesh baker is a stub — does not yet bake `.obj`
-> to cooked convex/mesh shapes.  The Physics row in the Completion Matrix below is
-> updated accordingly from ✅/✅/✅ → ✅/🔨/✅.
-
-**Purpose:** Collision, gravity, character controller, and combat hit queries.
-FF15's open world needs accurate terrain collision for characters and vehicles.
+> `tools/creation_engine.py` currently does not provide a collision mesh baker command
+> or `.obj`-to-cooked collision baking stub — the file only contains manifest
+> register/emit/consume/list commands.  The Physics row in the Completion Matrix
+> is therefore updated accordingly from ✅/✅/✅ → ✅/⬜/✅.
 
 | Field | Detail |
 |---|---|
@@ -420,7 +418,7 @@ teaching slice but must follow the same pipeline shape.
 | 7 | Weather & time-of-day | ✅ | ⬜ | ✅ | SkyRenderer + WeatherFx + D3D11 sky pipeline + `dynamic_sky` CI ✅ (M10); tod.lut curve baker ⬜ |
 | 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + music FSM ✅ (M3); X3DAudio 3D positional audio 🔨 (scaffolded, not computed) |
 | 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
-| 10 | Physics | ✅ | 🔨 | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent` ✅; collision mesh baker ⬜ stub |
+| 10 | Physics | ✅ | ⬜ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent` ✅; collision mesh baker ⬜ not started |
 | 11 | UI | ✅ | ⬜ | ✅ | D3D11 ImGui HUD ✅ (M8.5); `MenuStack` + 6-test CI ✅ (Post-M10); `FontRenderer` SDF text + `font_test` CI ✅ (Post-M10); font atlas baker tool ⬜ |
 | 12 | Save system | ✅ | ✅ | ✅ | `SaveSystem`: 15 slots + auto-save + `"version"` migration field; JSON ECS snapshot ✅ (M8.8) |
 | 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI ✅; `pak.exe` PAK1 packager ✅ (Post-M10) |
@@ -452,4 +450,4 @@ All are D3D11-only per the active policy.  Vulkan parity is deferred.
 | Time-of-day LUT baker (`tod.json` curves → `cooked/environment/tod.lut`) | ⬜ | — | M21 |
 | Cut-scene baker tool (timeline JSON → cooked `.cinematic`) | ⬜ | — | M22 |
 | Cinematic editor panel in Dear ImGui editor | ⬜ | baker | M22 |
-| Vulkan catch-up (textures, descriptors, PBR, skinning, sky, HUD) | ⬜ | D3D11 complete | M23 |
+| Vulkan catch-up (textures, descriptors, PBR, skinning, sky, HUD) | ⬜ | D3D11 complete | M14 |

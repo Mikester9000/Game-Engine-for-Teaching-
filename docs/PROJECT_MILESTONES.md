@@ -595,7 +595,7 @@ sun elevation formula validated; weather fog transitions validated.
 | M20 | Quest / Dialogue Tools + Tests | Quest baker; `--headless --scene quest_test` + `dialogue_test` | ⬜ Not started |
 | M21 | Tool Stubs: Nav-mesh + ToD LUT | Nav-mesh baker; tod.lut baker | ⬜ Not started |
 | M22 | Cinematic Baker + Editor Panel | `bake_cinematic()`; `CinematicEditorPanel.hpp/.cpp` | ⬜ Not started |
-| M23 | Vulkan Catch-up | All DEFERRED Vulkan items (textures, descriptors, PBR, skinning, sky, HUD) | ⬜ Deferred |
+| M14 | Vulkan Catch-up | All DEFERRED Vulkan items (textures, descriptors, PBR, skinning, sky, HUD) — see M14 section; no separate M23 | ⬜ Deferred |
 
 ---
 
@@ -629,5 +629,5 @@ sun elevation formula validated; weather fog transitions validated.
 | M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
 | M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |
 | M22 | Cut-scene baker + cinematic editor panel | ⬜ Not started (required for DoD) |
-| M23 | Vulkan catch-up | ⬜ Deferred |
+| M23 | Merged into M14 Vulkan Catch-up (do not track separately) | — |
 
