@@ -104,7 +104,7 @@ def _load_schema(path: Path | None = None) -> Dict[str, Any]:
         return json.load(fh)
 
 
-def _load_json_object(path: Path) -> Dict[str, Any] | None:
+def _try_load_json_object(path: Path) -> Dict[str, Any] | None:
     """Read a JSON file and return its root object, or None on parse/read error."""
     try:
         with path.open(encoding="utf-8") as fh:
@@ -170,7 +170,7 @@ def _resolve_schema_for_file(
     if explicit_schema_path is not None:
         schema_path = explicit_schema_path
     else:
-        manifest = _load_json_object(manifest_path)
+        manifest = _try_load_json_object(manifest_path)
         if manifest is not None and _is_asset_registry_manifest(manifest):
             schema_path = _ASSET_REGISTRY_SCHEMA_PATH
         else:
@@ -394,9 +394,8 @@ _REGISTRY_ASSET_VALID_TYPES = {
     "scene", "skeleton", "anim_clip", "anim_graph",
     "script", "font", "tilemap", "level",
 }
-_UUID_V4_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-)
+_UUID_V4_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+_UUID_V4_RE = re.compile(_UUID_V4_PATTERN)
 
 
 def _validate_registry_builtin(
@@ -565,8 +564,8 @@ def _collect_manifests(path: Path) -> List[Path]:
             if (
                 not f.name.endswith(".schema.json")
                 and (
-                    "manifest" in f.name.lower()
-                    or f.name.lower() == "assetregistry.json"
+                    "manifest" in (name_lower := f.name.lower())
+                    or name_lower == "assetregistry.json"
                 )
             )
         )
