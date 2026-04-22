@@ -175,7 +175,7 @@ in-engine, not pre-rendered video.
 | | `ECS.hpp` — `CameraComponent.cinematicOverride` flag + `cinematicEyePos` / `cinematicLookAt` fields ✅ |
 | **Tool component(s)** | `tools/creation_engine.py` — cut-scene baker (timeline JSON → cooked `.cinematic`) ⬜ not yet implemented |
 | | Cut-scene editor panel in `editor/` ⬜ not yet implemented |
-| **Data formats** | Source: `scenes/*.cinematic.json`; Cooked: `cooked/scenes/<id>.cinematic` ⬜ source schema `shared/schemas/cinematic.schema.json` not yet created; baker ⬜ not yet implemented (M22) |
+| **Data formats** | Source: `scenes/*.cinematic.json`; Cooked: `cooked/scenes/<id>.cinematic` ✅ source schema `shared/schemas/cinematic.schema.json`; baker ✅ implemented in `tools/creation_engine.py bake-cinematic` (M22) |
 | **Acceptance tests** | `--headless --scene cinematic_test`: 3 tests (camera position, shot advance, callback) ✅ (Post-M10) |
 | | Timed audio event fires within ±1 frame of declared time ⬜ |
 
@@ -442,6 +442,6 @@ All are D3D11-only per the active policy.  Vulkan parity is deferred.
 | Quest/dialogue headless acceptance tests (`--scene quest_test`) | ⬜ | baker | M20 |
 | Nav-mesh baker tool (`creation_engine.py` bake `.obj` → `.navmesh`) | ⬜ | — | M21 |
 | Time-of-day LUT baker (`tod.json` curves → `cooked/environment/tod.lut`) | ⬜ | — | M21 |
-| Cut-scene baker tool (timeline JSON → cooked `.cinematic`) | ⬜ | — | M22 |
-| Cinematic editor panel in Dear ImGui editor | ⬜ | baker | M22 |
+| Cut-scene baker tool (timeline JSON → cooked `.cinematic`) | ✅ | — | M22 |
+| Cinematic editor panel in Dear ImGui editor | ✅ | baker | M22 |
 | Vulkan catch-up (textures, descriptors, PBR, skinning, sky, HUD) | ⬜ | D3D11 complete | M14 |

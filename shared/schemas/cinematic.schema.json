@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "cinematic.schema.json",
+  "title": "CinematicTimeline",
+  "description": "Defines source timeline data for authored cut-scenes (M22). TEACHING NOTE — The cinematic baker validates this schema once, then emits compact binary data so runtime playback avoids JSON parsing costs.",
+  "type": "object",
+  "required": ["version", "id", "shots"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "description": "SemVer version of this cinematic source file."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable cinematic identifier used by editor and runtime references."
+    },
+    "shots": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of timeline shots.",
+      "items": { "$ref": "#/definitions/Shot" }
+    }
+  },
+  "definitions": {
+    "Shot": {
+      "type": "object",
+      "required": ["label", "duration", "keyframes"],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable shot label (e.g., intro_pan, reveal_boss)."
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Shot duration in seconds."
+        },
+        "keyframes": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Camera keyframes for this shot, sorted by time.",
+          "items": { "$ref": "#/definitions/Keyframe" }
+        },
+        "audioEvents": {
+          "type": "array",
+          "description": "Optional audio trigger events during this shot.",
+          "items": { "$ref": "#/definitions/AudioEvent" }
+        }
+      }
+    },
+    "Keyframe": {
+      "type": "object",
+      "required": ["time", "position", "lookAt", "fov"],
+      "additionalProperties": false,
+      "properties": {
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Keyframe time (seconds) relative to shot start."
+        },
+        "position": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Camera world-space position [x, y, z]."
+        },
+        "lookAt": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3,
+          "description": "Camera look target [x, y, z]."
+        },
+        "fov": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Vertical field-of-view in degrees."
+        }
+      }
+    },
+    "AudioEvent": {
+      "type": "object",
+      "required": ["time", "event"],
+      "additionalProperties": false,
+      "properties": {
+        "time": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Event fire time (seconds) within shot."
+        },
+        "event": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Audio command name (play_sfx, stop_music, etc.)."
+        },
+        "clipID": {
+          "type": "string",
+          "description": "Optional clip identifier used by the event."
+        }
+      }
+    }
+  }
+}

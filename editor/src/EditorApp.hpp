@@ -55,6 +55,7 @@
 #include "SceneEditorPanel.hpp"
 #include "panels/SceneHierarchyPanel.hpp"
 #include "panels/InspectorPanel.hpp"
+#include "panels/CinematicEditorPanel.hpp"
 
 /**
  * @class EditorApp
@@ -108,12 +109,14 @@ private:
     SceneEditorPanel     m_sceneEditor;      ///< Scene canvas (owns entity data)
     SceneHierarchyPanel  m_hierarchy;        ///< M6: entity list panel
     InspectorPanel       m_inspector;        ///< M6: property editor panel
+    CinematicEditorPanel m_cinematicEditor;  ///< M22: timeline + keyframe authoring panel
 
     std::string  m_projectPath;      ///< Absolute path to currently open project
     std::string  m_statusMessage;    ///< Bottom status bar text
     float        m_statusTimer = 0;  ///< Seconds remaining to show transient status
 
     bool         m_showAbout             = false;   ///< Show the About popup this frame
+    bool         m_showCinematicEditor   = true;    ///< Show Cinematic Editor panel
 
     // TEACHING NOTE — M7.5: World Streaming debug overlay toggle
     // ────────────────────────────────────────────────────────────

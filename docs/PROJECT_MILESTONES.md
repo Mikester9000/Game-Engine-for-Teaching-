@@ -553,12 +553,11 @@ sun elevation formula validated; weather fog transitions validated.
 | `CameraComponent.cinematicOverride` + `cinematicEyePos` + `cinematicLookAt` in `ECS.hpp` | ✅ |
 | `CameraSystem` reads `cinematicOverride` flag to bypass orbit math | ✅ |
 | `--headless --scene cinematic_test` CI: 3 tests (camera position, shot advance, callback) | ✅ |
-| `shared/schemas/cinematic.schema.json` — JSON Schema for source cinematic format | ⬜ (M22) |
-| `tools/creation_engine.py` `bake_cinematic()` — timeline JSON → cooked `.cinematic` | ⬜ (M22) |
-| Cinematic editor panel in `editor/` — shot timeline, keyframe edit, preview | ⬜ (M22) |
+| `shared/schemas/cinematic.schema.json` — JSON Schema for source cinematic format | ✅ (M22) |
+| `tools/creation_engine.py` `bake-cinematic` — timeline JSON → cooked `.cinematic` | ✅ (M22) |
+| Cinematic editor panel in `editor/` — shot timeline, keyframe edit, preview | ✅ (M22) |
 
-**Done means (partial):** `--headless --scene cinematic_test` exits 0 in CI.  
-**Remaining:** baker tool + editor panel (tracked as M22).
+**Done means:** `--headless --scene cinematic_test` exits 0 in CI and M22 authoring/tooling deliverables are implemented.
 
 ---
 
@@ -594,7 +593,7 @@ sun elevation formula validated; weather fog transitions validated.
 | M19 | Action Combat Completion | `combo_system.hpp/.cpp`; `combat_config.json` loader; `--headless --scene combat_test` | ⬜ Not started |
 | M20 | Quest / Dialogue Tools + Tests | Quest baker; `--headless --scene quest_test` + `dialogue_test` | ⬜ Not started |
 | M21 | Tool Stubs: Nav-mesh + ToD LUT | Nav-mesh baker; tod.lut baker | ⬜ Not started |
-| M22 | Cinematic Baker + Editor Panel | `bake_cinematic()`; `CinematicEditorPanel.hpp/.cpp` | ⬜ Not started |
+| M22 | Cinematic Baker + Editor Panel | `bake-cinematic`; `CinematicEditorPanel.hpp/.cpp` | ✅ Complete |
 | M14 | Vulkan Catch-up | All DEFERRED Vulkan items (textures, descriptors, PBR, skinning, sky, HUD) — see M14 section; no separate M23 | ⬜ Deferred |
 
 ---
@@ -628,6 +627,5 @@ sun elevation formula validated; weather fog transitions validated.
 | M19 | Action combat completion | ⬜ Not started (required for DoD) |
 | M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
 | M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |
-| M22 | Cut-scene baker + cinematic editor panel | ⬜ Not started (required for DoD) |
+| M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
 | M23 | Merged into M14 Vulkan Catch-up (do not track separately) | — |
-

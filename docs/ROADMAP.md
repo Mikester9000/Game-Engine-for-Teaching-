@@ -284,8 +284,8 @@ party members and bosses can execute complex multi-step strategies.
 | `src/engine/cinematics/camera_rig.hpp/.cpp` — keyframed camera path, binary-search Lerp, `Duration()` / `Evaluate()` | ✅ |
 | `CameraComponent.cinematicOverride` + `cinematicEyePos` / `cinematicLookAt` in `ECS.hpp` | ✅ |
 | `--scene cinematic_test` headless CI: 3 tests (camera position accuracy, shot advance, callback) | ✅ |
-| `tools/creation_engine.py` — cut-scene baker (timeline JSON → cooked `.cinematic`) | ⬜ (M22) |
-| Cinematic editor panel in `editor/` (shot timeline, add/remove keyframes) | ⬜ (M22) |
+| `tools/creation_engine.py` — cut-scene baker (`bake-cinematic`, timeline JSON → cooked `.cinematic`) | ✅ (M22) |
+| Cinematic editor panel in `editor/` (shot timeline, add/remove keyframes) | ✅ (M22) |
 
 ---
 
@@ -445,8 +445,8 @@ produces cooked quest data and a headless acceptance test validating quest lifec
 | Item | Status |
 |------|--------|
 | `shared/schemas/cinematic.schema.json` — JSON Schema for `scenes/*.cinematic.json` source format (shots array, keyframes, audio events) | ⬜ |
-| `tools/creation_engine.py` — `bake_cinematic(json_path, out_path)`: validate JSON, serialise shot list to binary `cooked/scenes/<id>.cinematic` | ⬜ |
-| Cinematic editor panel (`editor/src/panels/CinematicEditorPanel.hpp/.cpp`) — timeline strip, shot add/remove/reorder, keyframe property editor, preview playback in editor viewport | ⬜ |
+| `tools/creation_engine.py` — `bake-cinematic`: validate JSON, serialise shot list to binary `cooked/scenes/<id>.cinematic` | ✅ |
+| Cinematic editor panel (`editor/src/panels/CinematicEditorPanel.hpp/.cpp`) — timeline strip, shot add/remove/reorder, keyframe property editor, preview playback in editor viewport | ✅ |
 
 ---
 
@@ -494,7 +494,7 @@ produces cooked quest data and a headless acceptance test validating quest lifec
 | M19 | Action combat completion (combo FSM + config + tests) | ⬜ Not started (required for DoD) |
 | M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
 | M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |
-| M22 | Cut-scene baker + cinematic editor panel | ⬜ Not started (required for DoD) |
+| M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
 | M14 | Vulkan catch-up (full D3D11 parity) | ⬜ Deferred (see M14 section above; no separate M23) |
 
 ---

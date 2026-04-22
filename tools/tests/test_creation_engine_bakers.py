@@ -127,3 +127,97 @@ def test_bake_tod_rejects_missing_keys(tmp_path: Path) -> None:
         assert "keys" in str(exc).lower()
     else:
         raise AssertionError("Expected bake_tod to raise ValueError")
+
+
+def test_bake_cinematic_writes_expected_binary_layout(tmp_path: Path) -> None:
+    """Baking cinematic JSON writes CIN1 header and encoded shot payload."""
+    src = tmp_path / "intro.cinematic.json"
+    src.write_text(
+        json.dumps(
+            {
+                "version": "1.0.0",
+                "id": "intro_cutscene",
+                "shots": [
+                    {
+                        "label": "intro_pan",
+                        "duration": 3.0,
+                        "keyframes": [
+                            {
+                                "time": 0.0,
+                                "position": [0.0, 5.0, -10.0],
+                                "lookAt": [0.0, 1.5, 0.0],
+                                "fov": 55.0,
+                            },
+                            {
+                                "time": 3.0,
+                                "position": [4.0, 4.0, -6.0],
+                                "lookAt": [0.0, 1.2, 1.0],
+                                "fov": 50.0,
+                            },
+                        ],
+                        "audioEvents": [
+                            {"time": 0.5, "event": "play_sfx", "clipID": "whoosh_01"}
+                        ],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    out_path = tmp_path / "cooked" / "cinematics" / "intro.cinematic"
+    stats = ce.bake_cinematic(src, out_path)
+
+    blob = out_path.read_bytes()
+    header_size = struct.calcsize("<4sHHHH")
+    assert len(blob) > header_size
+    magic, version, shots, total_keyframes, total_events = struct.unpack(
+        "<4sHHHH", blob[:header_size]
+    )
+    assert magic == b"CIN1"
+    assert version == 1
+    assert shots == 1
+    assert total_keyframes == 2
+    assert total_events == 1
+    assert stats["shots"] == 1
+    assert stats["keyframes"] == 2
+    assert stats["audioEvents"] == 1
+    assert stats["bytes"] == len(blob) - header_size
+
+
+def test_bake_cinematic_rejects_invalid_keyframe_time(tmp_path: Path) -> None:
+    """A keyframe time beyond shot duration should fail validation."""
+    bad = tmp_path / "bad.cinematic.json"
+    bad.write_text(
+        json.dumps(
+            {
+                "version": "1.0.0",
+                "id": "bad_cutscene",
+                "shots": [
+                    {
+                        "label": "bad_shot",
+                        "duration": 1.0,
+                        "keyframes": [
+                            {
+                                "time": 2.0,
+                                "position": [0.0, 0.0, 0.0],
+                                "lookAt": [0.0, 0.0, 1.0],
+                                "fov": 60.0,
+                            }
+                        ],
+                    }
+                ],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    out_path = tmp_path / "bad.cinematic"
+    try:
+        ce.bake_cinematic(bad, out_path)
+    except ValueError as exc:
+        assert "duration" in str(exc).lower()
+    else:
+        raise AssertionError("Expected bake_cinematic to raise ValueError")
