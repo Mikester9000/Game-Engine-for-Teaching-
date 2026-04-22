@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1738 across 52 subsystems.
+**Total lessons:** 1741 across 52 subsystems.
 
 ---
 
@@ -15,7 +15,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [CMakeLists.txt](#cmakelists.txt) (70 lessons)
 - [ci/workflows](#ciworkflows) (58 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
-- [editor/src](#editorsrc) (102 lessons)
+- [editor/src](#editorsrc) (104 lessons)
 - [engine/ai](#engineai) (49 lessons)
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
@@ -59,7 +59,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/audio_engine.py](#toolsaudio_engine.py) (6 lessons)
 - [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
 - [tools/cook](#toolscook) (12 lessons)
-- [tools/creation_engine.py](#toolscreation_engine.py) (8 lessons)
+- [tools/creation_engine.py](#toolscreation_engine.py) (9 lessons)
 - [tools/pak](#toolspak) (14 lessons)
 - [tools/quest_baker](#toolsquest_baker) (14 lessons)
 - [tools/tests](#toolstests) (4 lessons)
@@ -2252,7 +2252,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 ### RUNTIME_OUTPUT_DIRECTORY
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L88) (line 88)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L92) (line 92)
 
 By default CMake places executables in <build>/<subdirectory>/ matching the
 add_subdirectory() tree (i.e. <build>/editor/ for this target).  Setting
@@ -2265,7 +2265,7 @@ RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 
 ### Linking D3D11 + DXGI
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L111) (line 111)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L115) (line 115)
 
 d3d11.lib  -- Direct3D 11 device, context, swapchain.  Ships with the
               Windows SDK; no extra SDK install beyond Visual Studio.
@@ -2282,7 +2282,7 @@ dxgi
 
 ### UNICODE, WIN32_LEAN_AND_MEAN, NOMINMAX
 
-**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L129) (line 129)
+**Source:** [`editor/CMakeLists.txt`](editor/CMakeLists.txt#L133) (line 133)
 
 UNICODE/_UNICODE  : Win32 API calls default to wide-char (wchar_t) variants.
 WIN32_LEAN_AND_MEAN : excludes rarely-used headers from <windows.h>,
@@ -2493,10 +2493,12 @@ the constructor.  They are separate dockable ImGui windows -- the user
 can drag them to any position in the DockSpace layout.
 m_hierarchy.Render();
 m_inspector.Render();
+if (m_showCinematicEditor)
+m_cinematicEditor.Render();
 
 ### ImGui Modal Popups
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L85) (line 85)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L87) (line 87)
 
 OpenPopup() marks a popup as "open"; BeginPopupModal() renders it.
 The popup blocks interaction with windows behind it (modal behaviour).
@@ -2513,6 +2515,7 @@ ImGui::TextUnformatted("nlohmann-json (MIT) for scene files.");
 ImGui::Spacing();
 ImGui::TextUnformatted("M6 panels: Scene Hierarchy, Inspector, Play-in-Engine.");
 ImGui::TextUnformatted("M7.5: World Streaming debug overlay (View menu).");
+ImGui::TextUnformatted("M22: Cinematic editor timeline panel.");
 ImGui::Spacing();
 if (ImGui::Button("Close", ImVec2(120, 0)))
 {
@@ -2524,7 +2527,7 @@ ImGui::EndPopup();
 
 ### Streaming minimap reference panel
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L111) (line 111)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L114) (line 114)
 
 ────────────────────────────────────────────────────
 This floating window shows the colour legend for the streaming debug
@@ -2544,7 +2547,7 @@ const float overlayY = 40.0f;
 
 ### DrawDebugOverlay usage
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L142) (line 142)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L145) (line 145)
 
 ────────────────────────────────────────
 Call from your D3D11 game loop (M8.7):
@@ -2555,7 +2558,7 @@ ImGui::Spacing();
 
 ### ImGui Menu Bar
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L189) (line 189)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L192) (line 192)
 
 ImGui::BeginMainMenuBar() / EndMainMenuBar() create a menu bar anchored to
 the top of the main viewport (not inside any ImGui window).
@@ -2569,7 +2572,7 @@ return;
 
 ### Load Scene (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L229) (line 229)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L232) (line 232)
 
 Mirrors "Save Scene" but in the other direction: shows a file open
 dialog, then calls SceneEditorPanel::LoadScene() to parse the JSON.
@@ -2594,7 +2597,7 @@ m_statusTimer   = 5.f;
 
 ### Posting WM_QUIT from within ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L283) (line 283)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L286) (line 286)
 
 PostQuitMessage(0) posts a WM_QUIT to the Win32 message queue.
 The main loop detects this and sets done = true, triggering cleanup.
@@ -2603,7 +2606,7 @@ PostQuitMessage(0);
 
 ### ShellExecuteW to run the cook script
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L304) (line 304)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L307) (line 307)
 
 ShellExecuteW launches an external process using the Windows
 shell.  "open" + a .py file invokes the system Python interpreter.
@@ -2620,7 +2623,7 @@ m_statusTimer   = 4.f;
 
 ### Play in Engine (M6)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L320) (line 320)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L323) (line 323)
 
 "Play in Engine" saves the current scene to a temp .scene.json file
 and launches engine_sandbox.exe with --scene pointing to that file.
@@ -2636,7 +2639,7 @@ LaunchPlayInEngine();
 
 ### M7.5: View menu with streaming overlay toggle
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L344) (line 344)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L347) (line 347)
 
 ──────────────────────────────────────────────────────────────
 The View menu controls optional debug visualisations.  Adding toggles
@@ -2655,12 +2658,19 @@ ImGui::SetTooltip(
 "Cells: grey=Unloaded, yellow=Loading, green=Loaded, red=Evicting.\n"
 "White outline = camera's current cell.");
 }
+ImGui::MenuItem("Cinematic Editor", nullptr, &m_showCinematicEditor);
+if (ImGui::IsItemHovered())
+{
+ImGui::SetTooltip(
+"Show the cinematic authoring panel with timeline, keyframes,\n"
+"and editor-local cut-scene preview controls.");
+}
 ImGui::EndMenu();
 }
 
 ### WideCharToMultiByte for UTF-8 conversion
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L380) (line 380)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L390) (line 390)
 
 Windows internally uses UTF-16 (wide char) for all API strings.
 Our public API uses std::string (UTF-8), which is the cross-platform norm.
@@ -2681,7 +2691,7 @@ return s;
 
 ### Play in Engine implementation
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L402) (line 402)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L412) (line 412)
 
 Steps:
   1. Write the scene to a well-known temp path (%TEMP%\editor_scene.scene.json).
@@ -2704,7 +2714,7 @@ tempScene += L"editor_preview.scene.json";
 
 ### ShellExecuteExW vs CreateProcessW
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L444) (line 444)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L454) (line 454)
 
 ShellExecuteExW is simpler but does not let us capture the output.
 CreateProcessW gives full control (redirect stdout/stderr, wait for exit).
@@ -2721,7 +2731,7 @@ sei.nShow       = SW_SHOWNORMAL;
 
 ### Simulating a Status Bar with ImGui
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L476) (line 476)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L486) (line 486)
 
 ImGui has no built-in "status bar" widget.  We simulate one by creating
 a small window pinned to the bottom of the viewport with no decorations.
@@ -2734,7 +2744,7 @@ constexpr float barHeight     = 22.f;
 
 ### IFileOpenDialog (modern Windows folder picker)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L527) (line 527)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L537) (line 537)
 
 The classic SHBrowseForFolderW dialog is old (Windows 3.1 era).
 The modern alternative is IFileOpenDialog with FOS_PICKFOLDERS set --
@@ -2747,7 +2757,7 @@ IFileOpenDialog* pFolderDialog = nullptr;
 
 ### GetSaveFileName (classic Win32 save dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L576) (line 576)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L586) (line 586)
 
 GetSaveFileNameW shows the standard "Save As" dialog. The filter string
 uses pairs of "Description\0*.ext\0" terminated by an extra \0.
@@ -2764,7 +2774,7 @@ filterLen += 2;  // trailing double-NUL
 
 ### GetOpenFileName (classic Win32 open dialog)
 
-**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L621) (line 621)
+**Source:** [`editor/src/EditorApp.cpp`](editor/src/EditorApp.cpp#L631) (line 631)
 
 Mirrors PickSaveFile but uses OFN_FILEMUSTEXIST instead of OFN_OVERWRITEPROMPT.
 This is the standard "Open File" dialog used in all Win32 applications.
@@ -2832,7 +2842,7 @@ hierarchy and inspector panels at construction time.
 
 ### Native file dialogs without Qt
 
-**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L91) (line 91)
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L92) (line 92)
 
 Qt provides QFileDialog::getExistingDirectory() etc.
 Without Qt we use the Win32 SHBrowseForFolderW API (folder picker) or
@@ -2845,7 +2855,7 @@ std::string PickOpenFile(const char* title, const char* filter);
 
 ### Panel ownership
 
-**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L103) (line 103)
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L104) (line 104)
 
 EditorApp owns the panels by value (no heap allocation needed).
 SceneHierarchyPanel and InspectorPanel hold a NON-OWNING pointer to
@@ -2854,10 +2864,11 @@ ContentBrowserPanel  m_contentBrowser;   ///< Content/ file tree
 SceneEditorPanel     m_sceneEditor;      ///< Scene canvas (owns entity data)
 SceneHierarchyPanel  m_hierarchy;        ///< M6: entity list panel
 InspectorPanel       m_inspector;        ///< M6: property editor panel
+CinematicEditorPanel m_cinematicEditor;  ///< M22: timeline + keyframe authoring panel
 
 ### M7.5: World Streaming debug overlay toggle
 
-**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L118) (line 118)
+**Source:** [`editor/src/EditorApp.hpp`](editor/src/EditorApp.hpp#L121) (line 121)
 
 ────────────────────────────────────────────────────────────
 The streaming overlay draws a 2D minimap of cell states (grey=Unloaded,
@@ -3530,6 +3541,32 @@ D3D11_SDK_VERSION, &sd, &g_pSwapChain,
 &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext
 );
 if (FAILED(res)) return false;
+}
+
+### Dedicated cinematic authoring panel
+
+**Source:** [`editor/src/panels/CinematicEditorPanel.cpp`](editor/src/panels/CinematicEditorPanel.cpp#L16) (line 16)
+
+Timeline data is edited in a separate panel so level/entity editing stays
+uncluttered. This mirrors mainstream toolchains where cut-scene tools are
+split from scene hierarchy and inspector panels.
+SeedDefaultIfEmpty();
+EnsureValidSelection();
+
+### Editor-local preview clock
+
+**Source:** [`editor/src/panels/CinematicEditorPanel.cpp`](editor/src/panels/CinematicEditorPanel.cpp#L228) (line 228)
+
+The panel keeps a local preview clock for timeline scrubbing and play/
+pause. Runtime sequencer integration is separate and can consume cooked
+files; this editor preview keeps authoring feedback immediate.
+if (ImGui::Button(m_playPreview ? "Pause" : "Play"))
+m_playPreview = !m_playPreview;
+ImGui::SameLine();
+if (ImGui::Button("Stop"))
+{
+m_playPreview = false;
+m_previewTime = 0.0f;
 }
 
 ### Table-driven component definitions
@@ -29008,27 +29045,27 @@ const fs::path assetDbPath = cookedDir / "assetdb.json";
 
 ### Generic Asset Record
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L128) (line 128)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L133) (line 133)
 
 ### Creation Engine as a Service Facade
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L190) (line 190)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L195) (line 195)
 
 ### Manifest Emission from the Creation Engine
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L271) (line 271)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L276) (line 276)
 
 ### Manifest Consumption in the Creation Engine
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L307) (line 307)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L312) (line 312)
 
 ### Simple Nav-Mesh Baker for Teaching
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L435) (line 435)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L440) (line 440)
 
 ### Degenerate bounds guard
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L455) (line 455)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L460) (line 460)
 
 A flat line of vertices (min == max) would divide by zero during cell
 mapping, so we expand the range by a tiny epsilon.
@@ -29040,7 +29077,11 @@ max_z = min_z + 1.0
 
 ### Time-of-Day LUT Baker
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L517) (line 517)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L522) (line 522)
+
+### Cinematic Timeline Baker (M22)
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L568) (line 568)
 
 ---
 
