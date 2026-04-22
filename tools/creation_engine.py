@@ -60,6 +60,11 @@ Usage
       --input samples/vertical_slice_project/Content/environment/tod.json \
       --output samples/vertical_slice_project/Cooked/environment/tod.lut
 
+  # Bake a cinematic timeline JSON into cooked binary data (M22):
+  python3 tools/creation_engine.py bake-cinematic \
+      --input samples/vertical_slice_project/Content/Cinematics/intro.cinematic.json \
+      --output samples/vertical_slice_project/Cooked/Cinematics/intro.cinematic
+
 Exit codes
 ----------
   0 — success
@@ -555,6 +560,102 @@ def bake_tod(
     return {"samples": sample_count, "bytes": len(payload)}
 
 
+def bake_cinematic(
+    json_path: Path | str,
+    out_path: Path | str,
+) -> Dict[str, int]:
+    """
+    TEACHING NOTE — Cinematic Timeline Baker (M22)
+    ----------------------------------------------
+    Runtime cut-scene playback should avoid expensive JSON parsing during scene
+    loads. This baker validates timeline data once in tools, then emits a compact
+    binary that the runtime can stream directly.
+    """
+    src = Path(json_path)
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {src}: {exc}") from exc
+
+    shots = _parse_cinematic_shots(data)
+    payload = bytearray()
+    total_keyframes = 0
+    total_events = 0
+
+    for shot in shots:
+        label_bytes = shot["label"].encode("utf-8")
+        keyframes = shot["keyframes"]
+        events = shot["audioEvents"]
+        total_keyframes += len(keyframes)
+        total_events += len(events)
+
+        payload.extend(
+            struct.pack(
+                "<HfHH",
+                len(label_bytes),
+                shot["duration"],
+                len(keyframes),
+                len(events),
+            )
+        )
+        payload.extend(label_bytes)
+
+        for kf in keyframes:
+            payload.extend(
+                struct.pack(
+                    "<f3f3ff",
+                    kf["time"],
+                    kf["position"][0],
+                    kf["position"][1],
+                    kf["position"][2],
+                    kf["lookAt"][0],
+                    kf["lookAt"][1],
+                    kf["lookAt"][2],
+                    kf["fov"],
+                )
+            )
+
+        for event in events:
+            event_name = event["event"].encode("utf-8")
+            clip_id = event["clipID"].encode("utf-8")
+            payload.extend(
+                struct.pack(
+                    "<fHH",
+                    event["time"],
+                    len(event_name),
+                    len(clip_id),
+                )
+            )
+            payload.extend(event_name)
+            payload.extend(clip_id)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Binary layout:
+    #   4s magic ("CIN1")
+    #   H  version (1)
+    #   H  shot_count
+    #   H  total_keyframe_count
+    #   H  total_audio_event_count
+    #   bytes shot payload
+    header = struct.pack(
+        "<4sHHHH",
+        b"CIN1",
+        1,
+        len(shots),
+        total_keyframes,
+        total_events,
+    )
+    out_path.write_bytes(header + bytes(payload))
+    return {
+        "shots": len(shots),
+        "keyframes": total_keyframes,
+        "audioEvents": total_events,
+        "bytes": len(payload),
+    }
+
+
 def _parse_obj_for_navmesh(obj_path: Path) -> tuple[List[tuple[float, float, float]], List[List[int]]]:
     """Parse minimal OBJ data needed for baking (v/f records)."""
     vertices: List[tuple[float, float, float]] = []
@@ -667,6 +768,120 @@ def _sample_tod_rgba(
 def _to_u8(value: float) -> int:
     """Convert [0..1] float to uint8."""
     return int(round(max(0.0, min(1.0, value)) * 255.0))
+
+
+def _parse_cinematic_shots(data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Parse and validate cinematic timeline source JSON."""
+    shots_raw = data.get("shots")
+    if not isinstance(shots_raw, list) or len(shots_raw) == 0:
+        raise ValueError("Cinematic JSON must contain a non-empty 'shots' array")
+
+    parsed_shots: List[Dict[str, Any]] = []
+
+    for shot_index, shot in enumerate(shots_raw):
+        if not isinstance(shot, dict):
+            raise ValueError(f"shots[{shot_index}] must be an object")
+
+        duration = float(shot.get("duration", 0.0))
+        if duration <= 0.0:
+            raise ValueError(f"shots[{shot_index}].duration must be > 0")
+
+        label = str(shot.get("label", f"shot_{shot_index}")).strip()
+        if not label:
+            label = f"shot_{shot_index}"
+
+        keyframes_raw = shot.get("keyframes")
+        if not isinstance(keyframes_raw, list) or len(keyframes_raw) == 0:
+            raise ValueError(f"shots[{shot_index}] must contain a non-empty 'keyframes' array")
+
+        keyframes: List[Dict[str, Any]] = []
+        last_time = -1.0
+        for key_index, key in enumerate(keyframes_raw):
+            if not isinstance(key, dict):
+                raise ValueError(f"shots[{shot_index}].keyframes[{key_index}] must be an object")
+
+            key_time = float(key.get("time", -1.0))
+            if key_time < 0.0:
+                raise ValueError(f"shots[{shot_index}].keyframes[{key_index}].time must be >= 0")
+            if key_time > duration:
+                raise ValueError(
+                    f"shots[{shot_index}].keyframes[{key_index}].time must be <= shot duration"
+                )
+            if key_time <= last_time:
+                raise ValueError(
+                    f"shots[{shot_index}].keyframes times must be strictly increasing"
+                )
+            last_time = key_time
+
+            position = _parse_vec3(
+                key.get("position"),
+                f"shots[{shot_index}].keyframes[{key_index}].position",
+            )
+            look_at = _parse_vec3(
+                key.get("lookAt"),
+                f"shots[{shot_index}].keyframes[{key_index}].lookAt",
+            )
+            fov = float(key.get("fov", 0.0))
+            if fov <= 0.0:
+                raise ValueError(f"shots[{shot_index}].keyframes[{key_index}].fov must be > 0")
+
+            keyframes.append(
+                {
+                    "time": key_time,
+                    "position": position,
+                    "lookAt": look_at,
+                    "fov": fov,
+                }
+            )
+
+        audio_raw = shot.get("audioEvents", [])
+        if not isinstance(audio_raw, list):
+            raise ValueError(f"shots[{shot_index}].audioEvents must be an array")
+
+        audio_events: List[Dict[str, Any]] = []
+        for event_index, event in enumerate(audio_raw):
+            if not isinstance(event, dict):
+                raise ValueError(f"shots[{shot_index}].audioEvents[{event_index}] must be an object")
+
+            event_time = float(event.get("time", -1.0))
+            if event_time < 0.0 or event_time > duration:
+                raise ValueError(
+                    f"shots[{shot_index}].audioEvents[{event_index}].time must be in [0, duration]"
+                )
+
+            event_name = str(event.get("event", "")).strip()
+            if not event_name:
+                raise ValueError(
+                    f"shots[{shot_index}].audioEvents[{event_index}].event must be non-empty"
+                )
+
+            clip_id = str(event.get("clipID", "")).strip()
+
+            audio_events.append(
+                {
+                    "time": event_time,
+                    "event": event_name,
+                    "clipID": clip_id,
+                }
+            )
+
+        parsed_shots.append(
+            {
+                "label": label,
+                "duration": duration,
+                "keyframes": keyframes,
+                "audioEvents": audio_events,
+            }
+        )
+
+    return parsed_shots
+
+
+def _parse_vec3(value: Any, field_name: str) -> tuple[float, float, float]:
+    """Validate a 3-float vector field from cinematic JSON."""
+    if not isinstance(value, list) or len(value) != 3:
+        raise ValueError(f"{field_name} must be an array of 3 numbers")
+    return (float(value[0]), float(value[1]), float(value[2]))
 
 
 # ---------------------------------------------------------------------------
@@ -927,6 +1142,20 @@ def _cmd_bake_tod(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_bake_cinematic(args: argparse.Namespace) -> int:
+    try:
+        stats = bake_cinematic(args.input, args.output)
+    except (OSError, ValueError) as exc:
+        _die(str(exc), code=1)
+    print(_bold("\n=== creation_engine — baked cinematic ===\n"))
+    print(f"  {_green('Output:')} {args.output}")
+    print(
+        f"  Shots: {stats['shots']} | Keyframes: {stats['keyframes']} | "
+        f"Audio events: {stats['audioEvents']} ({stats['bytes']} bytes payload)"
+    )
+    return 0
+
+
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
@@ -1095,6 +1324,16 @@ def _build_parser() -> argparse.ArgumentParser:
     bake_tod_p.add_argument("--samples", type=int, default=256,
                             help="Number of LUT samples (default: 256).")
 
+    # ------------------------------------------------------------------ bake-cinematic
+    bake_cin = sub.add_parser(
+        "bake-cinematic",
+        help="Bake a cinematic timeline JSON file into a cooked binary file.",
+    )
+    bake_cin.add_argument("--input", required=True, metavar="JSON",
+                          help="Source cinematic JSON file.")
+    bake_cin.add_argument("--output", required=True, metavar="CINEMATIC",
+                          help="Output cooked cinematic binary path.")
+
     return parser
 
 
@@ -1113,6 +1352,7 @@ def main(argv: List[str] | None = None) -> int:
         "list":     _cmd_list,
         "bake-navmesh": _cmd_bake_navmesh,
         "bake-tod": _cmd_bake_tod,
+        "bake-cinematic": _cmd_bake_cinematic,
     }
     handler = dispatch.get(args.command)
     if handler is None:

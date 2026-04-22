@@ -81,6 +81,10 @@ set(EDITOR_SOURCES
     # M6 -- Inspector panel: component property editor (table-driven)
     src/panels/InspectorPanel.cpp
     src/panels/InspectorPanel.hpp
+
+    # M22 -- Cinematic editor panel: timeline, keyframes, preview controls
+    src/panels/CinematicEditorPanel.cpp
+    src/panels/CinematicEditorPanel.hpp
 )
 
 add_executable(creation-suite-editor WIN32 ${EDITOR_SOURCES})

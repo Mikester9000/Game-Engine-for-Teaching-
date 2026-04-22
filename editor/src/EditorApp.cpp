@@ -77,6 +77,8 @@ void EditorApp::Render()
     // can drag them to any position in the DockSpace layout.
     m_hierarchy.Render();
     m_inspector.Render();
+    if (m_showCinematicEditor)
+        m_cinematicEditor.Render();
 
     // ---- About popup -------------------------------------------------------
     if (m_showAbout)
@@ -98,6 +100,7 @@ void EditorApp::Render()
         ImGui::Spacing();
         ImGui::TextUnformatted("M6 panels: Scene Hierarchy, Inspector, Play-in-Engine.");
         ImGui::TextUnformatted("M7.5: World Streaming debug overlay (View menu).");
+        ImGui::TextUnformatted("M22: Cinematic editor timeline panel.");
         ImGui::Spacing();
         if (ImGui::Button("Close", ImVec2(120, 0)))
         {
@@ -358,6 +361,13 @@ void EditorApp::RenderMenuBar()
                 "Show the world streaming debug minimap.\n"
                 "Cells: grey=Unloaded, yellow=Loading, green=Loaded, red=Evicting.\n"
                 "White outline = camera's current cell.");
+        }
+        ImGui::MenuItem("Cinematic Editor", nullptr, &m_showCinematicEditor);
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(
+                "Show the cinematic authoring panel with timeline, keyframes,\n"
+                "and editor-local cut-scene preview controls.");
         }
         ImGui::EndMenu();
     }
