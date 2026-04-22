@@ -148,7 +148,6 @@ def load_existing_guids() -> None:
             gid = entry.get("id", "")
             if src and gid:
                 _EXISTING_GUIDS[src] = gid
-            if src and gid:
                 _EXISTING_ASSETS[src] = entry
     except Exception:
         pass  # If the file is malformed, ignore and generate fresh GUIDs.
