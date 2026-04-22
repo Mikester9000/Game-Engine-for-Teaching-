@@ -110,6 +110,9 @@ jobs:
       - name: Build cook
         run: cmake --build --preset windows-ninja-debug-engine-only --target cook
 
+      - name: Build pak
+        run: cmake --build --preset windows-ninja-debug-engine-only --target pak
+
       # -----------------------------------------------------------------------
       # 4. Verify binaries exist.
       # -----------------------------------------------------------------------
@@ -119,6 +122,10 @@ jobs:
 
       - name: Verify cook.exe exists
         run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\cook.exe")) { throw "cook.exe not found" }
+        shell: pwsh
+
+      - name: Verify pak.exe exists
+        run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\pak.exe")) { throw "pak.exe not found" }
         shell: pwsh
 
       # -----------------------------------------------------------------------
@@ -355,6 +362,40 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run headless acceptance test (UI Menu Stack — menu_stack_test)
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene menu_stack_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # SDF Font Renderer acceptance tests (D3D11 WARP, no GPU needed).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Font Renderer CI Test
+      # This step validates the SDF FontRenderer subsystem (Post-M10):
+      #
+      #   Test 1 — Init: FontRenderer::Init() builds the CPU-side SDF atlas
+      #     (96 glyphs, signed distance field generation), uploads the R8_UNORM
+      #     D3D11 texture, compiles sdf_text.vs/ps.hlsl, and creates VB/IB/CB.
+      #   Test 2 — Render: RenderText("Hello, World! 0123456789") builds text
+      #     quads, maps the dynamic VB, and issues DrawIndexed — no crash.
+      #   Test 3 — Shutdown: all COM resources released; IsInitialised()==false.
+      #
+      # Runs on D3D11 WARP (CPU software renderer) so no GPU driver is needed.
+      # ENGINE_ENABLE_D3D11 must be defined — it is in windows-ninja-debug-engine-only.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (Font Renderer — font_test)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene font_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # PAK packager acceptance test
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — PAK Packager CI Test
+      # This step validates pak.exe by packing the vertical_slice_project Cooked/
+      # directory into a PAK1 archive.  A non-zero exit code (file-not-found,
+      # HRESULT error, etc.) will fail the CI job.
+      # pak.exe is built alongside cook.exe in the windows-ninja-debug-engine-only
+      # preset because it has no platform or renderer dependencies.
+      # -----------------------------------------------------------------------
+      - name: Run PAK packager acceptance test
+        run: .\build\windows-ninja-debug-engine-only\pak.exe --input samples\vertical_slice_project\Cooked\ --output samples\vertical_slice_project\Cooked\test_output.pak
         shell: cmd
 
   # --------------------------------------------------------------------------

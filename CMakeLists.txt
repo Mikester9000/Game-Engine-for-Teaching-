@@ -585,6 +585,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             # would also include these files without modification.
             src/engine/rendering/sky_renderer.cpp
             src/engine/rendering/weather_fx.cpp
+            # TEACHING NOTE — Post-M10: SDF FontRenderer (D3D11 text rendering).
+            # font_renderer.cpp builds a CPU-side signed distance field atlas from
+            # an embedded 8×8 bitmap font, uploads it as an R8_UNORM D3D11 texture,
+            # and renders screen-space text quads using sdf_text.vs/ps.hlsl.
+            # Gated on ENGINE_ENABLE_D3D11 because it uses D3D11 COM types.
+            src/engine/ui/font_renderer.cpp
         )
     endif()
 
@@ -999,6 +1005,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             #   approximation + fog overlay + rain darkening + Reinhard tonemap.
             "${CMAKE_SOURCE_DIR}/shaders/sky.vs.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/sky.ps.hlsl"
+            # TEACHING NOTE — Post-M10: SDF text rendering HLSL shaders.
+            # sdf_text.vs.hlsl transforms screen-space pixel quads to NDC.
+            # sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
+            #   anti-aliasing to reconstruct crisp glyph edges at any scale.
+            "${CMAKE_SOURCE_DIR}/shaders/sdf_text.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/sdf_text.ps.hlsl"
         )
 
         add_custom_command(TARGET engine_sandbox POST_BUILD
@@ -1051,6 +1063,45 @@ if(MSVC)
 endif()
 
 message(STATUS "  cook target      : ON (always built)")
+
+
+
+# ---------------------------------------------------------------------------
+# pak target — standalone PAK1 archive packager (Post-M10)
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — PAK1 Packager Tool
+# ─────────────────────────────────────────────────────────────────────────────
+# The pak tool bundles an input directory into a binary .pak archive
+# (PAK1 format).  It mirrors the role of CRIWARE CPK / SQEX PAK in a real
+# AAA game (e.g. Final Fantasy XV): consolidate thousands of loose asset
+# files into a single seekable archive for efficient distribution and streaming.
+#
+# PAK1 format (little-endian):
+#   Header (12 bytes): magic=0x31_4B_41_50 | version=1 | fileCount=N
+#   FileTable: N × (pathLen uint16 + path UTF-8 + dataOffset uint64 + dataSize uint64)
+#   FileData: N raw blobs concatenated
+#
+# Usage after build:
+#   pak.exe --input  samples\vertical_slice_project\Cooked\ --output game.pak
+#   pak.exe --list   game.pak
+#   pak.exe --extract game.pak --output out\
+# ---------------------------------------------------------------------------
+add_executable(pak
+    src/tools/pak/pak_main.cpp
+    src/engine/core/Logger.cpp
+)
+
+target_include_directories(pak PRIVATE
+    src/
+)
+
+# TEACHING NOTE — MSVC /SUBSYSTEM:CONSOLE
+# Same reasoning as cook.exe: stdout/stderr must be visible in a terminal.
+if(MSVC)
+    set_target_properties(pak PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+endif()
+
+message(STATUS "  pak target       : ON (always built)")
 
 
 

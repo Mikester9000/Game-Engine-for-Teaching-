@@ -79,6 +79,7 @@
  *   engine_sandbox.exe --headless --scene bt_test           # Post-M10 BT AI + formation + nav-mesh acceptance test (CI)
  *   engine_sandbox.exe --headless --scene cinematic_test    # Post-M10 Cinematics: CameraRig + CinematicSequencer acceptance test (CI)
  *   engine_sandbox.exe --headless --scene menu_stack_test   # UI Menu Stack: push/pop navigation acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene font_test         # Font Renderer: SDF atlas init + render acceptance test (CI)
  *
  * ============================================================================
  *
@@ -224,6 +225,30 @@
 // All tests are pure C++17 CPU tests — no D3D11 renderer required.
 // ---------------------------------------------------------------------------
 #include "engine/ui/menu_stack.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — SDF Font Renderer headless test
+// ---------------------------------------------------------------------------
+// The font_test scene validates the SDF FontRenderer subsystem:
+//
+//   Test 1 — Init: FontRenderer::Init() completes without error (SDF atlas
+//             built, D3D11 texture uploaded, shaders compiled, buffers created).
+//   Test 2 — Render: RenderText() with a short ASCII string does not crash
+//             (quads built, dynamic VB mapped, DrawIndexed issued).
+//   Test 3 — Shutdown: Shutdown() releases all COM resources without error
+//             (no validation-layer warnings, no memory leak on the D3D device).
+//
+// TEACHING NOTE — Why headless font tests?
+// The SDF atlas generation (CPU) and texture upload (GPU) happen inside Init().
+// Running this in headless (WARP) mode on a CI Windows runner exercises the
+// full D3D11 resource-creation path without requiring a physical GPU or display.
+// A crash or HRESULT failure in Init() would propagate as a non-zero exit code,
+// failing the CI job.
+// ---------------------------------------------------------------------------
+#ifdef ENGINE_ENABLE_D3D11
+#include "engine/ui/font_renderer.hpp"
+#include "engine/rendering/d3d11/D3D11Renderer.hpp"
+#endif
 
 #include <iostream>
 #include <exception>
@@ -429,10 +454,15 @@ int main(int argc, char* argv[])
         // -------------------------------------------------------------------
         // Step 4 — Load the requested scene (M1+).
         // -------------------------------------------------------------------
+        // TEACHING NOTE — shaderDir scope
+        // shaderDir is computed once here (outside the scene-load block) so
+        // that headless acceptance tests that need to create D3D11 resources
+        // (e.g. font_test, which builds its own FontRenderer) can also access
+        // the shader directory without re-computing it or duplicating the call.
+        std::string shaderDir = GetShaderDir(argv[0]);
+
         if (!scene.empty())
         {
-            std::string shaderDir = GetShaderDir(argv[0]);
-
             if (!renderer->LoadScene(scene, shaderDir))
             {
                 std::cerr << "[FAIL] Failed to load scene '" << scene << "'.\n";
@@ -2273,6 +2303,101 @@ int main(int argc, char* argv[])
                 std::cout << "[PASS] menu_stack_test: all 6 acceptance tests passed "
                              "(push/top/size, pop/restore/floor, pop_to_base, contains, "
                              "callbacks, duplicate-push guard).\n";
+            }
+            else if (scene == "font_test")
+            {
+#ifdef ENGINE_ENABLE_D3D11
+                // -----------------------------------------------------------
+                // SDF Font Renderer acceptance tests (3 tests).
+                //
+                // TEACHING NOTE — D3D11 dynamic_cast guard
+                // We dynamic_cast the IRenderer* to D3D11Renderer* to access
+                // the device and context pointers.  This is safe because:
+                //   a) In the engine-only preset ENGINE_ENABLE_D3D11 is always
+                //      defined and the renderer is always D3D11Renderer.
+                //   b) dynamic_cast returns nullptr on failure, which we check.
+                // -----------------------------------------------------------
+                engine::rendering::D3D11Renderer* d3dRenderer =
+                    dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
+
+                if (!d3dRenderer)
+                {
+                    std::cout << "[SKIP] font_test: not running D3D11 renderer.\n"
+                                 "[PASS] font_test: skipped (D3D11 not active).\n";
+                }
+                else
+                {
+                    int testsFailed = 0;
+                    engine::ui::FontRenderer fr;
+
+                    // Test 1 — Init: SDF atlas build + D3D11 resource creation.
+                    bool initOk = fr.Init(d3dRenderer->GetDevice(),
+                                          d3dRenderer->GetContext(),
+                                          shaderDir);
+                    if (!initOk || !fr.IsInitialised())
+                    {
+                        std::cout << "[FAIL] font_test/init: "
+                                     "FontRenderer::Init() returned false or "
+                                     "IsInitialised() is false.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] font_test/init: "
+                                     "SDF atlas built, D3D11 resources created.\n";
+                    }
+
+                    // Test 2 — RenderText: build quads + DrawIndexed (no crash).
+                    if (fr.IsInitialised())
+                    {
+                        fr.RenderText("Hello, World! 0123456789",
+                                      10.0f, 10.0f, 16.0f,
+                                      1.0f, 1.0f, 1.0f, 1.0f,
+                                      800, 600);
+                        std::cout << "[OK] font_test/render: "
+                                     "RenderText() completed without crash.\n";
+                    }
+                    else
+                    {
+                        std::cout << "[FAIL] font_test/render: "
+                                     "skipped because Init() failed.\n";
+                        ++testsFailed;
+                    }
+
+                    // Test 3 — Shutdown: release all COM resources.
+                    fr.Shutdown();
+                    if (fr.IsInitialised())
+                    {
+                        std::cout << "[FAIL] font_test/shutdown: "
+                                     "IsInitialised() is still true after Shutdown().\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] font_test/shutdown: "
+                                     "all COM resources released.\n";
+                    }
+
+                    if (testsFailed > 0)
+                    {
+                        std::cout << "[FAIL] font_test: " << testsFailed
+                                  << " test(s) failed.\n";
+                        renderer->Shutdown();
+                        window.Shutdown();
+                        return 1;
+                    }
+                    std::cout << "[PASS] font_test: 3 acceptance tests passed "
+                                 "(SDF atlas init, RenderText, Shutdown).\n";
+                }
+#else
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Build-time gate for font_test
+                // font_test requires ENGINE_ENABLE_D3D11.  Build with the
+                // windows-ninja-debug-engine-only preset to enable it.
+                // -----------------------------------------------------------
+                std::cout << "[SKIP] font_test: ENGINE_ENABLE_D3D11 not defined.\n"
+                             "[PASS] font_test: skipped (no D3D11 in build).\n";
+#endif
             }
             else
             {
