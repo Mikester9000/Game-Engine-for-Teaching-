@@ -133,6 +133,10 @@ def load_existing_guids() -> None:
          fresh UUID4 for truly new assets.
     """
     global _EXISTING_GUIDS, _EXISTING_ASSETS
+    # TEACHING NOTE — Explicit reset for re-entrant safety
+    # This function currently runs once from main(), but we clear caches first
+    # so future callers (tests/tools that may invoke multiple cook passes in one
+    # process) never retain stale registry state between runs.
     _EXISTING_GUIDS = {}
     _EXISTING_ASSETS = {}
     if not REGISTRY_FILE.exists():
@@ -144,7 +148,7 @@ def load_existing_guids() -> None:
             gid = entry.get("id", "")
             if src and gid:
                 _EXISTING_GUIDS[src] = gid
-            if src:
+            if src and gid:
                 _EXISTING_ASSETS[src] = entry
     except Exception:
         pass  # If the file is malformed, ignore and generate fresh GUIDs.
@@ -179,6 +183,12 @@ def should_recook(source_rel: str, source_hash: str) -> bool:
       3. Otherwise, keep the previous cooked output and just refresh the
          in-memory registry entry for this run.
     """
+    if not source_hash:
+        # TEACHING NOTE — Defensive fallback
+        # A missing hash means we cannot verify content identity safely.
+        # Re-cook to avoid reusing potentially stale cooked outputs.
+        return True
+
     existing = _EXISTING_ASSETS.get(source_rel)
     if not existing:
         return True
