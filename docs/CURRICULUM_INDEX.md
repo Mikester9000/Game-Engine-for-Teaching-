@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1734 across 52 subsystems.
+**Total lessons:** 1738 across 52 subsystems.
 
 ---
 
@@ -59,10 +59,10 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/audio_engine.py](#toolsaudio_engine.py) (6 lessons)
 - [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
 - [tools/cook](#toolscook) (12 lessons)
-- [tools/creation_engine.py](#toolscreation_engine.py) (5 lessons)
+- [tools/creation_engine.py](#toolscreation_engine.py) (8 lessons)
 - [tools/pak](#toolspak) (14 lessons)
 - [tools/quest_baker](#toolsquest_baker) (14 lessons)
-- [tools/tests](#toolstests) (3 lessons)
+- [tools/tests](#toolstests) (4 lessons)
 - [tools/validate-assets.py](#toolsvalidate-assets.py) (2 lessons)
 
 ---
@@ -29008,19 +29008,39 @@ const fs::path assetDbPath = cookedDir / "assetdb.json";
 
 ### Generic Asset Record
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L117) (line 117)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L128) (line 128)
 
 ### Creation Engine as a Service Facade
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L179) (line 179)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L190) (line 190)
 
 ### Manifest Emission from the Creation Engine
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L260) (line 260)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L271) (line 271)
 
 ### Manifest Consumption in the Creation Engine
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L296) (line 296)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L307) (line 307)
+
+### Simple Nav-Mesh Baker for Teaching
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L435) (line 435)
+
+### Degenerate bounds guard
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L455) (line 455)
+
+A flat line of vertices (min == max) would divide by zero during cell
+mapping, so we expand the range by a tiny epsilon.
+epsilon = 1e-6
+if abs(max_x - min_x) < epsilon:
+max_x = min_x + 1.0
+if abs(max_z - min_z) < epsilon:
+max_z = min_z + 1.0
+
+### Time-of-Day LUT Baker
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L517) (line 517)
 
 ---
 
@@ -29420,6 +29440,10 @@ return result
 ---
 
 ## tools/tests
+
+### Baker test strategy
+
+**Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L5) (line 5)
 
 ### Testing the Asset Pipeline Validator
 
