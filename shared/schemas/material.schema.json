@@ -1,0 +1,64 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "material.schema.json",
+  "title": "Material",
+  "description": "Author-authored PBR material definition for runtime ingestion and binding.",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "version",
+    "name",
+    "shadingModel",
+    "albedoColor",
+    "metallic",
+    "roughness",
+    "ao"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "shadingModel": {
+      "type": "string",
+      "enum": ["pbr_metal_rough"]
+    },
+    "albedoColor": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "metallic": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "roughness": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "ao": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "textures": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "albedo": { "type": "string" },
+        "normal": { "type": "string" },
+        "metallicRoughness": { "type": "string" },
+        "ao": { "type": "string" }
+      }
+    }
+  }
+}

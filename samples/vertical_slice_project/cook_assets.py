@@ -496,6 +496,60 @@ def cook_animations(registry: list[dict]) -> int:
     return count
 
 
+def cook_materials(registry: list[dict]) -> int:
+    """Cook material JSON files to Cooked/Materials/ as runtime .material files.
+
+    TEACHING NOTE — M23 groundwork: authored material ingestion
+    For M23 we start by treating authored materials as first-class cooked assets.
+    Designers author *.material.json files in Content/Materials/.  The cook step
+    validates that they parse as JSON, then copies them to Cooked/Materials/ with
+    a .material extension so runtime loaders can distinguish cooked material data
+    from editable source JSON.
+    """
+    materials_src = CONTENT_DIR / "Materials"
+    materials_dst = COOKED_DIR  / "Materials"
+    ensure_dir(materials_dst)
+
+    count = 0
+    for src in sorted(materials_src.glob("**/*.material.json")):
+        rel = src.relative_to(materials_src)
+        source_rel = "Materials/" + str(rel)
+        source_hash = sha256_file(src)
+        cooked_name = src.name[: -len(".material.json")] + ".material"
+        dst = materials_dst / rel.parent / cooked_name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+
+        # TEACHING NOTE — Parse-check before cook output
+        # We fail fast on malformed material JSON so bad content never reaches
+        # Cooked/ where the runtime would otherwise fail much later.
+        try:
+            json.loads(src.read_text(encoding="utf-8"))
+        except Exception as exc:
+            print(f"  [WARN] {src.name}: invalid material JSON ({exc}) — skipping")
+            continue
+
+        if should_recook(source_rel, source_hash):
+            shutil.copy2(src, dst)
+            action = "MAT"
+        else:
+            action = "SKIP-MAT"
+
+        registry.append({
+            "id":     stable_guid(source_rel),
+            "type":   "material",
+            "name":   src.name[: -len(".material.json")],
+            "source": source_rel,
+            "cooked": str(dst.relative_to(SCRIPT_DIR)),
+            "hash":   source_hash,
+            "dependencies": [],
+            "tags":   ["material", "pbr"],
+        })
+        count += 1
+        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+
+    return count
+
+
 def cook_levels(registry: list[dict]) -> int:
     """Cook streaming cell descriptor files (.cell.json → .level) from Content/Levels/.
 
@@ -654,6 +708,12 @@ def main() -> int:
     total += n
     if n == 0:
         print("  (no JSON files found in Content/Animations/)")
+
+    print("\n--- Materials ---")
+    n = cook_materials(registry)
+    total += n
+    if n == 0:
+        print("  (no .material.json files found in Content/Materials/)")
 
     print("\n--- Streaming Levels ---")
     n = cook_levels(registry)

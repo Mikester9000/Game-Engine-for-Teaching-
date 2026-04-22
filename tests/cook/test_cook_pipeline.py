@@ -224,3 +224,18 @@ class TestAssetEntries:
         assert len(scene_assets) >= 1, (
             "Expected at least one 'scene' asset named MainTown in the registry"
         )
+
+    def test_mandatory_material_asset_present(self, registry: dict) -> None:
+        """The sample project must include at least one cooked material asset."""
+        material_assets = [
+            a for a in registry.get("assets", [])
+            if a.get("type") == "material"
+        ]
+        assert len(material_assets) >= 1, (
+            "Expected at least one 'material' asset in the registry"
+        )
+        for asset in material_assets:
+            cooked = asset.get("cooked", "")
+            assert cooked.endswith(".material"), (
+                f"Material asset cooked path should end with .material, got '{cooked}'"
+            )

@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1741 across 52 subsystems.
+**Total lessons:** 1746 across 52 subsystems.
 
 ---
 
@@ -40,7 +40,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/GameData.hpp](#gamegamedata.hpp) (26 lessons)
 - [game/systems](#gamesystems) (99 lessons)
 - [game/world](#gameworld) (90 lessons)
-- [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
+- [samples/vertical_slice_project](#samplesvertical_slice_project) (21 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
 - [sandbox/main.cpp](#sandboxmain.cpp) (87 lessons)
@@ -25579,7 +25579,7 @@ return h.hexdigest()
 
 ### Stable GUIDs across cook runs
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L117) (line 117)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L118) (line 118)
 
 ──────────────────────────────────────────────
 A GUID is *stable* if it never changes once assigned — even when the cook
@@ -25587,18 +25587,60 @@ tool is re-run, files are moved, or the engine is rebuilt.  Stable GUIDs
 are essential because C++ runtime code (game_runtime.cpp, main.cpp) and the
 golden-file contract test all hardcode the GUID of specific assets.
 
+### Explicit reset for re-entrant safety
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L136) (line 136)
+
+This function currently runs once from main(), but we clear caches first
+so future callers (tests/tools that may invoke multiple cook passes in one
+process) never retain stale registry state between runs.
+_EXISTING_GUIDS = {}
+_EXISTING_ASSETS = {}
+if not REGISTRY_FILE.exists():
+return
+try:
+data = json.loads(REGISTRY_FILE.read_text(encoding="utf-8"))
+for entry in data.get("assets", []):
+src = entry.get("source", "")
+gid = entry.get("id", "")
+if src and gid:
+_EXISTING_GUIDS[src] = gid
+_EXISTING_ASSETS[src] = entry
+except Exception:
+pass  # If the file is malformed, ignore and generate fresh GUIDs.
+
 ### Incremental cook / GUID stability
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L151) (line 151)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L159) (line 159)
 
 ──────────────────────────────────────────────────
 Use this instead of new_guid() whenever you register an asset entry that
 has a 'source' path.  The lookup is O(1) (dict) and handles the case where
 the registry does not yet contain an entry for the asset (first cook run).
 
+### Incremental cook
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L178) (line 178)
+
+We use the existing registry to skip redundant work:
+1. If the source hash changed, re-cook.
+2. If the cooked file is missing, re-cook.
+3. Otherwise, keep the previous cooked output and just refresh the
+in-memory registry entry for this run.
+"""
+if not source_hash:
+
+### Defensive fallback
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L186) (line 186)
+
+A missing hash means we cannot verify content identity safely.
+Re-cook to avoid reusing potentially stale cooked outputs.
+return True
+
 ### Texture Cooking (Stub)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L179) (line 179)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L214) (line 214)
 
 A real cook step would:
 1. Decode the PNG with Pillow or stb_image.
@@ -25613,7 +25655,7 @@ ensure_dir(texture_dst)
 
 ### Audio Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L219) (line 219)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L260) (line 260)
 
 When the  tools/audio_authoring  package is installed, this function uses
 the  audio_engine.dsp  module to normalise each WAV file (target LUFS,
@@ -25622,7 +25664,7 @@ true-peak ceiling) before writing to Cooked/Audio/.  It also writes a
 
 ### Why normalise at cook time?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L228) (line 228)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L269) (line 269)
 
 Normalising audio during the cook step (not at runtime) means:
 1. The runtime doesn't waste CPU cycles on DSP during gameplay.
@@ -25636,7 +25678,7 @@ ensure_dir(audio_dst)
 
 ### Scene Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L321) (line 321)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L368) (line 368)
 
 For simple JSON scenes, cooking is mostly a copy + validation step.
 A real cook might:
@@ -25650,20 +25692,46 @@ ensure_dir(maps_dst)
 
 ### Animation Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L358) (line 358)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L411) (line 411)
 
 When the  tools/anim_authoring  package is installed, this function uses
 the  AnimAssetPipeline  class from  animation_engine.integration  to
 deserialise skeletons and clips, apply key-frame reduction and then write
 the cooked .skelc / .animc files.
 
+### M23 groundwork: authored material ingestion
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L502) (line 502)
+
+For M23 we start by treating authored materials as first-class cooked assets.
+Designers author *.material.json files in Content/Materials/.  The cook step
+validates that they parse as JSON, then copies them to Cooked/Materials/ with
+a .material extension so runtime loaders can distinguish cooked material data
+from editable source JSON.
+"""
+materials_src = CONTENT_DIR / "Materials"
+materials_dst = COOKED_DIR  / "Materials"
+ensure_dir(materials_dst)
+
+### Parse-check before cook output
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L522) (line 522)
+
+We fail fast on malformed material JSON so bad content never reaches
+Cooked/ where the runtime would otherwise fail much later.
+try:
+json.loads(src.read_text(encoding="utf-8"))
+except Exception as exc:
+print(f"  [WARN] {src.name}: invalid material JSON ({exc}) — skipping")
+continue
+
 ### M7.2: Level / Streaming Cell Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L443) (line 443)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L556) (line 556)
 
 ### Why .level instead of keeping .cell.json?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L461) (line 461)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L574) (line 574)
 
 Renaming to .level makes it explicit that this is a COOKED, runtime-ready
 file — not a raw source file.  The extension signals the content pipeline
@@ -25675,7 +25743,7 @@ ensure_dir(levels_dst)
 
 ### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L473) (line 473)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L588) (line 588)
 
 Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
 leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -25686,7 +25754,7 @@ dst.parent.mkdir(parents=True, exist_ok=True)
 
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L516) (line 516)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L635) (line 635)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -25699,7 +25767,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L530) (line 530)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L649) (line 649)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
