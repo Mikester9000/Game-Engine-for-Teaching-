@@ -2810,8 +2810,8 @@ int main(int argc, char* argv[])
                     window.Shutdown();
                     return 1;
                 }
-                std::cout << "[PASS] audio_3d_test: 3 acceptance tests passed "
-                             "(init/fallback, at-listener volume, at-maxDist rolloff).\n";
+                std::cout << "[PASS] audio_3d_test: 4 acceptance tests passed "
+                             "(init/fallback, at-listener volume, at-maxDist rolloff, half-distance rolloff).\n";
             }
             else
             {

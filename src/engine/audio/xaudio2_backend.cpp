@@ -387,7 +387,7 @@ float XAudio2Backend::Compute3DVolume(float emitX, float emitY, float emitZ,
         // DstChannelCount <= XAUDIO2_MAX_AUDIO_CHANNELS (64) and we query the
         // actual count from the mastering voice, so the array is always sized
         // correctly.  Using std::vector would add a heap allocation per call.
-        static constexpr UINT32 MAX_CHANNELS = 8u; // mono up to 7.1 surround
+        static constexpr UINT32 MAX_CHANNELS = 8u; // mono source to up to 8 output channels (supports 7.1 surround)
         const UINT32 dstCh = m_dstChannels <= MAX_CHANNELS ? m_dstChannels : MAX_CHANNELS;
         float matrix[MAX_CHANNELS] = {};
         for (UINT32 i = 0; i < dstCh; ++i) matrix[i] = 1.0f;
