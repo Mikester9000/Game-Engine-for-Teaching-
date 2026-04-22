@@ -27794,19 +27794,19 @@ Value: human-readable rationale for allowing the exception.
 
 ### Why 500 Lines?
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L293) (line 293)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L292) (line 292)
 
 ### Include-Based Layer Checking
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L335) (line 335)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L334) (line 334)
 
 ### Documentation as a First-Class Requirement
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L415) (line 415)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L414) (line 414)
 
 ### skip_dirs excludes build artefacts and third-party sources.
 
-**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L452) (line 452)
+**Source:** [`scripts/check_architecture.py`](scripts/check_architecture.py#L451) (line 451)
 
 "Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
 source that intentionally has no TEACHING NOTE blocks and may be large.

@@ -103,7 +103,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 ### Gameplay Systems (Terminal Game)
 
 All systems below run in the Linux ncurses terminal game (`src/game/`).
-They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wiring is deferred).
+They were re-wired to the **D3D11 runtime** in **Milestone M8** (Vulkan wiring remains deferred).
 
 | System | Status | Notes |
 |--------|--------|-------|
@@ -118,8 +118,8 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | `Zone` | ✅ | Zone lifecycle (Load/Unload/Update), spawn points, respawn timers |
 | `TileMap` / `WorldMap` | ✅ | Tile-based 2D world |
 | `Game` (main loop) | ✅ | All systems wired; game state machine; `ncurses` rendering |
-| `SaveGame`/`LoadGame` | 🔨 | Implemented in `Game.cpp` (text key=value: HP/MP/Level/Gil + WorldMap tile data); wired to CampSystem auto-save; no `src/engine/save/` production system with versioning/migration yet |
-| Dialogue system | ⬜ | `src/game/systems/dialogue_system.hpp/.cpp` — referenced but not created |
+| `SaveGame`/`LoadGame` | 🔨 | Legacy text key=value save path remains in `Game.cpp`; production `src/engine/save/` SaveSystem (15 slots + versioning/migration) is implemented for the D3D11 runtime |
+| Dialogue system | ✅ | `src/game/systems/dialogue_system.hpp/.cpp` implemented and covered by `--headless --scene dialogue_test` CI |
 | Behaviour tree AI | ✅ | `src/engine/ai/behaviour_tree.hpp/.cpp` — BtStatus, BtBlackboard, BtNode, BtSequence, BtSelector, BtCondition, BtAction, BtTree; `--scene bt_test` 4-test headless CI |
 | Formation system | ✅ | `src/engine/ai/formation_system.hpp/.cpp` — FormationSystem (LINE / V_SHAPE / CIRCLE), slot offset generation, greedy assignment, world-space transform |
 | Nav-mesh baker | ✅ | `src/engine/ai/nav_mesh.hpp/.cpp` — grid NavMesh, BakeFromGrid / BakeEmpty / SetWalkable, A* FindPath (4-dir + diagonal, obstacle routing) |
@@ -218,12 +218,10 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 
 | Area | Status | Notes |
 |------|--------|-------|
-| `SaveGame`/`LoadGame` (basic) | 🔨 | Implemented in `src/game/Game.cpp` — text key=value format (HP/MP/Level/Gil + WorldMap); called by CampSystem auto-save; no versioning or migration |
-| `SaveSystem` / `SaveSchema` | ⬜ | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` — production system with 15 slots + auto-save + migration not yet started |
+| `SaveGame`/`LoadGame` (basic) | 🔨 | Legacy terminal-game path in `src/game/Game.cpp` (text key=value format); retained for ncurses flow compatibility |
+| `SaveSystem` / `SaveSchema` | ✅ | `src/engine/save/save_system.hpp/.cpp`, `save_schema.hpp` — production system with 15 slots + auto-save + migration (M8.8 complete) |
 
-**Next step:** Create `src/engine/save/save_system.hpp/.cpp`. Serialize ECS `World` state
-to JSON (all components per entity). Include a `"version"` field with migration support.
-Acceptance: save → load → component data matches byte-for-byte.
+**Next step:** Keep save migrations in sync with future ECS schema changes and extend slot UX as needed.
 
 ---
 
@@ -435,7 +433,7 @@ check this table — the component you need may already exist.
 | `CombatComponent` | `isInCombat`, `attackCooldown`, `attackRate`, `xpReward`, `gilReward`, `canWarpStrike`, `warpCooldown`, `currentTarget`, `attackElement` | CombatSystem |
 | `InventoryComponent` | `slots[MAX_INV_SLOTS]` (ItemStack), `FindItem()`, `HasItem()` | InventorySystem, Shop |
 | `QuestComponent` | `quests[MAX_QUESTS]` (QuestEntry), `activeCount` | QuestSystem |
-| `DialogueComponent` | `dialogueTreeID`, `interactRange`, `isInteractable`, `currentNodeID`, `portraitAsset` | (DialogueSystem — not built yet) |
+| `DialogueComponent` | `dialogueTreeID`, `interactRange`, `isInteractable`, `currentNodeID`, `portraitAsset` | DialogueSystem |
 | `AIComponent` | `currentState` (IDLE/PATROL/ALERT/CHASE/ATTACK/FLEE/STUNNED/DEAD), `sightRange`, `hearRange`, `attackRange`, `aggroTarget`, `waypoints`, `isNocturnal` | AISystem |
 | `PartyComponent` | `members[MAX_PARTY_SIZE]`, `leaderID`, `formationID`, `AddMember()`, `RemoveMember()` | Game main loop |
 | `MagicComponent` | `knownSpells`, `equippedSpell`, `isCasting`, `activeElement`, flask quantities | MagicSystem |

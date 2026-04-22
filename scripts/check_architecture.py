@@ -204,15 +204,14 @@ FILE_SIZE_EXCEPTIONS: dict[str, str] = {
 LAYER_EXCEPTIONS: dict[tuple[str, str], str] = {
     # The ncurses terminal renderer (Renderer.cpp) is a game-specific component
     # that renders game tiles.  It couples to game/ types (TileType, GameData)
-    # by design — it IS the game's terminal view.  The Vulkan renderer
-    # (VulkanRenderer.cpp) is correctly separated.
+    # by design — it IS the game's terminal view.  The D3D11 renderer path is
+    # correctly separated and Vulkan work is currently deferred by policy.
     #
-    # TODO M8: When the gameplay systems are wired into the Vulkan runtime the
-    # terminal renderer should be removed or placed under game/ rather than
-    # engine/rendering/, resolving this violation.
+    # TODO: If/when terminal rendering is retired, move this file under game/
+    # (or remove it) so the layer exception can be deleted.
     ("src/engine/rendering/Renderer.cpp", "game/"): (
         "TerminalRenderer couples to TileType/GameData by design (ncurses game view). "
-        "TODO: move under game/ when Vulkan runtime wiring is complete (M8)."
+        "TODO: move under game/ (or remove) when terminal rendering is retired."
     ),
 }
 
