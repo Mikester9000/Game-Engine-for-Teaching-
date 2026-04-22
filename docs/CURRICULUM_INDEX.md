@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1678 across 50 subsystems.
+**Total lessons:** 1707 across 51 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (68 lessons)
-- [ci/workflows](#ciworkflows) (55 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (70 lessons)
+- [ci/workflows](#ciworkflows) (56 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/ai](#engineai) (49 lessons)
@@ -21,6 +21,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (42 lessons)
 - [engine/cinematics](#enginecinematics) (32 lessons)
+- [engine/combat](#enginecombat) (21 lessons)
 - [engine/core](#enginecore) (50 lessons)
 - [engine/ecs](#engineecs) (41 lessons)
 - [engine/input](#engineinput) (19 lessons)
@@ -42,7 +43,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (71 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (76 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -395,12 +396,19 @@ dependencies — it builds on Linux (ncurses game) and Windows alike.
 src/engine/ai/behaviour_tree.cpp
 src/engine/ai/formation_system.cpp
 src/engine/ai/nav_mesh.cpp
+
+### M19 Action Combat: ComboSystem FSM (terminal game).
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L414) (line 414)
+
+The ComboSystem is renderer-agnostic and builds on Linux unchanged.
+src/engine/combat/combo_system.cpp
 src/game/Game.cpp
 )
 
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L435) (line 435)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L438) (line 438)
 
 The terminal game links against Lua 5.5 (built from bundled source or
 found as a system package).  ENGINE_ENABLE_LUA activates the Lua
@@ -412,7 +420,7 @@ endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L457) (line 457)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L460) (line 460)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -437,7 +445,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Animation Runtime Sources (M4)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L495) (line 495)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L498) (line 498)
 
 -----------------------------------------------------------------------
 The animation runtime is renderer-agnostic: it runs on both D3D11 and
@@ -452,7 +460,7 @@ src/engine/animation/animation_system.cpp
 
 ### M4b: IK solver (renderer-agnostic, pure C++17).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L506) (line 506)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L509) (line 509)
 
 Two-Bone analytical IK and FABRIK iterative N-joint IK.
 Lives in animation/ alongside the other CPU-side animation systems.
@@ -461,7 +469,7 @@ src/engine/animation/ik_solver.cpp
 
 ### Behaviour Tree AI Sources (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L513) (line 513)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L516) (line 516)
 
 -----------------------------------------------------------------------
 The engine/ai/ layer provides THREE complementary AI systems:
@@ -486,7 +494,7 @@ src/engine/ai/nav_mesh.cpp
 
 ### Cinematics Sources (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L536) (line 536)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L539) (line 539)
 
 -----------------------------------------------------------------------
 The engine/cinematics/ layer provides TWO subsystems for cut-scene
@@ -515,7 +523,7 @@ src/engine/cinematics/cinematic_sequencer.cpp
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L565) (line 565)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L568) (line 568)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -527,7 +535,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L573) (line 573)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L576) (line 576)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -535,7 +543,7 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 
 ### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L577) (line 577)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L580) (line 580)
 
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
@@ -543,7 +551,7 @@ src/engine/animation/gpu_skinning.cpp
 
 ### M10: SkyRenderer + WeatherFx are renderer-agnostic
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L581) (line 581)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L584) (line 584)
 
 CPU objects that compute time-of-day sky colours and weather state.
 They are compiled alongside D3D11Renderer because D3D11Renderer
@@ -554,7 +562,7 @@ src/engine/rendering/weather_fx.cpp
 
 ### Post-M10: SDF FontRenderer (D3D11 text rendering).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L588) (line 588)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L591) (line 591)
 
 font_renderer.cpp builds a CPU-side signed distance field atlas from
 an embedded 8×8 bitmap font, uploads it as an R8_UNORM D3D11 texture,
@@ -566,7 +574,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L612) (line 612)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L615) (line 615)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -579,13 +587,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L625) (line 625)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L628) (line 628)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L627) (line 627)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L630) (line 630)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -612,7 +620,7 @@ src/engine/physics/raycast.cpp
 
 ### M11 Vehicle Physics (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L650) (line 650)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L653) (line 653)
 
 vehicle_system.cpp implements the VehicleSystem: four wheel-ray
 suspension raycasts, spring-damper force model, Ackermann steering,
@@ -628,7 +636,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional JSON sources
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L666) (line 666)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L669) (line 669)
 
 scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
 The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
@@ -642,7 +650,7 @@ src/engine/scene/scene_serialiser.cpp
 
 ### M7 World Streaming Source Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L680) (line 680)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L683) (line 683)
 
 ─────────────────────────────────────────────────────
 The three world-streaming modules are pure C++17 with no platform or
@@ -664,7 +672,7 @@ src/engine/world/world_streaming.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L702) (line 702)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L705) (line 705)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -677,7 +685,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L715) (line 715)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -700,7 +708,7 @@ src/game/world/Zone.cpp
 
 ### M7.1: GameStreamingManager wires Zone lifecycle into
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L734) (line 734)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L737) (line 737)
 
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
@@ -708,7 +716,7 @@ src/game/world/GameStreamingManager.cpp
 
 ### M8 Gameplay Integration: new systems.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L738) (line 738)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L741) (line 741)
 
 game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
 input_mapper.cpp reads Win32 key state → ECS components.
@@ -724,11 +732,20 @@ src/engine/rendering/camera_system.cpp
 src/engine/ui/hud.cpp
 src/engine/ui/menu_stack.cpp
 src/engine/save/save_system.cpp
+
+### M19 Action Combat: ComboSystem FSM.
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
+
+combo_system.cpp is pure C++17 with no platform or rendering
+dependencies.  It compiles on Linux (terminal game) and Windows alike.
+JSON loading inside it is guarded by ENGINE_ENABLE_JSON.
+src/engine/combat/combo_system.cpp
 )
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L774) (line 774)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L782) (line 782)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -740,7 +757,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L783) (line 783)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L791) (line 791)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -749,7 +766,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L793) (line 793)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L801) (line 801)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -761,7 +778,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L802) (line 802)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L810) (line 810)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -771,7 +788,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L812) (line 812)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L820) (line 820)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -780,7 +797,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L818) (line 818)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L826) (line 826)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -789,7 +806,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L823) (line 823)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L831) (line 831)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -800,7 +817,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L839) (line 839)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L847) (line 847)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -811,7 +828,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L847) (line 847)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L855) (line 855)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -821,7 +838,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L859) (line 859)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L867) (line 867)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -855,7 +872,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L891) (line 891)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L899) (line 899)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -870,7 +887,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L906) (line 906)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L914) (line 914)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -885,7 +902,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L948) (line 948)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L956) (line 956)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -908,7 +925,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L969) (line 969)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L977) (line 977)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -929,7 +946,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L986) (line 986)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L994) (line 994)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -939,7 +956,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L992) (line 992)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1000) (line 1000)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -951,7 +968,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1000) (line 1000)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1008) (line 1008)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -963,7 +980,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Post-M10: SDF text rendering HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1008) (line 1008)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1016) (line 1016)
 
 sdf_text.vs.hlsl transforms screen-space pixel quads to NDC.
 sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
@@ -973,7 +990,7 @@ sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
 
 ### M16: PBR + Image-Based Lighting (IBL) shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1014) (line 1014)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1022) (line 1022)
 
 pbr_ibl.vs.hlsl is structurally identical to pbr_mesh.vs.hlsl —
   it outputs worldPos, worldNrm, and UV to the pixel shader.
@@ -990,7 +1007,7 @@ pbr_ibl.ps.hlsl adds the full split-sum IBL ambient:
 
 ### M17: Directional shadow map shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1028) (line 1028)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1036) (line 1036)
 
 shadow.vs.hlsl       — depth-only VS for the shadow pass (one matrix
   multiply, no PS output).  Identity world is baked into lightViewProj.
@@ -1004,7 +1021,7 @@ shadow_lit.ps.hlsl   — lit-pass PS: 3×3 PCF shadow lookup via
 
 ### M17: HDR bloom post-processing shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1039) (line 1039)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1047) (line 1047)
 
 All three passes reuse sky.vs.hlsl as the full-screen triangle VS
 (SV_VertexID → full-screen quad trick — no vertex buffer needed).
@@ -1023,7 +1040,7 @@ bloom_composite.ps.hlsl — adds bloom × g_bloomStrength to the scene,
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1070) (line 1070)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1078) (line 1078)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -1045,7 +1062,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1089) (line 1089)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1097) (line 1097)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -1056,7 +1073,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1097) (line 1097)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1105) (line 1105)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -1066,7 +1083,7 @@ endif()
 
 ### PAK1 Packager Tool
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1111) (line 1111)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1119) (line 1119)
 
 ─────────────────────────────────────────────────────────────────────────────
 The pak tool bundles an input directory into a binary .pak archive
@@ -1091,7 +1108,7 @@ src/engine/core/Logger.cpp
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1137) (line 1137)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1145) (line 1145)
 
 Same reasoning as cook.exe: stdout/stderr must be visible in a terminal.
 if(MSVC)
@@ -1100,7 +1117,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1166) (line 1166)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1174) (line 1174)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -1109,7 +1126,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1173) (line 1173)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1181) (line 1181)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1729,9 +1746,42 @@ All tests are purely CPU-side math — no audio hardware or GPU required.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene audio_3d_test
 shell: cmd
 
-### PAK Packager CI Test
+### M19 combat_test CI
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L499) (line 499)
+
+This step validates four M19 criteria without any rendering API calls:
+
+  Test 1 (combo_populate):
+    AddCombo() fills the ComboSystem in-memory (no JSON file needed).
+    ComboCount() == 3 and the first combo name == "Avalanche Chain".
+
+  Test 2 (combo_sequence):
+    Feed ATTACK, ATTACK, ATTACK via PressInput().  The FSM must stay
+    BUILDING after the first two inputs (prefix match) and return
+    "Avalanche Chain" on the third (exact match).  State = COOLDOWN.
+
+  Test 3 (window_expiry):
+    Feed one ATTACK, then call Update(1.0 s) to advance past the
+    0.5 s combo window.  State must revert to IDLE.  Validates the
+    combo window timer cancels a stale partial sequence.
+
+  Test 4 (damage_formula):
+    Create a minimal ECS World, call CombatSystem::CalculateDamage()
+    100 times, assert every result lies in [1, 100].  Confirms the
+    core damage formula (STR×2 − DEF with ±15% variance and ≤50%
+    crit multiplier) is bounded correctly.
+
+No GPU, audio hardware, or vcpkg packages are required — all tests
+exercise pure C++17 code paths.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M19 -- combat_test scene)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene combat_test
+shell: cmd
+
+### PAK Packager CI Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L532) (line 532)
 
 This step validates pak.exe by packing the vertical_slice_project Cooked/
 directory into a PAK1 archive.  A non-zero exit code (file-not-found,
@@ -1745,7 +1795,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L513) (line 513)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L546) (line 546)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1771,7 +1821,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L552) (line 552)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L585) (line 585)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1797,7 +1847,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L586) (line 586)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L619) (line 619)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1818,7 +1868,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L610) (line 610)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L643) (line 643)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1831,7 +1881,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L623) (line 623)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L656) (line 656)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1846,7 +1896,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L638) (line 638)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L671) (line 671)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1877,7 +1927,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L666) (line 666)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L699) (line 699)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1886,7 +1936,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L688) (line 688)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L721) (line 721)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1914,7 +1964,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L723) (line 723)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L756) (line 756)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1923,7 +1973,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L737) (line 737)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L770) (line 770)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1945,7 +1995,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L762) (line 762)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L795) (line 795)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1959,7 +2009,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L786) (line 786)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L819) (line 819)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1977,7 +2027,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L811) (line 811)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L844) (line 844)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1988,7 +2038,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L822) (line 822)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L855) (line 855)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -2003,7 +2053,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L844) (line 844)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L877) (line 877)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -7064,7 +7114,7 @@ We use a small fixed-size array on the stack.  X3DAudio guarantees
 DstChannelCount <= XAUDIO2_MAX_AUDIO_CHANNELS (64) and we query the
 actual count from the mastering voice, so the array is always sized
 correctly.  Using std::vector would add a heap allocation per call.
-static constexpr UINT32 MAX_CHANNELS = 8u; // mono up to 7.1 surround
+static constexpr UINT32 MAX_CHANNELS = 8u; // mono source to up to 8 output channels (supports 7.1 surround)
 const UINT32 dstCh = m_dstChannels <= MAX_CHANNELS ? m_dstChannels : MAX_CHANNELS;
 float matrix[MAX_CHANNELS] = {};
 for (UINT32 i = 0; i < dstCh; ++i) matrix[i] = 1.0f;
@@ -7899,6 +7949,319 @@ two fields.  If no CameraComponent is found, this is a no-op (safe to
 call even before the camera entity is spawned).
 
 @param world  ECS World containing at least one CameraComponent.
+
+---
+
+## engine/combat
+
+### ENGINE_ENABLE_JSON Guard
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L15) (line 15)
+
+The nlohmann/json header is available only when the vcpkg toolchain is
+active and nlohmann-json is installed.  This matches the pattern used by
+save_system.cpp and game_streaming_manager.cpp — compiling cleanly both
+with and without the library.
+ifdef ENGINE_ENABLE_JSON
+include <nlohmann/json.hpp>
+include <fstream>
+include <sstream>
+endif
+
+### File I/O with error propagation
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L37) (line 37)
+
+We open the file in binary mode and slurp it into a string.  This is
+simpler than streaming and fine for small config files (< 1 MB).
+std::ifstream ifs(configPath, std::ios::binary);
+if (!ifs.is_open())
+{
+std::cerr << "[ComboSystem] LoadConfig: cannot open '" << configPath << "'.\n";
+return false;
+}
+
+### .value("key", default) pattern
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L63) (line 63)
+
+nlohmann::json's value() member returns the field if present, or the
+default if the key is missing.  This makes the loader robust against
+partial config files during development.
+m_config.comboWindowSeconds    = j.value("comboWindowSeconds",    m_config.comboWindowSeconds);
+m_config.turnDurationSeconds   = j.value("turnDurationSeconds",   m_config.turnDurationSeconds);
+m_config.critMultiplier        = j.value("critMultiplier",        m_config.critMultiplier);
+m_config.fleeBaseChance        = j.value("fleeBaseChance",        m_config.fleeBaseChance);
+m_config.fleeChanceCap         = j.value("fleeChanceCap",         m_config.fleeChanceCap);
+m_config.linkStrikeChance      = j.value("linkStrikeChance",      m_config.linkStrikeChance);
+m_config.linkStrikeDamageRatio = j.value("linkStrikeDamageRatio", m_config.linkStrikeDamageRatio);
+
+### Graceful degradation when nlohmann/json is absent
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L118) (line 118)
+
+On CI builds that use the "engine-only" CMake preset (no vcpkg), the
+JSON parsing library is not linked.  We fall through to false so the
+caller knows to populate combos via AddCombo() instead.
+This mirrors the pattern in GameStreamingManager::OnLoadCell() and
+SaveSystem::Load() — a single #ifdef keeps the fallback path obvious.
+(void)configPath;
+std::cerr << "[ComboSystem] LoadConfig: ENGINE_ENABLE_JSON not defined — "
+"use AddCombo() to populate combos programmatically.\n";
+return false;
+endif
+}
+
+### Exact match first, then prefix check
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L146) (line 146)
+
+We check for an exact match BEFORE a prefix match so that shorter
+combos can fire immediately (e.g. "ATTACK, SPECIAL" triggers before
+the three-hit "ATTACK, ATTACK, ATTACK" even if the player pressed
+ATTACK, SPECIAL).  This is the standard "greedy from left" rule.
+
+### Smart reset (plinking)
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L181) (line 181)
+
+If the sequence so far doesn't match any combo prefix, the player
+may have started a new combo immediately after a failed one.
+We restart with only the just-pressed input so the player doesn't
+have to wait for the window to expire before beginning a fresh combo.
+m_currentSequence.clear();
+m_currentSequence.push_back(input);
+
+### State machine tick
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L209) (line 209)
+
+Only one state can be active at a time.  We use a switch rather than
+chained if/else to make the mapping from state → behaviour explicit.
+switch (m_state)
+{
+case ComboState::IDLE:
+Nothing to tick in IDLE.
+break;
+
+### Case-insensitive comparison
+
+**Source:** [`src/engine/combat/combo_system.cpp`](src/engine/combat/combo_system.cpp#L258) (line 258)
+
+We upper-case the token so "attack", "Attack", and "ATTACK" all work.
+std::transform with ::toupper is the C++17 idiomatic way for ASCII.
+std::string upper = token;
+std::transform(upper.begin(), upper.end(), upper.begin(),
+[](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+
+### Action Combat vs Turn-Based ATB
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L6) (line 6)
+
+============================================================================
+
+The existing CombatSystem implements an ATB (Active Time Battle) system:
+a timer fires at regular intervals and a turn is resolved.  That is the
+backbone of the combat simulation — damage, status effects, flee, loot.
+
+The ComboSystem layers ACTION input on top of the ATB backbone:
+
+  Player presses:   ATTACK → ATTACK → ATTACK
+  Timer fires:      Avalanche Chain (180% damage) is resolved this turn
+
+This mirrors Final Fantasy XV, where:
+  - The engine runs a continuous combat simulation under the hood.
+  - Player button presses queue combo inputs.
+  - A "combo interpreter" turns button sequences into named abilities.
+
+============================================================================
+
+### Finite State Machine (FSM) Design
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L24) (line 24)
+
+============================================================================
+
+A Finite State Machine (FSM) is one of the oldest and most reliable patterns
+in game programming.  The ComboSystem FSM has three states:
+
+  IDLE      No combo is building.  Waiting for the first input.
+
+  BUILDING  The player has pressed at least one button.  A "combo window"
+            timer counts down.  If the next input arrives before the window
+            expires, it is appended to the current sequence.  If the window
+            expires first, the sequence is discarded (IDLE).
+
+  COOLDOWN  A combo was recognised and executed.  The player must wait for
+            the cooldown to expire before starting the next combo.
+
+Transitions:
+
+  IDLE    + button press          → BUILDING (start sequence)
+  BUILDING + button press         → BUILDING (extend sequence) or COOLDOWN (match found)
+  BUILDING + window expires       → IDLE     (sequence cancelled)
+  COOLDOWN + cooldown expires     → IDLE     (ready for next input)
+
+============================================================================
+
+### Combo Window (Input Leniency)
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L48) (line 48)
+
+============================================================================
+
+The "combo window" is the maximum gap allowed between successive button
+presses.  If it is too short, the combo becomes impossible to execute
+consistently; if too long, players can accidentally trigger combos while
+mashing.  FF15 uses about 0.4–0.6 seconds per input step.
+
+In our engine the window is loaded from combat_config.json so that game
+designers can tune it without recompiling:
+
+  "comboWindowSeconds": 0.5
+
+============================================================================
+
+### Data-Driven Design via combat_config.json
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L62) (line 62)
+
+============================================================================
+
+Every combo sequence (name, buttons, damage multiplier, element, MP cost,
+cooldown) lives in Content/combat_config.json, NOT in C++ source.
+
+WHY data-driven?
+  1. Designers can add combos without touching C++ code.
+  2. The engine is shipped once; content ships separately.
+  3. JSON diffs are readable in pull requests; C++ diffs are noisy.
+
+LoadConfig() parses the JSON file and populates m_combos.
+The JSON code is guarded by ENGINE_ENABLE_JSON, which is defined when
+nlohmann/json is found via vcpkg.  Without it, combos must be added
+programmatically via AddCombo().
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+
+C++ Standard: C++17
+
+### Enumeration vs String Keys
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L103) (line 103)
+
+──────────────────────────────────────────
+We store each input as a typed enum rather than a raw string "ATTACK".
+This means typos ("ATTCK") are caught at compile time, not at runtime,
+and switch-case dispatch is O(1) rather than O(n) string compares.
+
+The JSON loader (LoadConfig) converts string tokens → ComboInput values.
+
+### Flyweight Pattern
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L127) (line 127)
+
+──────────────────────────────────
+ComboDefinition is read-only shared data (loaded once from JSON).
+At runtime, ComboSystem only READS this struct — it never modifies it.
+This follows the Flyweight pattern: shared immutable data referenced
+by many callers with no per-instance overhead.
+
+### Separation of Config from Code
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L166) (line 166)
+
+─────────────────────────────────────────────────
+All "magic numbers" in the combat formula are collected here rather than
+scattered as named constants throughout CombatSystem.cpp.  A designer
+changes critMultiplier from 1.5 → 1.8 in JSON; the C++ is never touched.
+
+Fields map 1:1 to JSON keys for easy inspection:
+  C++ field             JSON key
+  comboWindowSeconds  ← "comboWindowSeconds"
+  turnDurationSeconds ← "turnDurationSeconds"
+  critMultiplier      ← "critMultiplier"
+  fleeBaseChance      ← "fleeBaseChance"
+  fleeChanceCap       ← "fleeChanceCap"
+  linkStrikeChance    ← "linkStrikeChance"
+  linkStrikeDamageRatio ← "linkStrikeDamageRatio"
+
+### Why Only Three States?
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L201) (line 201)
+
+────────────────────────────────────────
+Keeping the FSM small (three states) makes every transition explicit and
+easy to trace in a debugger.  More complex action games add states like
+LINKING (performing a link-strike) or FINISHER (playing a finish animation)
+but those are sub-states of EXECUTING in a hierarchical FSM — we keep it
+flat here for teaching clarity.
+
+### Setter Injection vs Constructor Parameters
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L254) (line 254)
+
+───────────────────────────────────────────────────────────
+We use a setter rather than passing config through the constructor
+so that the system can be instantiated (no-arg) and configured later
+once the JSON has been loaded.  This matches the common game-engine
+pattern where objects are allocated in pool containers before their
+data is available.
+
+### ENGINE_ENABLE_JSON Guard
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L283) (line 283)
+
+──────────────────────────────────────────
+The JSON parsing code is compiled only when ENGINE_ENABLE_JSON is
+defined (i.e. nlohmann/json was found via vcpkg).  Without it, the
+function logs a warning and returns false — the caller must use
+AddCombo() directly.  This ensures the engine compiles on machines
+without vcpkg and on the CI engine-only preset.
+
+### Prefix Matching
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L303) (line 303)
+
+─────────────────────────────────
+After each input the system checks:
+  1. EXACT MATCH — does the current sequence equal any combo sequence?
+     → Yes: trigger the combo (return its name), enter COOLDOWN.
+  2. PREFIX MATCH — is the current sequence a prefix of at least one combo?
+     → Yes: stay in BUILDING, keep collecting inputs.
+  3. NO MATCH — neither exact nor prefix.
+     → Reset to IDLE.  If the single input alone matches as a prefix,
+       restart with just that one input instead of discarding everything.
+
+This "smart reset" allows the player to start a new sequence mid-way
+through a failed one without having to wait for the window to expire
+(a technique called "input leniency" or "plinking").
+
+### Update Before Input
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L331) (line 331)
+
+──────────────────────────────────────
+Calling Update() before PressInput() each frame ensures that a window
+expiry that happens on the same frame as an input is processed correctly:
+if the window expired this frame, the input starts a fresh sequence
+rather than extending a stale one.
+
+### Callbacks vs Event Bus
+
+**Source:** [`src/engine/combat/combo_system.hpp`](src/engine/combat/combo_system.hpp#L382) (line 382)
+
+──────────────────────────────────────────
+We use a std::function callback rather than EventBus here because:
+  • The combo trigger is 1-to-1 (one caller, one listener) — EventBus
+    is better suited to 1-to-N fan-out like a weather change.
+  • std::function is zero external dependencies and stack-allocated for
+    simple lambdas.
+For a production engine you might route through EventBus<CombatEvent>
+to decouple the HUD, sound effects, and animation responses.
 
 ---
 
@@ -25610,6 +25973,7 @@ Usage:
   engine_sandbox.exe --headless --scene shadow_test       # M17 Shadow Maps: shadow-pass + PCF lit-pass acceptance test (CI)
   engine_sandbox.exe --headless --scene bloom_test        # M17 Bloom: bright-pass + blur + composite acceptance test (CI)
   engine_sandbox.exe --headless --scene audio_3d_test     # M18 X3DAudio: listener init + distance rolloff acceptance test (CI)
+  engine_sandbox.exe --headless --scene combat_test        # M19 Action Combat: combo FSM + damage formula acceptance test (CI)
 
 ============================================================================
 
@@ -25621,7 +25985,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L104) (line 104)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L105) (line 105)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -25640,7 +26004,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L119) (line 119)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L120) (line 120)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -25648,7 +26012,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L125) (line 125)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L126) (line 126)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -25666,7 +26030,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L141) (line 141)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L142) (line 142)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -25681,7 +26045,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L154) (line 154)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L155) (line 155)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -25701,7 +26065,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L172) (line 172)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L173) (line 173)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -25715,7 +26079,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L184) (line 184)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L185) (line 185)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -25735,7 +26099,7 @@ include "engine/ai/nav_mesh.hpp"
 
 ### Post-M10 Cinematics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L202) (line 202)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L203) (line 203)
 
 ---------------------------------------------------------------------------
 The cinematic_test scene validates the two new engine/cinematics/ subsystems:
@@ -25752,7 +26116,7 @@ include "engine/cinematics/cinematic_sequencer.hpp"
 
 ### UI Menu Stack headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L217) (line 217)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L218) (line 218)
 
 ---------------------------------------------------------------------------
 The menu_stack_test scene validates the MenuStack navigation subsystem:
@@ -25770,7 +26134,7 @@ include "engine/ui/menu_stack.hpp"
 
 ### SDF Font Renderer headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L233) (line 233)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L234) (line 234)
 
 ---------------------------------------------------------------------------
 The font_test scene validates the SDF FontRenderer subsystem:
@@ -25784,7 +26148,7 @@ The font_test scene validates the SDF FontRenderer subsystem:
 
 ### Why headless font tests?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L244) (line 244)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L245) (line 245)
 
 The SDF atlas generation (CPU) and texture upload (GPU) happen inside Init().
 Running this in headless (WARP) mode on a CI Windows runner exercises the
@@ -25798,9 +26162,43 @@ include "engine/rendering/d3d11/D3D11Renderer.hpp"
 include "engine/audio/xaudio2_backend.hpp"
 endif
 
+### M19 Action Combat headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L259) (line 259)
+
+---------------------------------------------------------------------------
+The combat_test scene validates the ComboSystem FSM and the CombatSystem
+damage formula without any rendering API calls:
+
+  Test 1 (combo_populate):
+    AddCombo() adds 3 combo definitions; ComboCount() == 3 and the first
+    combo name matches.  Validates the in-memory add-combo API that is
+    used when ENGINE_ENABLE_JSON is not available.
+
+  Test 2 (combo_sequence):
+    Feed ATTACK, ATTACK, ATTACK into PressInput().  The third press must
+    return "Avalanche Chain" and transition the FSM to COOLDOWN.
+    Validates: prefix matching stays BUILDING, exact match fires.
+
+  Test 3 (window_expiry):
+    Feed one ATTACK, then call Update(1.0f) to advance past the 0.5 s
+    window.  State must return to IDLE (sequence cancelled).
+    Validates: the combo window timer correctly resets an incomplete combo.
+
+  Test 4 (damage_formula):
+    Create a minimal ECS World with player (STR=20, DEF=5) and enemy
+    (DEF=5), then call CombatSystem::CalculateDamage() 100 times.
+    Every result must lie in [1, 100] — confirming the formula is bounded
+    and the variance term [0.85, 1.15] is applied correctly.
+
+All four tests are pure C++17 CPU tests — no GPU or audio device needed.
+---------------------------------------------------------------------------
+include "engine/combat/combo_system.hpp"
+include "game/systems/CombatSystem.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L266) (line 266)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L299) (line 299)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -25817,7 +26215,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L281) (line 281)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L314) (line 314)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -25834,7 +26232,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L294) (line 294)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L327) (line 327)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -25846,7 +26244,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L316) (line 316)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L349) (line 349)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -25865,7 +26263,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L331) (line 331)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L364) (line 364)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -25878,7 +26276,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L344) (line 344)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L377) (line 377)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -25889,7 +26287,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L373) (line 373)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L406) (line 406)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -25904,7 +26302,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L398) (line 398)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L431) (line 431)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -25914,7 +26312,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L428) (line 428)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L461) (line 461)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -25930,7 +26328,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L461) (line 461)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L494) (line 494)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -25940,7 +26338,7 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L482) (line 482)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L515) (line 515)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -25966,7 +26364,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L504) (line 504)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L537) (line 537)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -25995,7 +26393,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L529) (line 529)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L562) (line 562)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -26019,7 +26417,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L637) (line 637)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L670) (line 670)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -26044,7 +26442,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L758) (line 758)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L791) (line 791)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -26065,7 +26463,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L842) (line 842)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L875) (line 875)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -26083,7 +26481,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L856) (line 856)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L889) (line 889)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -26114,7 +26512,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L885) (line 885)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L918) (line 918)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -26122,7 +26520,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L947) (line 947)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L980) (line 980)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -26145,7 +26543,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1022) (line 1022)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1055) (line 1055)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -26163,7 +26561,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1036) (line 1036)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1069) (line 1069)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -26181,7 +26579,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1069) (line 1069)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1102) (line 1102)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -26207,7 +26605,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1120) (line 1120)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1153) (line 1153)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -26229,7 +26627,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1139) (line 1139)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1172) (line 1172)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -26252,7 +26650,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1220) (line 1220)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1253) (line 1253)
 
 -----------------------------------------------------------
 Verifies that:
@@ -26272,7 +26670,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1237) (line 1237)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1270) (line 1270)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -26292,7 +26690,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1280) (line 1280)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1313) (line 1313)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -26308,7 +26706,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1322) (line 1322)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1355) (line 1355)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -26334,7 +26732,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1344) (line 1344)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1377) (line 1377)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -26357,7 +26755,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1453) (line 1453)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1486) (line 1486)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -26384,7 +26782,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1477) (line 1477)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1510) (line 1510)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -26395,14 +26793,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1500) (line 1500)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1533) (line 1533)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1505) (line 1505)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1538) (line 1538)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -26419,7 +26817,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1553) (line 1553)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1586) (line 1586)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -26454,7 +26852,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1611) (line 1611)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1644) (line 1644)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -26464,7 +26862,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1702) (line 1702)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1735) (line 1735)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -26474,7 +26872,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1770) (line 1770)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1803) (line 1803)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -26482,7 +26880,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1821) (line 1821)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1854) (line 1854)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -26511,7 +26909,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1855) (line 1855)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1888) (line 1888)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -26534,7 +26932,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1906) (line 1906)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1939) (line 1939)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -26557,7 +26955,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1947) (line 1947)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1980) (line 1980)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -26574,7 +26972,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2022) (line 2022)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2055) (line 2055)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -26586,7 +26984,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2103) (line 2103)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2136) (line 2136)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -26604,7 +27002,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2317) (line 2317)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2350) (line 2350)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -26617,7 +27015,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2398) (line 2398)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2431) (line 2431)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -26633,7 +27031,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2411) (line 2411)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2444) (line 2444)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -26650,7 +27048,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2452) (line 2452)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2485) (line 2485)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -26668,7 +27066,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2483) (line 2483)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2516) (line 2516)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -26694,7 +27092,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2527) (line 2527)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2560) (line 2560)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -26734,7 +27132,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2614) (line 2614)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2647) (line 2647)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -26775,7 +27173,7 @@ std::cout << "[OK] bloom_test/load: "
 
 ### What the audio_3d_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2703) (line 2703)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2736) (line 2736)
 
 Test 1 (init):
     XAudio2Backend::Init() is called.  On headless CI with no
@@ -26802,9 +27200,80 @@ fallback.  No audio hardware or GPU is required.
 -----------------------------------------------------------
 int testsFailed = 0;
 
+### What the combat_test validates:
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2854) (line 2854)
+
+All four tests are pure C++17 CPU tests — no D3D11 renderer
+  or audio hardware is required.
+
+  Test 1 (combo_populate):
+    AddCombo() populates the ComboSystem in-memory without
+    JSON.  ComboCount() must equal the number added and the
+    first combo name must match.
+
+  Test 2 (combo_sequence):
+    Feed ATTACK, ATTACK, ATTACK via PressInput().  The FSM
+    must stay BUILDING after inputs 1 and 2 (prefix match)
+    and return "Avalanche Chain" on input 3 (exact match).
+    State must then be COOLDOWN.
+
+  Test 3 (window_expiry):
+    Feed one ATTACK, then Update(1.0f) to advance past the
+    0.5 s combo window.  State must revert to IDLE.
+    Validates that the combo window timer cancels stale
+    partial sequences correctly.
+
+  Test 4 (damage_formula):
+    Create a minimal ECS World with player (STR=20) and
+    enemy (DEF=5).  Call CombatSystem::CalculateDamage()
+    100 times and assert every result lies in [1, 100].
+    This bounds-tests the damage formula including the
+    [0.85, 1.15] variance term.
+-----------------------------------------------------------
+int testsFailed = 0;
+
+### We define the same combos here that
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2890) (line 2890)
+
+appear in combat_config.json so the test is self-
+contained and does not require a file on disk.
+ComboDefinition aaaDef;
+aaaDef.name             = "Avalanche Chain";
+aaaDef.sequence         = { ComboInput::ATTACK,
+ComboInput::ATTACK,
+ComboInput::ATTACK };
+aaaDef.damageMultiplier = 1.8f;
+aaaDef.mpCost           = 0;
+aaaDef.cooldownSeconds  = 1.0f;
+aaaDef.element          = "physical";
+cs.AddCombo(aaaDef);
+
+### Set a short config so tests run fast
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2952) (line 2952)
+
+CombatConfig cfg;
+cfg.comboWindowSeconds = 0.5f;
+cs.SetConfig(cfg);
+
+### Minimal ECS World for a unit test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3052) (line 3052)
+
+We create the smallest possible World to exercise a specific
+function (CalculateDamage).  This is the game-engine equivalent
+of a unit test: real components, real calculation, no window.
+Heap-allocate World because EntityManager::m_signatures alone
+is 512 KB — too large to stack-allocate on Windows.
+{
+auto combatWorld = std::make_unique<World>();
+RegisterAllComponents(*combatWorld);
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2832) (line 2832)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3155) (line 3155)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -26814,7 +27283,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2840) (line 2840)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3163) (line 3163)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -26844,7 +27313,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2868) (line 2868)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3191) (line 3191)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -26867,7 +27336,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2921) (line 2921)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3244) (line 3244)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -26880,7 +27349,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2937) (line 2937)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3260) (line 3260)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

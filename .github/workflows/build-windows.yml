@@ -494,6 +494,39 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M19 — Action combat completion acceptance test (CPU-only)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M19 combat_test CI
+      # This step validates four M19 criteria without any rendering API calls:
+      #
+      #   Test 1 (combo_populate):
+      #     AddCombo() fills the ComboSystem in-memory (no JSON file needed).
+      #     ComboCount() == 3 and the first combo name == "Avalanche Chain".
+      #
+      #   Test 2 (combo_sequence):
+      #     Feed ATTACK, ATTACK, ATTACK via PressInput().  The FSM must stay
+      #     BUILDING after the first two inputs (prefix match) and return
+      #     "Avalanche Chain" on the third (exact match).  State = COOLDOWN.
+      #
+      #   Test 3 (window_expiry):
+      #     Feed one ATTACK, then call Update(1.0 s) to advance past the
+      #     0.5 s combo window.  State must revert to IDLE.  Validates the
+      #     combo window timer cancels a stale partial sequence.
+      #
+      #   Test 4 (damage_formula):
+      #     Create a minimal ECS World, call CombatSystem::CalculateDamage()
+      #     100 times, assert every result lies in [1, 100].  Confirms the
+      #     core damage formula (STR×2 − DEF with ±15% variance and ≤50%
+      #     crit multiplier) is bounded correctly.
+      #
+      # No GPU, audio hardware, or vcpkg packages are required — all tests
+      # exercise pure C++17 code paths.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M19 -- combat_test scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene combat_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # PAK packager acceptance test
       # -----------------------------------------------------------------------
       # TEACHING NOTE — PAK Packager CI Test
