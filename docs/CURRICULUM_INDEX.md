@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1584 across 50 subsystems.
+**Total lessons:** 1591 across 50 subsystems.
 
 ---
 
@@ -31,7 +31,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
-- [engine/ui](#engineui) (50 lessons)
+- [engine/ui](#engineui) (54 lessons)
 - [engine/vehicle](#enginevehicle) (25 lessons)
 - [engine/world](#engineworld) (56 lessons)
 - [game/Game.cpp](#gamegame.cpp) (6 lessons)
@@ -42,7 +42,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (64 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (65 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -59,7 +59,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
 - [tools/cook](#toolscook) (12 lessons)
 - [tools/creation_engine.py](#toolscreation_engine.py) (5 lessons)
-- [tools/pak](#toolspak) (12 lessons)
+- [tools/pak](#toolspak) (14 lessons)
 - [tools/tests](#toolstests) (3 lessons)
 - [tools/validate-assets.py](#toolsvalidate-assets.py) (2 lessons)
 
@@ -1346,7 +1346,7 @@ run: cmake --preset windows-ninja-debug-engine-only
 
 ### D3D11 WARP in Headless CI
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L127) (line 127)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L134) (line 134)
 
 D3D11 WARP is Microsoft's CPU software rasteriser bundled with every
 Windows installation.  When --headless is passed, D3D11Renderer uses
@@ -1360,7 +1360,7 @@ shell: cmd
 
 ### Skinned mesh headless validation.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L148) (line 148)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L155) (line 155)
 
 Loads the "skinned_mesh" scene which compiles skinned_mesh.vs.hlsl and
 skinned_mesh.ps.hlsl, creates the GpuSkinningBuffer constant buffer,
@@ -1374,7 +1374,7 @@ shell: cmd
 
 ### M7 World Streaming CI
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L162) (line 162)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L169) (line 169)
 
 The three streaming scenes exercise WorldStreamingManager, WorldPartition,
 and AsyncLoader without touching the D3D11 renderer.  They run on the
@@ -1395,7 +1395,7 @@ shell: cmd
 
 ### M8.9 CI Acceptance Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L191) (line 191)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L198) (line 198)
 
 This scene runs all gameplay systems (Combat, AI, Quest, Weather) in
 the headless D3D11 sandbox and asserts three conditions:
@@ -1409,7 +1409,7 @@ shell: cmd
 
 ### M9 PBR CI Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L205) (line 205)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L212) (line 212)
 
 This step validates the full PBR rendering pipeline against the WARP
 software rasteriser:
@@ -1433,7 +1433,7 @@ shell: cmd
 
 ### M10 Acceptance Tests
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L229) (line 229)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L236) (line 236)
 
 This step validates three criteria from FF15_REQUIREMENTS_BLUEPRINT §7:
 
@@ -1456,7 +1456,7 @@ shell: cmd
 
 ### M8.7 Streaming Integration Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L266) (line 266)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L273) (line 273)
 
 This scene validates the complete M8.7 pipeline that wires the world
 streaming system into the D3D11 GameRuntime:
@@ -1475,7 +1475,7 @@ shell: cmd
 
 ### bt_test CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L285) (line 285)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L292) (line 292)
 
 This step validates the three new engine/ai/ subsystems:
 
@@ -1501,7 +1501,7 @@ shell: cmd
 
 ### cinematic_test CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L311) (line 311)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L318) (line 318)
 
 This step validates the two new engine/cinematics/ subsystems:
 
@@ -1529,7 +1529,7 @@ shell: cmd
 
 ### menu_stack_test CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L339) (line 339)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L346) (line 346)
 
 This step validates the MenuStack push/pop navigation subsystem:
 
@@ -1553,7 +1553,7 @@ shell: cmd
 
 ### Font Renderer CI Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L363) (line 363)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L370) (line 370)
 
 This step validates the SDF FontRenderer subsystem (Post-M10):
 
@@ -1573,7 +1573,7 @@ shell: cmd
 
 ### PAK Packager CI Test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L383) (line 383)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L390) (line 390)
 
 This step validates pak.exe by packing the vertical_slice_project Cooked/
 directory into a PAK1 archive.  A non-zero exit code (file-not-found,
@@ -1587,7 +1587,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L397) (line 397)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L404) (line 404)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1613,7 +1613,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L436) (line 436)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L443) (line 443)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1639,7 +1639,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L470) (line 470)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L477) (line 477)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1660,7 +1660,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L494) (line 494)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L501) (line 501)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1673,7 +1673,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L507) (line 507)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L514) (line 514)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1688,7 +1688,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L522) (line 522)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L529) (line 529)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1719,7 +1719,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L550) (line 550)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L557) (line 557)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1728,7 +1728,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L572) (line 572)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L579) (line 579)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1756,7 +1756,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L607) (line 607)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L614) (line 614)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1765,7 +1765,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L621) (line 621)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L628) (line 628)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1787,7 +1787,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L646) (line 646)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L653) (line 653)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -1801,7 +1801,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L670) (line 670)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L677) (line 677)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -1819,7 +1819,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L695) (line 695)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L702) (line 702)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -1830,7 +1830,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L706) (line 706)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L713) (line 713)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -1845,7 +1845,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L728) (line 728)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L735) (line 735)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -17227,7 +17227,7 @@ Target: Windows (MSVC, D3D11)
 
 ### Embedded 8×8 Bitmap Font
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L37) (line 37)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L38) (line 38)
 
 ---------------------------------------------------------------------------
 Each entry in kFont8x8[N][8] represents one glyph for ASCII character
@@ -17310,9 +17310,30 @@ ASCII 57 — '9'
 ASCII 58 — ':'
 { 0x00,0x0C,0x0C,0x00,0x00,0x0C,0x0C,0x00 },
 
+### Validate inputs before touching any state.
+
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L275) (line 275)
+
+Accepting a null device/context would cause silent GPU crashes later.
+if (!device || !context)
+{
+LOG_ERROR("[FontRenderer] Init() received null D3D11 device or context.");
+return false;
+}
+
+### Transactional Init pattern.
+
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L283) (line 283)
+
+If a previous Init() call failed mid-way, the object may hold partial
+CPU/GPU state (e.g. an atlas texture but no SRV).  Calling Shutdown()
+first resets every member to nullptr, guaranteeing we start from a
+known-clean baseline.  This also makes repeated Init() calls safe.
+Shutdown();
+
 ### COM Release() pattern
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L315) (line 315)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L332) (line 332)
 
 Every D3D11 COM object must be explicitly Released() when no longer
 needed.  We set the pointer to nullptr after each Release() so that:
@@ -17334,7 +17355,7 @@ if (m_atlasTex)    { m_atlasTex->Release();    m_atlasTex    = nullptr; }
 
 ### SDF Generation Algorithm
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L342) (line 342)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L359) (line 359)
 
 ──────────────────────────────────────────
 For each glyph we:
@@ -17350,7 +17371,7 @@ For each glyph we:
 
 ### Signed distance convention
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L417) (line 417)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L434) (line 434)
 
 If we didn't find any edge within the search radius we clamp
 to ±kRadius.  Sign: inside = positive, outside = negative.
@@ -17362,7 +17383,7 @@ signedDist = inside ? minDist : -minDist;
 
 ### UV normalisation
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L439) (line 439)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L456) (line 456)
 
 Atlas size is kAtlasWidthPx × kAtlasHeightPx = 128 × 48.
 UVs divide pixel coordinates by the atlas dimensions.
@@ -17376,7 +17397,7 @@ g.advance = 1.0f;  // monospace: always one cell width
 
 ### R8_UNORM texture format
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L458) (line 458)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L475) (line 475)
 
 R8_UNORM stores one 8-bit channel per texel, normalised to [0, 1] in
 the shader.  It is the ideal format for single-channel data like SDF
@@ -17391,9 +17412,23 @@ td.SampleDesc     = { 1, 0 };
 td.Usage          = D3D11_USAGE_IMMUTABLE;  // never modified after upload
 td.BindFlags      = D3D11_BIND_SHADER_RESOURCE;
 
+### Release already-created resources before returning.
+
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L510) (line 510)
+
+m_atlasTex was successfully created above.  If we return false here
+without releasing it, the GPU resource leaks.  Shutdown() also
+releases it (called by Init on failure), but releasing it here
+immediately keeps the object consistent even if Shutdown is skipped.
+m_atlasTex->Release();
+m_atlasTex = nullptr;
+LOG_ERROR("[FontRenderer] CreateShaderResourceView (atlas) failed: 0x%08X", hr);
+return false;
+}
+
 ### Linear sampler for sub-texel smoothness
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L497) (line 497)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L521) (line 521)
 
 A linear (bilinear) sampler interpolates between neighbouring texels
 when the UV falls between pixel centres.  This gives smooth rendering
@@ -17411,7 +17446,7 @@ sd.MaxLOD         = D3D11_FLOAT32_MAX;
 
 ### Runtime HLSL Compilation
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L527) (line 527)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L554) (line 554)
 
 D3DCompileFromFile() compiles .hlsl source into a bytecode blob at
 run-time.  This avoids the need for a build-step shader compiler (FXC)
@@ -17423,9 +17458,20 @@ with D3DReadFileToBlob() to avoid the runtime compiler overhead.
 We use the "legacy" D3DCompileFromFile rather than DXC to keep the
 dependency on d3dcompiler.lib only (no DXC DLL required).
 
+### std::filesystem::path for safe path joining.
+
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L575) (line 575)
+
+Using operator/ on fs::path correctly handles trailing-separator edge
+cases: fs::path("shaders") / "sdf_text.vs.hlsl" and
+fs::path("shaders/") / "sdf_text.vs.hlsl" both produce the same result.
+Plain string concatenation (`shaderDir + "sdf_text.vs.hlsl"`) silently
+produces a broken path if the caller omits the trailing separator.
+namespace fs = std::filesystem;
+
 ### Input Layout
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L614) (line 614)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L649) (line 649)
 
 The input layout tells D3D11 how to interpret the raw bytes of the
 vertex buffer as named shader inputs.  The descriptor array must
@@ -17449,7 +17495,7 @@ D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 ### Alpha Blend State for text compositing
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L648) (line 648)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L683) (line 683)
 
 Text must be drawn on top of the scene with correct transparency.
 We use standard straight-alpha blending:
@@ -17465,7 +17511,7 @@ blendDesc.IndependentBlendEnable = FALSE;
 
 ### Dynamic Vertex Buffer
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L686) (line 686)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L721) (line 721)
 
 Unlike a static VB (D3D11_USAGE_DEFAULT), a DYNAMIC VB can be updated
 by the CPU every frame via Map(WRITE_DISCARD).  WRITE_DISCARD means
@@ -17483,7 +17529,7 @@ vbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 ### Static Index Buffer
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L708) (line 708)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L743) (line 743)
 
 The index pattern for each character quad is always the same:
   vertex indices: 0,1,2, 0,2,3  (two triangles making a quad)
@@ -17505,7 +17551,7 @@ indices[i * 6 + 5] = base + 3;
 
 ### Constant Buffer for screen dimensions
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L742) (line 742)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L777) (line 777)
 
 The VS needs to know the render target size (W, H) to convert pixel
 coordinates to NDC.  We store this in a 16-byte constant buffer
@@ -17519,7 +17565,7 @@ cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
 ### Quad building
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L774) (line 774)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L809) (line 809)
 
 Each ASCII character occupies a screen-space quad:
   TL = (curX,        curY)
@@ -17534,7 +17580,7 @@ After placing each character, advance curX by `scale` pixels.
 
 ### Map/WRITE_DISCARD vertex buffer update
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L822) (line 822)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L857) (line 857)
 
 Map() with D3D11_MAP_WRITE_DISCARD returns a pointer to a fresh region
 of GPU memory.  We copy our vertices in, then Unmap() to flush.
@@ -17548,7 +17594,7 @@ return;
 
 ### Update ScreenCB
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L837) (line 837)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L872) (line 872)
 
 Pack screenW and screenH as two floats.  The constant buffer has
 16 bytes (two float2 members): screenSize and _pad.
@@ -17569,7 +17615,7 @@ m_context->Unmap(m_screenCB, 0);
 
 ### DrawIndexed
 
-**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L880) (line 880)
+**Source:** [`src/engine/ui/font_renderer.cpp`](src/engine/ui/font_renderer.cpp#L915) (line 915)
 
 indexCount = charCount * kIndicesPerChar (6 indices per quad = 2 triangles).
 startIndexLocation = 0  (draw from the beginning of the IB).
@@ -24126,9 +24172,19 @@ window.Shutdown();
 return 1;
 }
 
+### shaderDir scope
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L457) (line 457)
+
+shaderDir is computed once here (outside the scene-load block) so
+that headless acceptance tests that need to create D3D11 resources
+(e.g. font_test, which builds its own FontRenderer) can also access
+the shader directory without re-computing it or duplicating the call.
+std::string shaderDir = GetShaderDir(argv[0]);
+
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L473) (line 473)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L478) (line 478)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -24154,7 +24210,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L495) (line 495)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L500) (line 500)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -24183,7 +24239,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L520) (line 520)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L525) (line 525)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -24207,7 +24263,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L628) (line 628)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L633) (line 633)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -24232,7 +24288,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L749) (line 749)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L754) (line 754)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -24253,7 +24309,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L833) (line 833)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L838) (line 838)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -24271,7 +24327,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L847) (line 847)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L852) (line 852)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -24302,7 +24358,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L876) (line 876)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L881) (line 881)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -24310,7 +24366,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L938) (line 938)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L943) (line 943)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -24333,7 +24389,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1013) (line 1013)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1018) (line 1018)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -24351,7 +24407,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1027) (line 1027)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1032) (line 1032)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -24369,7 +24425,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1060) (line 1060)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1065) (line 1065)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -24395,7 +24451,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1111) (line 1111)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1116) (line 1116)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -24417,7 +24473,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1130) (line 1130)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1135) (line 1135)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -24440,7 +24496,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1211) (line 1211)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1216) (line 1216)
 
 -----------------------------------------------------------
 Verifies that:
@@ -24460,7 +24516,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1228) (line 1228)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1233) (line 1233)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -24480,7 +24536,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1271) (line 1271)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1276) (line 1276)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -24496,7 +24552,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1313) (line 1313)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1318) (line 1318)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -24522,7 +24578,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1335) (line 1335)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1340) (line 1340)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -24545,7 +24601,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1444) (line 1444)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1449) (line 1449)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -24572,7 +24628,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1468) (line 1468)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1473) (line 1473)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -24583,14 +24639,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1491) (line 1491)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1496) (line 1496)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1496) (line 1496)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1501) (line 1501)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -24607,7 +24663,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1544) (line 1544)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1549) (line 1549)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -24642,7 +24698,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1602) (line 1602)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1607) (line 1607)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -24652,7 +24708,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1693) (line 1693)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1698) (line 1698)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -24662,7 +24718,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1761) (line 1761)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1766) (line 1766)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -24670,7 +24726,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1812) (line 1812)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1817) (line 1817)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -24699,7 +24755,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1846) (line 1846)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1851) (line 1851)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -24722,7 +24778,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1897) (line 1897)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1902) (line 1902)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -24745,7 +24801,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1938) (line 1938)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1943) (line 1943)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -24762,7 +24818,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2013) (line 2013)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2018) (line 2018)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -24774,7 +24830,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2094) (line 2094)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2099) (line 2099)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -24792,7 +24848,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2308) (line 2308)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2313) (line 2313)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -24805,7 +24861,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2389) (line 2389)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2394) (line 2394)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -24824,7 +24880,7 @@ std::cout << "[PASS] " << renderer->BackendName()
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2413) (line 2413)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2418) (line 2418)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -24834,7 +24890,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2421) (line 2421)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2426) (line 2426)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -24864,7 +24920,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2449) (line 2449)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2454) (line 2454)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -24887,7 +24943,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2502) (line 2502)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2507) (line 2507)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -24900,7 +24956,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2518) (line 2518)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2523) (line 2523)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -26432,9 +26488,23 @@ static void WriteLE(std::ofstream& out, T val)
 out.write(reinterpret_cast<const char*>(&val), sizeof(val));
 }
 
+### Fail fast on truncated/corrupt binary input.
+
+**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L152) (line 152)
+
+Binary container readers must validate every primitive read.  If we
+returned a default/partially-read value here, later code could treat
+it as a trusted count, size, or offset and attempt huge allocations or
+invalid seeks.  Throwing at the read boundary keeps the archive parser
+in a well-defined state and preserves correct behaviour for valid files.
+if (!in)
+throw std::runtime_error("[pak] ReadLE: truncated or corrupt pak stream.");
+return val;
+}
+
 ### Recursive Directory Walk
 
-**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L168) (line 168)
+**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L176) (line 176)
 
 std::filesystem::recursive_directory_iterator (C++17) visits every
 file and directory under baseDir in an unspecified order.  We collect
@@ -26453,7 +26523,7 @@ std::sort(filePaths.begin(), filePaths.end());
 
 ### Two-Pass Layout
 
-**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L191) (line 191)
+**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L199) (line 199)
 
 We need to know each file's dataOffset before writing anything.
 The dataOffset = HEADER_SIZE + FILE_TABLE_SIZE + sum of preceding files.
@@ -26466,30 +26536,71 @@ File table entry:
 -----------------------------------------------------------------------
 constexpr uint64_t kHeaderSize = 12;
 
-### Printf-style column alignment via std::cout width
+### Path length guard before uint16_t truncation.
 
-**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L339) (line 339)
+**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L259) (line 259)
 
+The PAK1 format stores pathLen as uint16_t (max 65535 bytes).
+A path exceeding this limit would silently truncate, desynchronising
+the reader from the file table.  Reject oversized paths early so
+the archive is always well-formed.
+if (e.path.size() > 0xFFFF)
+{
+std::cerr << "[pak] ERROR: path too long (>" << 0xFFFF
+<< " bytes) for PAK1 format: " << e.path << "\n";
+return 1;
+}
+uint16_t pathLen = static_cast<uint16_t>(e.path.size());
+WriteLE(out, pathLen);
+out.write(e.path.data(), pathLen);
+WriteLE(out, e.dataOffset);
+WriteLE(out, e.dataSize);
+}
+
+### Column alignment using std::setw
+
+**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L361) (line 361)
+
+We use tab characters here for a quick, readable listing.
+For fixed-column output (e.g. when piping to other tools) you
+would use std::left / std::setw(N) from <iomanip> instead.
 std::cout << "  " << dataOffset
 << "\t" << dataSize
 << "\t" << path << "\n";
 totalDataSize += dataSize;
 }
 std::cout << "[pak] Total data: " << totalDataSize << " bytes\n";
+}
+catch (const std::exception& ex)
+{
+std::cerr << "[pak] ERROR reading pak: " << ex.what() << "\n";
+return 1;
+}
 return 0;
 }
 
-### Path Traversal Safety
+### Path Traversal Safety (iterator-based check)
 
-**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L391) (line 391)
+**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L434) (line 434)
 
-In production code you must validate that the relative path does NOT
-contain ".." segments that would escape the output directory.  A
-maliciously crafted PAK could otherwise overwrite arbitrary files.
-We rely on the canonical path check here:
-fs::path outPath = outBase / e.path;
-fs::path canonical = fs::weakly_canonical(outPath);
-if (canonical.string().find(fs::weakly_canonical(outBase).string()) != 0)
+A naive string prefix check (`canonical.string().find(base) == 0`)
+is bypassed by paths like "C:\out" vs "C:\out2" — "C:\out" is a
+prefix of "C:\out2" so the check falsely passes.
+
+The correct check uses std::filesystem path iterators:
+  • Compute canonical output path.
+  • Use std::mismatch on the path component iterators to find the
+    first differing segment.
+  • If the base exhausted first (all base components matched the
+    start of canonical), the path is safely inside the base.
+
+This handles separator normalisation, case differences (on case-
+insensitive file systems) and ".." segments correctly because
+weakly_canonical() resolves them before we compare.
+fs::path outPath  = fs::weakly_canonical(outBase / e.path);
+auto mismatchResult = std::mismatch(outBase.begin(), outBase.end(),
+outPath.begin(),  outPath.end());
+if (mismatchResult.first != outBase.end())
 {
 std::cerr << "[pak] SECURITY: path traversal detected: "
 << e.path << " — skipped.\n";
@@ -26498,7 +26609,7 @@ continue;
 
 ### Minimalist argument parsing
 
-**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L448) (line 448)
+**Source:** [`src/tools/pak/pak_main.cpp`](src/tools/pak/pak_main.cpp#L502) (line 502)
 
 We use a simple linear scan (O(N)) over argv.  This avoids adding a
 third-party arg-parsing library and keeps the code readable.  The CLI

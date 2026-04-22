@@ -110,6 +110,9 @@ jobs:
       - name: Build cook
         run: cmake --build --preset windows-ninja-debug-engine-only --target cook
 
+      - name: Build pak
+        run: cmake --build --preset windows-ninja-debug-engine-only --target pak
+
       # -----------------------------------------------------------------------
       # 4. Verify binaries exist.
       # -----------------------------------------------------------------------
@@ -119,6 +122,10 @@ jobs:
 
       - name: Verify cook.exe exists
         run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\cook.exe")) { throw "cook.exe not found" }
+        shell: pwsh
+
+      - name: Verify pak.exe exists
+        run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\pak.exe")) { throw "pak.exe not found" }
         shell: pwsh
 
       # -----------------------------------------------------------------------
