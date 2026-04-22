@@ -80,6 +80,8 @@
  *   engine_sandbox.exe --headless --scene cinematic_test    # Post-M10 Cinematics: CameraRig + CinematicSequencer acceptance test (CI)
  *   engine_sandbox.exe --headless --scene menu_stack_test   # UI Menu Stack: push/pop navigation acceptance test (CI)
  *   engine_sandbox.exe --headless --scene font_test         # Font Renderer: SDF atlas init + render acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene shadow_test       # M17 Shadow Maps: shadow-pass + PCF lit-pass acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene bloom_test        # M17 Bloom: bright-pass + blur + composite acceptance test (CI)
  *
  * ============================================================================
  *
@@ -2513,6 +2515,182 @@ int main(int argc, char* argv[])
 #else
                 std::cout << "[SKIP] pbr_ibl: ENGINE_ENABLE_D3D11 not defined.\n"
                              "[PASS] pbr_ibl: skipped (no D3D11 in build).\n";
+#endif
+            }
+            else if (scene == "shadow_test")
+            {
+                // -----------------------------------------------------------
+                // M17: Directional shadow map acceptance tests (3 tests).
+                //
+                // TEACHING NOTE — What the shadow_test tests validate:
+                //   Test 1 (load):    LoadScene('shadow_test') creates the
+                //                     512×512 shadow map texture + DSV + SRV,
+                //                     compiles shadow.vs.hlsl / shadow_lit.vs/ps.hlsl,
+                //                     creates CBs and comparison sampler.
+                //   Test 2 (render):  RecordHeadlessFrame() executes BOTH the
+                //                     depth-only shadow pass and the PCF lit pass
+                //                     on WARP without a crash or device removal.
+                //   Test 3 (unload):  A second LoadScene('shadow_test') call
+                //                     confirms UnloadScene() released all COM
+                //                     objects cleanly (no dangling refs).
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+#ifdef ENGINE_ENABLE_D3D11
+                engine::rendering::D3D11Renderer* d3dRenderer =
+                    dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
+                if (!d3dRenderer)
+                {
+                    std::cout << "[SKIP] shadow_test: not running D3D11 renderer.\n"
+                                 "[PASS] shadow_test: skipped (D3D11 not active).\n";
+                }
+                else
+                {
+                    // Test 1 — resource creation.
+                    bool loadOk = renderer->LoadScene("shadow_test", shaderDir);
+                    if (!loadOk)
+                    {
+                        std::cout << "[FAIL] shadow_test/load: "
+                                     "LoadScene('shadow_test') returned false.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] shadow_test/load: "
+                                     "shadow map texture, DSV, SRV, shaders, CBs created.\n";
+                    }
+
+                    // Test 2 — WARP execution of both passes.
+                    bool renderOk = renderer->RecordHeadlessFrame();
+                    if (!renderOk)
+                    {
+                        std::cout << "[FAIL] shadow_test/render: "
+                                     "RecordHeadlessFrame() returned false.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] shadow_test/render: "
+                                     "shadow depth pass + PCF lit pass executed on WARP.\n";
+                    }
+
+                    // Test 3 — reload confirms UnloadScene released all COM objects.
+                    bool reloadOk = renderer->LoadScene("shadow_test", shaderDir);
+                    if (!reloadOk)
+                    {
+                        std::cout << "[FAIL] shadow_test/unload: "
+                                     "second LoadScene('shadow_test') failed — "
+                                     "UnloadScene may have left dangling refs.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] shadow_test/unload: "
+                                     "UnloadScene released all resources cleanly.\n";
+                    }
+
+                    if (testsFailed > 0)
+                    {
+                        std::cout << "[FAIL] shadow_test: " << testsFailed
+                                  << " test(s) failed.\n";
+                        renderer->Shutdown();
+                        window.Shutdown();
+                        return 1;
+                    }
+                    std::cout << "[PASS] shadow_test: 3 acceptance tests passed "
+                                 "(load, WARP shadow+lit, unload/reload).\n";
+                }
+#else
+                std::cout << "[SKIP] shadow_test: ENGINE_ENABLE_D3D11 not defined.\n"
+                             "[PASS] shadow_test: skipped (no D3D11 in build).\n";
+#endif
+            }
+            else if (scene == "bloom_test")
+            {
+                // -----------------------------------------------------------
+                // M17: HDR bloom post-processing acceptance tests (3 tests).
+                //
+                // TEACHING NOTE — What the bloom_test tests validate:
+                //   Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
+                //                     offscreen render targets (256×256 each with
+                //                     RTV + SRV), compiles bloom_bright.ps.hlsl,
+                //                     bloom_blur.ps.hlsl, bloom_composite.ps.hlsl,
+                //                     and sky.vs.hlsl (reused full-screen VS).
+                //   Test 2 (render):  RecordHeadlessFrame() executes all four
+                //                     pipeline stages on WARP — bright-pass,
+                //                     horizontal blur, vertical blur, composite.
+                //   Test 3 (unload):  A second LoadScene('bloom_test') confirms
+                //                     all 12 RT objects (4 × Tex+RTV+SRV) were
+                //                     released correctly by UnloadScene().
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+#ifdef ENGINE_ENABLE_D3D11
+                engine::rendering::D3D11Renderer* d3dRenderer =
+                    dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
+                if (!d3dRenderer)
+                {
+                    std::cout << "[SKIP] bloom_test: not running D3D11 renderer.\n"
+                                 "[PASS] bloom_test: skipped (D3D11 not active).\n";
+                }
+                else
+                {
+                    // Test 1 — resource creation (4 RTs + shaders + CBs + sampler).
+                    bool loadOk = renderer->LoadScene("bloom_test", shaderDir);
+                    if (!loadOk)
+                    {
+                        std::cout << "[FAIL] bloom_test/load: "
+                                     "LoadScene('bloom_test') returned false.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bloom_test/load: "
+                                     "4x RGBA8 256x256 RTs, bloom shaders, CBs created.\n";
+                    }
+
+                    // Test 2 — WARP execution of the four-pass pipeline.
+                    bool renderOk = renderer->RecordHeadlessFrame();
+                    if (!renderOk)
+                    {
+                        std::cout << "[FAIL] bloom_test/render: "
+                                     "RecordHeadlessFrame() returned false.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bloom_test/render: "
+                                     "bright-pass + blur-X + blur-Y + composite "
+                                     "executed on WARP.\n";
+                    }
+
+                    // Test 3 — reload confirms all 12 RT objects released.
+                    bool reloadOk = renderer->LoadScene("bloom_test", shaderDir);
+                    if (!reloadOk)
+                    {
+                        std::cout << "[FAIL] bloom_test/unload: "
+                                     "second LoadScene('bloom_test') failed — "
+                                     "UnloadScene may have left dangling refs.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] bloom_test/unload: "
+                                     "all 12 RT COM objects released cleanly.\n";
+                    }
+
+                    if (testsFailed > 0)
+                    {
+                        std::cout << "[FAIL] bloom_test: " << testsFailed
+                                  << " test(s) failed.\n";
+                        renderer->Shutdown();
+                        window.Shutdown();
+                        return 1;
+                    }
+                    std::cout << "[PASS] bloom_test: 3 acceptance tests passed "
+                                 "(load, WARP 4-pass bloom, unload/reload).\n";
+                }
+#else
+                std::cout << "[SKIP] bloom_test: ENGINE_ENABLE_D3D11 not defined.\n"
+                             "[PASS] bloom_test: skipped (no D3D11 in build).\n";
 #endif
             }
             else

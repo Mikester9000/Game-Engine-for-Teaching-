@@ -1024,6 +1024,32 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             #   very rough metals don't have unrealistically high ambient specular.
             "${CMAKE_SOURCE_DIR}/shaders/pbr_ibl.vs.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/pbr_ibl.ps.hlsl"
+
+            # TEACHING NOTE — M17: Directional shadow map shaders.
+            # shadow.vs.hlsl       — depth-only VS for the shadow pass (one matrix
+            #   multiply, no PS output).  Identity world is baked into lightViewProj.
+            # shadow_lit.vs.hlsl   — lit-pass VS: outputs worldPos + worldNrm for
+            #   light-space reprojection and Lambert shading in the PS.
+            # shadow_lit.ps.hlsl   — lit-pass PS: 3×3 PCF shadow lookup via
+            #   SamplerComparisonState (D3D11_COMPARISON_LESS_EQUAL) + Lambert diffuse.
+            "${CMAKE_SOURCE_DIR}/shaders/shadow.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/shadow_lit.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/shadow_lit.ps.hlsl"
+
+            # TEACHING NOTE — M17: HDR bloom post-processing shaders.
+            # All three passes reuse sky.vs.hlsl as the full-screen triangle VS
+            # (SV_VertexID → full-screen quad trick — no vertex buffer needed).
+            # bloom_bright.ps.hlsl — extracts pixels with luminance > threshold.
+            #   Reads: t0 = scene RGBA8 RT.  Writes: bright pixels at full lum,
+            #   dark pixels as black (0,0,0,1).
+            # bloom_blur.ps.hlsl   — separable 5-tap Gaussian blur.
+            #   g_direction selects horizontal (1,0) or vertical (0,1) axis.
+            #   Weight kernel: [0.227, 0.194, 0.122, 0.054, 0.016].
+            # bloom_composite.ps.hlsl — adds bloom × g_bloomStrength to the scene,
+            #   then applies per-channel Reinhard tonemap → LDR output.
+            "${CMAKE_SOURCE_DIR}/shaders/bloom_bright.ps.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/bloom_blur.ps.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/bloom_composite.ps.hlsl"
         )
 
         add_custom_command(TARGET engine_sandbox POST_BUILD
