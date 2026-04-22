@@ -3,6 +3,8 @@
 > **North Star:** Build a complete, teachable Final Fantasy XV-inspired open-world
 > action RPG toolchain — with every subsystem documented for learning.
 > "Prefer simple-but-real over fancy-but-incomplete."
+>
+> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
 
 ---
 
@@ -189,7 +191,7 @@ backend.
 
 - ✅ **M11** Vehicle physics (`VehicleComponent` + wheel-ray suspension + Ackermann steer + fuel + vehicle chase camera + `--scene vehicle_test` CI)
 - ✅ **M12** Behaviour tree AI (`BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard`) + `FormationSystem` (LINE/V_SHAPE/CIRCLE) + grid `NavMesh` A* + `--scene bt_test` CI
-- ✅ **M13-partial** Cinematics — `CinematicSequencer` + `CameraRig` + `--scene cinematic_test` CI; **cut-scene baker tool + editor panel remain ⬜**
+- ✅ **M13/M22** Cinematics — runtime + cut-scene baker + editor panel complete
 - ✅ **M15** PAK Packager — `src/tools/pak/pak_main.cpp`; PAK1 binary format; `--input`/`--list`/`--extract`; CI test
 - ✅ SDF Font Renderer — `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, `sdf_text.vs/ps.hlsl`, `--scene font_test` CI)
 
@@ -200,13 +202,10 @@ The following items are needed to satisfy the "Project Completion Definition" in
 
 | Milestone | Feature | Key deliverables |
 |-----------|---------|-----------------|
-| **M16** | D3D11 depth buffer + IBL | DSV + DepthStencilState; PBR texture maps; irradiance cubemap + prefiltered env + BRDF LUT; `--headless --scene pbr_ibl` CI |
-| **M17** | D3D11 shadow maps + bloom | Shadow pass render target; PCF shadow sampling in `pbr_mesh.ps.hlsl`; bright-pass + Gaussian blur + composite pass; `--headless --scene shadow_test` + `--scene bloom_test` CI |
-| **M18** | X3DAudio 3D positional audio | X3DAudio init in `XAudio2Backend`; `Update3DListener()` + per-voice emitter; distance rolloff applied to voice volume; `--headless --scene audio_3d_test` CI |
-| **M19** | Action combat completion | `combo_system.hpp/.cpp` input-driven combo FSM; `combat_config.json` external data loader; `--headless --scene combat_test` CI (1 000 damage samples + warp-strike + link-strike) |
-| **M20** | Quest/dialogue tools + tests | `creation_engine.py` quest baker; `--headless --scene quest_test` CI (start→complete→reward cycle; prereq guard) |
-| **M21** | Missing tool stubs | Nav-mesh baker (`.obj` → `.navmesh`); tod.lut baker (`tod.json` → `cooked/environment/tod.lut`) |
-| **M22** | Cinematic tool + editor | Cut-scene baker (timeline JSON → cooked `.cinematic`); cinematic editor panel in Dear ImGui editor |
+| **M23 (new)** | D3D11 authored content ingestion | Runtime mesh/material loading from cooked assets into D3D11 draw path; bind authored albedo/normal/MR/AO where available |
+| **M24 (new)** | Sample content population | Populate `samples/vertical_slice_project` with real texture/audio/animation assets (not only `.gitkeep` placeholders) |
+| **M25 (new)** | Terrain + world geometry | Terrain/heightmap rendering path and collision integration for streamed cells |
+| **M26 (new)** | Save/load dedicated CI | Add `--scene save_test` acceptance tests for 15-slot save, migration, and auto-save flow |
 | **M14** | Vulkan catch-up | All DEFERRED Vulkan items: textures, descriptors, depth buffer, PBR, skinning, sky, HUD (no separate M23) |
 
 ---
@@ -270,11 +269,11 @@ party members and bosses can execute complex multi-step strategies.
 | `src/engine/ai/formation_system.hpp/.cpp` — LINE/V_SHAPE/CIRCLE slot layouts, greedy assignment, world-space transform | ✅ |
 | `src/engine/ai/nav_mesh.hpp/.cpp` — grid `NavMesh`, `BakeFromGrid`, A\* `FindPath` (4-dir + diagonal, obstacle routing) | ✅ |
 | `--scene bt_test` headless CI: 4 tests — BT sequence/selector, blackboard, formation offsets, nav-mesh A\* | ✅ |
-| Nav-mesh baker tool (`tools/creation_engine.py` bake `.obj` → cooked `.navmesh`) | ⬜ (M21) |
+| Nav-mesh baker tool (`tools/creation_engine.py` bake `.obj` → cooked `.navmesh`) | ✅ (M21 stub tooling milestone) |
 
 ---
 
-## Milestone 13 — Cinematics 🔨 *(runtime + tests complete; tool + editor panel pending)*
+## Milestone 13 — Cinematics ✅ *(runtime + tests + tooling complete via M22)*
 
 **Goal:** In-engine cut-scenes with camera choreography, character animation, and timed audio.
 
@@ -321,56 +320,15 @@ with the engine executable; `--validate-project` exits 0 on the packed output.
 
 ---
 
-## Milestone 16 — D3D11 Depth Buffer + IBL ⬜ *(not started — required for Definition of Done)*
+## Milestone 16 — D3D11 Depth Buffer + IBL ✅ *(complete)*
 
-**Goal:** Add a proper depth buffer to D3D11Renderer and implement Image-Based Lighting
-(IBL) so the PBR pipeline has physically correct ambient lighting from an environment map.
-This is required by the "visuals quality bar" in the Project Completion Definition.
-
-> **D3D11 policy:** This is D3D11-only. Vulkan IBL is deferred to M14.
-
-| Item | Status |
-|------|--------|
-| D3D11 depth buffer — create `ID3D11Texture2D` + `ID3D11DepthStencilView` + `ID3D11DepthStencilState`; bind DSV in `DrawFrame`; resolve in `RecreateSwapchain` | ⬜ |
-| Extend `src/engine/rendering/d3d11/d3d11_texture.hpp/.cpp` DDS support to include BC5 (`DXGI_FORMAT_BC5_UNORM`) and R8 (`DXGI_FORMAT_R8_UNORM`) so M16 PBR textures match the runtime loader's supported formats | ⬜ |
-| PBR texture maps — albedo (BC1/BC7), metallic-roughness (BC5), normal (BC5), AO (R8); create D3D11 sampler + SRVs in `PBRScene`; update `pbr_mesh.ps.hlsl` to sample textures after BC5/R8 loader support is in place | ⬜ |
-| IBL irradiance cubemap — precomputed diffuse irradiance; load DDS cubemap array; `shaders/ibl_irradiance.cs.hlsl` offline bake tool or pre-baked DDS asset | ⬜ |
-| IBL prefiltered environment map — split-sum approximation (Epic Games method); roughness-mipped specular cube | ⬜ |
-| IBL BRDF LUT — precomputed `IntegrateBRDF` table; R16G16 texture; use in `pbr_mesh.ps.hlsl` | ⬜ |
-| Update `pbr_mesh.ps.hlsl` — combine direct PBR with IBL ambient terms; bind irradiance cube + prefiltered cube + BRDF LUT at t3/t4/t5 | ⬜ |
-| `--headless --scene pbr_ibl` CI: validate IBL SRVs bound; no D3D11 validation errors | ⬜ |
-
-**CI validation command (target):**
-```
-engine_sandbox.exe --headless --scene pbr_ibl
-```
-Expected: `[PASS] pbr_ibl: IBL pipeline OK (WARP headless).`
+Implemented and CI-covered via `--headless --scene pbr_ibl`.
 
 ---
 
-## Milestone 17 — D3D11 Shadow Maps + Bloom ⬜ *(not started — required for Definition of Done)*
+## Milestone 17 — D3D11 Shadow Maps + Bloom ✅ *(complete)*
 
-**Goal:** Add directional shadow mapping (PCF) and a bloom post-processing pass.
-Both are required by the "visuals quality bar" in the Project Completion Definition.
-
-> **D3D11 policy:** D3D11-only. Requires depth buffer from M16.
-
-| Item | Status |
-|------|--------|
-| Shadow map render target — `ID3D11Texture2D` (1024×1024 `DXGI_FORMAT_R32_TYPELESS`) + DSV + SRV; `shaders/shadow_pass.vs.hlsl`; shadow CB (light view/proj) | ⬜ |
-| Shadow sampling in `pbr_mesh.ps.hlsl` — PCF 3×3 tap; `ShadowMap` SRV at t6; compare sampler (`D3D11_COMPARISON_LESS`) | ⬜ |
-| `D3D11Renderer::DrawShadowPass()` — render opaque geometry from light POV each frame | ⬜ |
-| Bloom bright-pass — threshold extract to `ID3D11Texture2D` offscreen RT; `shaders/bloom_bright.ps.hlsl` | ⬜ |
-| Bloom Gaussian blur — horizontal + vertical ping-pong passes; `shaders/bloom_blur.ps.hlsl` | ⬜ |
-| Bloom composite — additive blend of bloom texture over scene; `shaders/bloom_composite.ps.hlsl` | ⬜ |
-| `--headless --scene shadow_test` CI: render sphere + floor; sample shadow map; assert shadow factor < 1.0 in umbra | ⬜ |
-| `--headless --scene bloom_test` CI: render bright quad; verify bloom output pixels > 0 in blur region | ⬜ |
-
-**CI validation commands (target):**
-```
-engine_sandbox.exe --headless --scene shadow_test
-engine_sandbox.exe --headless --scene bloom_test
-```
+Implemented and CI-covered via `--headless --scene shadow_test` and `--headless --scene bloom_test`.
 
 ---
 
@@ -397,56 +355,27 @@ engine_sandbox.exe --headless --scene audio_3d_test
 
 ---
 
-## Milestone 19 — Action Combat Completion ⬜ *(not started — required for Definition of Done)*
+## Milestone 19 — Action Combat Completion ✅ *(complete)*
 
-**Goal:** Complete the action combat runtime: add the missing combo state machine, externalise
-combat tuning data, and add headless acceptance tests.
-
-| Item | Status |
-|------|--------|
-| `src/game/systems/combo_system.hpp/.cpp` — input-driven combo FSM; defines valid button sequences (e.g. ▲▲▲, ▲△▲△); integrates with `InputMapper` and `CombatSystem` | ⬜ |
-| `combat_config.json` — externalized damage formulae, ATB base speed, per-combo hit count, status effect durations | ⬜ |
-| `CombatSystem` loader — `LoadConfig(path)` reads `combat_config.json` at startup via `AssetLoader` | ⬜ |
-| Physics hit detection wiring — `HitVolumeManager::QueryOverlaps` called from `ComboSystem` on each combo swing frame | ⬜ |
-| `--headless --scene combat_test` CI: 1 000 damage samples within expected range; warp-strike position offset ✓; link-strike trigger ✓ | ⬜ |
+Implemented and CI-covered via `--headless --scene combat_test`.
 
 ---
 
-## Milestone 20 — Quest / Dialogue Authoring Tools + Tests ⬜ *(not started — required for Definition of Done)*
+## Milestone 20 — Quest / Dialogue Authoring Tools + Tests ✅ *(complete)*
 
-**Goal:** Add the missing "Tool" column items for the Quests & Objectives subsystem: a baker that
-produces cooked quest data and a headless acceptance test validating quest lifecycle.
-
-| Item | Status |
-|------|--------|
-| `shared/schemas/quest.schema.json` — JSON Schema for `quests/*.quest.json` source format | ⬜ |
-| `tools/creation_engine.py` — `bake_quest(path)` converts `*.quest.json` → `cooked/quests/<id>.quest` | ⬜ |
-| `--headless --scene quest_test` CI: start quest → complete objective → assert reward applied; prereq guard | ⬜ |
-| `--headless --scene dialogue_test` CI: walk dialogue tree to terminal node; assert NPC state flag | ⬜ |
+Implemented and CI-covered via `--headless --scene quest_test` and `--headless --scene dialogue_test`.
 
 ---
 
-## Milestone 21 — Tool Stubs: Nav-Mesh Baker + ToD LUT Baker ⬜ *(not started — required for Definition of Done)*
+## Milestone 21 — Tool Stubs: Nav-Mesh Baker + ToD LUT Baker ✅ *(complete as tooling stubs)*
 
-**Goal:** Implement the two authoring tool stubs that keep the Party AI and Weather matrix rows at ⬜.
-
-| Item | Status |
-|------|--------|
-| `tools/creation_engine.py` — `bake_navmesh(obj_path, out_path)`: parse `.obj` geometry, mark walkable cells, write binary `cooked/ai/<id>.navmesh` | ⬜ |
-| `tools/creation_engine.py` — `bake_tod(json_path, out_path)`: read `environment/tod.json` colour curves, sample at 256 time steps, write `cooked/environment/tod.lut` (256 × RGBA8) | ⬜ |
-| Pytest for each baker: bake sample input → assert output exists + expected size | ⬜ |
+`tools/creation_engine.py` now provides `bake-navmesh` and `bake-tod` commands with pytest coverage.
 
 ---
 
-## Milestone 22 — Cut-Scene Baker + Cinematic Editor Panel ⬜ *(not started — required for Definition of Done)*
+## Milestone 22 — Cut-Scene Baker + Cinematic Editor Panel ✅ *(complete)*
 
-**Goal:** Add the authoring tool and editor panel for the Cinematics subsystem.
-
-| Item | Status |
-|------|--------|
-| `shared/schemas/cinematic.schema.json` — JSON Schema for `scenes/*.cinematic.json` source format (shots array, keyframes, audio events) | ⬜ |
-| `tools/creation_engine.py` — `bake-cinematic`: validate JSON, serialise shot list to binary `cooked/scenes/<id>.cinematic` | ✅ |
-| Cinematic editor panel (`editor/src/panels/CinematicEditorPanel.hpp/.cpp`) — timeline strip, shot add/remove/reorder, keyframe property editor, preview playback in editor viewport | ✅ |
+Implemented via `shared/schemas/cinematic.schema.json`, `tools/creation_engine.py bake-cinematic`, and `editor/src/panels/CinematicEditorPanel.*`.
 
 ---
 
@@ -485,17 +414,16 @@ produces cooked quest data and a headless acceptance test validating quest lifec
 | M10 | Dynamic sky + weather VFX | ✅ Complete |
 | M11 | Vehicle physics | ✅ Complete (Post-M10) |
 | M12 | Behaviour tree AI + formation + NavMesh | ✅ Complete (Post-M10) |
-| M13 | Cinematics | 🔨 Runtime + tests ✅; baker tool + editor panel ⬜ |
+| M13 | Cinematics | ✅ Complete (runtime + tooling via M22) |
 | M14 | Vulkan catch-up | ⬜ Deferred |
 | M15 | PAK packager + SDF font renderer | ✅ Complete (Post-M10) |
 | M16 | D3D11 depth buffer + IBL | ✅ Complete |
 | M17 | D3D11 shadow maps + bloom | ✅ Complete |
 | M18 | X3DAudio 3D positional audio | ✅ Complete |
-| M19 | Action combat completion (combo FSM + config + tests) | ⬜ Not started (required for DoD) |
-| M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
-| M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |
+| M19 | Action combat completion (combo FSM + config + tests) | ✅ Complete |
+| M20 | Quest / dialogue tools + tests | ✅ Complete |
+| M21 | Nav-mesh baker + ToD LUT baker | ✅ Complete (stub tooling milestone) |
 | M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
-| M14 | Vulkan catch-up (full D3D11 parity) | ⬜ Deferred (see M14 section above; no separate M23) |
 
 ---
 

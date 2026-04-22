@@ -8,6 +8,8 @@
 > Cross-reference `docs/COPILOT_CONTINUATION.md` for coding standards and PR
 > rules, and `docs/FF15_REQUIREMENTS_BLUEPRINT.md` for the full subsystem
 > checklist.
+>
+> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
 
 ---
 
@@ -101,13 +103,13 @@ cmake --build . --config Debug --target engine_sandbox
 | `src/engine/assets/asset_loader.hpp/.cpp` | Async loader interface (synchronous stub first) |
 | `tests/golden/` | Golden cooked files for contract tests |
 | `.github/workflows/contract-tests.yml` | CI job: cook → diff golden files |
-| `samples/ff15_slice/project.json` | Minimal sample project pointing at example manifests |
+| `samples/vertical_slice_project/Project.json` | Minimal sample project pointing at example manifests |
 
 ### Acceptance tests
 
 ```bat
 :: Cook sample project
-.\Debug\cook.exe --project samples\ff15_slice\
+.\Debug\cook.exe --project samples\vertical_slice_project\
 
 :: Validate output
 python tools\validate-assets.py cooked\assetdb.json --verbose
@@ -539,7 +541,7 @@ sun elevation formula validated; weather fog transitions validated.
 
 ---
 
-## Milestone M13 — Cinematics 🔨 *(runtime + tests complete; tool + editor panel pending)*
+## Milestone M13 — Cinematics ✅ *(runtime + tests + tooling complete via M22)*
 
 > **What's done:** `CinematicSequencer` (shot/cut, carry-over `Tick`, `OnShotChanged`/
 > `OnComplete` callbacks, `ApplyToCamera()` ECS write), `CameraRig` (keyframe Lerp,
@@ -587,12 +589,12 @@ sun elevation formula validated; weather fog transitions validated.
 
 | ID | Name | Key deliverable | Status |
 |---|---|---|---|
-| M16 | D3D11 Depth Buffer + IBL | DSV; irradiance cube + prefiltered env + BRDF LUT; `--headless --scene pbr_ibl` | ⬜ Not started |
-| M17 | D3D11 Shadow Maps + Bloom | Shadow pass + PCF; bright-pass + blur + composite; `--headless --scene shadow_test` + `bloom_test` | ⬜ Not started |
-| M18 | X3DAudio 3D Positional Audio | X3DAudio init; listener update; per-voice emitter; `--headless --scene audio_3d_test` | ⬜ Not started |
-| M19 | Action Combat Completion | `combo_system.hpp/.cpp`; `combat_config.json` loader; `--headless --scene combat_test` | ⬜ Not started |
-| M20 | Quest / Dialogue Tools + Tests | Quest baker; `--headless --scene quest_test` + `dialogue_test` | ⬜ Not started |
-| M21 | Tool Stubs: Nav-mesh + ToD LUT | Nav-mesh baker; tod.lut baker | ⬜ Not started |
+| M16 | D3D11 Depth Buffer + IBL | DSV + DepthStencilState + IBL (`pbr_ibl`) | ✅ Complete |
+| M17 | D3D11 Shadow Maps + Bloom | Directional shadow map + bloom passes (`shadow_test`, `bloom_test`) | ✅ Complete |
+| M18 | X3DAudio 3D Positional Audio | X3DAudio init + listener/emitter attenuation (`audio_3d_test`) | ✅ Complete |
+| M19 | Action Combat Completion | Combo FSM + combat config + acceptance tests (`combat_test`) | ✅ Complete |
+| M20 | Quest / Dialogue Tools + Tests | Quest/dialogue bakers + acceptance tests (`quest_test`, `dialogue_test`) | ✅ Complete |
+| M21 | Tool Stubs: Nav-mesh + ToD LUT | `bake-navmesh` + `bake-tod` commands with pytest coverage | ✅ Complete (stub tooling milestone) |
 | M22 | Cinematic Baker + Editor Panel | `bake-cinematic`; `CinematicEditorPanel.hpp/.cpp` | ✅ Complete |
 | M14 | Vulkan Catch-up | All DEFERRED Vulkan items (textures, descriptors, PBR, skinning, sky, HUD) — see M14 section; no separate M23 | ⬜ Deferred |
 
@@ -618,14 +620,14 @@ sun elevation formula validated; weather fog transitions validated.
 | M10 | Dynamic Sky + Weather VFX | ✅ Complete |
 | M11 | Vehicle Physics | ✅ Complete (Post-M10) |
 | M12 | Behaviour Tree AI + FormationSystem + NavMesh | ✅ Complete (Post-M10) |
-| M13 | Cinematics | 🔨 Runtime + tests ✅; baker tool + editor panel ⬜ |
+| M13 | Cinematics | ✅ Complete (runtime + tooling via M22) |
 | M14 | Vulkan Catch-up | ⬜ Deferred |
 | M15 | SDF Font Renderer + PAK Packager | ✅ Complete (Post-M10) |
-| M16 | D3D11 depth buffer + IBL | ⬜ Not started (required for DoD) |
-| M17 | D3D11 shadow maps + bloom | ⬜ Not started (required for DoD) |
-| M18 | X3DAudio 3D positional audio | ⬜ Not started (required for DoD) |
-| M19 | Action combat completion | ⬜ Not started (required for DoD) |
-| M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
-| M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |
+| M16 | D3D11 depth buffer + IBL | ✅ Complete |
+| M17 | D3D11 shadow maps + bloom | ✅ Complete |
+| M18 | X3DAudio 3D positional audio | ✅ Complete |
+| M19 | Action combat completion | ✅ Complete |
+| M20 | Quest / dialogue tools + tests | ✅ Complete |
+| M21 | Nav-mesh baker + ToD LUT baker | ✅ Complete (stub tooling milestone) |
 | M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
 | M23 | Merged into M14 Vulkan Catch-up (do not track separately) | — |

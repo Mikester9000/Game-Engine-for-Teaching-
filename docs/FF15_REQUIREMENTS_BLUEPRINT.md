@@ -8,6 +8,8 @@
 > Cross-reference with `docs/PROJECT_MILESTONES.md` for the order in which
 > these subsystems are built, and `docs/COPILOT_CONTINUATION.md` for coding
 > standards and CI rules.
+>
+> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
 
 ---
 
@@ -101,35 +103,30 @@ FF15's Gladiolus/Ignis/Prompto are always present and fight alongside Noctis.
 
 ## 3. Action Combat
 
-**Status:** 🔨 (ATB, warp-strike, link-strikes, elemental damage, status effects in terminal game and D3D11 GameRuntime) · ⬜ (physics hit-detection wired to combat, real-time combo system, combat_config.json loader, headless acceptance tests)
+**Status:** ✅ Runtime + Tests complete (M19) · 🔨 deeper physics-hit-volume integration remains a quality follow-up
 
 **Purpose:** Real-time + ATB hybrid combat.  Noctis warps, strikes, and links
 with party members.  Hit detection uses physics ray/shape casts.
 
-> **Verification note (2026-04-22):** `src/game/systems/CombatSystem.hpp/.cpp` is fully
-> implemented (ATB, damage formula, warp-strike, link-strikes, elemental multipliers, status
-> effects, loot, M8.1 wired into D3D11 GameRuntime).  `src/engine/physics/hit_volume.hpp/.cpp`
-> exists as infrastructure.  **`src/game/systems/combo_system.hpp/.cpp` does NOT exist** — the
-> input-driven combo state machine is not yet implemented.  No externalized `combat_config.json`
-> exists; all combat data is hard-coded in `GameData.hpp`.  Headless acceptance tests for
-> combat correctness are ⬜.
+> **Verification note (2026-04-22):** `src/engine/combat/combo_system.hpp/.cpp` is implemented
+> (IDLE/BUILDING/COOLDOWN FSM, prefix + exact matching, smart reset/plinking). Sample
+> `samples/vertical_slice_project/Content/combat_config.json` exists. `--headless --scene combat_test`
+> runs in CI and validates combo and damage-formula paths.
 
 | Field | Detail |
 |---|---|
 | **Runtime component(s)** | `src/game/systems/CombatSystem.hpp/.cpp` — ATB, damage, warp-strike, link-strikes, elemental damage, status effects, loot ✅ |
-| | `src/engine/physics/hit_volume.hpp/.cpp` — attack volume, hurt volume, shape queries ✅ (infrastructure); not yet wired to combo input ⬜ |
-| | `src/game/systems/combo_system.hpp/.cpp` — input-driven combo state machine ⬜ **NOT YET CREATED** |
-| **Tool component(s)** | Combat data in `src/game/GameData.hpp` (Flyweight; hard-coded) — no separate authoring tool ⬜ |
-| **Data formats** | `combat_config.json` — damage formulae, ATB speed, per-weapon combos; loaded at startup ⬜ not yet implemented |
-| **Acceptance tests** | `--headless --scene combat_test`: 1 000 damage roll samples; assert min/max within expected range ⬜ |
-| | Warp strike triggers; entity position updated; correct tile offset ⬜ |
-| | Link strike fires when companion ATB reaches threshold ⬜ |
+| | `src/engine/physics/hit_volume.hpp/.cpp` — attack volume, hurt volume, shape queries ✅ (infrastructure) |
+| | `src/engine/combat/combo_system.hpp/.cpp` — input-driven combo state machine ✅ |
+| **Tool component(s)** | `samples/vertical_slice_project/Content/combat_config.json` + `ComboSystem::LoadConfig()` (ENGINE_ENABLE_JSON gated) ✅ |
+| **Data formats** | `combat_config.json` — damage formulae, combo windows, and sequences ✅ |
+| **Acceptance tests** | `--headless --scene combat_test`: combo populate + combo sequence + window expiry + damage formula ✅ |
 
 ---
 
 ## 4. Quests & Objectives
 
-**Status:** ✅ (QuestSystem ✅, DialogueSystem ✅ M8.6 wired into D3D11 GameRuntime) · ⬜ (quest/dialogue authoring tool, headless acceptance tests)
+**Status:** ✅ Runtime + Tooling + Tests complete (M20)
 
 **Purpose:** Track story and side-quest progress.  FF15 has hundreds of hunts,
 main quests, and sub-quests, each with objectives, prerequisites, and rewards.
@@ -137,25 +134,24 @@ main quests, and sub-quests, each with objectives, prerequisites, and rewards.
 > **Verification note (2026-04-22):** `src/game/systems/QuestSystem.hpp/.cpp` is fully
 > implemented.  `src/game/systems/dialogue_system.hpp/.cpp` was created in M8.6 and is wired
 > into the D3D11 GameRuntime and the sample NPC cell.  Both systems are present in the runtime.
-> The quest/dialogue **authoring tool** (baker producing cooked quest data) is ⬜ not yet
-> created.  Dedicated headless acceptance tests (`--scene quest_test`) are ⬜.
+> Quest/dialogue tooling exists in `tools/quest_baker/` (QuestBaker + DialogueBaker), and
+> CI runs both `--scene quest_test` and `--scene dialogue_test`.
 
 | Field | Detail |
 |---|---|
 | **Runtime component(s)** | `src/game/systems/QuestSystem.hpp/.cpp` — objective tracking, rewards, prerequisites ✅ |
 | | `src/game/systems/dialogue_system.hpp/.cpp` — scripted NPC conversations, dialogue trees ✅ (M8.6) |
-| **Tool component(s)** | `tools/creation_engine.py` — quest data baker (JSON → cooked) ⬜ not yet implemented |
-| | Quest/dialogue editor panel in `editor/` ⬜ not yet implemented |
-| **Data formats** | Source: `quests/*.quest.json`; Cooked: `cooked/quests/<id>.quest` ⬜ schema not finalised |
-| **Acceptance tests** | `--headless --scene quest_test`: start quest → complete objective → assert reward applied ⬜ |
-| | Prerequisite quest not done → assert dependent quest does not start ⬜ |
-| | Dialogue tree reaches terminal node; assert NPC state flag set correctly ⬜ |
+| **Tool component(s)** | `tools/quest_baker/` — `QuestBaker` + `DialogueBaker` (15 pytest) ✅ |
+| | Source schemas: `shared/schemas/quest_bank.schema.json` + `dialogue_tree.schema.json` ✅ |
+| **Data formats** | Source: `quest_bank.json`, `dialogue_tree.json`; cooked quest/dialogue outputs ✅ |
+| **Acceptance tests** | `--headless --scene quest_test`: quest_accept/objective/prereq/fail ✅ |
+| | `--headless --scene dialogue_test`: out_of_range/in_range/begin_and_advance ✅ |
 
 ---
 
 ## 5. Cinematics
 
-**Status:** ✅ Runtime complete (Post-M10) · ⬜ cut-scene baker tool · ⬜ editor panel
+**Status:** ✅ Runtime + Tooling + Editor complete (Post-M10 + M22)
 
 **Purpose:** In-engine cut-scenes with camera choreography, character
 animation, and timed audio.  FF15's opening and Chapter 14 scenes are
@@ -166,15 +162,15 @@ in-engine, not pre-rendered video.
 > `--scene cinematic_test` headless CI runs 3 tests (camera position accuracy, shot advance,
 > callback firing).  **`CameraComponent.cinematicOverride`** (in `ECS.hpp`) lets the sequencer
 > write eye/look-at into the ECS camera for use by `CameraSystem`. The cut-scene baker tool
-> and editor panel are both ⬜ not yet implemented.
+> and the tool/editor path is complete via `bake-cinematic` and `CinematicEditorPanel`.
 
 | Field | Detail |
 |---|---|
 | **Runtime component(s)** | `src/engine/cinematics/cinematic_sequencer.hpp/.cpp` — timeline, shot/cut, callbacks, `ApplyToCamera()` ECS write ✅ (Post-M10) |
 | | `src/engine/cinematics/camera_rig.hpp/.cpp` — keyframed camera path, binary-search Lerp, focal blend ✅ (Post-M10) |
 | | `ECS.hpp` — `CameraComponent.cinematicOverride` flag + `cinematicEyePos` / `cinematicLookAt` fields ✅ |
-| **Tool component(s)** | `tools/creation_engine.py` — cut-scene baker (timeline JSON → cooked `.cinematic`) ⬜ not yet implemented |
-| | Cut-scene editor panel in `editor/` ⬜ not yet implemented |
+| **Tool component(s)** | `tools/creation_engine.py` — cut-scene baker (timeline JSON → cooked `.cinematic`) ✅ |
+| | Cut-scene editor panel in `editor/` ✅ |
 | **Data formats** | Source: `scenes/*.cinematic.json`; Cooked: `cooked/scenes/<id>.cinematic` ✅ source schema `shared/schemas/cinematic.schema.json`; baker ✅ implemented in `tools/creation_engine.py bake-cinematic` (M22) |
 | **Acceptance tests** | `--headless --scene cinematic_test`: 3 tests (camera position, shot advance, callback) ✅ (Post-M10) |
 | | Timed audio event fires within ±1 frame of declared time ⬜ |
@@ -380,9 +376,9 @@ teaching slice but must follow the same pipeline shape.
 | | `tools/audio_engine.py` — audio bank builder (exists) |
 | | `.github/workflows/contract-tests.yml` — golden-file CI gate |
 | **Data formats** | Input: all source manifests; Output: `dist/<target>/` with cooked assets + exe |
-| **Acceptance tests** | `cook.exe --project samples/ff15_slice/` exits 0; `assetdb.json` exists and validates |
+| **Acceptance tests** | `cook.exe --project samples/vertical_slice_project/` exits 0; `assetdb.json` exists and validates |
 | | `ctest -L contract` all pass (golden-file diffs clean) |
-| | `engine_sandbox.exe --headless --validate-project dist/ff15_slice/` exits 0 |
+| | `engine_sandbox.exe --headless --validate-project samples/vertical_slice_project/` exits 0 |
 
 ---
 
@@ -392,56 +388,46 @@ teaching slice but must follow the same pipeline shape.
 > Each cell reflects the actual implementation state verified against source files.
 > The project is complete when every cell shows ✅.
 
-> **D3D11 Visuals Quality Bar note:** The "Project Completion Definition" requires
-> PBR with IBL + directional shadows + bloom.  As of 2026-04-22 the D3D11 renderer has
-> Cook-Torrance BRDF ✅ but **IBL ⬜, directional shadow maps ⬜, and bloom
-> post-processing ⬜ are NOT yet implemented**.  These are required for the quality bar
-> (see §Visuals in the completion criteria above) and are tracked as Milestones M16–M18
-> in `docs/ROADMAP.md`.  The D3D11 depth buffer is also **⬜ not yet created**
-> (confirmed by `DrawFrame` comment: "no depth buffer yet") — this is a prerequisite for
-> shadow maps.
+> **D3D11 Visuals Quality Bar note:** D3D11 depth buffer, IBL, directional shadow maps,
+> and bloom are implemented and CI-covered (`pbr_ibl`, `shadow_test`, `bloom_test`).
+> Remaining gaps to reach an early-beta slice are now content-ingestion and world-geometry
+> focused (runtime mesh/material loading, terrain/world geometry, and populated sample content).
 
 | # | Subsystem | Runtime | Tool | Tests | Notes |
 |---|---|---|---|---|---|
 | 1 | Open-world streaming | ✅ | ✅ | ✅ | `WorldStreamingManager` + `GameStreamingManager` + 4 streaming CI scenes; M8.7 wires into D3D11 GameRuntime |
 | 2 | Party AI | ✅ | ⬜ | ✅ | FSM + A* + BT (`BtTree`/`BtSequence`/`BtSelector`) + FormationSystem (LINE/V_SHAPE/CIRCLE) + NavMesh A* (Post-M10); nav-mesh baker tool ⬜ |
-| 3 | Action combat | 🔨 | ⬜ | ⬜ | ATB/warp-strike/link-strikes in D3D11 GameRuntime (M8.1) ✅; `combo_system.hpp/.cpp` ⬜ NOT CREATED; `combat_config.json` ⬜; headless tests ⬜ |
-| 4 | Quests & objectives | ✅ | ⬜ | ⬜ | QuestSystem ✅ + DialogueSystem ✅ in D3D11 GameRuntime (M8.6); quest/dialogue baker tool ⬜; headless acceptance tests ⬜ |
-| 5 | Cinematics | ✅ | ⬜ | ✅ | `CameraRig` + `CinematicSequencer` + `cinematic_test` CI ✅ (Post-M10); cut-scene baker tool ⬜; editor panel ⬜ |
+| 3 | Action combat | ✅ | ✅ | ✅ | CombatSystem + ComboSystem + combat_config + `combat_test` CI ✅; deeper hit-volume coupling remains future quality work |
+| 4 | Quests & objectives | ✅ | ✅ | ✅ | QuestSystem + DialogueSystem + `tools/quest_baker` + `quest_test`/`dialogue_test` CI ✅ |
+| 5 | Cinematics | ✅ | ✅ | ✅ | `CameraRig` + `CinematicSequencer` + `bake-cinematic` + `CinematicEditorPanel` + `cinematic_test` CI ✅ |
 | 6 | Vehicles | ✅ | ⬜ | ✅ | `VehicleSystem` + `WheelState`×4 + vehicle chase camera + `vehicle_test` CI ✅ (Post-M10); road spline baker tool ⬜ |
-| 7 | Weather & time-of-day | ✅ | ⬜ | ✅ | SkyRenderer + WeatherFx + D3D11 sky pipeline + `dynamic_sky` CI ✅ (M10); tod.lut curve baker ⬜ |
+| 7 | Weather & time-of-day | ✅ | ✅ | ✅ | SkyRenderer + WeatherFx + D3D11 sky pipeline + `dynamic_sky` CI ✅; `bake-tod` tool stub + tests ✅ |
 | 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + music FSM ✅ (M3); X3DAudio 3D positional audio ✅ (M18 — distance rolloff, listener position, `audio_3d_test` CI) |
 | 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
 | 10 | Physics | ✅ | ⬜ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent` ✅; collision mesh baker ⬜ not started |
 | 11 | UI | ✅ | ⬜ | ✅ | D3D11 ImGui HUD ✅ (M8.5); `MenuStack` + 6-test CI ✅ (Post-M10); `FontRenderer` SDF text + `font_test` CI ✅ (Post-M10); font atlas baker tool ⬜ |
 | 12 | Save system | ✅ | ✅ | ✅ | `SaveSystem`: 15 slots + auto-save + `"version"` migration field; JSON ECS snapshot ✅ (M8.8) |
-| 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI ✅; `pak.exe` PAK1 packager ✅ (Post-M10) |
+| 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI + `pak.exe` PAK1 ✅ |
 
 ✅ complete · 🔨 in progress / partial · ⬜ not yet started
 
 ---
 
-## D3D11 Visuals Quality Bar — Remaining Items
+## D3D11 Early-Beta Gaps — Remaining Items
 
-The following rendering features are required by the "Project Completion Definition" quality
-bar (PBR with IBL + shadows + bloom) and are **not yet implemented** as of 2026-04-22.
-All are D3D11-only per the active policy.  Vulkan parity is deferred.
+The D3D11 visual quality-bar features are implemented. The remaining early-beta blockers are
+content and runtime ingestion gaps.
 
 | Feature | Status | Prerequisite | Milestone |
 |---------|--------|-------------|-----------|
-| D3D11 depth buffer (DSV + `DepthStencilState`) | ✅ | — | M16 |
-| PBR texture maps (albedo, metallic-roughness, normal, AO) | ✅ | depth buffer | M16 |
-| D3D11 IBL (irradiance cubemap + prefiltered env + BRDF LUT) | ✅ | depth buffer | M16 |
-| D3D11 directional shadow map (shadow pass + PCF sampling in `pbr_mesh.ps.hlsl`) | ✅ | depth buffer | M17 |
-| D3D11 bloom post-processing (bright-pass → Gaussian blur → composite) | ✅ | depth buffer | M17 |
-| X3DAudio positional 3D audio (distance rolloff, emitter/listener panning) | ✅ | — | M18 |
-| `combo_system.hpp/.cpp` — real-time input-driven combo state machine | ⬜ | — | M19 |
-| `combat_config.json` + loader — externalized combat tuning data | ⬜ | — | M19 |
-| Combat headless acceptance tests (`--scene combat_test`) | ⬜ | combo_system | M19 |
-| Quest/dialogue baker tool (`creation_engine.py` quest bake) | ⬜ | — | M20 |
-| Quest/dialogue headless acceptance tests (`--scene quest_test`) | ⬜ | baker | M20 |
-| Nav-mesh baker tool (`creation_engine.py` bake `.obj` → `.navmesh`) | ⬜ | — | M21 |
-| Time-of-day LUT baker (`tod.json` curves → `cooked/environment/tod.lut`) | ⬜ | — | M21 |
-| Cut-scene baker tool (timeline JSON → cooked `.cinematic`) | ✅ | — | M22 |
-| Cinematic editor panel in Dear ImGui editor | ✅ | baker | M22 |
+| Runtime mesh/material loading from cooked assets | ⬜ | AssetDB + AssetLoader | M23 (new) |
+| Populated sample textures/audio/animations in `vertical_slice_project` | ⬜ | runtime ingestion path | M24 (new) |
+| Terrain/world geometry rendering + collision path for streamed cells | ⬜ | mesh/content ingestion | M25 (new) |
+| Dedicated save-system headless acceptance suite (`save_test`) | ⬜ | SaveSystem runtime | M26 (new) |
+| D3D11 depth/IBL/shadow/bloom | ✅ | — | M16/M17 |
+| X3DAudio positional audio | ✅ | — | M18 |
+| Combo/combat config/combat CI | ✅ | — | M19 |
+| Quest/dialogue bakers + CI | ✅ | — | M20 |
+| Navmesh/ToD baker stubs + tests | ✅ | — | M21 |
+| Cut-scene baker + cinematic editor panel | ✅ | — | M22 |
 | Vulkan catch-up (textures, descriptors, PBR, skinning, sky, HUD) | ⬜ | D3D11 complete | M14 |

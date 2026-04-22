@@ -3,6 +3,9 @@
 > This document explains the end-to-end pipeline: how authoring tools feed data
 > into the engine, how the engine's internal systems relate to each other, and
 > where each piece of code lives.  Study this before reading individual source files.
+>
+> **Status note (2026-04-22):** This file was reconciled against
+> `docs/ASSESSMENT_2026-04-22.md`.
 
 ---
 
@@ -60,9 +63,9 @@
 │      │   ├─ SkyRenderer      ← M10: time-of-day sky      │
 │      │   ├─ WeatherFx        ← M10: fog/rain/cloud       │
 │      │   ├─ FontRenderer     ← Post-M10: SDF text        │
-│      │   └─ [depth buffer ⬜; IBL ⬜; shadows ⬜; bloom ⬜]│
+│      │   └─ [depth buffer ✅; IBL ✅; shadows ✅; bloom ✅]│
 │      ├─ GameRuntime (M8)     ← drives all gameplay       │
-│      │   ├─ CombatSystem     ← ATB + damage (🔨 combo⬜) │
+│      │   ├─ CombatSystem     ← ATB + damage + combos     │
 │      │   ├─ AISystem         ← FSM + A* pathfinding      │
 │      │   ├─ WeatherSystem    ← day/night cycle           │
 │      │   ├─ QuestSystem      ← objective tracking        │
@@ -73,7 +76,7 @@
 │      │   └─ GameStreamingMgr ← live cell streaming (M8.7)│
 │      ├─ AnimationSystem      ← M4 CPU + GPU skinning     │
 │      ├─ PhysicsWorld         ← M5 Jolt Physics           │
-│      ├─ AudioSystem          ← M3 XAudio2 (🔨 3D attn⬜) │
+│      ├─ AudioSystem          ← M3 + M18 (X3DAudio 3D)    │
 │      ├─ VehicleSystem        ← M11 wheel-ray physics     │
 │      ├─ BehaviourTree        ← M12 BtTree/Seq/Sel        │
 │      ├─ FormationSystem      ← M12 LINE/V/CIRCLE         │
@@ -146,9 +149,10 @@ QuestSystem; it just emits a CombatEvent and QuestSystem subscribes.
   `dynamic_sky` (M10), `vehicle_test` (M11), `bt_test` (M12), `cinematic_test` (M13),
   `font_test` (M15), `menu_stack_test` (Post-M10), `m8_gameplay`, `m8_streaming`,
   `streaming_load`, `streaming_evict`, `streaming_async`, `physics_test`.
-  > **Depth buffer note:** D3D11 depth buffer (DSV + `DepthStencilState`) is **⬜ not yet
-  > created**.  The `DrawFrame` path binds the RTV with `nullptr` DSV (confirmed in source).
-  > This is required before shadow maps (M17) and recommended before IBL (M16).
+  > **Rendering status note:** D3D11 depth buffer, IBL, directional shadow maps, and bloom
+  > are all implemented and CI-covered (`pbr_ibl`, `shadow_test`, `bloom_test` scenes).
+  > The dominant remaining rendering gap is runtime ingestion of authored mesh/material
+  > content from sample cooked assets into the D3D11 draw path.
 - **Windows (optional):** Vulkan (`src/engine/rendering/vulkan/VulkanRenderer.hpp/.cpp`).
   High-end modern API; requires Vulkan SDK.  Select with `--renderer vulkan`.
 - **Linux:** ncurses ASCII renderer (`src/engine/rendering/Renderer.hpp`).
@@ -205,7 +209,7 @@ Scripts in `scripts/` define hook functions called by C++:
 - `BakeFromGrid(walkabilityGrid, width, height)` / `BakeEmpty(w, h)` / `SetWalkable(x, y, v)`.
 - `FindPath(start, goal)` → `std::vector<Vec3>`; A\* with 4-dir + diagonal movement; obstacle routing.
 
-#### Cinematics (M13 — runtime ✅, tool ⬜)
+#### Cinematics (M13/M22 — runtime + tooling ✅)
 
 `src/engine/cinematics/camera_rig.hpp/.cpp` — `CameraRig`:
 - Stores a sorted list of `{time, eyePos, lookAtPos}` keyframes.

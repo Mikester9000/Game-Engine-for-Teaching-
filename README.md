@@ -3,6 +3,10 @@
 > **Goal:** A fully working, exhaustively commented C++17 action RPG engine that
 > mirrors the architecture of *Final Fantasy XV*, built so that every line of code
 > is a lesson.  Study the finished product, then recreate it yourself.
+>
+> **Status note (2026-04-22):** A deep monorepo assessment is saved at
+> `docs/ASSESSMENT_2026-04-22.md` and is the current reference for gaps and
+> near-term priorities.
 
 ---
 
@@ -234,7 +238,7 @@ Game-Engine-for-Teaching-/         ← Monorepo root
 └── src/                        # C++ engine + game source code (existing)
     ├── engine/                 # Platform-independent engine kernel
     ├── game/                   # FFXV-style gameplay systems
-    ├── sandbox/                # Windows Vulkan clear-screen demo
+    ├── sandbox/                # Windows D3D11-first runtime + headless test harness
     └── main.cpp                # Terminal game entry point
 ```
 
@@ -504,4 +508,3 @@ Study the files in this order for the smoothest learning curve:
 3. Register and wire it in `Game::Init()`.
 4. Add Lua bindings if designers need to script against the new system.
 5. Document every non-obvious decision with a `// TEACHING NOTE —` comment.
-
