@@ -49,7 +49,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -104,7 +104,7 @@ def _load_schema(path: Path | None = None) -> Dict[str, Any]:
         return json.load(fh)
 
 
-def _try_load_json_object(path: Path) -> Dict[str, Any] | None:
+def _try_load_json_object(path: Path) -> Optional[Dict[str, Any]]:
     """Read a JSON file and return its root object, or None on parse/read error."""
     try:
         with path.open(encoding="utf-8") as fh:
@@ -159,9 +159,9 @@ def _is_asset_registry_schema(schema: Dict[str, Any]) -> bool:
 
 def _resolve_schema_for_file(
     manifest_path: Path,
-    explicit_schema_path: Path | None,
+    explicit_schema_path: Optional[Path],
     schema_cache: Dict[Path, Dict[str, Any]],
-) -> tuple[Path, Dict[str, Any]]:
+) -> Tuple[Path, Dict[str, Any]]:
     """Resolve the schema to use for one manifest file.
 
     If --schema is provided, always use it.
@@ -402,6 +402,9 @@ def _validate_registry_builtin(
     manifest: Dict[str, Any], schema: Dict[str, Any]  # noqa: ARG001 — unused in fallback
 ) -> List[str]:
     """Built-in structural validation for shared/schemas/asset_registry.schema.json."""
+    # Keep the `schema` parameter to preserve signature parity with
+    # _validate_manifest_builtin(), so validate_file() can dispatch either
+    # validator without changing call shape.
     errors: List[str] = []
 
     version = manifest.get("version")
@@ -638,7 +641,7 @@ def main(argv: List[str] | None = None) -> int:
         ),
     )
     args = parser.parse_args(argv)
-    explicit_schema_path = Path(args.schema) if args.schema else None
+    explicit_schema_path: Optional[Path] = Path(args.schema) if args.schema else None
 
     # --- resolve paths ---
     if not args.paths:
