@@ -134,8 +134,9 @@ They must be re-wired to the **D3D11 runtime** at **Milestone M8** (Vulkan wirin
 | `audio_engine.py` CLI | ✅ | `tools/audio_engine.py` — register/emit/consume/list |
 | XAudio2 backend (C++) | ✅ | `src/engine/audio/xaudio2_backend.hpp/.cpp` — device init, master voice, 16-slot voice pool, WAV parser, `Play`/`Stop`/`SetSlotVolume` |
 | Audio system (C++) | ✅ | `src/engine/audio/audio_system.hpp/.cpp` — ECS AudioSystem, music FSM (EXPLORATION/BATTLE/VICTORY/MENU) with real crossfade, event-driven play/stop |
+| X3DAudio 3D positional audio | ⬜ | `AudioSourceComponent.is3D` + `maxDistance` are scaffolded in ECS, but `AudioSystem::Update` does NOT compute distance from a listener or call X3DAudio APIs. True 3D attenuation is not implemented. Tracked as **M18**. |
 
-**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** **Post-M10 Vehicle Physics is ✅ complete.** **Post-M10 Behaviour Tree AI is ✅ complete:** `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard` (engine/ai/behaviour_tree); `FormationSystem` (LINE/V_SHAPE/CIRCLE slot layouts, greedy assignment, world-space transform); grid `NavMesh` (BakeFromGrid, A* FindPath, obstacle routing); `--scene bt_test` 4-test headless CI. **Post-M10 SDF Font Renderer is ✅ complete:** `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI). **`pak.exe` PAK1 packager is ✅ complete:** `src/tools/pak/pak_main.cpp` (PAK1 format, `--input`/`--list`/`--extract`, CI test). Next: cinematics, Vulkan catch-up.
+**M3 audio is ✅ complete. M3 D3D11 textured quad is ✅ complete.** M4b (IK solver + D3D11 GPU skinning) is ✅ complete. M5 (Jolt Physics) is ✅ complete. M6 (Editor) is ✅ complete. M7 (World Streaming, all sub-milestones M7.1–M7.5) is ✅ complete. M8 (Gameplay Integration, all sub-milestones M8.1–M8.9) is ✅ complete. **M10 (Dynamic Sky + weather VFX, all sub-milestones M10.1–M10.7) is ✅ complete.** **Post-M10 Vehicle Physics is ✅ complete.** **Post-M10 Behaviour Tree AI is ✅ complete:** `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard` (engine/ai/behaviour_tree); `FormationSystem` (LINE/V_SHAPE/CIRCLE slot layouts, greedy assignment, world-space transform); grid `NavMesh` (BakeFromGrid, A* FindPath, obstacle routing); `--scene bt_test` 4-test headless CI. **Post-M10 SDF Font Renderer is ✅ complete:** `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI). **`pak.exe` PAK1 packager is ✅ complete:** `src/tools/pak/pak_main.cpp` (PAK1 format, `--input`/`--list`/`--extract`, CI test). **Post-M10 Cinematics runtime is ✅ complete:** `CinematicSequencer` + `CameraRig` + `CameraComponent.cinematicOverride` + `--scene cinematic_test` 3-test headless CI. Cut-scene baker tool + editor panel remain ⬜ (M22). Next: D3D11 DoD quality items (M16 depth buffer + IBL, M17 shadows + bloom, M18 X3DAudio), then combat/quest/tool stubs, then Vulkan catch-up.
 
 ---
 
@@ -239,8 +240,10 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Cinematic sequencer | ⬜ | `src/engine/cinematics/cinematic_sequencer.hpp/.cpp` |
-| Camera rig | ⬜ | `src/engine/cinematics/camera_rig.hpp/.cpp` |
+| Cinematic sequencer | ✅ | `src/engine/cinematics/cinematic_sequencer.hpp/.cpp` — shot/cut, `ApplyToCamera()`, `OnShotChanged`/`OnComplete` callbacks; `--scene cinematic_test` CI |
+| Camera rig | ✅ | `src/engine/cinematics/camera_rig.hpp/.cpp` — keyframe Lerp, binary-search bracket |
+| Cinematic baker tool | ⬜ | `tools/creation_engine.py` `bake_cinematic()` — timeline JSON → cooked `.cinematic` (M22) |
+| Cinematic editor panel | ⬜ | `editor/src/panels/CinematicEditorPanel.hpp/.cpp` — shot timeline, keyframe edit (M22) |
 
 ---
 
@@ -262,7 +265,7 @@ Acceptance: save → load → component data matches byte-for-byte.
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: Post-M10 SDF Font Renderer ✅ complete + pak.exe ✅ complete. Next: cinematics, Vulkan catch-up.**
+> **Current position: Post-M10 Cinematics runtime ✅ complete (CinematicSequencer + CameraRig + cinematic_test CI). Cut-scene baker tool + editor panel ⬜. Next: M16 D3D11 depth buffer + IBL → M17 shadow maps + bloom → M18 X3DAudio → M19–M22 combat/quest/tool gaps → M23 Vulkan.**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
@@ -276,8 +279,15 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | ~~**1 — Now**~~ | ~~**Post-M10: Vehicle physics**~~ | ✅ done — `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steering), `WheelState` × 4, vehicle chase camera in CameraSystem, `--scene vehicle_test` CI |
 | ~~**1 — Now**~~ | ~~**Post-M10: Behaviour tree AI**~~ | ✅ done — `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard`; `FormationSystem` (LINE/V_SHAPE/CIRCLE); grid `NavMesh` (BakeFromGrid, A* with obstacle routing); `--scene bt_test` CI |
 | ~~**1 — Now**~~ | ~~**Post-M10: SDF Font Renderer + pak.exe**~~ | ✅ done — `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI); `pak.exe` (PAK1 format, `--input`/`--list`/`--extract`, CI test) |
-| **1 — Now** | **Post-M10: Cinematics** | `CinematicSequencer` + camera rig + cut-scene editor panel |
-| **Future** | **Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
+| ~~**1 — Now**~~ | ~~**Post-M10: Cinematics**~~ | ✅ done (runtime + tests) — `CinematicSequencer` + `CameraRig` + `CameraComponent.cinematicOverride` + `--scene cinematic_test` 3-test headless CI; cut-scene baker tool + editor panel remain ⬜ (M22) |
+| **1 — Now** | **M16: D3D11 depth buffer + IBL** | DSV + `DepthStencilState`; PBR texture maps; irradiance cubemap + prefiltered env + BRDF LUT; `--headless --scene pbr_ibl` CI |
+| **2** | **M17: D3D11 shadow maps + bloom** | Shadow pass + PCF sampling; bright-pass + Gaussian blur + composite; `--headless --scene shadow_test` + `bloom_test` CI |
+| **3** | **M18: X3DAudio 3D positional audio** | X3DAudio init; `Update3DListener`; per-voice emitter; distance rolloff; `--headless --scene audio_3d_test` CI |
+| **4** | **M19: Action combat completion** | `combo_system.hpp/.cpp`; `combat_config.json` loader; `--headless --scene combat_test` CI |
+| **5** | **M20: Quest/dialogue tools + tests** | Quest baker; `--headless --scene quest_test` + `dialogue_test` CI |
+| **6** | **M21: Tool stubs** | Nav-mesh baker; tod.lut baker; pytest for each |
+| **7** | **M22: Cinematic baker + editor panel** | `bake_cinematic()`; `CinematicEditorPanel` |
+| **Future** | **M23: Vulkan catch-up** | Resume Vulkan work: vulkan_texture, vulkan_descriptor, Vulkan PBR, Vulkan skinning — implement all Vulkan DEFERRED items |
 
 ---
 
@@ -811,7 +821,16 @@ See the **"Next Milestone — What to Work On Now"** table in the "Current Devel
 | Post-M10 | Vehicle physics | ✅ |
 | Post-M10 | Behaviour tree AI (BtTree, FormationSystem, NavMesh, bt_test CI) | ✅ |
 | Post-M10 | SDF Font Renderer (FontRenderer, sdf_text.vs/ps.hlsl, font_test CI) + pak.exe (PAK1 packager) | ✅ |
-| Post-M10 | Cinematics, Vulkan catch-up | ⬜ |
+| Post-M10 | Cinematics runtime (CinematicSequencer + CameraRig + cinematic_test CI) | ✅ |
+| M13 partial | Cinematics tool (cut-scene baker) + editor panel | ⬜ (M22) |
+| M16 | D3D11 depth buffer + IBL | ⬜ |
+| M17 | D3D11 shadow maps + bloom | ⬜ |
+| M18 | X3DAudio 3D positional audio | ⬜ |
+| M19 | Action combat completion (combo FSM + config + tests) | ⬜ |
+| M20 | Quest/dialogue tools + tests | ⬜ |
+| M21 | Nav-mesh baker + tod.lut baker | ⬜ |
+| M22 | Cut-scene baker + cinematic editor panel | ⬜ |
+| M23 | Vulkan catch-up | ⬜ Deferred |
 
 ---
 
