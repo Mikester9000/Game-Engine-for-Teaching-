@@ -16,6 +16,8 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 > Status legend: ✅ complete · 🔨 in progress / partial · ⬜ not started
 >
 > **Assessment reference (2026-04-22):** `docs/ASSESSMENT_2026-04-22.md`.
+>
+> **Session hygiene:** At the end of every Copilot session, run `python scripts/extract_teaching_notes.py --repo-root .` and commit `docs/CURRICULUM_INDEX.md` whenever it changes.
 
 > **⚠️ ACTIVE POLICY — D3D11 Only (until explicitly stated otherwise)**
 > Vulkan work is **DEFERRED**. All new rendering code targets **D3D11 only**.

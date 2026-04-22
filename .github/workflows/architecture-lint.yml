@@ -139,6 +139,10 @@ jobs:
       # with code 1 if the file changed.  This pattern is common in CI:
       # generate → compare → fail if different.  It ensures that contributors
       # who add TEACHING NOTE blocks also update the index before merging.
+      #
+      # Session policy: every Copilot continuation session must run this same
+      # regeneration step before finishing and commit docs/CURRICULUM_INDEX.md
+      # whenever the output changes.
       # -----------------------------------------------------------------------
       - name: Regenerate curriculum index
         run: python scripts/extract_teaching_notes.py --repo-root .

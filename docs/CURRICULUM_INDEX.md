@@ -1232,6 +1232,10 @@ We regenerate the file, then run ``git diff --exit-code`` which exits
 with code 1 if the file changed.  This pattern is common in CI:
 generate → compare → fail if different.  It ensures that contributors
 who add TEACHING NOTE blocks also update the index before merging.
+
+Session policy: every Copilot continuation session must run this same
+regeneration step before finishing and commit docs/CURRICULUM_INDEX.md
+whenever the output changes.
 -----------------------------------------------------------------------
 - name: Regenerate curriculum index
 run: python scripts/extract_teaching_notes.py --repo-root .
@@ -25728,7 +25732,7 @@ a .material extension so runtime loaders can distinguish cooked material data
 from editable source JSON.
 """
 materials_src = CONTENT_DIR / "Materials"
-materials_dst = COOKED_DIR  / "Materials"
+materials_dst = COOKED_DIR / "Materials"
 ensure_dir(materials_dst)
 
 ### Parse-check before cook output
@@ -25739,17 +25743,27 @@ We fail fast on malformed material JSON so bad content never reaches
 Cooked/ where the runtime would otherwise fail much later.
 try:
 json.loads(src.read_text(encoding="utf-8"))
-except Exception as exc:
-print(f"  [WARN] {src.name}: invalid material JSON ({exc}) — skipping")
+except json.JSONDecodeError as exc:
+print(
+"  [WARN] "
+f"{src.name}: invalid material JSON syntax at line {exc.lineno}, "
+f"column {exc.colno} ({exc.msg}) — skipping. "
+"Hint: validate against shared/schemas/material.schema.json."
+)
+continue
+except OSError as exc:
+print(
+f"  [WARN] {src.name}: failed to read material file ({exc}) — skipping"
+)
 continue
 
 ### M7.2: Level / Streaming Cell Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L556) (line 556)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L566) (line 566)
 
 ### Why .level instead of keeping .cell.json?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L574) (line 574)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L584) (line 584)
 
 Renaming to .level makes it explicit that this is a COOKED, runtime-ready
 file — not a raw source file.  The extension signals the content pipeline
@@ -25761,7 +25775,7 @@ ensure_dir(levels_dst)
 
 ### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L588) (line 588)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L598) (line 598)
 
 Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
 leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -25772,7 +25786,7 @@ dst.parent.mkdir(parents=True, exist_ok=True)
 
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L635) (line 635)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L645) (line 645)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -25785,7 +25799,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L649) (line 649)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L659) (line 659)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
