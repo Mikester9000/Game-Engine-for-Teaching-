@@ -411,6 +411,9 @@ if(ENGINE_ENABLE_TERMINAL)
         src/engine/ai/behaviour_tree.cpp
         src/engine/ai/formation_system.cpp
         src/engine/ai/nav_mesh.cpp
+        # TEACHING NOTE — M19 Action Combat: ComboSystem FSM (terminal game).
+        # The ComboSystem is renderer-agnostic and builds on Linux unchanged.
+        src/engine/combat/combo_system.cpp
         src/game/Game.cpp
     )
 
@@ -750,6 +753,11 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         src/engine/ui/hud.cpp
         src/engine/ui/menu_stack.cpp
         src/engine/save/save_system.cpp
+        # TEACHING NOTE — M19 Action Combat: ComboSystem FSM.
+        # combo_system.cpp is pure C++17 with no platform or rendering
+        # dependencies.  It compiles on Linux (terminal game) and Windows alike.
+        # JSON loading inside it is guarded by ENGINE_ENABLE_JSON.
+        src/engine/combat/combo_system.cpp
     )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})

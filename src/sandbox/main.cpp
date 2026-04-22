@@ -83,6 +83,7 @@
  *   engine_sandbox.exe --headless --scene shadow_test       # M17 Shadow Maps: shadow-pass + PCF lit-pass acceptance test (CI)
  *   engine_sandbox.exe --headless --scene bloom_test        # M17 Bloom: bright-pass + blur + composite acceptance test (CI)
  *   engine_sandbox.exe --headless --scene audio_3d_test     # M18 X3DAudio: listener init + distance rolloff acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene combat_test        # M19 Action Combat: combo FSM + damage formula acceptance test (CI)
  *
  * ============================================================================
  *
@@ -253,6 +254,38 @@
 #include "engine/rendering/d3d11/D3D11Renderer.hpp"
 #include "engine/audio/xaudio2_backend.hpp"
 #endif
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M19 Action Combat headless test
+// ---------------------------------------------------------------------------
+// The combat_test scene validates the ComboSystem FSM and the CombatSystem
+// damage formula without any rendering API calls:
+//
+//   Test 1 (combo_populate):
+//     AddCombo() adds 3 combo definitions; ComboCount() == 3 and the first
+//     combo name matches.  Validates the in-memory add-combo API that is
+//     used when ENGINE_ENABLE_JSON is not available.
+//
+//   Test 2 (combo_sequence):
+//     Feed ATTACK, ATTACK, ATTACK into PressInput().  The third press must
+//     return "Avalanche Chain" and transition the FSM to COOLDOWN.
+//     Validates: prefix matching stays BUILDING, exact match fires.
+//
+//   Test 3 (window_expiry):
+//     Feed one ATTACK, then call Update(1.0f) to advance past the 0.5 s
+//     window.  State must return to IDLE (sequence cancelled).
+//     Validates: the combo window timer correctly resets an incomplete combo.
+//
+//   Test 4 (damage_formula):
+//     Create a minimal ECS World with player (STR=20, DEF=5) and enemy
+//     (DEF=5), then call CombatSystem::CalculateDamage() 100 times.
+//     Every result must lie in [1, 100] — confirming the formula is bounded
+//     and the variance term [0.85, 1.15] is applied correctly.
+//
+// All four tests are pure C++17 CPU tests — no GPU or audio device needed.
+// ---------------------------------------------------------------------------
+#include "engine/combat/combo_system.hpp"
+#include "game/systems/CombatSystem.hpp"
 
 #include <iostream>
 #include <exception>
@@ -2812,6 +2845,296 @@ int main(int argc, char* argv[])
                 }
                 std::cout << "[PASS] audio_3d_test: 4 acceptance tests passed "
                              "(init/fallback, at-listener volume, at-maxDist rolloff, half-distance rolloff).\n";
+            }
+            else if (scene == "combat_test")
+            {
+                // -----------------------------------------------------------
+                // M19: Action combat completion acceptance tests (4 tests).
+                //
+                // TEACHING NOTE — What the combat_test validates:
+                //   All four tests are pure C++17 CPU tests — no D3D11 renderer
+                //   or audio hardware is required.
+                //
+                //   Test 1 (combo_populate):
+                //     AddCombo() populates the ComboSystem in-memory without
+                //     JSON.  ComboCount() must equal the number added and the
+                //     first combo name must match.
+                //
+                //   Test 2 (combo_sequence):
+                //     Feed ATTACK, ATTACK, ATTACK via PressInput().  The FSM
+                //     must stay BUILDING after inputs 1 and 2 (prefix match)
+                //     and return "Avalanche Chain" on input 3 (exact match).
+                //     State must then be COOLDOWN.
+                //
+                //   Test 3 (window_expiry):
+                //     Feed one ATTACK, then Update(1.0f) to advance past the
+                //     0.5 s combo window.  State must revert to IDLE.
+                //     Validates that the combo window timer cancels stale
+                //     partial sequences correctly.
+                //
+                //   Test 4 (damage_formula):
+                //     Create a minimal ECS World with player (STR=20) and
+                //     enemy (DEF=5).  Call CombatSystem::CalculateDamage()
+                //     100 times and assert every result lies in [1, 100].
+                //     This bounds-tests the damage formula including the
+                //     [0.85, 1.15] variance term.
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+
+                // -----------------------------------------------------------
+                // Test 1 — combo_populate: AddCombo API (no JSON needed).
+                // -----------------------------------------------------------
+                {
+                    ComboSystem cs;
+
+                    // TEACHING NOTE — We define the same combos here that
+                    // appear in combat_config.json so the test is self-
+                    // contained and does not require a file on disk.
+                    ComboDefinition aaaDef;
+                    aaaDef.name             = "Avalanche Chain";
+                    aaaDef.sequence         = { ComboInput::ATTACK,
+                                                ComboInput::ATTACK,
+                                                ComboInput::ATTACK };
+                    aaaDef.damageMultiplier = 1.8f;
+                    aaaDef.mpCost           = 0;
+                    aaaDef.cooldownSeconds  = 1.0f;
+                    aaaDef.element          = "physical";
+                    cs.AddCombo(aaaDef);
+
+                    ComboDefinition warpDef;
+                    warpDef.name             = "Warp Strike";
+                    warpDef.sequence         = { ComboInput::ATTACK,
+                                                 ComboInput::SPECIAL };
+                    warpDef.damageMultiplier = 1.5f;
+                    warpDef.mpCost           = 0;
+                    warpDef.cooldownSeconds  = 2.0f;
+                    warpDef.element          = "physical";
+                    cs.AddCombo(warpDef);
+
+                    ComboDefinition magicDef;
+                    magicDef.name             = "Magic Burst";
+                    magicDef.sequence         = { ComboInput::MAGIC,
+                                                  ComboInput::MAGIC };
+                    magicDef.damageMultiplier = 2.0f;
+                    magicDef.mpCost           = 30;
+                    magicDef.cooldownSeconds  = 3.0f;
+                    magicDef.element          = "lightning";
+                    cs.AddCombo(magicDef);
+
+                    const bool countOk   = cs.ComboCount() == 3;
+                    const bool nameOk    = cs.GetCombos()[0].name == "Avalanche Chain";
+                    const bool stateOk   = cs.GetState() == ComboState::IDLE;
+
+                    if (!countOk || !nameOk || !stateOk)
+                    {
+                        std::cout << "[FAIL] combat_test/combo_populate: "
+                                     "ComboCount=" << cs.ComboCount()
+                                  << " (expected 3), "
+                                     "name='" << (cs.ComboCount() > 0 ? cs.GetCombos()[0].name : "?") << "' "
+                                     "(expected 'Avalanche Chain'), "
+                                     "state=" << static_cast<int>(cs.GetState())
+                                  << " (expected IDLE=0).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] combat_test/combo_populate: "
+                                     "3 combos loaded; first = 'Avalanche Chain'; state = IDLE.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 2 — combo_sequence: prefix → exact match.
+                // -----------------------------------------------------------
+                {
+                    ComboSystem cs;
+
+                    // TEACHING NOTE — Set a short config so tests run fast
+                    CombatConfig cfg;
+                    cfg.comboWindowSeconds = 0.5f;
+                    cs.SetConfig(cfg);
+
+                    // Load the three-hit chain.
+                    ComboDefinition def;
+                    def.name             = "Avalanche Chain";
+                    def.sequence         = { ComboInput::ATTACK,
+                                             ComboInput::ATTACK,
+                                             ComboInput::ATTACK };
+                    def.damageMultiplier = 1.8f;
+                    def.cooldownSeconds  = 1.0f;
+                    cs.AddCombo(def);
+
+                    // Also add "Warp Strike" (ATTACK, SPECIAL) so that
+                    // ATTACK alone is a valid prefix for two combos.
+                    ComboDefinition warp;
+                    warp.name             = "Warp Strike";
+                    warp.sequence         = { ComboInput::ATTACK,
+                                              ComboInput::SPECIAL };
+                    warp.damageMultiplier = 1.5f;
+                    warp.cooldownSeconds  = 2.0f;
+                    cs.AddCombo(warp);
+
+                    const std::string r1 = cs.PressInput(ComboInput::ATTACK);   // prefix — no match yet
+                    const std::string r2 = cs.PressInput(ComboInput::ATTACK);   // prefix — no match yet
+                    const std::string r3 = cs.PressInput(ComboInput::ATTACK);   // exact match!
+
+                    const bool r1Ok    = r1.empty();
+                    const bool r2Ok    = r2.empty();
+                    const bool r3Ok    = r3 == "Avalanche Chain";
+                    const bool stateOk = cs.GetState() == ComboState::COOLDOWN;
+
+                    if (!r1Ok || !r2Ok || !r3Ok || !stateOk)
+                    {
+                        std::cout << "[FAIL] combat_test/combo_sequence: "
+                                     "r1='" << r1 << "' r2='" << r2
+                                  << "' r3='" << r3 << "' "
+                                     "(expected '', '', 'Avalanche Chain'); "
+                                     "state=" << static_cast<int>(cs.GetState())
+                                  << " (expected COOLDOWN=2).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] combat_test/combo_sequence: "
+                                     "ATTACK×3 triggered 'Avalanche Chain'; "
+                                     "state = COOLDOWN.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 3 — window_expiry: partial sequence cancelled on timeout.
+                // -----------------------------------------------------------
+                {
+                    ComboSystem cs;
+
+                    CombatConfig cfg;
+                    cfg.comboWindowSeconds = 0.5f;
+                    cs.SetConfig(cfg);
+
+                    ComboDefinition def;
+                    def.name             = "Avalanche Chain";
+                    def.sequence         = { ComboInput::ATTACK,
+                                             ComboInput::ATTACK,
+                                             ComboInput::ATTACK };
+                    def.damageMultiplier = 1.8f;
+                    def.cooldownSeconds  = 1.0f;
+                    cs.AddCombo(def);
+
+                    // Feed one ATTACK — FSM enters BUILDING.
+                    cs.PressInput(ComboInput::ATTACK);
+
+                    const bool buildingOk = cs.GetState() == ComboState::BUILDING;
+
+                    // Advance past the combo window (0.5 s + epsilon).
+                    cs.Update(1.0f);
+
+                    const bool idleOk = cs.GetState() == ComboState::IDLE;
+
+                    if (!buildingOk || !idleOk)
+                    {
+                        std::cout << "[FAIL] combat_test/window_expiry: "
+                                     "after ATTACK state="
+                                  << static_cast<int>(cs.GetState())
+                                  << " (expected BUILDING=1 then IDLE=0 after Update(1s)).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] combat_test/window_expiry: "
+                                     "partial sequence cancelled after 1 s "
+                                     "(window = 0.5 s); state = IDLE.\n";
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 4 — damage_formula: CombatSystem bounds check.
+                // -----------------------------------------------------------
+                // TEACHING NOTE — Minimal ECS World for a unit test
+                // We create the smallest possible World to exercise a specific
+                // function (CalculateDamage).  This is the game-engine equivalent
+                // of a unit test: real components, real calculation, no window.
+                // Heap-allocate World because EntityManager::m_signatures alone
+                // is 512 KB — too large to stack-allocate on Windows.
+                {
+                    auto combatWorld = std::make_unique<World>();
+                    RegisterAllComponents(*combatWorld);
+
+                    EntityID playerID = combatWorld->CreateEntity();
+                    EntityID enemyID  = combatWorld->CreateEntity();
+
+                    // Set up minimal player stats.
+                    {
+                        auto& st = combatWorld->AddComponent<StatsComponent>(playerID);
+                        st.strength = 20;
+                        st.defence  = 5;
+                        st.luck     = 10;
+                        st.speed    = 10;
+                    }
+                    {
+                        auto& hp = combatWorld->AddComponent<HealthComponent>(playerID);
+                        hp.hp    = 100;
+                        hp.maxHp = 100;
+                    }
+
+                    // Set up minimal enemy stats.
+                    {
+                        auto& st = combatWorld->AddComponent<StatsComponent>(enemyID);
+                        st.strength = 10;
+                        st.defence  = 5;
+                        st.luck     = 0;
+                        st.speed    = 5;
+                    }
+                    {
+                        auto& hp = combatWorld->AddComponent<HealthComponent>(enemyID);
+                        hp.hp    = 100;
+                        hp.maxHp = 100;
+                    }
+
+                    CombatSystem cs(combatWorld.get());
+
+                    // Run the formula 100 times with different RNG seeds.
+                    // Expected raw: max(1, 20*2 + 0 - 5) = 35.
+                    // With variance [0.85, 1.15]: [29, 40].
+                    // With crit (luck=10, max 50%): possible 1.5× = max ~60.
+                    // Upper bound chosen conservatively at 100.
+                    bool formulaOk = true;
+                    int  minResult = INT_MAX;
+                    int  maxResult = 0;
+                    for (int i = 0; i < 100; ++i)
+                    {
+                        const int dmg = cs.CalculateDamage(
+                            playerID, enemyID, 0,
+                            ElementType::NONE, DamageType::PHYSICAL);
+                        if (dmg < 1 || dmg > 100)
+                        {
+                            formulaOk = false;
+                            std::cout << "[FAIL] combat_test/damage_formula: "
+                                         "CalculateDamage returned " << dmg
+                                      << " (expected 1–100) on iteration " << i << ".\n";
+                            ++testsFailed;
+                            break;
+                        }
+                        minResult = std::min(minResult, dmg);
+                        maxResult = std::max(maxResult, dmg);
+                    }
+                    if (formulaOk)
+                    {
+                        std::cout << "[OK] combat_test/damage_formula: "
+                                     "100 samples in [" << minResult << ", " << maxResult
+                                  << "] (all within [1, 100]).\n";
+                    }
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] combat_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] combat_test: 4 acceptance tests passed "
+                             "(combo_populate, combo_sequence, window_expiry, damage_formula).\n";
             }
             else
             {

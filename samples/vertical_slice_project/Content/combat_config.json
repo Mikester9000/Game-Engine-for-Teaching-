@@ -1,0 +1,47 @@
+{
+  "$schema": "../../shared/schemas/combat_config.schema.json",
+  "version": "1.0.0",
+
+  "comboWindowSeconds":    0.5,
+  "turnDurationSeconds":   2.0,
+  "critMultiplier":        1.5,
+  "fleeBaseChance":        0.30,
+  "fleeChanceCap":         0.90,
+  "linkStrikeChance":      0.30,
+  "linkStrikeDamageRatio": 0.30,
+
+  "combos": [
+    {
+      "name":             "Avalanche Chain",
+      "sequence":         ["ATTACK", "ATTACK", "ATTACK"],
+      "damageMultiplier": 1.8,
+      "mpCost":           0,
+      "cooldownSeconds":  1.0,
+      "element":          "physical"
+    },
+    {
+      "name":             "Warp Strike",
+      "sequence":         ["ATTACK", "SPECIAL"],
+      "damageMultiplier": 1.5,
+      "mpCost":           0,
+      "cooldownSeconds":  2.0,
+      "element":          "physical"
+    },
+    {
+      "name":             "Magic Burst",
+      "sequence":         ["MAGIC", "MAGIC"],
+      "damageMultiplier": 2.0,
+      "mpCost":           30,
+      "cooldownSeconds":  3.0,
+      "element":          "lightning"
+    },
+    {
+      "name":             "Phantom Sword",
+      "sequence":         ["DODGE", "ATTACK", "ATTACK"],
+      "damageMultiplier": 2.2,
+      "mpCost":           10,
+      "cooldownSeconds":  2.5,
+      "element":          "physical"
+    }
+  ]
+}
