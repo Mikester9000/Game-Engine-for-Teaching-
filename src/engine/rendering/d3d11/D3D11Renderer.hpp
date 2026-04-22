@@ -405,7 +405,16 @@ public:
     // their ref-count goes to zero if the device also holds a reference).
     //
     // This struct stores the same geometry + CB resources as PBRScene (it
-    // renders the same UV sphere), plus the IBL additions above.
+    // renders the same geometry), plus the IBL additions above.
+    //
+    // M23 extends this scene with authored material texture slots:
+    //   t3 — albedo map
+    //   t4 — normal map
+    //   t5 — metallic-roughness map
+    //   t6 — ambient-occlusion map
+    //
+    // Each map uses a fallback 1×1 SRV when authored files are unavailable so
+    // the draw path stays stable in sparse-content projects (M24 pending).
     // -----------------------------------------------------------------------
     struct PBRIBLScene
     {
@@ -430,6 +439,20 @@ public:
 
         ID3D11SamplerState*       linearSampler  = nullptr;  ///< s0: linear clamp
         ID3D11RasterizerState*    rastState      = nullptr;
+
+        // M23 authored material maps (optional DDS files + guaranteed fallback SRVs)
+        D3D11Texture              albedoMap;
+        D3D11Texture              normalMap;
+        D3D11Texture              metallicRoughnessMap;
+        D3D11Texture              aoMap;
+        ID3D11Texture2D*          albedoFallbackTex           = nullptr;
+        ID3D11ShaderResourceView* albedoFallbackSRV           = nullptr;
+        ID3D11Texture2D*          normalFallbackTex           = nullptr;
+        ID3D11ShaderResourceView* normalFallbackSRV           = nullptr;
+        ID3D11Texture2D*          metallicRoughnessFallbackTex = nullptr;
+        ID3D11ShaderResourceView* metallicRoughnessFallbackSRV = nullptr;
+        ID3D11Texture2D*          aoFallbackTex               = nullptr;
+        ID3D11ShaderResourceView* aoFallbackSRV               = nullptr;
 
         int   indexCount = 0;
         bool  loaded     = false;

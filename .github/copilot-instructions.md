@@ -269,13 +269,13 @@ They were re-wired to the **D3D11 runtime** in **Milestone M8** (Vulkan wiring r
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M22 ✅ complete; D3D11 feature milestones M16–M21 ✅ complete. Vulkan parity remains deferred (M14).**
+> **Current position: M23 ✅ complete; D3D11 feature milestones M16–M23 ✅ complete. Vulkan parity remains deferred (M14).**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
-| **Now** | **M23: Authored content ingestion (D3D11)** | Runtime mesh/material loading from cooked assets; bind authored textures/material params; close procedural-only rendering gap |
+| ~~**Now**~~ | ~~**M23: Authored content ingestion (D3D11)**~~ | ✅ done — runtime authored mesh loading from cooked assets in D3D11 scene path + authored material parameter ingestion + authored texture slot binding (albedo/normal/MR/AO) with robust fallback maps |
 | **Now** | **M24: Vertical slice content population** | Populate `Content/Textures`, `Content/Audio`, `Content/Animations` with real sample assets and verify cook/load path end-to-end |
 | **Now** | **M25: Terrain/world geometry path** | Add terrain/heightmap rendering + collision integration for streamed cells so open-world slice is visually navigable |
 | **Now** | **M26: Save-system CI hardening** | Add dedicated `--scene save_test` acceptance tests for slot round-trip, migration, and auto-save |

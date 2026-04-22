@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1750 across 54 subsystems.
+**Total lessons:** 1751 across 54 subsystems.
 
 ---
 
@@ -29,7 +29,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (54 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (349 lessons)
+- [engine/rendering](#enginerendering) (350 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -13027,7 +13027,7 @@ pragma comment(lib, "d3dcompiler.lib")
 
 ### Quad Vertex Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L73) (line 73)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L75) (line 75)
 
 Each vertex carries a 2-D NDC position (no Z — the VS sets it to 0) and a
 2-D UV coordinate.  D3D11 convention: UV (0,0) = top-left of the texture.
@@ -13043,7 +13043,7 @@ pragma pack(pop)
 
 ### Index Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L95) (line 95)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L97) (line 97)
 
 Two clockwise triangles (D3D11 default front face) sharing the diagonal edge:
   Triangle 0: top-left (0), top-right (1), bottom-left (2)
@@ -13052,7 +13052,7 @@ static const uint16_t kQuadIndices[6] = { 0, 1, 2, 1, 3, 2 };
 
 ### SkinnedVertex Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L105) (line 105)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L107) (line 107)
 
 The skinned mesh vertex format carries:
   pos       — bind-pose position in NDC space (z=0, w=1)
@@ -13077,7 +13077,7 @@ pragma pack(pop)
 
 ### Skinned Strip Geometry
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L127) (line 127)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L129) (line 129)
 
 5 rows × 2 vertices = 10 vertices forming a vertical strip in NDC.
   x = ±0.10 NDC (narrow strip for clarity)
@@ -13101,7 +13101,7 @@ Row 0: y = -0.80  — fully weighted to bone 0 (static anchor)
 
 ### Index Buffer (4 quads = 8 triangles = 24 indices)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L165) (line 165)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L167) (line 167)
 
 Vertex layout (strip, left = x=-0.1, right = x=+0.1, y increases upward):
   Row 0 (y=-0.8):  v0 (left)   v1 (right)
@@ -13132,7 +13132,7 @@ static const uint16_t kSkinnedIndices[24] =
 
 ### Driver Type Selection
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L215) (line 215)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L217) (line 217)
 
 -----------------------------------------------------------------------
 D3D_DRIVER_TYPE_HARDWARE — uses the physical GPU (fastest).
@@ -13148,7 +13148,7 @@ headless ? D3D_DRIVER_TYPE_WARP
 
 ### Feature Levels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L229) (line 229)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L231) (line 231)
 
 -----------------------------------------------------------------------
 We request feature levels in descending order.  D3D11CreateDevice picks
@@ -13171,7 +13171,7 @@ sizeof(featureLevels) / sizeof(featureLevels[0]));
 
 ### Device Creation Flags
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L250) (line 250)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L252) (line 252)
 
 -----------------------------------------------------------------------
 D3D11_CREATE_DEVICE_DEBUG enables the D3D11 debug layer (analogous to
@@ -13185,7 +13185,7 @@ endif
 
 ### D3D11CreateDevice vs D3D11CreateDeviceAndSwapChain
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L264) (line 264)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L266) (line 266)
 
 We separate device creation from swap chain creation so that headless
 mode can skip the swap chain entirely (no HWND needed).
@@ -13205,7 +13205,7 @@ D3D11_SDK_VERSION,
 
 ### Fallback from Debug Layer to No-Debug
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L284) (line 284)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L286) (line 286)
 
 -----------------------------------------------------------------------
 On some Windows installations the optional D3D11 debug layer DLL
@@ -13227,7 +13227,7 @@ D3D11_SDK_VERSION,
 
 ### DXGI Swap Chain Description
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L349) (line 349)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L351) (line 351)
 
 -----------------------------------------------------------------------
 IDXGISwapChain is the bridge between D3D11 and the OS window manager.
@@ -13254,7 +13254,7 @@ scDesc.Windowed                           = TRUE;
 
 ### DXGI_SWAP_EFFECT_DISCARD
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L372) (line 372)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L374) (line 374)
 
 The oldest swap effect; supported on all D3D11 hardware.  The contents
 of the back buffer are undefined after Present — we always clear so it
@@ -13263,7 +13263,7 @@ scDesc.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
 ### Obtaining the IDXGIFactory via the Device's Adapter
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L379) (line 379)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L381) (line 381)
 
 -----------------------------------------------------------------------
 We must create the swap chain through the same DXGI factory that owns
@@ -13276,7 +13276,7 @@ IDXGIFactory* dxgiFactory = nullptr;
 
 ### Render-Target View (RTV)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L422) (line 422)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L424) (line 424)
 
 A RTV is a "view" that tells D3D11 which texture sub-resource to render
 into.  Here we point it at the swap chain's back buffer.
@@ -13291,7 +13291,7 @@ return false;
 
 ### Caching Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L443) (line 443)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L445) (line 445)
 
 -----------------------------------------------------------------------
 Store the back-buffer size so DrawFrame can set the viewport and bind
@@ -13303,7 +13303,7 @@ m_height = height;
 
 ### Creating the Depth Buffer (M16)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L453) (line 453)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L455) (line 455)
 
 -----------------------------------------------------------------------
 Now that we have the swap-chain dimensions, create the depth-stencil
@@ -13318,7 +13318,7 @@ return false;
 
 ### Flush and Flush-to-Idle before release
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L497) (line 497)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L499) (line 499)
 
 Before releasing any D3D11 objects we flush the immediate context so
 any in-flight GPU commands are drained.  Without this, destroying
@@ -13328,14 +13328,14 @@ m_context->Flush();
 
 ### m_depthStencilState is device-level (not swap-chain-sized),
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L506) (line 506)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L508) (line 508)
 
 so we release it in Shutdown rather than in ReleaseSwapChainResources.
 if (m_depthStencilState) { m_depthStencilState->Release(); m_depthStencilState = nullptr; }
 
 ### D3D11 Frame Setup: Bind RTV + DSV + Viewport
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L526) (line 526)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L528) (line 528)
 
 -----------------------------------------------------------------------
 Before issuing any draw or clear commands we must:
@@ -13358,7 +13358,7 @@ Before issuing any draw or clear commands we must:
 
 ### D3D11 Clear
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L564) (line 564)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L566) (line 566)
 
 -----------------------------------------------------------------------
 ClearRenderTargetView fills the back buffer with a solid colour.
@@ -13375,7 +13375,7 @@ D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 ### Scene Draw Pass (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L579) (line 579)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L581) (line 581)
 
 -----------------------------------------------------------------------
 If a scene has been loaded via LoadScene(), draw it on top of the clear
@@ -13390,7 +13390,7 @@ DrawTexturedQuad();
 
 ### Advancing the demo animation timer.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L591) (line 591)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L593) (line 593)
 
 m_sceneTime accumulates real elapsed time (seconds) and is used by
 DrawSkinnedMesh() to compute a sinusoidal joint rotation angle, and by
@@ -13401,7 +13401,7 @@ m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
 
 ### Sky Draw Order
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L611) (line 611)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L613) (line 613)
 
 The sky is drawn AFTER clearing the back buffer but could optionally be
 drawn first since it uses depth 0.9999 (behind everything).  In a full
@@ -13419,7 +13419,7 @@ DrawSky();
 
 ### Present interval
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L635) (line 635)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L637) (line 637)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -13431,7 +13431,7 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L653) (line 653)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L655) (line 655)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -13440,7 +13440,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### Recreate the depth buffer to match the new back-buffer size.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L694) (line 694)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L696) (line 696)
 
 The depth buffer must always be the same width×height as the back buffer.
 Release the old DSV + DST and create new ones at the new dimensions.
@@ -13450,7 +13450,7 @@ CreateDepthStencilBuffer(width, height);
 
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L708) (line 708)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L710) (line 710)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -13475,7 +13475,7 @@ return false;
 
 ### COM Reference Counting
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L757) (line 757)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L759) (line 759)
 
 COM objects are reference-counted.  CreateRenderTargetView internally
 calls AddRef on the texture, so the texture stays alive even after we
@@ -13490,7 +13490,7 @@ return false;
 
 ### Validating the Scene Pipeline in Headless Mode (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L774) (line 774)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L776) (line 776)
 
 -----------------------------------------------------------------------
 If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
@@ -13509,7 +13509,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the GPU skinning scene (M4b).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L794) (line 794)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L796) (line 796)
 
 We bind the off-screen RTV, set a matching 64×64 viewport, and call
 DrawSkinnedMesh() once.  This validates that the skinned mesh pipeline
@@ -13525,7 +13525,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the PBR scene (M9).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L811) (line 811)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L813) (line 813)
 
 Same pattern as skinned_mesh: bind the 64×64 off-screen RTV, set the
 matching viewport, and call DrawPBRMesh() once.  This validates that
@@ -13543,7 +13543,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the PBR + IBL scene (M16).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L830) (line 830)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L832) (line 832)
 
 Same 64×64 offscreen RTV pattern.  DrawPBRIBLMesh() validates that:
   • pbr_ibl.vs.hlsl + pbr_ibl.ps.hlsl compile under WARP.
@@ -13563,7 +13563,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the dynamic sky scene (M10).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L851) (line 851)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L853) (line 853)
 
 Bind the 64×64 off-screen RTV and call DrawSky() once.  This validates
 that the sky shaders (sky.vs.hlsl + sky.ps.hlsl), the sky constant
@@ -13579,7 +13579,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the shadow map scene (M17).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L869) (line 869)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L871) (line 871)
 
 -----------------------------------------------------------------------
 DrawShadowScene() executes two passes:
@@ -13604,7 +13604,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the bloom scene (M17).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L897) (line 897)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L899) (line 899)
 
 -----------------------------------------------------------------------
 DrawBloomScene() executes four full-screen triangle passes:
@@ -13628,7 +13628,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### C++ requires functions to be declared before use.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L934) (line 934)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L936) (line 936)
 
 LoadSkinnedMeshScene is a file-scope static helper defined later in this
 translation unit.  Rather than move the entire 300-line function above
@@ -13640,7 +13640,7 @@ D3D11Renderer::SkinnedMeshScene& scene);
 
 ### Runtime HLSL Compilation with D3DCompileFromFile
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1079) (line 1079)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1081) (line 1081)
 
 -----------------------------------------------------------------------
 D3D11 shaders are written in HLSL and can be compiled either:
@@ -13663,7 +13663,7 @@ Windows filesystem API uses UTF-16 internally.
 
 ### Embedded Fallback HLSL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1105) (line 1105)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1107) (line 1107)
 
 -----------------------------------------------------------------------
 If the .hlsl files are not present on disk (e.g. a minimal CI run that
@@ -13681,7 +13681,7 @@ static const char* kVsFallback =
 
 ### std::wstring for Win32 wide-char path
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1139) (line 1139)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1141) (line 1141)
 
 D3DCompileFromFile requires a LPCWSTR (wide string) path.
 std::filesystem::path::wstring() gives us that on MSVC.
@@ -13701,7 +13701,7 @@ D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
 
 ### Creating Shader Objects
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1219) (line 1219)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1221) (line 1221)
 
 -----------------------------------------------------------------------
 D3D11 separates shader compilation (→ bytecode blob) from shader object
@@ -13715,7 +13715,7 @@ nullptr, &m_quadScene.vs);
 
 ### Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1251) (line 1251)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1253) (line 1253)
 
 -----------------------------------------------------------------------
 The Input Assembler (IA) stage needs to know how the raw bytes in the
@@ -13738,7 +13738,7 @@ D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 ### Vertex and Index Buffers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1287) (line 1287)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1289) (line 1289)
 
 -----------------------------------------------------------------------
 D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
@@ -13759,7 +13759,7 @@ bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
 
 ### Texture Loading vs Fallback
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1336) (line 1336)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1338) (line 1338)
 
 -----------------------------------------------------------------------
 We look for a test DDS texture in the shaderDir's parent (project root)
@@ -13778,7 +13778,7 @@ ddsPath = ddsPath.lexically_normal();
 
 ### Procedural 1×1 White Fallback Texture
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1362) (line 1362)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1364) (line 1364)
 
 -----------------------------------------------------------------------
 When no DDS file is present we create a 1×1 RGBA8 white texture
@@ -13789,7 +13789,7 @@ std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n
 
 ### LoadScene_SkinnedMesh (private helper — inlined in LoadScene)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1442) (line 1442)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1444) (line 1444)
 
 We use a local lambda at file scope to keep the main LoadScene() readable.
 All resource creation follows the same pattern as the textured quad:
@@ -13797,7 +13797,7 @@ All resource creation follows the same pattern as the textured quad:
 
 ### Fallback HLSL for the skinned mesh vertex shader.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1455) (line 1455)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1459) (line 1459)
 
 -----------------------------------------------------------------------
 This is a minimal version of skinned_mesh.vs.hlsl that performs linear
@@ -13822,7 +13822,7 @@ static const char* kSkinnedVsFallback =
 
 ### SkinnedVertex Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1562) (line 1562)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1566) (line 1566)
 
 The D3D11_INPUT_ELEMENT_DESC array must exactly match the SkinnedVertex
 struct defined at the top of this file (field order and byte offsets).
@@ -13845,7 +13845,7 @@ D3D11_INPUT_ELEMENT_DESC layout[] =
 
 ### Why cull-none for the skinning demo?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1635) (line 1635)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1639) (line 1639)
 
 The strip starts facing the camera but rotates 360° as bone 1 oscillates.
 With the default back-face culling the strip disappears every 180°.
@@ -13868,7 +13868,7 @@ return false;
 
 ### The D3D11 Draw Call Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1667) (line 1667)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1671) (line 1671)
 
 -----------------------------------------------------------------------
 Every draw call in D3D11 requires the full pipeline state to be set:
@@ -13883,7 +13883,7 @@ We set IA, VS, and PS here for the quad draw call.
 
 ### PSSetShaderResources / PSSetSamplers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1679) (line 1679)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1683) (line 1683)
 
 These calls bind texture resources and sampler states to HLSL registers.
 register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
@@ -13892,7 +13892,7 @@ register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
 
 ### Constructing the Skin Matrices for the 2-Joint Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1735) (line 1735)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1739) (line 1739)
 
 -----------------------------------------------------------------------
 The demo skeleton has two joints:
@@ -13918,7 +13918,7 @@ const float angle = std::sin(m_sceneTime * 1.5f) * (kPi * 0.25f);  // ±45°
 
 ### Input Assembler (IA) Stage Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1770) (line 1770)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1774) (line 1774)
 
 -----------------------------------------------------------------------
 We set the same four IA parameters as any other draw call:
@@ -13932,7 +13932,7 @@ m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 ### DrawIndexed
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1794) (line 1794)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1798) (line 1798)
 
 -----------------------------------------------------------------------
 DrawIndexed(indexCount, startIndex, baseVertex):
@@ -13944,7 +13944,7 @@ m_context->DrawIndexed(static_cast<UINT>(m_skinnedScene.indexCount), 0, 0);
 
 ### Release Order (LIFO vs Creation Order)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1816) (line 1816)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1820) (line 1820)
 
 COM objects must be released in reverse-creation order when one object
 holds a reference to another.  For independent scene objects (shaders,
@@ -13953,7 +13953,7 @@ reverse makes intent clear.
 
 ### Release order: state objects first (they don't depend on
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1846) (line 1846)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1850) (line 1850)
 
 shaders), then shaders, then geometry buffers, then the CB.
 if (m_skinnedScene.rastState)   { m_skinnedScene.rastState->Release();   m_skinnedScene.rastState   = nullptr; }
@@ -13965,7 +13965,7 @@ if (m_skinnedScene.vertexBuf)   { m_skinnedScene.vertexBuf->Release();   m_skinn
 
 ### Release in reverse creation order (LIFO):
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1860) (line 1860)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1864) (line 1864)
 
 state objects first (no dependents), then shaders, then buffers.
 if (m_pbrScene.rastState)   { m_pbrScene.rastState->Release();   m_pbrScene.rastState   = nullptr; }
@@ -13982,7 +13982,7 @@ m_pbrScene.loaded     = false;
 
 ### The sky scene only has three objects: VS, PS, and the
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1875) (line 1875)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1879) (line 1879)
 
 sky constant buffer.  No vertex buffer or input layout to release (the
 full-screen triangle uses SV_VertexID — no IA stage resources needed).
@@ -13993,7 +13993,7 @@ m_skyScene.loaded = false;
 
 ### Release IBL textures.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1884) (line 1884)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1888) (line 1888)
 
 The raw ID3D11Texture2D* objects must be released separately from the
 SRVs.  When CreateShaderResourceView() was called, the SRV got its own
@@ -14003,9 +14003,21 @@ holds a reference.  We must release our own texture handle explicitly.
 if (m_pbrIblScene.prefilteredSRV) { m_pbrIblScene.prefilteredSRV->Release(); m_pbrIblScene.prefilteredSRV = nullptr; }
 if (m_pbrIblScene.irradianceSRV)  { m_pbrIblScene.irradianceSRV->Release();  m_pbrIblScene.irradianceSRV  = nullptr; }
 if (m_pbrIblScene.brdfLutSRV)     { m_pbrIblScene.brdfLutSRV->Release();     m_pbrIblScene.brdfLutSRV     = nullptr; }
+if (m_pbrIblScene.albedoFallbackSRV) { m_pbrIblScene.albedoFallbackSRV->Release(); m_pbrIblScene.albedoFallbackSRV = nullptr; }
+if (m_pbrIblScene.normalFallbackSRV) { m_pbrIblScene.normalFallbackSRV->Release(); m_pbrIblScene.normalFallbackSRV = nullptr; }
+if (m_pbrIblScene.metallicRoughnessFallbackSRV) { m_pbrIblScene.metallicRoughnessFallbackSRV->Release(); m_pbrIblScene.metallicRoughnessFallbackSRV = nullptr; }
+if (m_pbrIblScene.aoFallbackSRV) { m_pbrIblScene.aoFallbackSRV->Release(); m_pbrIblScene.aoFallbackSRV = nullptr; }
 if (m_pbrIblScene.prefilteredTex) { m_pbrIblScene.prefilteredTex->Release();  m_pbrIblScene.prefilteredTex = nullptr; }
 if (m_pbrIblScene.irradianceTex)  { m_pbrIblScene.irradianceTex->Release();   m_pbrIblScene.irradianceTex  = nullptr; }
 if (m_pbrIblScene.brdfLutTex)     { m_pbrIblScene.brdfLutTex->Release();      m_pbrIblScene.brdfLutTex     = nullptr; }
+if (m_pbrIblScene.albedoFallbackTex) { m_pbrIblScene.albedoFallbackTex->Release(); m_pbrIblScene.albedoFallbackTex = nullptr; }
+if (m_pbrIblScene.normalFallbackTex) { m_pbrIblScene.normalFallbackTex->Release(); m_pbrIblScene.normalFallbackTex = nullptr; }
+if (m_pbrIblScene.metallicRoughnessFallbackTex) { m_pbrIblScene.metallicRoughnessFallbackTex->Release(); m_pbrIblScene.metallicRoughnessFallbackTex = nullptr; }
+if (m_pbrIblScene.aoFallbackTex) { m_pbrIblScene.aoFallbackTex->Release(); m_pbrIblScene.aoFallbackTex = nullptr; }
+m_pbrIblScene.albedoMap.Release();
+m_pbrIblScene.normalMap.Release();
+m_pbrIblScene.metallicRoughnessMap.Release();
+m_pbrIblScene.aoMap.Release();
 if (m_pbrIblScene.linearSampler)  { m_pbrIblScene.linearSampler->Release();   m_pbrIblScene.linearSampler  = nullptr; }
 if (m_pbrIblScene.rastState)      { m_pbrIblScene.rastState->Release();       m_pbrIblScene.rastState      = nullptr; }
 if (m_pbrIblScene.materialCB)     { m_pbrIblScene.materialCB->Release();      m_pbrIblScene.materialCB     = nullptr; }
@@ -14021,7 +14033,7 @@ m_pbrIblScene.loaded     = false;
 
 ### Release Order for Shadow Resources
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1910) (line 1910)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1926) (line 1926)
 
 The shadow map SRV and DSV both reference the same underlying texture
 (shadowTex).  The SRV and DSV each add a COM reference when created, so
@@ -14049,7 +14061,7 @@ m_shadowScene.loaded     = false;
 
 ### Releasing Render Targets
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1936) (line 1936)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1952) (line 1952)
 
 Each offscreen RT consists of three objects: the ID3D11Texture2D (raw
 GPU memory), an ID3D11RenderTargetView (write access), and an
@@ -14087,7 +14099,7 @@ m_bloomScene.loaded = false;
 
 ### PBR Per-Frame Constant Buffer Update
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1984) (line 1984)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2000) (line 2000)
 
 -----------------------------------------------------------------------
 The world matrix changes every frame (the sphere rotates slowly around
@@ -14106,7 +14118,7 @@ Proj matrix: FovY=60°, aspect from current back-buffer, near=0.1, far=100.
 
 ### LookAt matrix (Right-Handed, row-major D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2007) (line 2007)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2023) (line 2023)
 
 -----------------------------------------------------------------------
 We build the view matrix manually to show the derivation:
@@ -14126,7 +14138,7 @@ Vec3 up     = { 0.0f, 1.0f, 0.0f };
 
 ### Perspective Projection (Right-Handed, D3D11 Z=[0,1])
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2035) (line 2035)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2051) (line 2051)
 
 -----------------------------------------------------------------------
 D3D11 maps view-space z ∈ [-near, -far] to NDC z ∈ [0, 1].
@@ -14151,7 +14163,7 @@ float f      = 1.0f / std::tan(kFovY * 0.5f);   // cot(FovY/2)
 
 ### Map / Unmap for DYNAMIC buffers.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2068) (line 2068)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2084) (line 2084)
 
 D3D11_MAP_WRITE_DISCARD tells the driver "discard the old contents and
 give me a new pointer to write into".  This avoids GPU/CPU stalls: the
@@ -14172,7 +14184,7 @@ std::memcpy(pfData.proj,         projMat.Data(),  64);
 
 ### Input Assembler (IA) stage setup.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2097) (line 2097)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2113) (line 2113)
 
 We must set:
   1. The primitive topology (triangles, lines, etc.).
@@ -14190,7 +14202,7 @@ m_context->IASetInputLayout(m_pbrScene.inputLayout);
 
 ### Updating the Sky Constant Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2141) (line 2141)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2157) (line 2157)
 
 -----------------------------------------------------------------------
 m_skyRenderer.Update(dt) is called by DrawFrame each frame to advance
@@ -14208,7 +14220,7 @@ engine::rendering::SkyShaderConstants constants = m_skyRenderer.GetShaderConstan
 
 ### Sky Pipeline State
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2166) (line 2166)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2182) (line 2182)
 
 -----------------------------------------------------------------------
 The sky draw uses the absolute minimum pipeline state:
@@ -14233,7 +14245,7 @@ The sky draw uses the absolute minimum pipeline state:
 
 ### The sky VS does not use any constant buffers.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2196) (line 2196)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2212) (line 2212)
 
 Explicitly clear b0 of the VS stage so no stale matrix CB from a
 previous draw call bleeds into the sky VS's register space.
@@ -14242,7 +14254,7 @@ m_context->VSSetConstantBuffers(0, 1, &nullCB);
 
 ### Draw(3, 0): Full-Screen Triangle, No Vertex Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2207) (line 2207)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2223) (line 2223)
 
 -----------------------------------------------------------------------
 Draw(vertexCount, startVertexLocation):
@@ -14258,7 +14270,7 @@ m_context->Draw(3, 0);
 
 ### Embedded PBR Shader Fallbacks
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2240) (line 2240)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2256) (line 2256)
 
 -----------------------------------------------------------------------
 As with the textured_quad and skinned_mesh scenes, we include minimal
@@ -14283,7 +14295,7 @@ static const char* kPBRVsFallback =
 
 ### kPi for the UV sphere generation inside LoadPBRMeshScene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2274) (line 2274)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2290) (line 2290)
 
 math_types.hpp defines engine::math::kPi, but that name requires the
 engine::math namespace which is not open at file scope here.  We declare a
@@ -14294,7 +14306,7 @@ static constexpr float kPi = 3.14159265358979323846f;
 
 ### M23 authored material ingestion (JSON-lite parser)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2283) (line 2283)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2299) (line 2299)
 
 -----------------------------------------------------------------------
 The first M23 runtime step is reading authored PBR material parameters from
@@ -14311,12 +14323,16 @@ float       albedo[3] = { 1.0f, 1.0f, 1.0f };
 float       metallic  = 0.0f;
 float       roughness = 1.0f;
 float       ao        = 1.0f;
+std::string albedoTextureRelPath;
+std::string normalTextureRelPath;
+std::string metallicRoughnessTextureRelPath;
+std::string aoTextureRelPath;
 std::string loadedFromPath;
 };
 
 ### Same compile helper pattern as the skinned mesh scene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2402) (line 2402)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2658) (line 2658)
 
 We attempt to compile from the .hlsl file on disk; if that fails (file
 missing, syntax error) we fall back to the embedded string.  This
@@ -14331,7 +14347,7 @@ HRESULT   hr     = E_FAIL;
 
 ### D3D11 Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2470) (line 2470)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2726) (line 2726)
 
 The input layout maps each field of the C++ vertex struct to a
 semantic name in the HLSL VSInput struct.  We have three fields:
@@ -14363,7 +14379,7 @@ return false;
 
 ### UV Sphere Parametric Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2502) (line 2502)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2758) (line 2758)
 
 A UV sphere is generated by sweeping a circle (latitude) around the
 Y axis (longitude).  Parameters:
@@ -14395,7 +14411,7 @@ constexpr int N_SLICES = 16;
 
 ### Triangle winding (clockwise from outside of sphere).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2576) (line 2576)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2832) (line 2832)
 
 Triangle 1: top-left, bottom-left, top-right
 Triangle 2: top-right, bottom-left, bottom-right
@@ -14406,7 +14422,7 @@ indices[iIdx++] = v1;
 
 ### IMMUTABLE vs DYNAMIC buffers for geometry.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2594) (line 2594)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2850) (line 2850)
 
 The sphere geometry never changes, so we use D3D11_USAGE_IMMUTABLE:
   • GPU-only access (no CPU write after creation).
@@ -14431,7 +14447,7 @@ return false;
 
 ### D3D11 Constant Buffer Size Rules.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2635) (line 2635)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2891) (line 2891)
 
 A D3D11 constant buffer must be a MULTIPLE of 16 bytes.
 The perFrameCB holds four 4×4 float matrices = 4 × 64 = 256 bytes. ✓
@@ -14458,7 +14474,7 @@ return buf;
 
 ### Uploading data to a DYNAMIC constant buffer at init.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2671) (line 2671)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2927) (line 2927)
 
 For the very first upload we use D3D11_MAP_WRITE_DISCARD (same as the
 per-frame update).  The resource has never been used by the GPU, so
@@ -14467,7 +14483,7 @@ per-frame update).  The resource has never been used by the GPU, so
 
 ### Light direction points TOWARD the light (toward the source),
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2678) (line 2678)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2934) (line 2934)
 
 so the dot product N·L is positive for surfaces facing the light.
 struct alignas(16) LightData {
@@ -14495,7 +14511,7 @@ lightData.padL2           = 0.0f;
 
 ### Workaround: use device->GetImmediateContext to get
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2709) (line 2709)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2965) (line 2965)
 
 a context pointer for the one-time init upload.  In a production
 engine the context would be passed as a parameter.
@@ -14514,7 +14530,7 @@ ctx->Release();
 
 ### Material Parameters for a Gold-like Surface:
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2726) (line 2726)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2982) (line 2982)
 
 albedo   = warm orange-gold (reflected tint for metals = albedo)
   metallic = 0.9  (mostly metallic; a small dielectric contribution
@@ -14535,7 +14551,7 @@ matData.matPad[0] = matData.matPad[1] = 0.0f;
 
 ### Cull-None for the PBR Demo Sphere.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2775) (line 2775)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3031) (line 3031)
 
 The default D3D11 rasterizer state back-face culls (removes triangles
 whose vertices wind clockwise from the camera's perspective).  For a
@@ -14559,7 +14575,7 @@ device->CreateRasterizerState(&rd, &scene.rastState);
 
 ### Minimal Pipeline for a Sky Scene
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2813) (line 2813)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3069) (line 3069)
 
 ──────────────────────────────────────────────────
 The sky is the simplest possible D3D11 pipeline:
@@ -14576,7 +14592,7 @@ This simplicity makes the sky scene a perfect study example for D3D11 basics:
 
 ### Embedded Sky Shader Fallbacks
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2828) (line 2828)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3084) (line 3084)
 
 -----------------------------------------------------------------------
 As with all other scenes, we include minimal inline HLSL strings as
@@ -14599,7 +14615,7 @@ static const char* kSkyVsFallback =
 
 ### compile helper (same pattern as all other scene loaders)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2869) (line 2869)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3125) (line 3125)
 
 -----------------------------------------------------------------------
 auto compile = [&](const fs::path& path, const char* fallback,
@@ -14611,7 +14627,7 @@ HRESULT   hr     = E_FAIL;
 
 ### Sky Constant Buffer Size
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2954) (line 2954)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3210) (line 3210)
 
 SkyShaderConstants is 80 bytes (5 × float4 = 5 × 16 bytes).
 D3D11 requires constant buffers to be multiples of 16 bytes.
@@ -14626,7 +14642,7 @@ static_assert(sizeof(engine::rendering::SkyShaderConstants) % 16 == 0,
 
 ### Depth Buffer Creation in D3D11
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2988) (line 2988)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3244) (line 3244)
 
 ===========================================================================
 Creating a D3D11 depth buffer requires three steps:
@@ -14662,7 +14678,7 @@ sized and are recreated on every resize.
 
 ### D3D11_DEPTH_STENCIL_VIEW_DESC
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3052) (line 3052)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3308) (line 3308)
 
 ViewDimension = TEXTURE2D means we bind the entire 2D texture as depth.
 MipSlice = 0 selects the single mip level we created above.
@@ -14674,7 +14690,7 @@ dsvDesc.Texture2D.MipSlice = 0;
 
 ### Why create the state here and not in Init()?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3074) (line 3074)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3330) (line 3330)
 
 The state is logically part of the depth buffer setup.  Keeping all
 three objects together makes the initialisation sequence obvious and
@@ -14691,7 +14707,7 @@ dsStateDesc.StencilEnable  = FALSE;   // Not used yet
 
 ### We do NOT release m_depthStencilState here because it is
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3107) (line 3107)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3363) (line 3363)
 
 device-level and not swap-chain-sized.  Releasing it on resize would
 force an unnecessary CreateDepthStencilState() round-trip.  It is
@@ -14702,7 +14718,7 @@ if (m_depthStencilTex)  { m_depthStencilTex->Release();  m_depthStencilTex  = nu
 
 ### Image-Based Lighting (IBL) Procedural Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3118) (line 3118)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3374) (line 3374)
 
 ===========================================================================
 A production engine loads IBL textures from pre-cooked HDR cubemap files.
@@ -14731,7 +14747,7 @@ fills the data — no further updates are needed.
 
 ### Hammersley Quasi-Random Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3147) (line 3147)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3403) (line 3403)
 
 ---------------------------------------------------------------------------
 The Hammersley sequence gives a well-distributed set of 2D sample points
@@ -14754,7 +14770,7 @@ return static_cast<float>(bits) * 2.3283064365386963e-10f; // 1/2^32
 
 ### GGX Importance Sampling (Tangent Space)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3174) (line 3174)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3430) (line 3430)
 
 ---------------------------------------------------------------------------
 Given two uniform random numbers (xi1, xi2) and a roughness α, this
@@ -14776,7 +14792,7 @@ float phi      = 2.0f * kPi * xi1;
 
 ### epsilon placement: add to the full denominator expression
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3192) (line 3192)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3448) (line 3448)
 
 so the protection is clearly outside the main formula term.
 float cosTheta = std::sqrt((1.0f - xi2) /
@@ -14789,7 +14805,7 @@ cosTheta };
 
 ### Smith-Schlick-GGX Geometry (IBL variant)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3203) (line 3203)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3459) (line 3459)
 
 ---------------------------------------------------------------------------
 For the BRDF LUT precomputation we use the IBL variant of k:
@@ -14807,7 +14823,7 @@ return NdotV / (NdotV * (1.0f - k) + k + 1e-7f);
 
 ### Integrate BRDF for one (NoV, roughness) sample
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3224) (line 3224)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3480) (line 3480)
 
 ---------------------------------------------------------------------------
 This computes the two components of the split-sum BRDF LUT for a single
@@ -14832,7 +14848,7 @@ float Vz = NdotV;
 
 ### Procedural Sky Environment Colour
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3281) (line 3281)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3537) (line 3537)
 
 ---------------------------------------------------------------------------
 Returns a physically plausible sky colour for a given world-space direction.
@@ -14852,7 +14868,7 @@ float ny = dy / len;   // normalised elevation component
 
 ### Cubemap Face Direction (D3D11 convention)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3315) (line 3315)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3571) (line 3571)
 
 ---------------------------------------------------------------------------
 D3D11 cubemaps use a left-handed coordinate system per face:
@@ -14882,7 +14898,7 @@ default: dx = -u; dy = -v;  dz = -1;  break;   // -Z (face 5)
 
 ### Orthonormal Basis from a Normal Vector
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3343) (line 3343)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3599) (line 3599)
 
 ---------------------------------------------------------------------------
 To integrate over a hemisphere aligned with a surface normal N, we need
@@ -14902,7 +14918,7 @@ if (std::abs(ny) > 0.999f) { ux = 0.0f; uy = 0.0f; uz = 1.0f; }
 
 ### BRDF LUT Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3382) (line 3382)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3638) (line 3638)
 
 The LUT is a 2D texture indexed by (NoV = U, roughness = V).
 Row 0 = roughness 0, row (size-1) = roughness 1.
@@ -14911,7 +14927,7 @@ pixels.resize(size * size * 2);   // 2 bytes per texel (RG8)
 
 ### Hemisphere Integration for Irradiance
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3416) (line 3416)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3672) (line 3672)
 
 For each texel on the cubemap face, we find the world-space direction
 (the surface normal N), build a tangent basis, and sum cosine-weighted
@@ -14928,7 +14944,7 @@ float fu = (static_cast<float>(col) + 0.5f) / static_cast<float>(size)
 
 ### Prefiltered Environment Map Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3477) (line 3477)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3733) (line 3733)
 
 For each texel (= reflection direction R), we importance-sample the
 GGX NDF to generate a set of half-vectors H.  We reflect R around each
@@ -14940,7 +14956,7 @@ At roughness=1 (mip 4) we sample a broad hemisphere → blurry env.
 
 ### Roughness clamping
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3486) (line 3486)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3742) (line 3742)
 
 roughness=0 (perfect mirror) causes ImportanceSampleGGX to produce all
 samples concentrated at the mirror direction.  For the very first mip we
@@ -14949,7 +14965,7 @@ float eff_roughness = std::max(roughness, 0.04f);
 
 ### Input Layout for PBR+IBL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3685) (line 3685)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3953) (line 3953)
 
 Same layout as pbr_mesh: POSITION (float3) + NORMAL (float3) + TEXCOORD0 (float2).
 Each vertex is 32 bytes.  The layout must match the vertex shader's
@@ -14963,7 +14979,7 @@ D3D11_INPUT_ELEMENT_DESC inputElems[] = {
 
 ### UV Sphere vs Icosphere
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3711) (line 3711)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3979) (line 3979)
 
 A UV sphere divides the sphere into stacks (latitudinal rings) and
 slices (longitudinal strips).  It is simple to generate and gives clean
@@ -14975,10 +14991,11 @@ teaching the UV sphere's regular structure is easier to understand.
 const int kStacks = 16, kSlices = 16;
 std::vector<float>    verts;
 std::vector<uint16_t> indices;
+std::string authoredMeshPath;
 
 ### Constant Buffer Sizes must be multiples of 16 bytes.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3778) (line 3778)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4055) (line 4055)
 
 PerFrameCB: 4 × float4x4 = 256 bytes.
 LightCB:    2 × float4 + float3 + float = 48 bytes → pad to 48.
@@ -14998,7 +15015,7 @@ return buf;
 
 ### We use an immediate DeviceContext write via Map/Unmap
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3809) (line 3809)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4086) (line 4086)
 
 instead of UpdateSubresource because the CB is DYNAMIC.  UpdateSubresource
 on a DYNAMIC buffer is slower than Map/Unmap on some drivers.
@@ -15012,9 +15029,36 @@ float lightColor[3]; float lightIntensity;
 ID3D11DeviceContext* ctx = nullptr;
 device->GetImmediateContext(&ctx);
 
+### Fallback map conventions
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4157) (line 4157)
+
+Albedo fallback:              white (1,1,1)
+  Normal fallback:              +Z tangent normal (0.5,0.5,1.0)
+  Metallic-Roughness fallback:  G=roughness, B=metallic
+  AO fallback:                  white (1.0)
+This keeps shading stable when M24 authored texture content is sparse.
+-----------------------------------------------------------------------
+{
+ID3D11DeviceContext* ctx = nullptr;
+device->GetImmediateContext(&ctx);
+if (ctx)
+{
+const uint8_t kWhite[4]          = {255, 255, 255, 255};
+const uint8_t kFlatNormal[4]     = {128, 128, 255, 255};
+const float fallbackRoughness = hasAuthoredMaterial ? authoredMat.roughness : 0.3f;
+const float fallbackMetallic  = hasAuthoredMaterial ? authoredMat.metallic  : 1.0f;
+const uint8_t kDefaultMR[4]      = {
+0,
+static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, fallbackRoughness)) * 255.0f),
+static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, fallbackMetallic)) * 255.0f),
+255
+};
+const uint8_t kDefaultAO[4]      = {255, 255, 255, 255};
+
 ### DXGI_FORMAT_R8G8_UNORM
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3883) (line 3883)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4214) (line 4214)
 
 Two 8-bit channels (R=scale, G=bias).  UNORM means values are
 interpreted as [0.0, 1.0] in the shader.  The LUT encodes values in
@@ -15028,7 +15072,7 @@ GenerateBRDFLUT(lutPixels, kLUTSize, 128);
 
 ### D3D11_RESOURCE_MISC_TEXTURECUBE
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3916) (line 3916)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4247) (line 4247)
 
 Setting MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE on a Texture2D
 with ArraySize = 6 tells D3D11 that the six array slices are the six
@@ -15044,7 +15088,7 @@ GenerateIrradianceFace(face, kCubeSize, 64, allFaces);
 
 ### RGBA8 vs RGB8
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3948) (line 3948)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4279) (line 4279)
 
 D3D11 does not support RGB8 (24-bit) textures natively.  The
 closest supported format is RGBA8 (32-bit).  We must convert our
@@ -15060,7 +15104,7 @@ rgba[i*4+3] = 255;
 
 ### Multi-Mip Cubemap Upload
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3983) (line 3983)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4314) (line 4314)
 
 Each mip level of each face is a separate D3D11_SUBRESOURCE_DATA.
 The total number of subresources = 6 faces × 5 mip levels = 30.
@@ -15074,7 +15118,7 @@ std::cout << "[IBL] Generating prefiltered env cubemap ("
 
 ### Sampler State for IBL Textures
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4068) (line 4068)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4399) (line 4399)
 
 All three IBL textures use a linear filter sampler with CLAMP address
 mode.  CLAMP is important for the BRDF LUT (NoV and roughness are both
@@ -15097,7 +15141,7 @@ if (FAILED(hr)) { std::cerr << "[IBL] CreateSamplerState failed.\n"; return fals
 
 ### Per-Frame Constant Buffer Update (PBR + IBL)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4117) (line 4117)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4448) (line 4448)
 
 -----------------------------------------------------------------------
 The per-frame CB holds the world, worldInvTrans, view, and proj matrices.
@@ -15110,13 +15154,17 @@ Mat4 worldMat = Mat4::Rotation(Quat::FromAxisAngle(Vec3::Up(), angle));
 
 ### Binding IBL Textures
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4191) (line 4191)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4522) (line 4522)
 
 -----------------------------------------------------------------------
 The PS declares:
   t0 — Texture2D g_brdfLut
   t1 — TextureCube g_irradianceCube
   t2 — TextureCube g_prefilteredEnv
+  t3 — Texture2D g_albedoMap
+  t4 — Texture2D g_normalMap
+  t5 — Texture2D g_metallicRoughnessMap
+  t6 — Texture2D g_aoMap
   s0 — SamplerState g_linearSampler
 
 PSSetShaderResources binds SRVs to texture slots (t0, t1, t2).
@@ -15124,17 +15172,21 @@ PSSetSamplers binds the sampler to slot s0.
 Setting all three SRVs in one call is more efficient than three
 individual calls (single API round-trip to the driver).
 -----------------------------------------------------------------------
-ID3D11ShaderResourceView* srvs[3] = {
+ID3D11ShaderResourceView* srvs[7] = {
 m_pbrIblScene.brdfLutSRV,
 m_pbrIblScene.irradianceSRV,
 m_pbrIblScene.prefilteredSRV,
+m_pbrIblScene.albedoMap.IsLoaded() ? m_pbrIblScene.albedoMap.GetSRV() : m_pbrIblScene.albedoFallbackSRV,
+m_pbrIblScene.normalMap.IsLoaded() ? m_pbrIblScene.normalMap.GetSRV() : m_pbrIblScene.normalFallbackSRV,
+m_pbrIblScene.metallicRoughnessMap.IsLoaded() ? m_pbrIblScene.metallicRoughnessMap.GetSRV() : m_pbrIblScene.metallicRoughnessFallbackSRV,
+m_pbrIblScene.aoMap.IsLoaded() ? m_pbrIblScene.aoMap.GetSRV() : m_pbrIblScene.aoFallbackSRV,
 };
-m_context->PSSetShaderResources(0, 3, srvs);
+m_context->PSSetShaderResources(0, 7, srvs);
 m_context->PSSetSamplers(0, 1, &m_pbrIblScene.linearSampler);
 
 ### Two-Pass Shadow Rendering Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4224) (line 4224)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4563) (line 4563)
 
 Shadow map rendering requires:
   (a) A depth texture that the GPU can WRITE to (DepthStencilView).
@@ -15151,7 +15203,7 @@ shadow_lit.ps.hlsl — lit PS: 3×3 PCF shadow comparison + Lambert diffuse.
 
 ### Shadow Map Texture Format
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4262) (line 4262)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4601) (line 4601)
 
 -----------------------------------------------------------------------
 DXGI_FORMAT_R32_TYPELESS lets us create BOTH a DSV (write-only depth)
@@ -15167,7 +15219,7 @@ be used as an SRV format; TYPELESS is the bridge.
 
 ### Compile Helper Lambda (same pattern as other scenes)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4325) (line 4325)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4664) (line 4664)
 
 Try the .hlsl file from shaderDir first; return failure if not found.
 The shadow shaders have no embedded fallback string — they require the
@@ -15203,7 +15255,7 @@ return code;
 
 ### Shared Input Layout for Shadow and Lit Passes
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4378) (line 4378)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4717) (line 4717)
 
 Both the shadow VS and the lit VS accept the same vertex layout
 (position + normal + UV).  We create ONE input layout using the shadow
@@ -15233,7 +15285,7 @@ return false;
 
 ### Shadow CB (64 bytes, b0 of shadow VS)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4455) (line 4455)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4794) (line 4794)
 
 The shadow pass only needs the combined lightViewProj matrix (one float4x4
 = 64 bytes).  We upload it once at the start of each shadow draw call.
@@ -15261,7 +15313,7 @@ return false;
 
 ### Lit CB (272 bytes, b0 of lit VS + lit PS)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4480) (line 4480)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4819) (line 4819)
 
 Contains: world, view, proj, lightViewProj, lightDir.
 Both stages share the same CB object — we bind it to VS slot 0 and
@@ -15289,7 +15341,7 @@ return false;
 
 ### Depth Bias for Shadow Maps
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4531) (line 4531)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4870) (line 4870)
 
 Shadow acne arises because the shadow map depth and the re-computed
 surface depth differ by a tiny floating-point error.  The rasterizer
@@ -15334,7 +15386,7 @@ return false;
 
 ### SamplerComparisonState (hardware PCF)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4576) (line 4576)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4915) (line 4915)
 
 D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT enables bilinear PCF:
   • Takes a 2×2 neighbourhood, compares each texel, and bilinearly
@@ -15375,7 +15427,7 @@ return false;
 
 ### Reuse the UV Sphere for the Shadow Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4617) (line 4617)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4956) (line 4956)
 
 The same sphere geometry used in the PBR scenes (M9, M16) serves as
 both the shadow caster and the lit object in this demo.  Using a sphere
@@ -15393,7 +15445,7 @@ std::vector<uint16_t> idx(static_cast<size_t>(nIndices));
 
 ### Orthographic Projection for Directional Lights
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4733) (line 4733)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5072) (line 5072)
 
 A directional light has parallel rays (infinite distance), so it uses
 an ORTHOGRAPHIC projection — no perspective foreshortening.
@@ -15405,7 +15457,7 @@ const float eyeZ = -kLightDirZ * 5.0f;
 
 ### Row-Major Matrix Multiply
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4769) (line 4769)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5108) (line 5108)
 
 In row-vector × matrix convention, the chain is:
   clipPos = pos_model × world × lightView × lightProj
@@ -15422,7 +15474,7 @@ lightVP.m[r][c] += lightView.m[r][k] * lightProj.m[k][c];
 
 ### No Colour Output
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4786) (line 4786)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5125) (line 5125)
 
 We bind the shadow DSV but NO colour RTV (first argument = 0, second =
 nullptr).  The rasteriser will still write depth — only colour output
@@ -15432,7 +15484,7 @@ compared to a dummy colour target.
 
 ### OMGetRenderTargets increments the COM ref count of the
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4794) (line 4794)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5133) (line 5133)
 
 returned pointers.  We MUST call Release() on them after restoring.
 ID3D11RenderTargetView* prevRTV = nullptr;
@@ -15441,7 +15493,7 @@ m_context->OMGetRenderTargets(1, &prevRTV, &prevDSV);
 
 ### DSV ↔ SRV Mutual Exclusion
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4841) (line 4841)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5180) (line 5180)
 
 D3D11 does not allow the same sub-resource to be bound simultaneously
 as a DSV (write) and an SRV (read).  We must unbind the DSV first by
@@ -15453,7 +15505,7 @@ m_context->RSSetState(nullptr);
 
 ### Offscreen Render Target Pattern
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4922) (line 4922)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5261) (line 5261)
 
 Bloom requires rendering to TEXTURES that are not the swap-chain back buffer.
 Each bloom RT follows the same three-object pattern:
@@ -15469,7 +15521,7 @@ always alternates: write to tex A → read from tex A (write next tex B).
 
 ### Reusing sky.vs.hlsl as the Full-Screen VS
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5010) (line 5010)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5349) (line 5349)
 
 The full-screen triangle trick (SV_VertexID) generates 3 vertices that
 cover the entire viewport without any vertex buffer.  sky.vs.hlsl already
@@ -15507,7 +15559,7 @@ return code;
 
 ### Structured Cleanup via goto Labels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5129) (line 5129)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5468) (line 5468)
 
 -----------------------------------------------------------------------
 Cascaded cleanup with goto mimics the RAII pattern in systems where
@@ -15545,7 +15597,7 @@ return false;
 
 ### Simulated Scene Content For Bloom
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5197) (line 5197)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5536) (line 5536)
 
 For the bloom demo we bypass a full scene render and simply clear the
 scene RT to a bright orange test colour stored in a UNORM render target.
@@ -15568,7 +15620,7 @@ m_context->ClearRenderTargetView(m_bloomScene.sceneRTV, bright);
 
 ### Restoring the Caller's Render Target
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5281) (line 5281)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5620) (line 5620)
 
 The final composite outputs to the render target that the CALLER set up
 (either the swap-chain back buffer in windowed mode, or the 64×64 off-
@@ -15904,7 +15956,16 @@ can Release() them (the SRVs do NOT release the underlying textures when
 their ref-count goes to zero if the device also holds a reference).
 
 This struct stores the same geometry + CB resources as PBRScene (it
-renders the same UV sphere), plus the IBL additions above.
+renders the same geometry), plus the IBL additions above.
+
+M23 extends this scene with authored material texture slots:
+  t3 — albedo map
+  t4 — normal map
+  t5 — metallic-roughness map
+  t6 — ambient-occlusion map
+
+Each map uses a fallback 1×1 SRV when authored files are unavailable so
+the draw path stays stable in sparse-content projects (M24 pending).
 -----------------------------------------------------------------------
 struct PBRIBLScene
 {
@@ -15919,7 +15980,7 @@ ID3D11Buffer*             materialCB     = nullptr;  ///< b2 (PS): material para
 
 ### SkyScene (M10: Dynamic Sky + Weather VFX)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L439) (line 439)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L462) (line 462)
 
 -----------------------------------------------------------------------
 SkyScene is the simplest scene struct: it only needs a VS, PS, and a
@@ -15950,7 +16011,7 @@ bool                loaded         = false;
 
 ### ShadowScene (M17: Directional Shadow Maps)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L468) (line 468)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L491) (line 491)
 
 -----------------------------------------------------------------------
 ShadowScene implements a classic two-pass shadow algorithm:
@@ -15984,7 +16045,7 @@ ID3D11ShaderResourceView* shadowSRV    = nullptr;  ///< SRV: lit PS samples this
 
 ### BloomScene (M17: HDR Bloom Post-Processing)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L521) (line 521)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L544) (line 544)
 
 -----------------------------------------------------------------------
 BloomScene implements a standard four-pass HDR bloom pipeline:
@@ -16014,7 +16075,7 @@ static constexpr uint32_t kRTSize = 256;  ///< Bloom RT dimensions (256×256)
 
 ### SkyRenderer member
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L595) (line 595)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L618) (line 618)
 
 m_skyRenderer owns the CPU-side procedural sky simulation (time-of-day,
 weather state, colour math).  It is updated each frame in DrawSky()

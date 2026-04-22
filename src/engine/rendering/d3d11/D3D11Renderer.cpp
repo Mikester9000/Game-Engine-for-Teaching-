@@ -55,6 +55,7 @@
 #pragma comment(lib, "d3dcompiler.lib")
 
 #include <iostream>
+#include <algorithm>  // std::min/std::max
 #include <cassert>
 #include <cctype>     // std::isspace
 #include <cstdlib>    // std::strtof
@@ -62,6 +63,7 @@
 #include <cmath>      // std::sin (used in DrawSkinnedMesh animation)
 #include <filesystem> // std::filesystem::path (C++17) — for wide-char path conversion
 #include <fstream>    // std::ifstream for authored material ingestion
+#include <sstream>    // std::istringstream for authored mesh parsing
 
 namespace engine {
 namespace rendering {
@@ -1450,6 +1452,8 @@ static bool LoadSkinnedMeshScene(
     D3D11Renderer::SkinnedMeshScene& scene)
 {
     namespace fs = std::filesystem;
+    AuthoredMaterialParams authoredMat;
+    const bool hasAuthoredMaterial = TryLoadAuthoredMaterial(authoredMat);
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Fallback HLSL for the skinned mesh vertex shader.
@@ -1890,9 +1894,21 @@ void D3D11Renderer::UnloadScene()
     if (m_pbrIblScene.prefilteredSRV) { m_pbrIblScene.prefilteredSRV->Release(); m_pbrIblScene.prefilteredSRV = nullptr; }
     if (m_pbrIblScene.irradianceSRV)  { m_pbrIblScene.irradianceSRV->Release();  m_pbrIblScene.irradianceSRV  = nullptr; }
     if (m_pbrIblScene.brdfLutSRV)     { m_pbrIblScene.brdfLutSRV->Release();     m_pbrIblScene.brdfLutSRV     = nullptr; }
+    if (m_pbrIblScene.albedoFallbackSRV) { m_pbrIblScene.albedoFallbackSRV->Release(); m_pbrIblScene.albedoFallbackSRV = nullptr; }
+    if (m_pbrIblScene.normalFallbackSRV) { m_pbrIblScene.normalFallbackSRV->Release(); m_pbrIblScene.normalFallbackSRV = nullptr; }
+    if (m_pbrIblScene.metallicRoughnessFallbackSRV) { m_pbrIblScene.metallicRoughnessFallbackSRV->Release(); m_pbrIblScene.metallicRoughnessFallbackSRV = nullptr; }
+    if (m_pbrIblScene.aoFallbackSRV) { m_pbrIblScene.aoFallbackSRV->Release(); m_pbrIblScene.aoFallbackSRV = nullptr; }
     if (m_pbrIblScene.prefilteredTex) { m_pbrIblScene.prefilteredTex->Release();  m_pbrIblScene.prefilteredTex = nullptr; }
     if (m_pbrIblScene.irradianceTex)  { m_pbrIblScene.irradianceTex->Release();   m_pbrIblScene.irradianceTex  = nullptr; }
     if (m_pbrIblScene.brdfLutTex)     { m_pbrIblScene.brdfLutTex->Release();      m_pbrIblScene.brdfLutTex     = nullptr; }
+    if (m_pbrIblScene.albedoFallbackTex) { m_pbrIblScene.albedoFallbackTex->Release(); m_pbrIblScene.albedoFallbackTex = nullptr; }
+    if (m_pbrIblScene.normalFallbackTex) { m_pbrIblScene.normalFallbackTex->Release(); m_pbrIblScene.normalFallbackTex = nullptr; }
+    if (m_pbrIblScene.metallicRoughnessFallbackTex) { m_pbrIblScene.metallicRoughnessFallbackTex->Release(); m_pbrIblScene.metallicRoughnessFallbackTex = nullptr; }
+    if (m_pbrIblScene.aoFallbackTex) { m_pbrIblScene.aoFallbackTex->Release(); m_pbrIblScene.aoFallbackTex = nullptr; }
+    m_pbrIblScene.albedoMap.Release();
+    m_pbrIblScene.normalMap.Release();
+    m_pbrIblScene.metallicRoughnessMap.Release();
+    m_pbrIblScene.aoMap.Release();
     if (m_pbrIblScene.linearSampler)  { m_pbrIblScene.linearSampler->Release();   m_pbrIblScene.linearSampler  = nullptr; }
     if (m_pbrIblScene.rastState)      { m_pbrIblScene.rastState->Release();       m_pbrIblScene.rastState      = nullptr; }
     if (m_pbrIblScene.materialCB)     { m_pbrIblScene.materialCB->Release();      m_pbrIblScene.materialCB     = nullptr; }
@@ -2296,6 +2312,10 @@ struct AuthoredMaterialParams
     float       metallic  = 0.0f;
     float       roughness = 1.0f;
     float       ao        = 1.0f;
+    std::string albedoTextureRelPath;
+    std::string normalTextureRelPath;
+    std::string metallicRoughnessTextureRelPath;
+    std::string aoTextureRelPath;
     std::string loadedFromPath;
 };
 
@@ -2373,6 +2393,77 @@ static bool ExtractJsonFloat3(const std::string& json, const char* key, float ou
     return true;
 }
 
+static bool ExtractJsonString(const std::string& json, const char* key, std::string& outValue)
+{
+    const std::string token = std::string("\"") + key + "\"";
+    std::size_t pos = json.find(token);
+    if (pos == std::string::npos) return false;
+    pos = json.find(':', pos + token.size());
+    if (pos == std::string::npos) return false;
+
+    pos = json.find('"', pos + 1);
+    if (pos == std::string::npos) return false;
+    const std::size_t start = pos + 1;
+
+    const std::size_t end = json.find('"', start);
+    if (end == std::string::npos) return false;
+
+    outValue = json.substr(start, end - start);
+    return true;
+}
+
+static bool ExtractJsonTextureString(const std::string& json, const char* key, std::string& outValue)
+{
+    const std::size_t texturesPos = json.find("\"textures\"");
+    if (texturesPos == std::string::npos) return false;
+
+    const std::size_t openBrace = json.find('{', texturesPos);
+    if (openBrace == std::string::npos) return false;
+    const std::size_t closeBrace = json.find('}', openBrace + 1);
+    if (closeBrace == std::string::npos || closeBrace <= openBrace) return false;
+
+    const std::string texturesBlock = json.substr(openBrace, closeBrace - openBrace + 1);
+    return ExtractJsonString(texturesBlock, key, outValue);
+}
+
+static std::filesystem::path ReplaceTexExtensionWithDDS(const std::filesystem::path& p)
+{
+    if (p.extension() == ".tex")
+    {
+        std::filesystem::path out = p;
+        out.replace_extension(".dds");
+        return out;
+    }
+    return p;
+}
+
+static std::filesystem::path TryResolveAuthoredTexturePath(const AuthoredMaterialParams& mat,
+                                                           const std::string& relPath)
+{
+    namespace fs = std::filesystem;
+    if (relPath.empty() || mat.loadedFromPath.empty()) return {};
+
+    const fs::path materialPath = fs::path(mat.loadedFromPath);
+    const fs::path projectRoot  = materialPath.parent_path().parent_path().parent_path();
+    fs::path texRel = fs::path(relPath);
+
+    const fs::path candidates[] = {
+        projectRoot / "Cooked"  / texRel,
+        projectRoot / "Content" / texRel,
+        fs::absolute(projectRoot / "Cooked"  / ReplaceTexExtensionWithDDS(texRel)),
+        fs::absolute(projectRoot / "Content" / ReplaceTexExtensionWithDDS(texRel)),
+        fs::absolute(texRel),
+        fs::absolute(ReplaceTexExtensionWithDDS(texRel))
+    };
+
+    for (const fs::path& p : candidates)
+    {
+        const fs::path abs = fs::absolute(p);
+        if (fs::exists(abs)) return abs;
+    }
+    return {};
+}
+
 static bool TryLoadAuthoredMaterial(AuthoredMaterialParams& outMat)
 {
     namespace fs = std::filesystem;
@@ -2420,10 +2511,135 @@ static bool TryLoadAuthoredMaterial(AuthoredMaterialParams& outMat)
                       << " (ao).\n";
             continue;
         }
+        // Texture slots are optional; if absent we bind fallback textures.
+        ExtractJsonTextureString(json, "albedo", parsed.albedoTextureRelPath);
+        ExtractJsonTextureString(json, "normal", parsed.normalTextureRelPath);
+        ExtractJsonTextureString(json, "metallicRoughness", parsed.metallicRoughnessTextureRelPath);
+        ExtractJsonTextureString(json, "ao", parsed.aoTextureRelPath);
 
         parsed.loadedFromPath = absPath.string();
         outMat = parsed;
         return true;
+    }
+
+    return false;
+}
+
+static bool CreateSolidTextureSRV(ID3D11Device* device,
+                                  const uint8_t rgba[4],
+                                  ID3D11Texture2D** outTex,
+                                  ID3D11ShaderResourceView** outSRV)
+{
+    if (!device || !outTex || !outSRV) return false;
+    *outTex = nullptr;
+    *outSRV = nullptr;
+
+    D3D11_TEXTURE2D_DESC td = {};
+    td.Width = 1;
+    td.Height = 1;
+    td.MipLevels = 1;
+    td.ArraySize = 1;
+    td.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    td.SampleDesc = {1, 0};
+    td.Usage = D3D11_USAGE_IMMUTABLE;
+    td.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+    D3D11_SUBRESOURCE_DATA sd = {};
+    sd.pSysMem = rgba;
+    sd.SysMemPitch = 4;
+
+    HRESULT hr = device->CreateTexture2D(&td, &sd, outTex);
+    if (FAILED(hr)) return false;
+
+    hr = device->CreateShaderResourceView(*outTex, nullptr, outSRV);
+    if (FAILED(hr))
+    {
+        (*outTex)->Release(); *outTex = nullptr;
+        return false;
+    }
+    return true;
+}
+
+static void LoadAuthoredTextureWithFallback(ID3D11Device* device,
+                                            ID3D11DeviceContext* context,
+                                            const AuthoredMaterialParams& mat,
+                                            const std::string& relPath,
+                                            const uint8_t fallbackRGBA[4],
+                                            D3D11Texture& outTexture,
+                                            ID3D11Texture2D*& outFallbackTex,
+                                            ID3D11ShaderResourceView*& outFallbackSRV)
+{
+    namespace fs = std::filesystem;
+    const fs::path resolved = TryResolveAuthoredTexturePath(mat, relPath);
+    if (!resolved.empty() &&
+        outTexture.LoadFromFile(device, context, resolved.string()))
+    {
+        std::cout << "[D3D11Renderer] Loaded authored texture: " << resolved.string() << "\n";
+    }
+    else
+    {
+        CreateSolidTextureSRV(device, fallbackRGBA, &outFallbackTex, &outFallbackSRV);
+    }
+}
+
+static bool TryLoadAuthoredMesh(std::vector<float>& outVerts,
+                                std::vector<uint16_t>& outIndices,
+                                std::string& outPath)
+{
+    namespace fs = std::filesystem;
+    const fs::path candidates[] = {
+        fs::path("samples/vertical_slice_project/Cooked/Meshes/default_armor.mesh"),
+        fs::path("samples/vertical_slice_project/Content/Meshes/default_armor.mesh"),
+        fs::path("../../samples/vertical_slice_project/Cooked/Meshes/default_armor.mesh"),
+        fs::path("../../samples/vertical_slice_project/Content/Meshes/default_armor.mesh")
+    };
+
+    for (const fs::path& relPath : candidates)
+    {
+        const fs::path absPath = fs::absolute(relPath);
+        if (!fs::exists(absPath)) continue;
+        std::ifstream in(absPath);
+        if (!in.is_open()) continue;
+
+        std::vector<float> verts;
+        std::vector<uint16_t> idx;
+
+        std::string line;
+        while (std::getline(in, line))
+        {
+            if (line.empty() || line[0] == '#') continue;
+            std::istringstream iss(line);
+            char type = '\0';
+            iss >> type;
+            if (type == 'v')
+            {
+                float x, y, z, nx, ny, nz, u, v;
+                if (iss >> x >> y >> z >> nx >> ny >> nz >> u >> v)
+                {
+                    verts.insert(verts.end(), {x, y, z, nx, ny, nz, u, v});
+                }
+            }
+            else if (type == 'i')
+            {
+                int a, b, c;
+                if (iss >> a >> b >> c &&
+                    a >= 0 && b >= 0 && c >= 0 &&
+                    a <= 65535 && b <= 65535 && c <= 65535)
+                {
+                    idx.push_back(static_cast<uint16_t>(a));
+                    idx.push_back(static_cast<uint16_t>(b));
+                    idx.push_back(static_cast<uint16_t>(c));
+                }
+            }
+        }
+
+        if (!verts.empty() && !idx.empty())
+        {
+            outVerts = std::move(verts);
+            outIndices = std::move(idx);
+            outPath = absPath.string();
+            return true;
+        }
     }
 
     return false;
@@ -3663,21 +3879,33 @@ static const char* kIBLPsFallback =
     "Texture2D g_brdfLut:register(t0);"
     "TextureCube g_irradianceCube:register(t1);"
     "TextureCube g_prefilteredEnv:register(t2);"
+    "Texture2D g_albedoMap:register(t3);"
+    "Texture2D g_normalMap:register(t4);"
+    "Texture2D g_metallicRoughnessMap:register(t5);"
+    "Texture2D g_aoMap:register(t6);"
     "SamplerState g_linearSampler:register(s0);"
     "struct PSIn{float4 cp:SV_POSITION;float3 wp:TEXCOORD1;float3 wn:NORMAL;float2 uv:TEXCOORD0;};"
     "float4 main(PSIn i):SV_TARGET{"
-    "float3 N=normalize(i.wn);float3 V=normalize(g_cameraPos-i.wp);"
+    "float3 nTex=g_normalMap.Sample(g_linearSampler,i.uv).xyz*2-1;"
+    "float3 N=normalize(i.wn+nTex*0.25);float3 V=normalize(g_cameraPos-i.wp);"
     "float NdotV=max(dot(N,V),0);"
-    "float3 F0=lerp(float3(0.04,0.04,0.04),g_albedo,g_metallic);"
-    "float3 kS=F0+(max(float3(1-g_roughness,1-g_roughness,1-g_roughness),F0)-F0)*pow(1-NdotV,5);"
-    "float3 kD=(1-kS)*(1-g_metallic);"
+    "float3 albTex=g_albedoMap.Sample(g_linearSampler,i.uv).rgb;"
+    "float2 mrTex=g_metallicRoughnessMap.Sample(g_linearSampler,i.uv).gb;"
+    "float aoTex=g_aoMap.Sample(g_linearSampler,i.uv).r;"
+    "float3 albedo=saturate(g_albedo*albTex);"
+    "float metallic=saturate(g_metallic*mrTex.y);"
+    "float roughness=saturate(g_roughness*mrTex.x);"
+    "float ao=saturate(g_ao*aoTex);"
+    "float3 F0=lerp(float3(0.04,0.04,0.04),albedo,metallic);"
+    "float3 kS=F0+(max(float3(1-roughness,1-roughness,1-roughness),F0)-F0)*pow(1-NdotV,5);"
+    "float3 kD=(1-kS)*(1-metallic);"
     "float3 irr=g_irradianceCube.Sample(g_linearSampler,N).rgb;"
     "float3 R=reflect(-V,N);"
-    "float3 pre=g_prefilteredEnv.SampleLevel(g_linearSampler,R,g_roughness*4).rgb;"
-    "float2 brdf=g_brdfLut.Sample(g_linearSampler,float2(NdotV,g_roughness)).rg;"
-    "float3 ambient=(kD*irr*g_albedo+pre*(kS*brdf.r+brdf.g))*g_ao;"
+    "float3 pre=g_prefilteredEnv.SampleLevel(g_linearSampler,R,roughness*4).rgb;"
+    "float2 brdf=g_brdfLut.Sample(g_linearSampler,float2(NdotV,roughness)).rg;"
+    "float3 ambient=(kD*irr*albedo+pre*(kS*brdf.r+brdf.g))*ao;"
     "float3 L=normalize(g_lightDir);float NdotL=max(dot(N,L),0);"
-    "float3 direct=g_albedo/3.14159*g_lightColor*g_lightIntensity*NdotL;"
+    "float3 direct=albedo/3.14159*g_lightColor*g_lightIntensity*NdotL;"
     "float3 c=ambient+direct;c=c/(c+1);c=pow(max(c,0),0.4545);"
     "return float4(c,1);}";
 
@@ -3759,33 +3987,42 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
     const int kStacks = 16, kSlices = 16;
     std::vector<float>    verts;
     std::vector<uint16_t> indices;
+    std::string authoredMeshPath;
 
-    for (int s = 0; s <= kStacks; ++s)
+    if (TryLoadAuthoredMesh(verts, indices, authoredMeshPath))
     {
-        float phi = kPi * static_cast<float>(s) / static_cast<float>(kStacks);
-        float sinPhi = std::sin(phi), cosPhi = std::cos(phi);
-
-        for (int sl = 0; sl <= kSlices; ++sl)
-        {
-            float theta  = 2.0f * kPi * static_cast<float>(sl) / static_cast<float>(kSlices);
-            float x = sinPhi * std::cos(theta);
-            float y = cosPhi;
-            float z = sinPhi * std::sin(theta);
-            float u = static_cast<float>(sl) / static_cast<float>(kSlices);
-            float v = static_cast<float>(s)  / static_cast<float>(kStacks);
-            verts.insert(verts.end(), { x, y, z, x, y, z, u, v }); // pos+normal+uv
-        }
+        std::cout << "[D3D11Renderer] Loaded authored cooked mesh: "
+                  << authoredMeshPath << "\n";
     }
-
-    for (int s = 0; s < kStacks; ++s)
+    else
     {
-        for (int sl = 0; sl < kSlices; ++sl)
+        for (int s = 0; s <= kStacks; ++s)
         {
-            uint16_t a = static_cast<uint16_t>( s      * (kSlices + 1) + sl);
-            uint16_t b = static_cast<uint16_t>((s + 1) * (kSlices + 1) + sl);
-            uint16_t c = static_cast<uint16_t>( s      * (kSlices + 1) + sl + 1);
-            uint16_t d = static_cast<uint16_t>((s + 1) * (kSlices + 1) + sl + 1);
-            indices.insert(indices.end(), { a, b, c, b, d, c });
+            float phi = kPi * static_cast<float>(s) / static_cast<float>(kStacks);
+            float sinPhi = std::sin(phi), cosPhi = std::cos(phi);
+
+            for (int sl = 0; sl <= kSlices; ++sl)
+            {
+                float theta  = 2.0f * kPi * static_cast<float>(sl) / static_cast<float>(kSlices);
+                float x = sinPhi * std::cos(theta);
+                float y = cosPhi;
+                float z = sinPhi * std::sin(theta);
+                float u = static_cast<float>(sl) / static_cast<float>(kSlices);
+                float v = static_cast<float>(s)  / static_cast<float>(kStacks);
+                verts.insert(verts.end(), { x, y, z, x, y, z, u, v }); // pos+normal+uv
+            }
+        }
+
+        for (int s = 0; s < kStacks; ++s)
+        {
+            for (int sl = 0; sl < kSlices; ++sl)
+            {
+                uint16_t a = static_cast<uint16_t>( s      * (kSlices + 1) + sl);
+                uint16_t b = static_cast<uint16_t>((s + 1) * (kSlices + 1) + sl);
+                uint16_t c = static_cast<uint16_t>( s      * (kSlices + 1) + sl + 1);
+                uint16_t d = static_cast<uint16_t>((s + 1) * (kSlices + 1) + sl + 1);
+                indices.insert(indices.end(), { a, b, c, b, d, c });
+            }
         }
     }
     scene.indexCount = static_cast<int>(indices.size());
@@ -3897,8 +4134,7 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
             m->pad[0]     = 0.0f;
             m->pad[1]     = 0.0f;
 
-            AuthoredMaterialParams authoredMat;
-            if (TryLoadAuthoredMaterial(authoredMat))
+            if (hasAuthoredMaterial)
             {
                 m->albedo[0]  = authoredMat.albedo[0];
                 m->albedo[1]  = authoredMat.albedo[1];
@@ -3916,7 +4152,62 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
     }
 
     // -----------------------------------------------------------------------
-    // Step 5 — Generate and upload IBL textures.
+    // Step 5 — Load authored material maps (M23) with fallback 1×1 textures.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Fallback map conventions
+    //   Albedo fallback:              white (1,1,1)
+    //   Normal fallback:              +Z tangent normal (0.5,0.5,1.0)
+    //   Metallic-Roughness fallback:  G=roughness, B=metallic
+    //   AO fallback:                  white (1.0)
+    // This keeps shading stable when M24 authored texture content is sparse.
+    // -----------------------------------------------------------------------
+    {
+        ID3D11DeviceContext* ctx = nullptr;
+        device->GetImmediateContext(&ctx);
+        if (ctx)
+        {
+            const uint8_t kWhite[4]          = {255, 255, 255, 255};
+            const uint8_t kFlatNormal[4]     = {128, 128, 255, 255};
+            const float fallbackRoughness = hasAuthoredMaterial ? authoredMat.roughness : 0.3f;
+            const float fallbackMetallic  = hasAuthoredMaterial ? authoredMat.metallic  : 1.0f;
+            const uint8_t kDefaultMR[4]      = {
+                0,
+                static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, fallbackRoughness)) * 255.0f),
+                static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, fallbackMetallic)) * 255.0f),
+                255
+            };
+            const uint8_t kDefaultAO[4]      = {255, 255, 255, 255};
+
+            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                            authoredMat.albedoTextureRelPath,
+                                            kWhite,
+                                            scene.albedoMap,
+                                            scene.albedoFallbackTex,
+                                            scene.albedoFallbackSRV);
+            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                            authoredMat.normalTextureRelPath,
+                                            kFlatNormal,
+                                            scene.normalMap,
+                                            scene.normalFallbackTex,
+                                            scene.normalFallbackSRV);
+            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                            authoredMat.metallicRoughnessTextureRelPath,
+                                            kDefaultMR,
+                                            scene.metallicRoughnessMap,
+                                            scene.metallicRoughnessFallbackTex,
+                                            scene.metallicRoughnessFallbackSRV);
+            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                            authoredMat.aoTextureRelPath,
+                                            kDefaultAO,
+                                            scene.aoMap,
+                                            scene.aoFallbackTex,
+                                            scene.aoFallbackSRV);
+            ctx->Release();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 6 — Generate and upload IBL textures.
     // -----------------------------------------------------------------------
 
     // ---- 5a: BRDF LUT (64×64 RG8_UNORM) ----
@@ -4234,6 +4525,10 @@ void D3D11Renderer::DrawPBRIBLMesh()
     //   t0 — Texture2D g_brdfLut
     //   t1 — TextureCube g_irradianceCube
     //   t2 — TextureCube g_prefilteredEnv
+    //   t3 — Texture2D g_albedoMap
+    //   t4 — Texture2D g_normalMap
+    //   t5 — Texture2D g_metallicRoughnessMap
+    //   t6 — Texture2D g_aoMap
     //   s0 — SamplerState g_linearSampler
     //
     // PSSetShaderResources binds SRVs to texture slots (t0, t1, t2).
@@ -4241,20 +4536,24 @@ void D3D11Renderer::DrawPBRIBLMesh()
     // Setting all three SRVs in one call is more efficient than three
     // individual calls (single API round-trip to the driver).
     // -----------------------------------------------------------------------
-    ID3D11ShaderResourceView* srvs[3] = {
+    ID3D11ShaderResourceView* srvs[7] = {
         m_pbrIblScene.brdfLutSRV,
         m_pbrIblScene.irradianceSRV,
         m_pbrIblScene.prefilteredSRV,
+        m_pbrIblScene.albedoMap.IsLoaded() ? m_pbrIblScene.albedoMap.GetSRV() : m_pbrIblScene.albedoFallbackSRV,
+        m_pbrIblScene.normalMap.IsLoaded() ? m_pbrIblScene.normalMap.GetSRV() : m_pbrIblScene.normalFallbackSRV,
+        m_pbrIblScene.metallicRoughnessMap.IsLoaded() ? m_pbrIblScene.metallicRoughnessMap.GetSRV() : m_pbrIblScene.metallicRoughnessFallbackSRV,
+        m_pbrIblScene.aoMap.IsLoaded() ? m_pbrIblScene.aoMap.GetSRV() : m_pbrIblScene.aoFallbackSRV,
     };
-    m_context->PSSetShaderResources(0, 3, srvs);
+    m_context->PSSetShaderResources(0, 7, srvs);
     m_context->PSSetSamplers(0, 1, &m_pbrIblScene.linearSampler);
 
     m_context->RSSetState(m_pbrIblScene.rastState);
     m_context->DrawIndexed(static_cast<UINT>(m_pbrIblScene.indexCount), 0, 0);
 
     // Unbind SRVs to avoid debug layer "resource still bound" warnings.
-    ID3D11ShaderResourceView* nullSRVs[3] = { nullptr, nullptr, nullptr };
-    m_context->PSSetShaderResources(0, 3, nullSRVs);
+    ID3D11ShaderResourceView* nullSRVs[7] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+    m_context->PSSetShaderResources(0, 7, nullSRVs);
     m_context->RSSetState(nullptr);
 }
 
