@@ -446,6 +446,19 @@ bool D3D11Renderer::CreateSwapChainResources(HWND hwnd,
     m_width  = width;
     m_height = height;
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Creating the Depth Buffer (M16)
+    // -----------------------------------------------------------------------
+    // Now that we have the swap-chain dimensions, create the depth-stencil
+    // buffer to match.  This call also creates the DepthStencilState that
+    // enables depth testing for all 3D draws.
+    // -----------------------------------------------------------------------
+    if (!CreateDepthStencilBuffer(width, height))
+    {
+        std::cerr << "[D3D11Renderer] CreateDepthStencilBuffer failed.\n";
+        return false;
+    }
+
     return true;
 }
 
@@ -458,6 +471,9 @@ void D3D11Renderer::ReleaseSwapChainResources()
     // Unbind the render target from the context before releasing.
     if (m_context)
         m_context->OMSetRenderTargets(0, nullptr, nullptr);
+
+    // Release depth buffer objects first (they are bound to the same OM slot).
+    ReleaseDepthStencilBuffer();
 
     if (m_renderTarget) { m_renderTarget->Release(); m_renderTarget = nullptr; }
     if (m_swapChain)    { m_swapChain->Release();    m_swapChain    = nullptr; }
@@ -484,6 +500,10 @@ void D3D11Renderer::Shutdown()
 
     ReleaseSwapChainResources();
 
+    // TEACHING NOTE — m_depthStencilState is device-level (not swap-chain-sized),
+    // so we release it in Shutdown rather than in ReleaseSwapChainResources.
+    if (m_depthStencilState) { m_depthStencilState->Release(); m_depthStencilState = nullptr; }
+
     if (m_context) { m_context->Release(); m_context = nullptr; }
     if (m_device)  { m_device->Release();  m_device  = nullptr; }
 
@@ -500,24 +520,34 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
         return;
 
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — D3D11 Frame Setup: Bind RTV + Viewport
+    // TEACHING NOTE — D3D11 Frame Setup: Bind RTV + DSV + Viewport
     // -----------------------------------------------------------------------
     // Before issuing any draw or clear commands we must:
     //
     //   1. OMSetRenderTargets — tell the Output Merger (OM) stage which
     //      texture(s) to write into.  The second parameter is the depth-
-    //      stencil view (nullptr here because we have no depth buffer yet).
+    //      stencil view (m_depthStencilView, added in M16).  Passing the DSV
+    //      enables hardware depth testing: fragments with a larger depth value
+    //      than what is stored in the DSV are discarded.
     //
-    //   2. RSSetViewports — tell the Rasteriser (RS) stage the region of the
+    //   2. OMSetDepthStencilState — activate the depth-test state created in
+    //      CreateDepthStencilBuffer().  D3D11_COMPARISON_LESS keeps the front-
+    //      most (closest) fragment.
+    //
+    //   3. RSSetViewports — tell the Rasteriser (RS) stage the region of the
     //      render target to use.  TopLeftX/Y = 0 means "use the full texture".
     //      Without an explicit viewport call, the rasteriser falls back to
     //      implementation-defined behaviour on some drivers.
     // -----------------------------------------------------------------------
 
-    // 1 — Bind render target (no depth buffer yet).
-    m_context->OMSetRenderTargets(1, &m_renderTarget, nullptr);
+    // 1 — Bind render target and depth buffer together.
+    m_context->OMSetRenderTargets(1, &m_renderTarget, m_depthStencilView);
 
-    // 2 — Set the viewport to match the back-buffer dimensions.
+    // 2 — Activate depth testing.
+    if (m_depthStencilState)
+        m_context->OMSetDepthStencilState(m_depthStencilState, 0);
+
+    // 3 — Set the viewport to match the back-buffer dimensions.
     D3D11_VIEWPORT vp      = {};
     vp.TopLeftX            = 0.0f;
     vp.TopLeftY            = 0.0f;
@@ -531,11 +561,16 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     // TEACHING NOTE — D3D11 Clear
     // -----------------------------------------------------------------------
     // ClearRenderTargetView fills the back buffer with a solid colour.
-    // The clear happens *before* draw calls so geometry is composited on top
-    // of the clear colour, not underneath it.
+    // ClearDepthStencilView resets all depth values to 1.0 (the far plane) so
+    // that the first fragment drawn at any pixel passes the LESS depth test.
+    // Both clears must happen before any draw calls so geometry is composited
+    // on top of clean state, not residual data from the previous frame.
     // -----------------------------------------------------------------------
     const float clearColor[4] = { clearR, clearG, clearB, 1.0f };
     m_context->ClearRenderTargetView(m_renderTarget, clearColor);
+    if (m_depthStencilView)
+        m_context->ClearDepthStencilView(m_depthStencilView,
+                                         D3D11_CLEAR_DEPTH, 1.0f, 0);
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Scene Draw Pass (M3+)
@@ -564,6 +599,10 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     // M9: PBR sphere scene
     if (m_pbrScene.loaded && m_currentScene == "pbr_mesh")
         DrawPBRMesh();
+
+    // M16: PBR + IBL sphere scene
+    if (m_pbrIblScene.loaded && m_currentScene == "pbr_ibl")
+        DrawPBRIBLMesh();
 
     // M10: Dynamic sky scene
     // TEACHING NOTE — Sky Draw Order
@@ -640,6 +679,12 @@ void D3D11Renderer::RecreateSwapchain(uint32_t width, uint32_t height)
     // Update cached dimensions so DrawFrame uses the correct viewport.
     m_width  = width;
     m_height = height;
+
+    // TEACHING NOTE — Recreate the depth buffer to match the new back-buffer size.
+    // The depth buffer must always be the same width×height as the back buffer.
+    // Release the old DSV + DST and create new ones at the new dimensions.
+    ReleaseDepthStencilBuffer();
+    CreateDepthStencilBuffer(width, height);
 }
 
 // ===========================================================================
@@ -771,6 +816,27 @@ bool D3D11Renderer::RecordHeadlessFrame()
         DrawPBRMesh();
     }
 
+    // TEACHING NOTE — Headless validation for the PBR + IBL scene (M16).
+    // Same 64×64 offscreen RTV pattern.  DrawPBRIBLMesh() validates that:
+    //   • pbr_ibl.vs.hlsl + pbr_ibl.ps.hlsl compile under WARP.
+    //   • All three IBL textures (BRDF LUT, irradiance cube, prefiltered env)
+    //     were created successfully from the CPU-generated data.
+    //   • The SRV bindings (t0, t1, t2) and the linear sampler (s0) reach
+    //     the pixel shader without D3D11 debug validation errors.
+    // A successful WARP render (no HRESULT failures) is sufficient CI validation
+    // because WARP uses the same shader compilation path as real hardware.
+    if (m_pbrIblScene.loaded && m_currentScene == "pbr_ibl")
+    {
+        D3D11_VIEWPORT vp = {};
+        vp.Width    = 64.0f;
+        vp.Height   = 64.0f;
+        vp.MaxDepth = 1.0f;
+        m_context->RSSetViewports(1, &vp);
+
+        m_context->OMSetRenderTargets(1, &offscreenRTV, nullptr);
+        DrawPBRIBLMesh();
+    }
+
     // TEACHING NOTE — Headless validation for the dynamic sky scene (M10).
     // Bind the 64×64 off-screen RTV and call DrawSky() once.  This validates
     // that the sky shaders (sky.vs.hlsl + sky.ps.hlsl), the sky constant
@@ -820,6 +886,12 @@ static bool LoadSkyScene(
     const std::string&        shaderDir,
     D3D11Renderer::SkyScene&  scene);
 
+// Forward declaration for the PBR + IBL scene builder (M16).
+static bool LoadPBRIBLScene(
+    ID3D11Device*                device,
+    const std::string&           shaderDir,
+    D3D11Renderer::PBRIBLScene&  scene);
+
 // ===========================================================================
 // LoadScene — load scene resources (M3+)
 // ===========================================================================
@@ -835,9 +907,10 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
 
     // Unknown scene names are accepted silently — they may be handled by
     // higher-level systems.  Only "textured_quad", "skinned_mesh",
-    // "pbr_mesh", and "dynamic_sky" have D3D11 implementations.
+    // "pbr_mesh", "pbr_ibl", and "dynamic_sky" have D3D11 implementations.
     if (sceneName != "textured_quad" && sceneName != "skinned_mesh" &&
-        sceneName != "pbr_mesh" && sceneName != "dynamic_sky")
+        sceneName != "pbr_mesh"      && sceneName != "pbr_ibl" &&
+        sceneName != "dynamic_sky")
     {
         std::cout << "[D3D11Renderer] LoadScene('" << sceneName
                   << "') — no D3D11 scene handler; accepted as no-op.\n";
@@ -881,6 +954,17 @@ bool D3D11Renderer::LoadScene(const std::string& sceneName,
             return false;
         }
         m_currentScene = "dynamic_sky";
+        return true;
+    }
+
+    if (sceneName == "pbr_ibl")
+    {
+        if (!LoadPBRIBLScene(m_device, shaderDir, m_pbrIblScene))
+        {
+            std::cerr << "[D3D11Renderer] LoadScene('pbr_ibl') failed.\n";
+            return false;
+        }
+        m_currentScene = "pbr_ibl";
         return true;
     }
 
@@ -1690,6 +1774,32 @@ void D3D11Renderer::UnloadScene()
     if (m_skyScene.ps)             { m_skyScene.ps->Release();             m_skyScene.ps             = nullptr; }
     if (m_skyScene.vs)             { m_skyScene.vs->Release();             m_skyScene.vs             = nullptr; }
     m_skyScene.loaded = false;
+
+    // --- PBR + IBL sphere scene (M16) ---
+    // TEACHING NOTE — Release IBL textures.
+    // The raw ID3D11Texture2D* objects must be released separately from the
+    // SRVs.  When CreateShaderResourceView() was called, the SRV got its own
+    // COM reference to the texture (AddRef).  Releasing the SRV reduces the
+    // ref count by 1, but the texture stays alive because the device also
+    // holds a reference.  We must release our own texture handle explicitly.
+    if (m_pbrIblScene.prefilteredSRV) { m_pbrIblScene.prefilteredSRV->Release(); m_pbrIblScene.prefilteredSRV = nullptr; }
+    if (m_pbrIblScene.irradianceSRV)  { m_pbrIblScene.irradianceSRV->Release();  m_pbrIblScene.irradianceSRV  = nullptr; }
+    if (m_pbrIblScene.brdfLutSRV)     { m_pbrIblScene.brdfLutSRV->Release();     m_pbrIblScene.brdfLutSRV     = nullptr; }
+    if (m_pbrIblScene.prefilteredTex) { m_pbrIblScene.prefilteredTex->Release();  m_pbrIblScene.prefilteredTex = nullptr; }
+    if (m_pbrIblScene.irradianceTex)  { m_pbrIblScene.irradianceTex->Release();   m_pbrIblScene.irradianceTex  = nullptr; }
+    if (m_pbrIblScene.brdfLutTex)     { m_pbrIblScene.brdfLutTex->Release();      m_pbrIblScene.brdfLutTex     = nullptr; }
+    if (m_pbrIblScene.linearSampler)  { m_pbrIblScene.linearSampler->Release();   m_pbrIblScene.linearSampler  = nullptr; }
+    if (m_pbrIblScene.rastState)      { m_pbrIblScene.rastState->Release();       m_pbrIblScene.rastState      = nullptr; }
+    if (m_pbrIblScene.materialCB)     { m_pbrIblScene.materialCB->Release();      m_pbrIblScene.materialCB     = nullptr; }
+    if (m_pbrIblScene.lightCB)        { m_pbrIblScene.lightCB->Release();         m_pbrIblScene.lightCB        = nullptr; }
+    if (m_pbrIblScene.perFrameCB)     { m_pbrIblScene.perFrameCB->Release();      m_pbrIblScene.perFrameCB     = nullptr; }
+    if (m_pbrIblScene.ps)             { m_pbrIblScene.ps->Release();              m_pbrIblScene.ps             = nullptr; }
+    if (m_pbrIblScene.vs)             { m_pbrIblScene.vs->Release();              m_pbrIblScene.vs             = nullptr; }
+    if (m_pbrIblScene.inputLayout)    { m_pbrIblScene.inputLayout->Release();     m_pbrIblScene.inputLayout    = nullptr; }
+    if (m_pbrIblScene.indexBuf)       { m_pbrIblScene.indexBuf->Release();        m_pbrIblScene.indexBuf       = nullptr; }
+    if (m_pbrIblScene.vertexBuf)      { m_pbrIblScene.vertexBuf->Release();       m_pbrIblScene.vertexBuf      = nullptr; }
+    m_pbrIblScene.indexCount = 0;
+    m_pbrIblScene.loaded     = false;
 
     m_currentScene.clear();
 }
@@ -2580,6 +2690,1216 @@ static bool LoadSkyScene(
     scene.loaded = true;
     std::cout << "[D3D11Renderer] LoadScene('dynamic_sky') — OK.\n";
     return true;
+}
+
+// ===========================================================================
+// CreateDepthStencilBuffer — create DSV + DepthStencilState (M16)
+// ===========================================================================
+// TEACHING NOTE — Depth Buffer Creation in D3D11
+// ===========================================================================
+// Creating a D3D11 depth buffer requires three steps:
+//
+//   Step 1: ID3D11Texture2D — a GPU texture to hold depth values.
+//           Format: DXGI_FORMAT_D24_UNORM_S8_UINT.
+//             • D24 = 24-bit float depth, mapping view-space far → 1.0 and
+//               near → 0.0 (D3D11 NDC Z range is [0, 1]).
+//             • S8  = 8-bit integer stencil (reserved for future milestones:
+//               shadow stencil volumes, screen-space outlines, etc.).
+//           BindFlags: D3D11_BIND_DEPTH_STENCIL (not RENDER_TARGET).
+//           Usage: D3D11_USAGE_DEFAULT — the GPU writes it; the CPU never
+//             reads it back in the depth-test path.
+//
+//   Step 2: ID3D11DepthStencilView (DSV) — a "view" over the texture that
+//           tells the OM stage which texture resource is the depth attachment.
+//           The view also selects which array slice / mip level to use (we
+//           use the whole texture: mip 0, array index 0).
+//
+//   Step 3: ID3D11DepthStencilState — GPU state object that configures the
+//           OM depth test.  Key fields:
+//             DepthEnable = TRUE              — enable depth testing.
+//             DepthWriteMask = ALL            — fragments that pass write depth.
+//             DepthFunc = COMPARISON_LESS     — keep the CLOSER fragment
+//               (the one with the smaller NDC depth value).
+//           Stencil is disabled (StencilEnable = FALSE) because we don't
+//           use it yet.
+//
+// The state object is device-level (not swap-chain-sized), so we create it
+// once and release it only in Shutdown().  The texture + view are swap-chain-
+// sized and are recreated on every resize.
+// ===========================================================================
+
+bool D3D11Renderer::CreateDepthStencilBuffer(uint32_t width, uint32_t height)
+{
+    if (!m_device)
+        return false;
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Create the depth-stencil texture.
+    // -----------------------------------------------------------------------
+    D3D11_TEXTURE2D_DESC dsDesc = {};
+    dsDesc.Width              = width;
+    dsDesc.Height             = height;
+    dsDesc.MipLevels          = 1;      // Only need mip 0 for depth
+    dsDesc.ArraySize          = 1;
+    dsDesc.Format             = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsDesc.SampleDesc.Count   = 1;      // No MSAA (baseline)
+    dsDesc.SampleDesc.Quality = 0;
+    dsDesc.Usage              = D3D11_USAGE_DEFAULT;
+    dsDesc.BindFlags          = D3D11_BIND_DEPTH_STENCIL;
+    dsDesc.CPUAccessFlags     = 0;
+    dsDesc.MiscFlags          = 0;
+
+    HRESULT hr = m_device->CreateTexture2D(&dsDesc, nullptr, &m_depthStencilTex);
+    if (FAILED(hr))
+    {
+        std::cerr << "[D3D11Renderer] CreateTexture2D (depth) failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — Create the depth-stencil view.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — D3D11_DEPTH_STENCIL_VIEW_DESC
+    // ViewDimension = TEXTURE2D means we bind the entire 2D texture as depth.
+    // MipSlice = 0 selects the single mip level we created above.
+    // -----------------------------------------------------------------------
+    D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+    dsvDesc.Format             = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsvDesc.ViewDimension      = D3D11_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Texture2D.MipSlice = 0;
+
+    hr = m_device->CreateDepthStencilView(m_depthStencilTex, &dsvDesc,
+                                          &m_depthStencilView);
+    if (FAILED(hr))
+    {
+        m_depthStencilTex->Release();
+        m_depthStencilTex = nullptr;
+        std::cerr << "[D3D11Renderer] CreateDepthStencilView failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3 — Create the depth-stencil state (only once — device-level).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Why create the state here and not in Init()?
+    // The state is logically part of the depth buffer setup.  Keeping all
+    // three objects together makes the initialisation sequence obvious and
+    // self-contained.  The if(!m_depthStencilState) guard prevents
+    // re-creation on every resize while still creating it on the first call.
+    // -----------------------------------------------------------------------
+    if (!m_depthStencilState)
+    {
+        D3D11_DEPTH_STENCIL_DESC dsStateDesc = {};
+        dsStateDesc.DepthEnable    = TRUE;
+        dsStateDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+        dsStateDesc.DepthFunc      = D3D11_COMPARISON_LESS;
+        dsStateDesc.StencilEnable  = FALSE;   // Not used yet
+
+        hr = m_device->CreateDepthStencilState(&dsStateDesc, &m_depthStencilState);
+        if (FAILED(hr))
+        {
+            m_depthStencilView->Release();  m_depthStencilView = nullptr;
+            m_depthStencilTex->Release();   m_depthStencilTex  = nullptr;
+            std::cerr << "[D3D11Renderer] CreateDepthStencilState failed.\n";
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// ===========================================================================
+// ReleaseDepthStencilBuffer — release DST + DSV (NOT the state)
+// ===========================================================================
+
+void D3D11Renderer::ReleaseDepthStencilBuffer()
+{
+    // TEACHING NOTE — We do NOT release m_depthStencilState here because it is
+    // device-level and not swap-chain-sized.  Releasing it on resize would
+    // force an unnecessary CreateDepthStencilState() round-trip.  It is
+    // released once in Shutdown().
+    if (m_depthStencilView) { m_depthStencilView->Release(); m_depthStencilView = nullptr; }
+    if (m_depthStencilTex)  { m_depthStencilTex->Release();  m_depthStencilTex  = nullptr; }
+}
+
+// ===========================================================================
+// LoadPBRIBLScene — build PBR + IBL sphere scene (M16)
+// ===========================================================================
+// TEACHING NOTE — Image-Based Lighting (IBL) Procedural Generation
+// ===========================================================================
+// A production engine loads IBL textures from pre-cooked HDR cubemap files.
+// For the teaching engine we generate all three IBL textures on the CPU at
+// scene-load time using well-known mathematical algorithms:
+//
+//   BRDF LUT — 64×64 RG8_UNORM.
+//     For each texel (NoV=u, roughness=v):
+//       Integrate the GGX specular BRDF over the hemisphere using a
+//       Hammersley quasi-random sequence (128 samples).  Store the Fresnel
+//       scale in R and the Fresnel bias in G.
+//
+//   Irradiance cubemap — 16×16 × 6 faces, RGB8.
+//     For each face direction:
+//       Average the procedural sky colour over a cosine-weighted hemisphere
+//       (64 samples).  The result is the pre-convolved diffuse irradiance.
+//
+//   Prefiltered env cubemap — 16×16 × 6 faces × 5 mip levels, RGB8.
+//     For each (face, mip level):
+//       roughness = mip / 4.  Importance-sample the procedural sky with the
+//       GGX NDF (64 samples per texel).  Lower mips → sharper reflections.
+//
+// All three textures are created as D3D11_USAGE_IMMUTABLE after the CPU
+// fills the data — no further updates are needed.
+// ===========================================================================
+
+namespace {
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Hammersley Quasi-Random Sequence
+// ---------------------------------------------------------------------------
+// The Hammersley sequence gives a well-distributed set of 2D sample points
+// in [0,1)^2 for numerical integration.  It is based on Van der Corput's
+// radical inverse function which reverses the bits of the integer index.
+// Compared to pseudo-random (uniform) sampling, the Hammersley sequence
+// achieves the same visual quality with far fewer samples (less variance).
+//
+// This is the same sampling strategy used in Unreal Engine's IBL baker.
+// ---------------------------------------------------------------------------
+static float RadicalInverse_VdC(uint32_t bits)
+{
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u)  | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u)  | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u)  | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u)  | ((bits & 0xFF00FF00u) >> 8u);
+    return static_cast<float>(bits) * 2.3283064365386963e-10f; // 1/2^32
+}
+
+static std::pair<float,float> Hammersley(uint32_t i, uint32_t N)
+{
+    return { static_cast<float>(i) / static_cast<float>(N),
+             RadicalInverse_VdC(i) };
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — GGX Importance Sampling (Tangent Space)
+// ---------------------------------------------------------------------------
+// Given two uniform random numbers (xi1, xi2) and a roughness α, this
+// function returns the half-vector H in tangent space sampled according to
+// the GGX Normal Distribution Function.
+//
+// The derivation:
+//   cosTheta = sqrt((1 - xi2) / (1 + (α² - 1) × xi2))   [inversion method]
+//   phi      = 2π × xi1                                    [azimuth uniform]
+//   sinTheta = sqrt(1 - cosTheta²)
+//
+// H is expressed as (Hx, Hy, Hz) in tangent space (Z = surface normal).
+// ---------------------------------------------------------------------------
+static std::tuple<float,float,float> ImportanceSampleGGX(float xi1, float xi2,
+                                                          float roughness)
+{
+    float a        = roughness * roughness;
+    float phi      = 2.0f * kPi * xi1;
+    float cosTheta = std::sqrt((1.0f - xi2) /
+                               (1.0f + (a * a - 1.0f) * xi2 + 1e-8f));
+    float sinTheta = std::sqrt(std::max(0.0f, 1.0f - cosTheta * cosTheta));
+    return { sinTheta * std::cos(phi),
+             sinTheta * std::sin(phi),
+             cosTheta };
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Smith-Schlick-GGX Geometry (IBL variant)
+// ---------------------------------------------------------------------------
+// For the BRDF LUT precomputation we use the IBL variant of k:
+//   k_IBL = roughness² / 2
+// (Direct lighting uses k_direct = (roughness+1)² / 8.)
+// The IBL variant is used here because we integrate over all incoming
+// directions (not just a single directional light).
+// ---------------------------------------------------------------------------
+static float G_IBL(float NdotV, float roughness)
+{
+    float a = roughness * roughness;
+    float k = a / 2.0f;
+    return NdotV / (NdotV * (1.0f - k) + k + 1e-7f);
+}
+
+static float GeometrySmith_IBL(float NdotV, float NdotL, float roughness)
+{
+    return G_IBL(NdotV, roughness) * G_IBL(NdotL, roughness);
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Integrate BRDF for one (NoV, roughness) sample
+// ---------------------------------------------------------------------------
+// This computes the two components of the split-sum BRDF LUT for a single
+// texel.  The integral is:
+//
+//   scale = ∫ G(N,V,L,α) × (1-Fc) × VdotH / (NdotV × NdotH) dΩ
+//   bias  = ∫ G(N,V,L,α) × Fc    × VdotH / (NdotV × NdotH) dΩ
+//
+// where Fc = (1 - VdotH)^5 (Schlick Fresnel factor — the F0-independent part).
+//
+// The integral is solved numerically using Hammersley importance sampling
+// over the GGX NDF.  The view vector V is reconstructed from NdotV (assuming
+// V lies in the N-T plane, so Vy=0 in tangent space).
+// ---------------------------------------------------------------------------
+static std::pair<float,float> IntegrateBRDF(float NdotV, float roughness,
+                                             uint32_t numSamples)
+{
+    // Reconstruct V in tangent space (N = +Z axis, T = +X axis).
+    float sinTheta = std::sqrt(std::max(0.0f, 1.0f - NdotV * NdotV));
+    float Vx = sinTheta;   // V = (sinθ, 0, cosθ) = (sinθ, 0, NdotV)
+    float Vz = NdotV;
+
+    float scale = 0.0f, bias = 0.0f;
+
+    for (uint32_t i = 0; i < numSamples; ++i)
+    {
+        auto [xi1, xi2] = Hammersley(i, numSamples);
+        auto [Hx, Hy, Hz] = ImportanceSampleGGX(xi1, xi2, roughness);
+
+        // Reflect V around H to get L (in tangent space).
+        float VdotH = Vx * Hx + Vz * Hz;
+        float Lx    = 2.0f * VdotH * Hx - Vx;
+        float Ly    = 2.0f * VdotH * Hy;
+        float Lz    = 2.0f * VdotH * Hz - Vz;
+
+        float NdotL = std::max(0.0f, Lz);
+        float NdotH = std::max(0.0f, Hz);
+
+        if (NdotL > 0.0f && VdotH > 0.0f)
+        {
+            float G    = GeometrySmith_IBL(NdotV, NdotL, roughness);
+            float Gvis = (G * VdotH) /
+                         (std::max(NdotH, 1e-7f) * std::max(NdotV, 1e-7f));
+            float tmp  = 1.0f - std::max(0.0f, VdotH);
+            float Fc   = tmp * tmp * tmp * tmp * tmp;   // (1-VdotH)^5
+            scale += (1.0f - Fc) * Gvis;
+            bias  += Fc           * Gvis;
+        }
+    }
+
+    scale /= static_cast<float>(numSamples);
+    bias  /= static_cast<float>(numSamples);
+    return { std::min(1.0f, std::max(0.0f, scale)),
+             std::min(1.0f, std::max(0.0f, bias)) };
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Procedural Sky Environment Colour
+// ---------------------------------------------------------------------------
+// Returns a physically plausible sky colour for a given world-space direction.
+// This is a gradient from ground (warm grey-brown) through horizon (light
+// blue) to zenith (deep blue).
+//
+// In a production engine this function would instead sample an HDR cubemap
+// loaded from a .hdr file (e.g. PolyHaven skies).  The procedural version
+// here has the same structure — the only difference is the colour source.
+// ---------------------------------------------------------------------------
+static void SkyColour(float dx, float dy, float dz,
+                      float& r, float& g, float& b)
+{
+    float len = std::sqrt(dx*dx + dy*dy + dz*dz);
+    if (len < 1e-6f) { r = g = b = 0.0f; return; }
+    float ny = dy / len;   // normalised elevation component
+
+    // Sky hemisphere: horizon → zenith colour gradient.
+    float t = std::max(0.0f, ny);   // 0 at horizon, 1 at zenith
+    r = 0.55f + (0.10f - 0.55f) * t;  // horizon 0.55 → zenith 0.10
+    g = 0.75f + (0.40f - 0.75f) * t;  // horizon 0.75 → zenith 0.40
+    b = 0.90f + (0.85f - 0.90f) * t;  // horizon 0.90 → zenith 0.85
+
+    // Ground hemisphere: blend toward warm grey-brown below horizon.
+    if (ny < 0.0f)
+    {
+        float bt = std::min(1.0f, -ny * 3.0f);
+        r = r * (1.0f - bt) + 0.22f * bt;
+        g = g * (1.0f - bt) + 0.18f * bt;
+        b = b * (1.0f - bt) + 0.14f * bt;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Cubemap Face Direction (D3D11 convention)
+// ---------------------------------------------------------------------------
+// D3D11 cubemaps use a left-handed coordinate system per face:
+//
+//   Face 0 (+X): U = -Z, V = -Y  →  dir = (+1, -v,  -u)
+//   Face 1 (-X): U = +Z, V = -Y  →  dir = (-1, -v,  +u)
+//   Face 2 (+Y): U = +X, V = +Z  →  dir = (+u, +1,  +v)
+//   Face 3 (-Y): U = +X, V = -Z  →  dir = (+u, -1,  -v)
+//   Face 4 (+Z): U = +X, V = -Y  →  dir = (+u, -v,  +1)
+//   Face 5 (-Z): U = -X, V = -Y  →  dir = (-u, -v,  -1)
+//
+// u, v ∈ [-1, +1] (centre of texel, remapped from [0, size]).
+// ---------------------------------------------------------------------------
+static void CubeFaceDir(int face, float u, float v,
+                         float& dx, float& dy, float& dz)
+{
+    switch (face)
+    {
+        case 0: dx =  1;  dy = -v;  dz = -u;  break;   // +X
+        case 1: dx = -1;  dy = -v;  dz =  u;  break;   // -X
+        case 2: dx =  u;  dy =  1;  dz =  v;  break;   // +Y
+        case 3: dx =  u;  dy = -1;  dz = -v;  break;   // -Y
+        case 4: dx =  u;  dy = -v;  dz =  1;  break;   // +Z
+        default: dx = -u; dy = -v;  dz = -1;  break;   // -Z (face 5)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Orthonormal Basis from a Normal Vector
+// ---------------------------------------------------------------------------
+// To integrate over a hemisphere aligned with a surface normal N, we need
+// tangent (T) and bitangent (B) vectors perpendicular to N.
+// We use the "frisvad" method (avoids degenerate cases at N=(0,0,1)):
+//   if |Nz| < 0.999:  T = normalize(cross(N, (0,1,0)))
+//   else:             T = normalize(cross(N, (0,0,1)))
+// B = cross(N, T).
+// ---------------------------------------------------------------------------
+static void BuildBasis(float nx, float ny, float nz,
+                        float& tx, float& ty, float& tz,
+                        float& bx, float& by, float& bz)
+{
+    // Choose a stable up-vector not aligned with N.
+    float ux = 0.0f, uy = 1.0f, uz = 0.0f;
+    if (std::abs(ny) > 0.999f) { ux = 0.0f; uy = 0.0f; uz = 1.0f; }
+
+    // T = cross(N, U)
+    tx = ny * uz - nz * uy;
+    ty = nz * ux - nx * uz;
+    tz = nx * uy - ny * ux;
+    float tlen = std::sqrt(tx*tx + ty*ty + tz*tz);
+    if (tlen < 1e-8f) { tx = 1; ty = tz = 0; }
+    else { tx /= tlen; ty /= tlen; tz /= tlen; }
+
+    // B = cross(N, T)
+    bx = ny * tz - nz * ty;
+    by = nz * tx - nx * tz;
+    bz = nx * ty - ny * tx;
+}
+
+// ---------------------------------------------------------------------------
+// Generate the 64×64 BRDF LUT pixel data (128 samples per texel).
+// Output: pixels array of size 64×64×2 bytes (RG8_UNORM: scale, bias).
+// ---------------------------------------------------------------------------
+static void GenerateBRDFLUT(std::vector<uint8_t>& pixels,
+                              uint32_t size = 64,
+                              uint32_t numSamples = 128)
+{
+    // TEACHING NOTE — BRDF LUT Layout
+    // The LUT is a 2D texture indexed by (NoV = U, roughness = V).
+    // Row 0 = roughness 0, row (size-1) = roughness 1.
+    // Column 0 = NoV ≈ 0 (grazing), column (size-1) = NoV = 1 (normal incidence).
+    pixels.resize(size * size * 2);   // 2 bytes per texel (RG8)
+
+    for (uint32_t row = 0; row < size; ++row)
+    {
+        float roughness = (static_cast<float>(row) + 0.5f) / static_cast<float>(size);
+        roughness = std::max(roughness, 0.04f);   // avoid pure-mirror singularity
+
+        for (uint32_t col = 0; col < size; ++col)
+        {
+            float NoV = (static_cast<float>(col) + 0.5f) / static_cast<float>(size);
+            NoV = std::max(NoV, 0.001f);
+
+            auto [sc, bi] = IntegrateBRDF(NoV, roughness, numSamples);
+
+            uint32_t idx = (row * size + col) * 2;
+            pixels[idx + 0] = static_cast<uint8_t>(sc * 255.0f + 0.5f);   // R = scale
+            pixels[idx + 1] = static_cast<uint8_t>(bi * 255.0f + 0.5f);   // G = bias
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Generate one face of the irradiance cubemap (cosine-weighted hemisphere).
+// face: 0..5, size: texels per edge, numSamples: hemisphere sample count.
+// Output: 'out' array appended with size*size*3 bytes (RGB8).
+// ---------------------------------------------------------------------------
+static void GenerateIrradianceFace(int face, uint32_t size,
+                                    uint32_t numSamples,
+                                    std::vector<uint8_t>& out)
+{
+    // TEACHING NOTE — Hemisphere Integration for Irradiance
+    // For each texel on the cubemap face, we find the world-space direction
+    // (the surface normal N), build a tangent basis, and sum cosine-weighted
+    // sky samples over the upper hemisphere.  The result is the irradiance
+    // at that normal direction — used as the diffuse ambient term in the PS.
+    for (uint32_t row = 0; row < size; ++row)
+    {
+        float fv = (static_cast<float>(row) + 0.5f) / static_cast<float>(size)
+                   * 2.0f - 1.0f;   // [-1, +1]
+        for (uint32_t col = 0; col < size; ++col)
+        {
+            float fu = (static_cast<float>(col) + 0.5f) / static_cast<float>(size)
+                       * 2.0f - 1.0f;
+
+            float nx, ny, nz;
+            CubeFaceDir(face, fu, fv, nx, ny, nz);
+            float nlen = std::sqrt(nx*nx + ny*ny + nz*nz);
+            nx /= nlen; ny /= nlen; nz /= nlen;
+
+            float tx, ty, tz, bx, by, bz;
+            BuildBasis(nx, ny, nz, tx, ty, tz, bx, by, bz);
+
+            float accR = 0, accG = 0, accB = 0, weight = 0;
+            for (uint32_t i = 0; i < numSamples; ++i)
+            {
+                auto [xi1, xi2] = Hammersley(i, numSamples);
+                // Cosine-weighted hemisphere sampling:
+                float phi = 2.0f * kPi * xi1;
+                float cosT = std::sqrt(xi2);
+                float sinT = std::sqrt(1.0f - xi2);
+                // Sample direction in world space.
+                float lx = sinT * std::cos(phi) * tx + sinT * std::sin(phi) * bx + cosT * nx;
+                float ly = sinT * std::cos(phi) * ty + sinT * std::sin(phi) * by + cosT * ny;
+                float lz = sinT * std::cos(phi) * tz + sinT * std::sin(phi) * bz + cosT * nz;
+                float NdotL = std::max(0.0f, lx*nx + ly*ny + lz*nz);
+                float sr, sg, sb;
+                SkyColour(lx, ly, lz, sr, sg, sb);
+                // Cosine-weighted: PDF = NdotL/π, weight = NdotL * (1/PDF) = π
+                // Simplified: just accumulate and divide — equivalent to π factor.
+                accR += sr * NdotL;
+                accG += sg * NdotL;
+                accB += sb * NdotL;
+                weight += NdotL;
+            }
+            if (weight > 1e-6f) { accR /= weight; accG /= weight; accB /= weight; }
+            out.push_back(static_cast<uint8_t>(std::min(1.0f, accR) * 255.0f + 0.5f));
+            out.push_back(static_cast<uint8_t>(std::min(1.0f, accG) * 255.0f + 0.5f));
+            out.push_back(static_cast<uint8_t>(std::min(1.0f, accB) * 255.0f + 0.5f));
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Generate one mip level + face of the prefiltered env cubemap.
+// roughness: 0..1 for this mip level.
+// Output: 'out' array appended with size*size*3 bytes (RGB8).
+// ---------------------------------------------------------------------------
+static void GeneratePrefilteredFace(int face, uint32_t size,
+                                     float roughness, uint32_t numSamples,
+                                     std::vector<uint8_t>& out)
+{
+    // TEACHING NOTE — Prefiltered Environment Map Generation
+    // For each texel (= reflection direction R), we importance-sample the
+    // GGX NDF to generate a set of half-vectors H.  We reflect R around each
+    // H to get incoming light directions L, then look up the sky colour at L.
+    // The weighted average gives the prefiltered environment for this roughness.
+    //
+    // At roughness=0 (mip 0) we sample near-mirror directions → sharp env.
+    // At roughness=1 (mip 4) we sample a broad hemisphere → blurry env.
+    //
+    // TEACHING NOTE — Roughness clamping
+    // roughness=0 (perfect mirror) causes ImportanceSampleGGX to produce all
+    // samples concentrated at the mirror direction.  For the very first mip we
+    // clamp to 0.04 so there is slight spread (avoids aliasing in practice).
+    float eff_roughness = std::max(roughness, 0.04f);
+
+    for (uint32_t row = 0; row < size; ++row)
+    {
+        float fv = (static_cast<float>(row) + 0.5f) / static_cast<float>(size)
+                   * 2.0f - 1.0f;
+        for (uint32_t col = 0; col < size; ++col)
+        {
+            float fu = (static_cast<float>(col) + 0.5f) / static_cast<float>(size)
+                       * 2.0f - 1.0f;
+
+            // R = the reflection direction for this texel.
+            float rx, ry, rz;
+            CubeFaceDir(face, fu, fv, rx, ry, rz);
+            float rlen = std::sqrt(rx*rx + ry*ry + rz*rz);
+            rx /= rlen; ry /= rlen; rz /= rlen;
+
+            // For very low roughness, treat R as the view direction V ≈ N = R.
+            float tx, ty, tz, bx, by, bz;
+            BuildBasis(rx, ry, rz, tx, ty, tz, bx, by, bz);
+
+            float accR = 0, accG = 0, accB = 0, wTotal = 0;
+            for (uint32_t i = 0; i < numSamples; ++i)
+            {
+                auto [xi1, xi2] = Hammersley(i, numSamples);
+                auto [Hx, Hy, Hz] = ImportanceSampleGGX(xi1, xi2, eff_roughness);
+
+                // Transform H from tangent space to world space.
+                float Hwx = Hx * tx + Hy * bx + Hz * rx;
+                float Hwy = Hx * ty + Hy * by + Hz * ry;
+                float Hwz = Hx * tz + Hy * bz + Hz * rz;
+
+                // L = reflect(R, H) = 2*(R·H)*H - R
+                float RdotH = rx * Hwx + ry * Hwy + rz * Hwz;
+                float Lx = 2.0f * RdotH * Hwx - rx;
+                float Ly = 2.0f * RdotH * Hwy - ry;
+                float Lz = 2.0f * RdotH * Hwz - rz;
+
+                // NdotL = dot(R, L) — only contribute if L is in upper hemi.
+                float NdotL = std::max(0.0f, rx * Lx + ry * Ly + rz * Lz);
+                if (NdotL > 0.0f)
+                {
+                    float sr, sg, sb;
+                    SkyColour(Lx, Ly, Lz, sr, sg, sb);
+                    accR += sr * NdotL;
+                    accG += sg * NdotL;
+                    accB += sb * NdotL;
+                    wTotal += NdotL;
+                }
+            }
+            if (wTotal > 1e-6f) { accR /= wTotal; accG /= wTotal; accB /= wTotal; }
+            out.push_back(static_cast<uint8_t>(std::min(1.0f, accR) * 255.0f + 0.5f));
+            out.push_back(static_cast<uint8_t>(std::min(1.0f, accG) * 255.0f + 0.5f));
+            out.push_back(static_cast<uint8_t>(std::min(1.0f, accB) * 255.0f + 0.5f));
+        }
+    }
+}
+
+} // anonymous namespace
+
+// ---------------------------------------------------------------------------
+// Helper: compile a shader from file or fallback string.
+// (Declared static to avoid ODR conflicts with the same helper in other
+// translation units that have the same pattern.)
+// ---------------------------------------------------------------------------
+static ID3DBlob* CompileIBLShader(const std::filesystem::path& path,
+                                   const char* fallback,
+                                   const char* entry,
+                                   const char* target)
+{
+    namespace fs = std::filesystem;
+    ID3DBlob* blob = nullptr;
+    ID3DBlob* errBlob = nullptr;
+
+    if (fs::exists(path))
+    {
+        std::wstring wpath = path.wstring();
+        HRESULT hr = D3DCompileFromFile(wpath.c_str(), nullptr, nullptr,
+                                        entry, target,
+                                        D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                                        &blob, &errBlob);
+        if (FAILED(hr))
+        {
+            if (errBlob) {
+                std::cerr << "[IBL] Shader compile error: "
+                          << static_cast<const char*>(errBlob->GetBufferPointer()) << "\n";
+                errBlob->Release();
+            }
+            blob = nullptr;
+        }
+        if (errBlob) errBlob->Release();
+        if (blob) return blob;
+    }
+
+    // Fallback: compile from inline string.
+    HRESULT hr = D3DCompile(fallback, std::strlen(fallback),
+                             nullptr, nullptr, nullptr,
+                             entry, target,
+                             D3DCOMPILE_ENABLE_STRICTNESS, 0,
+                             &blob, &errBlob);
+    if (FAILED(hr))
+    {
+        if (errBlob) {
+            std::cerr << "[IBL] Fallback compile error: "
+                      << static_cast<const char*>(errBlob->GetBufferPointer()) << "\n";
+            errBlob->Release();
+        }
+        return nullptr;
+    }
+    if (errBlob) errBlob->Release();
+    return blob;
+}
+
+// ---------------------------------------------------------------------------
+// Inline HLSL fallbacks for pbr_ibl.vs.hlsl and pbr_ibl.ps.hlsl.
+// Minimal but correct — used when .hlsl files have not been copied yet.
+// ---------------------------------------------------------------------------
+static const char* kIBLVsFallback =
+    "cbuffer PerFrameCB:register(b0){"
+    "float4x4 g_world;float4x4 g_worldInvTrans;float4x4 g_view;float4x4 g_proj;};"
+    "struct VSIn{float3 pos:POSITION;float3 n:NORMAL;float2 uv:TEXCOORD0;};"
+    "struct PSIn{float4 cp:SV_POSITION;float3 wp:TEXCOORD1;float3 wn:NORMAL;float2 uv:TEXCOORD0;};"
+    "PSIn main(VSIn i){"
+    "PSIn o;"
+    "float4 wp4=mul(float4(i.pos,1),g_world);o.wp=wp4.xyz;"
+    "o.cp=mul(mul(wp4,g_view),g_proj);"
+    "o.wn=normalize(mul(i.n,(float3x3)g_worldInvTrans));"
+    "o.uv=i.uv;return o;}";
+
+static const char* kIBLPsFallback =
+    "cbuffer LightCB:register(b1){float3 g_cameraPos;float g_p0;"
+    "float3 g_lightDir;float g_p1;float3 g_lightColor;float g_lightIntensity;};"
+    "cbuffer MatCB:register(b2){float3 g_albedo;float g_metallic;float g_roughness;float g_ao;float2 gp;};"
+    "Texture2D g_brdfLut:register(t0);"
+    "TextureCube g_irradianceCube:register(t1);"
+    "TextureCube g_prefilteredEnv:register(t2);"
+    "SamplerState g_linearSampler:register(s0);"
+    "struct PSIn{float4 cp:SV_POSITION;float3 wp:TEXCOORD1;float3 wn:NORMAL;float2 uv:TEXCOORD0;};"
+    "float4 main(PSIn i):SV_TARGET{"
+    "float3 N=normalize(i.wn);float3 V=normalize(g_cameraPos-i.wp);"
+    "float NdotV=max(dot(N,V),0);"
+    "float3 F0=lerp(float3(0.04,0.04,0.04),g_albedo,g_metallic);"
+    "float3 kS=F0+(max(float3(1-g_roughness,1-g_roughness,1-g_roughness),F0)-F0)*pow(1-NdotV,5);"
+    "float3 kD=(1-kS)*(1-g_metallic);"
+    "float3 irr=g_irradianceCube.Sample(g_linearSampler,N).rgb;"
+    "float3 R=reflect(-V,N);"
+    "float3 pre=g_prefilteredEnv.SampleLevel(g_linearSampler,R,g_roughness*4).rgb;"
+    "float2 brdf=g_brdfLut.Sample(g_linearSampler,float2(NdotV,g_roughness)).rg;"
+    "float3 ambient=(kD*irr*g_albedo+pre*(kS*brdf.r+brdf.g))*g_ao;"
+    "float3 L=normalize(g_lightDir);float NdotL=max(dot(N,L),0);"
+    "float3 direct=g_albedo/3.14159*g_lightColor*g_lightIntensity*NdotL;"
+    "float3 c=ambient+direct;c=c/(c+1);c=pow(max(c,0),0.4545);"
+    "return float4(c,1);}";
+
+static bool LoadPBRIBLScene(ID3D11Device*              device,
+                             const std::string&         shaderDir,
+                             D3D11Renderer::PBRIBLScene& scene)
+{
+    namespace fs = std::filesystem;
+
+    // -----------------------------------------------------------------------
+    // Step 1 — Compile shaders.
+    // -----------------------------------------------------------------------
+    const fs::path vsPath = fs::path(shaderDir) / "pbr_ibl.vs.hlsl";
+    const fs::path psPath = fs::path(shaderDir) / "pbr_ibl.ps.hlsl";
+
+    ID3DBlob* vsBlob = CompileIBLShader(vsPath, kIBLVsFallback, "main", "vs_4_0");
+    if (!vsBlob) { std::cerr << "[IBL] VS compile failed.\n"; return false; }
+
+    ID3DBlob* psBlob = CompileIBLShader(psPath, kIBLPsFallback, "main", "ps_4_0");
+    if (!psBlob) {
+        vsBlob->Release();
+        std::cerr << "[IBL] PS compile failed.\n"; return false;
+    }
+
+    HRESULT hr = device->CreateVertexShader(vsBlob->GetBufferPointer(),
+                                             vsBlob->GetBufferSize(),
+                                             nullptr, &scene.vs);
+    if (FAILED(hr)) {
+        vsBlob->Release(); psBlob->Release();
+        std::cerr << "[IBL] CreateVertexShader failed.\n"; return false;
+    }
+
+    hr = device->CreatePixelShader(psBlob->GetBufferPointer(),
+                                   psBlob->GetBufferSize(),
+                                   nullptr, &scene.ps);
+    psBlob->Release();
+    if (FAILED(hr)) {
+        vsBlob->Release();
+        std::cerr << "[IBL] CreatePixelShader failed.\n"; return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — Create input layout.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Input Layout for PBR+IBL
+    // Same layout as pbr_mesh: POSITION (float3) + NORMAL (float3) + TEXCOORD0 (float2).
+    // Each vertex is 32 bytes.  The layout must match the vertex shader's
+    // VSInput struct and the vertex buffer data generated in Step 3.
+    // -----------------------------------------------------------------------
+    D3D11_INPUT_ELEMENT_DESC inputElems[] = {
+        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    };
+
+    hr = device->CreateInputLayout(inputElems, 3,
+                                   vsBlob->GetBufferPointer(),
+                                   vsBlob->GetBufferSize(),
+                                   &scene.inputLayout);
+    vsBlob->Release();
+    if (FAILED(hr)) {
+        std::cerr << "[IBL] CreateInputLayout failed.\n";
+        scene.vs->Release(); scene.vs = nullptr;
+        scene.ps->Release(); scene.ps = nullptr;
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 3 — Generate UV sphere geometry (same algorithm as pbr_mesh).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — UV Sphere vs Icosphere
+    // A UV sphere divides the sphere into stacks (latitudinal rings) and
+    // slices (longitudinal strips).  It is simple to generate and gives clean
+    // UV coordinates (U = longitude/2π, V = latitude/π) suitable for
+    // texture mapping.  The poles have degenerate triangles (zero-area wedges)
+    // which is why production engines often prefer icospheres, but for
+    // teaching the UV sphere's regular structure is easier to understand.
+    // -----------------------------------------------------------------------
+    const int kStacks = 16, kSlices = 16;
+    std::vector<float>    verts;
+    std::vector<uint16_t> indices;
+
+    for (int s = 0; s <= kStacks; ++s)
+    {
+        float phi = kPi * static_cast<float>(s) / static_cast<float>(kStacks);
+        float sinPhi = std::sin(phi), cosPhi = std::cos(phi);
+
+        for (int sl = 0; sl <= kSlices; ++sl)
+        {
+            float theta  = 2.0f * kPi * static_cast<float>(sl) / static_cast<float>(kSlices);
+            float x = sinPhi * std::cos(theta);
+            float y = cosPhi;
+            float z = sinPhi * std::sin(theta);
+            float u = static_cast<float>(sl) / static_cast<float>(kSlices);
+            float v = static_cast<float>(s)  / static_cast<float>(kStacks);
+            verts.insert(verts.end(), { x, y, z, x, y, z, u, v }); // pos+normal+uv
+        }
+    }
+
+    for (int s = 0; s < kStacks; ++s)
+    {
+        for (int sl = 0; sl < kSlices; ++sl)
+        {
+            uint16_t a = static_cast<uint16_t>( s      * (kSlices + 1) + sl);
+            uint16_t b = static_cast<uint16_t>((s + 1) * (kSlices + 1) + sl);
+            uint16_t c = static_cast<uint16_t>( s      * (kSlices + 1) + sl + 1);
+            uint16_t d = static_cast<uint16_t>((s + 1) * (kSlices + 1) + sl + 1);
+            indices.insert(indices.end(), { a, b, c, b, d, c });
+        }
+    }
+    scene.indexCount = static_cast<int>(indices.size());
+
+    // -----------------------------------------------------------------------
+    // Upload vertex buffer.
+    // -----------------------------------------------------------------------
+    D3D11_BUFFER_DESC vbd = {};
+    vbd.ByteWidth  = static_cast<UINT>(verts.size() * sizeof(float));
+    vbd.Usage      = D3D11_USAGE_IMMUTABLE;
+    vbd.BindFlags  = D3D11_BIND_VERTEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA vbd_data = {};
+    vbd_data.pSysMem = verts.data();
+    hr = device->CreateBuffer(&vbd, &vbd_data, &scene.vertexBuf);
+    if (FAILED(hr)) { std::cerr << "[IBL] CreateBuffer(VB) failed.\n"; return false; }
+
+    // Upload index buffer.
+    D3D11_BUFFER_DESC ibd = {};
+    ibd.ByteWidth = static_cast<UINT>(indices.size() * sizeof(uint16_t));
+    ibd.Usage     = D3D11_USAGE_IMMUTABLE;
+    ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+    D3D11_SUBRESOURCE_DATA ibd_data = {};
+    ibd_data.pSysMem = indices.data();
+    hr = device->CreateBuffer(&ibd, &ibd_data, &scene.indexBuf);
+    if (FAILED(hr)) { std::cerr << "[IBL] CreateBuffer(IB) failed.\n"; return false; }
+
+    // -----------------------------------------------------------------------
+    // Step 4 — Create constant buffers.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Constant Buffer Sizes must be multiples of 16 bytes.
+    // PerFrameCB: 4 × float4x4 = 256 bytes.
+    // LightCB:    2 × float4 + float3 + float = 48 bytes → pad to 48.
+    // MaterialCB: float3 + 4 floats = 28 bytes → pad to 32.
+    // -----------------------------------------------------------------------
+    auto makeCB = [&](UINT byteWidth) -> ID3D11Buffer*
+    {
+        D3D11_BUFFER_DESC cbd = {};
+        cbd.ByteWidth      = byteWidth;
+        cbd.Usage          = D3D11_USAGE_DYNAMIC;
+        cbd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+        cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        ID3D11Buffer* buf = nullptr;
+        device->CreateBuffer(&cbd, nullptr, &buf);
+        return buf;
+    };
+
+    scene.perFrameCB = makeCB(256);   // 4 × Mat4
+    scene.lightCB    = makeCB(48);    // float3+pad + float3+pad + float3+float
+    scene.materialCB = makeCB(32);    // float3+float+float+float+float2
+
+    if (!scene.perFrameCB || !scene.lightCB || !scene.materialCB)
+    {
+        std::cerr << "[IBL] CreateBuffer(CB) failed.\n";
+        return false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Upload static CBs (light + material — set once at load time).
+    // -----------------------------------------------------------------------
+    // Light CB: camera pos, light dir (toward sun), light colour, intensity.
+    // TEACHING NOTE — We use an immediate DeviceContext write via Map/Unmap
+    // instead of UpdateSubresource because the CB is DYNAMIC.  UpdateSubresource
+    // on a DYNAMIC buffer is slower than Map/Unmap on some drivers.
+    // -----------------------------------------------------------------------
+    {
+        struct alignas(16) LightData {
+            float cameraPos[3]; float p0;
+            float lightDir[3];  float p1;
+            float lightColor[3]; float lightIntensity;
+        };
+        ID3D11DeviceContext* ctx = nullptr;
+        device->GetImmediateContext(&ctx);
+
+        D3D11_MAPPED_SUBRESOURCE msr = {};
+        if (ctx && SUCCEEDED(ctx->Map(scene.lightCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr)))
+        {
+            auto* d = static_cast<LightData*>(msr.pData);
+            d->cameraPos[0] = 0.0f; d->cameraPos[1] = 0.5f; d->cameraPos[2] = 4.0f; d->p0 = 0;
+            // Light direction: normalized (0.5, 0.8, 0.3) — slightly elevated.
+            float len = std::sqrt(0.5f*0.5f + 0.8f*0.8f + 0.3f*0.3f);
+            d->lightDir[0] = 0.5f/len; d->lightDir[1] = 0.8f/len; d->lightDir[2] = 0.3f/len; d->p1 = 0;
+            d->lightColor[0] = 1.0f; d->lightColor[1] = 0.96f; d->lightColor[2] = 0.9f;
+            d->lightIntensity = 3.0f;
+            ctx->Unmap(scene.lightCB, 0);
+        }
+
+        // Material CB: gold-coloured sphere (metallic 1, roughness 0.3).
+        struct alignas(16) MatData {
+            float albedo[3];  float metallic;
+            float roughness;  float ao;   float pad[2];
+        };
+        if (ctx && SUCCEEDED(ctx->Map(scene.materialCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &msr)))
+        {
+            auto* m = static_cast<MatData*>(msr.pData);
+            m->albedo[0] = 1.00f; m->albedo[1] = 0.76f; m->albedo[2] = 0.33f;  // gold
+            m->metallic   = 1.0f;
+            m->roughness  = 0.3f;
+            m->ao         = 1.0f;
+            m->pad[0] = m->pad[1] = 0.0f;
+            ctx->Unmap(scene.materialCB, 0);
+        }
+
+        if (ctx) ctx->Release();
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 5 — Generate and upload IBL textures.
+    // -----------------------------------------------------------------------
+
+    // ---- 5a: BRDF LUT (64×64 RG8_UNORM) ----
+    // TEACHING NOTE — DXGI_FORMAT_R8G8_UNORM
+    // Two 8-bit channels (R=scale, G=bias).  UNORM means values are
+    // interpreted as [0.0, 1.0] in the shader.  The LUT encodes values in
+    // [0, 1] so 8 bits per channel gives ~0.4% precision — sufficient for
+    // diffuse IBL, though 16F is used in production for sharper specular.
+    {
+        const uint32_t kLUTSize = 64;
+        std::vector<uint8_t> lutPixels;
+        std::cout << "[IBL] Generating BRDF LUT (" << kLUTSize << "x" << kLUTSize << ") ...\n";
+        GenerateBRDFLUT(lutPixels, kLUTSize, 128);
+
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width          = kLUTSize;
+        td.Height         = kLUTSize;
+        td.MipLevels      = 1;
+        td.ArraySize      = 1;
+        td.Format         = DXGI_FORMAT_R8G8_UNORM;
+        td.SampleDesc     = {1, 0};
+        td.Usage          = D3D11_USAGE_IMMUTABLE;
+        td.BindFlags      = D3D11_BIND_SHADER_RESOURCE;
+
+        D3D11_SUBRESOURCE_DATA sd = {};
+        sd.pSysMem     = lutPixels.data();
+        sd.SysMemPitch = kLUTSize * 2;   // 2 bytes per texel (RG8)
+
+        hr = device->CreateTexture2D(&td, &sd, &scene.brdfLutTex);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateTexture2D(BRDF LUT) failed.\n"; return false; }
+
+        hr = device->CreateShaderResourceView(scene.brdfLutTex, nullptr, &scene.brdfLutSRV);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateSRV(BRDF LUT) failed.\n"; return false; }
+    }
+
+    // ---- 5b: Irradiance Cubemap (16×16×6 RGB8, 1 mip) ----
+    // TEACHING NOTE — D3D11_RESOURCE_MISC_TEXTURECUBE
+    // Setting MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE on a Texture2D
+    // with ArraySize = 6 tells D3D11 that the six array slices are the six
+    // faces of a cubemap.  The SRV then exposes it as a TextureCube to the
+    // pixel shader.  Face order: +X, -X, +Y, -Y, +Z, -Z.
+    {
+        const uint32_t kCubeSize = 16;
+        std::vector<uint8_t> allFaces;
+        std::cout << "[IBL] Generating irradiance cubemap (" << kCubeSize << "x"
+                  << kCubeSize << ") ...\n";
+        for (int face = 0; face < 6; ++face)
+            GenerateIrradianceFace(face, kCubeSize, 64, allFaces);
+
+        // Build one D3D11_SUBRESOURCE_DATA per face.
+        D3D11_SUBRESOURCE_DATA irrData[6] = {};
+        for (int f = 0; f < 6; ++f)
+        {
+            irrData[f].pSysMem     = allFaces.data() + f * kCubeSize * kCubeSize * 3;
+            irrData[f].SysMemPitch = kCubeSize * 3;
+        }
+
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width          = kCubeSize;
+        td.Height         = kCubeSize;
+        td.MipLevels      = 1;
+        td.ArraySize      = 6;
+        td.Format         = DXGI_FORMAT_R8G8B8A8_UNORM;  // RGBA8: GPU-compatible cubemap
+        td.SampleDesc     = {1, 0};
+        td.Usage          = D3D11_USAGE_DEFAULT;
+        td.BindFlags      = D3D11_BIND_SHADER_RESOURCE;
+        td.MiscFlags      = D3D11_RESOURCE_MISC_TEXTURECUBE;
+
+        // TEACHING NOTE — RGBA8 vs RGB8
+        // D3D11 does not support RGB8 (24-bit) textures natively.  The
+        // closest supported format is RGBA8 (32-bit).  We must convert our
+        // packed RGB8 CPU data to RGBA8 before upload.
+        std::vector<uint8_t> rgba(kCubeSize * kCubeSize * 6 * 4);
+        for (size_t i = 0; i < kCubeSize * kCubeSize * 6; ++i)
+        {
+            rgba[i*4+0] = allFaces[i*3+0];
+            rgba[i*4+1] = allFaces[i*3+1];
+            rgba[i*4+2] = allFaces[i*3+2];
+            rgba[i*4+3] = 255;
+        }
+
+        // Re-point subresource data at RGBA buffer.
+        for (int f = 0; f < 6; ++f)
+        {
+            irrData[f].pSysMem     = rgba.data() + f * kCubeSize * kCubeSize * 4;
+            irrData[f].SysMemPitch = kCubeSize * 4;
+        }
+
+        hr = device->CreateTexture2D(&td, irrData, &scene.irradianceTex);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateTexture2D(irradiance) failed.\n"; return false; }
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format                    = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURECUBE;
+        srvDesc.TextureCube.MostDetailedMip = 0;
+        srvDesc.TextureCube.MipLevels       = 1;
+
+        hr = device->CreateShaderResourceView(scene.irradianceTex, &srvDesc,
+                                              &scene.irradianceSRV);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateSRV(irradiance) failed.\n"; return false; }
+    }
+
+    // ---- 5c: Prefiltered Environment Cubemap (16×16×6 RGBA8, 5 mip levels) ----
+    // TEACHING NOTE — Multi-Mip Cubemap Upload
+    // Each mip level of each face is a separate D3D11_SUBRESOURCE_DATA.
+    // The total number of subresources = 6 faces × 5 mip levels = 30.
+    // Mip k has dimensions (16 >> k) × (16 >> k).
+    // The subresource index = faceIndex * numMips + mipIndex.
+    {
+        const uint32_t kPFSize  = 16;
+        const uint32_t kNumMips = 5;     // roughness 0.00, 0.25, 0.50, 0.75, 1.00
+        std::cout << "[IBL] Generating prefiltered env cubemap ("
+                  << kPFSize << "x" << kPFSize << " x " << kNumMips << " mips) ...\n";
+
+        // One RGBA8 buffer per face per mip.
+        // Layout: [face0_mip0][face0_mip1]...[face1_mip0]...[face5_mip4]
+        // Total RGBA bytes = sum over mips of (6 × size² × 4).
+        struct MipFaceBlock { std::vector<uint8_t> rgba; uint32_t size; };
+        MipFaceBlock blocks[6][kNumMips];
+
+        for (uint32_t mip = 0; mip < kNumMips; ++mip)
+        {
+            float roughness = static_cast<float>(mip) / static_cast<float>(kNumMips - 1);
+            uint32_t mipSize = std::max(1u, kPFSize >> mip);
+            const uint32_t numSamples = 64;
+
+            for (int face = 0; face < 6; ++face)
+            {
+                std::vector<uint8_t> rgb;
+                GeneratePrefilteredFace(face, mipSize, roughness, numSamples, rgb);
+
+                // Expand RGB → RGBA.
+                auto& blk = blocks[face][mip];
+                blk.size = mipSize;
+                blk.rgba.resize(mipSize * mipSize * 4);
+                for (size_t i = 0; i < mipSize * mipSize; ++i)
+                {
+                    blk.rgba[i*4+0] = rgb[i*3+0];
+                    blk.rgba[i*4+1] = rgb[i*3+1];
+                    blk.rgba[i*4+2] = rgb[i*3+2];
+                    blk.rgba[i*4+3] = 255;
+                }
+            }
+        }
+
+        // Build the 30 subresource descriptors.
+        // D3D11 subresource index for a cubemap with N mips:
+        //   index = faceIndex * N + mipIndex
+        D3D11_SUBRESOURCE_DATA pfData[6 * kNumMips] = {};
+        for (int face = 0; face < 6; ++face)
+        {
+            for (uint32_t mip = 0; mip < kNumMips; ++mip)
+            {
+                auto& blk = blocks[face][mip];
+                uint32_t idx = face * kNumMips + mip;
+                pfData[idx].pSysMem     = blk.rgba.data();
+                pfData[idx].SysMemPitch = blk.size * 4;
+            }
+        }
+
+        D3D11_TEXTURE2D_DESC td = {};
+        td.Width          = kPFSize;
+        td.Height         = kPFSize;
+        td.MipLevels      = kNumMips;
+        td.ArraySize      = 6;
+        td.Format         = DXGI_FORMAT_R8G8B8A8_UNORM;
+        td.SampleDesc     = {1, 0};
+        td.Usage          = D3D11_USAGE_IMMUTABLE;
+        td.BindFlags      = D3D11_BIND_SHADER_RESOURCE;
+        td.MiscFlags      = D3D11_RESOURCE_MISC_TEXTURECUBE;
+
+        hr = device->CreateTexture2D(&td, pfData, &scene.prefilteredTex);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateTexture2D(prefiltered) failed.\n"; return false; }
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+        srvDesc.Format                    = DXGI_FORMAT_R8G8B8A8_UNORM;
+        srvDesc.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURECUBE;
+        srvDesc.TextureCube.MostDetailedMip = 0;
+        srvDesc.TextureCube.MipLevels       = kNumMips;
+
+        hr = device->CreateShaderResourceView(scene.prefilteredTex, &srvDesc,
+                                              &scene.prefilteredSRV);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateSRV(prefiltered) failed.\n"; return false; }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 6 — Create the linear clamp sampler (s0).
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Sampler State for IBL Textures
+    // All three IBL textures use a linear filter sampler with CLAMP address
+    // mode.  CLAMP is important for the BRDF LUT (NoV and roughness are both
+    // in [0,1] so we must not wrap).  For cubemaps CLAMP is also the safest
+    // choice — seamless cubemap filtering is available on DX11 feature level
+    // 10_1+ via D3D11_FILTER_MIN_MAG_MIP_LINEAR on a TEXTURE_CUBE SRV.
+    // -----------------------------------------------------------------------
+    {
+        D3D11_SAMPLER_DESC sd = {};
+        sd.Filter         = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        sd.AddressU       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.AddressV       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.AddressW       = D3D11_TEXTURE_ADDRESS_CLAMP;
+        sd.MaxAnisotropy  = 1;
+        sd.ComparisonFunc = D3D11_COMPARISON_NEVER;
+        sd.MaxLOD         = D3D11_FLOAT32_MAX;
+        hr = device->CreateSamplerState(&sd, &scene.linearSampler);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateSamplerState failed.\n"; return false; }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 7 — Cull-none rasterizer state (same as pbr_mesh).
+    // -----------------------------------------------------------------------
+    {
+        D3D11_RASTERIZER_DESC rd = {};
+        rd.FillMode = D3D11_FILL_SOLID;
+        rd.CullMode = D3D11_CULL_NONE;   // See both sides of the sphere
+        rd.DepthClipEnable = TRUE;
+        hr = device->CreateRasterizerState(&rd, &scene.rastState);
+        if (FAILED(hr)) { std::cerr << "[IBL] CreateRasterizerState failed.\n"; return false; }
+    }
+
+    scene.loaded = true;
+    std::cout << "[D3D11Renderer] LoadScene('pbr_ibl') — OK.\n";
+    return true;
+}
+
+// ===========================================================================
+// DrawPBRIBLMesh — render the PBR + IBL sphere (M16)
+// ===========================================================================
+
+void D3D11Renderer::DrawPBRIBLMesh()
+{
+    if (!m_pbrIblScene.loaded || !m_context)
+        return;
+
+    using namespace engine::math;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Per-Frame Constant Buffer Update (PBR + IBL)
+    // -----------------------------------------------------------------------
+    // The per-frame CB holds the world, worldInvTrans, view, and proj matrices.
+    // The sphere rotates slowly around the Y axis so students can see the
+    // IBL ambient changing as the reflection vector R sweeps across the
+    // prefiltered environment cubemap.
+    // -----------------------------------------------------------------------
+    float angle  = m_sceneTime * 0.4f;  // 0.4 rad/s rotation
+    Mat4 worldMat = Mat4::Rotation(Quat::FromAxisAngle(Vec3::Up(), angle));
+
+    Vec3 eye    = { 0.0f, 0.5f, 4.0f };
+    Vec3 target = { 0.0f, 0.0f, 0.0f };
+    Vec3 upDir  = { 0.0f, 1.0f, 0.0f };
+
+    Vec3 zAxis = (eye - target).Normalized();
+    Vec3 xAxis = upDir.Cross(zAxis).Normalized();
+    Vec3 yAxis = zAxis.Cross(xAxis);
+
+    Mat4 viewMat;
+    viewMat.m[0][0] = xAxis.x; viewMat.m[0][1] = yAxis.x; viewMat.m[0][2] = zAxis.x; viewMat.m[0][3] = 0;
+    viewMat.m[1][0] = xAxis.y; viewMat.m[1][1] = yAxis.y; viewMat.m[1][2] = zAxis.y; viewMat.m[1][3] = 0;
+    viewMat.m[2][0] = xAxis.z; viewMat.m[2][1] = yAxis.z; viewMat.m[2][2] = zAxis.z; viewMat.m[2][3] = 0;
+    viewMat.m[3][0] = -xAxis.Dot(eye); viewMat.m[3][1] = -yAxis.Dot(eye);
+    viewMat.m[3][2] = -zAxis.Dot(eye); viewMat.m[3][3] = 1;
+
+    const float kFovY  = 3.14159265f / 3.0f;
+    const float kNear  = 0.1f, kFar = 100.0f;
+    float aspect = (m_height > 0) ?
+        (static_cast<float>(m_width) / static_cast<float>(m_height)) : 1.0f;
+    float f = 1.0f / std::tan(kFovY * 0.5f);
+    Mat4 projMat;
+    projMat.m[0][0] = f / aspect;
+    projMat.m[1][1] = f;
+    projMat.m[2][2] = -kFar / (kFar - kNear);
+    projMat.m[2][3] = -1.0f;
+    projMat.m[3][2] = -(kNear * kFar) / (kFar - kNear);
+
+    struct alignas(16) PerFrameData {
+        float world[4][4];
+        float worldInvTrans[4][4];
+        float view[4][4];
+        float proj[4][4];
+    } pfd;
+    std::memcpy(pfd.world,        worldMat.Data(), 64);
+    std::memcpy(pfd.worldInvTrans, worldMat.Data(), 64);
+    std::memcpy(pfd.view,         viewMat.Data(),  64);
+    std::memcpy(pfd.proj,         projMat.Data(),  64);
+
+    D3D11_MAPPED_SUBRESOURCE msr = {};
+    if (SUCCEEDED(m_context->Map(m_pbrIblScene.perFrameCB, 0,
+                                  D3D11_MAP_WRITE_DISCARD, 0, &msr)))
+    {
+        std::memcpy(msr.pData, &pfd, sizeof(pfd));
+        m_context->Unmap(m_pbrIblScene.perFrameCB, 0);
+    }
+
+    // -----------------------------------------------------------------------
+    // Bind pipeline.
+    // -----------------------------------------------------------------------
+    UINT stride = sizeof(float) * 8;
+    UINT offset = 0;
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_context->IASetVertexBuffers(0, 1, &m_pbrIblScene.vertexBuf, &stride, &offset);
+    m_context->IASetIndexBuffer(m_pbrIblScene.indexBuf, DXGI_FORMAT_R16_UINT, 0);
+    m_context->IASetInputLayout(m_pbrIblScene.inputLayout);
+
+    m_context->VSSetShader(m_pbrIblScene.vs, nullptr, 0);
+    m_context->VSSetConstantBuffers(0, 1, &m_pbrIblScene.perFrameCB);
+
+    m_context->PSSetShader(m_pbrIblScene.ps, nullptr, 0);
+    m_context->PSSetConstantBuffers(1, 1, &m_pbrIblScene.lightCB);
+    m_context->PSSetConstantBuffers(2, 1, &m_pbrIblScene.materialCB);
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Binding IBL Textures
+    // -----------------------------------------------------------------------
+    // The PS declares:
+    //   t0 — Texture2D g_brdfLut
+    //   t1 — TextureCube g_irradianceCube
+    //   t2 — TextureCube g_prefilteredEnv
+    //   s0 — SamplerState g_linearSampler
+    //
+    // PSSetShaderResources binds SRVs to texture slots (t0, t1, t2).
+    // PSSetSamplers binds the sampler to slot s0.
+    // Setting all three SRVs in one call is more efficient than three
+    // individual calls (single API round-trip to the driver).
+    // -----------------------------------------------------------------------
+    ID3D11ShaderResourceView* srvs[3] = {
+        m_pbrIblScene.brdfLutSRV,
+        m_pbrIblScene.irradianceSRV,
+        m_pbrIblScene.prefilteredSRV,
+    };
+    m_context->PSSetShaderResources(0, 3, srvs);
+    m_context->PSSetSamplers(0, 1, &m_pbrIblScene.linearSampler);
+
+    m_context->RSSetState(m_pbrIblScene.rastState);
+    m_context->DrawIndexed(static_cast<UINT>(m_pbrIblScene.indexCount), 0, 0);
+
+    // Unbind SRVs to avoid debug layer "resource still bound" warnings.
+    ID3D11ShaderResourceView* nullSRVs[3] = { nullptr, nullptr, nullptr };
+    m_context->PSSetShaderResources(0, 3, nullSRVs);
+    m_context->RSSetState(nullptr);
 }
 
 } // namespace rendering
