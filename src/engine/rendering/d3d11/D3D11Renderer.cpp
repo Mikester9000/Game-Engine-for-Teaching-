@@ -4678,7 +4678,7 @@ void D3D11Renderer::DrawShadowScene()
         if (SUCCEEDED(m_context->Map(m_shadowScene.shadowCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
         {
             auto* cbData = static_cast<ShadowCBData*>(mapped.pData);
-            std::memcpy(cbData->lightViewProj, lightVP.m, sizeof(lightVP.m));
+            std::memcpy(cbData->lightViewProj, lightVP.Data(), 64);
             m_context->Unmap(m_shadowScene.shadowCB, 0);
         }
     }
@@ -4745,10 +4745,10 @@ void D3D11Renderer::DrawShadowScene()
         if (SUCCEEDED(m_context->Map(m_shadowScene.litCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
         {
             auto* cbData = static_cast<ShadowLitCBData*>(mapped.pData);
-            std::memcpy(cbData->world,        worldMat.m, sizeof(worldMat.m));
-            std::memcpy(cbData->view,         viewMat.m,  sizeof(viewMat.m));
-            std::memcpy(cbData->proj,         projMat.m,  sizeof(projMat.m));
-            std::memcpy(cbData->lightViewProj, lightVP.m, sizeof(lightVP.m));
+            std::memcpy(cbData->world,         worldMat.Data(), 64);
+            std::memcpy(cbData->view,          viewMat.Data(),  64);
+            std::memcpy(cbData->proj,          projMat.Data(),  64);
+            std::memcpy(cbData->lightViewProj, lightVP.Data(),  64);
             cbData->lightDir[0] = kLightDirX;
             cbData->lightDir[1] = kLightDirY;
             cbData->lightDir[2] = kLightDirZ;
