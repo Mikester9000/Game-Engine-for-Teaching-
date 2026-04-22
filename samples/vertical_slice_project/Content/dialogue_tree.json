@@ -1,0 +1,45 @@
+{
+  "$schema": "../../shared/schemas/dialogue_tree.schema.json",
+  "version": "1.0.0",
+  "id": "innkeeper_hammerhead_01",
+  "nodes": [
+    {
+      "id": 0,
+      "speakerName": "Takka",
+      "text": "Welcome to Hammerhead! She's been waitin' for ya, Prince. We got fuel, parts, and good cookin'.",
+      "nextNodeID": 1,
+      "isTerminal": false
+    },
+    {
+      "id": 1,
+      "speakerName": "Takka",
+      "text": "What can I do for ya?",
+      "choices": [
+        { "label": "Tell me about the road ahead.", "targetNodeID": 2 },
+        { "label": "I heard you need help with goblins.", "targetNodeID": 3 },
+        { "label": "Nothing, thanks.", "targetNodeID": 4 }
+      ],
+      "isTerminal": false
+    },
+    {
+      "id": 2,
+      "speakerName": "Takka",
+      "text": "Road to Lestallum's been rough lately. Goblins been harassin' travellers near the canyon. Watch yourselves out there.",
+      "nextNodeID": 4,
+      "isTerminal": false
+    },
+    {
+      "id": 3,
+      "speakerName": "Takka",
+      "text": "Sure do. Pack of 'em been blockin' the road. Take out three of 'em and I'll owe ya a hot meal.",
+      "nextNodeID": 4,
+      "isTerminal": false
+    },
+    {
+      "id": 4,
+      "speakerName": "Takka",
+      "text": "You need anything else, just holler. May the light guide ya, Prince.",
+      "isTerminal": true
+    }
+  ]
+}

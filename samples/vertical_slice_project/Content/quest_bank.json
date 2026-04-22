@@ -1,0 +1,76 @@
+{
+  "$schema": "../../shared/schemas/quest_bank.schema.json",
+  "version": "1.0.0",
+  "quests": [
+    {
+      "id": 1,
+      "title": "The Road to Dawn",
+      "description": "Prove your worth by clearing the goblins threatening the road to Hammerhead.",
+      "isMainQuest": true,
+      "objectives": [
+        {
+          "type": "kill_enemy",
+          "description": "Kill 3 Goblins",
+          "targetID": 1,
+          "requiredCount": 3
+        }
+      ],
+      "xpReward": 100,
+      "gilReward": 500,
+      "prereqQuestIDs": [],
+      "luaCompleteCallback": "onCompleteRoadToDawn"
+    },
+    {
+      "id": 2,
+      "title": "Stolen Goods",
+      "description": "A merchant's Phoenix Downs were stolen by bandits. Recover them.",
+      "isMainQuest": false,
+      "objectives": [
+        {
+          "type": "collect_item",
+          "description": "Collect a Phoenix Down",
+          "targetID": 26,
+          "requiredCount": 1
+        }
+      ],
+      "xpReward": 80,
+      "gilReward": 300,
+      "prereqQuestIDs": []
+    },
+    {
+      "id": 3,
+      "title": "Missing Person",
+      "description": "A traveller went missing near the ruins. Search the area.",
+      "isMainQuest": false,
+      "objectives": [
+        {
+          "type": "reach_location",
+          "description": "Reach the ruins",
+          "targetID": 2,
+          "requiredCount": 1
+        }
+      ],
+      "xpReward": 60,
+      "gilReward": 200,
+      "prereqQuestIDs": []
+    },
+    {
+      "id": 7,
+      "title": "The Crystal's Call",
+      "description": "The Crystal has awakened. Reach the Crystal Shrine at the heart of the Duscae region.",
+      "isMainQuest": true,
+      "objectives": [
+        {
+          "type": "reach_location",
+          "description": "Reach the Crystal Shrine",
+          "targetID": 3,
+          "requiredCount": 1
+        }
+      ],
+      "xpReward": 400,
+      "gilReward": 2000,
+      "prereqQuestIDs": [1],
+      "luaCompleteCallback": "onCompleteCrystalCall"
+    }
+  ]
+}

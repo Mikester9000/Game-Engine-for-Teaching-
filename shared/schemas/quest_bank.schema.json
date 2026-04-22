@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "quest_bank.schema.json",
+  "title": "QuestBank",
+  "description": "Defines a collection of quests for the educational RPG engine (M20). TEACHING NOTE — A quest bank is a content database: the designer authors quest data here and the QuestBaker tool validates and cooks it for the runtime QuestSystem.",
+  "type": "object",
+  "required": ["version", "quests"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "description": "SemVer version of this quest bank file."
+    },
+    "quests": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of quest definitions.",
+      "items": { "$ref": "#/definitions/Quest" }
+    }
+  },
+  "definitions": {
+    "Quest": {
+      "type": "object",
+      "required": ["id", "title", "objectives"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Unique quest ID matching GameDatabase::FindQuest(id)."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Short display title shown in the quest log HUD."
+        },
+        "description": {
+          "type": "string",
+          "description": "Flavour text describing the quest to the player."
+        },
+        "isMainQuest": {
+          "type": "boolean",
+          "description": "True for story-critical quests shown under 'Main Quests' in the HUD."
+        },
+        "objectives": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Ordered list of objectives. The QuestSystem advances through these in order.",
+          "items": { "$ref": "#/definitions/Objective" }
+        },
+        "xpReward": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "XP granted to the player on quest completion via LevelComponent::GainXP."
+        },
+        "gilReward": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Gil granted to the player on quest completion via CurrencyComponent::EarnGil."
+        },
+        "itemRewards": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "Item IDs (matching GameDatabase::GetItems) granted on completion."
+        },
+        "prereqQuestIDs": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "description": "Quest IDs that must be complete before this quest can be accepted."
+        },
+        "luaCompleteCallback": {
+          "type": "string",
+          "description": "Lua function name called by QuestSystem when this quest completes."
+        }
+      }
+    },
+    "Objective": {
+      "type": "object",
+      "required": ["type", "description", "targetID", "requiredCount"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["kill_enemy", "collect_item", "reach_location"],
+          "description": "TEACHING NOTE — Objective type maps to QuestObjectiveType: KILL_ENEMY (matched by CombatSystem::OnEnemyKilled), COLLECT_ITEM (matched by InventorySystem::AddItem), REACH_LOCATION (matched by Zone::OnPlayerEnter)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable objective text shown in the quest log HUD."
+        },
+        "targetID": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "ID of the target: enemy data ID, item ID, or zone ID depending on type."
+        },
+        "requiredCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of times the objective must be satisfied."
+        }
+      }
+    }
+  }
+}

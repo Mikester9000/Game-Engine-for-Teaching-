@@ -527,6 +527,66 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M20 — Quest system acceptance test (CPU-only)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M20 quest_test CI
+      # This step validates four M20 criteria without any rendering API calls:
+      #
+      #   Test 1 (quest_accept):
+      #     AcceptQuest(player, 1) returns true and the quest appears in
+      #     GetActiveQuests().  Validates the GameDatabase lookup,
+      #     prerequisite check, and QuestEntry allocation path.
+      #
+      #   Test 2 (quest_objective):
+      #     OnEnemyKilled(player, 1) x3 triggers auto-complete for quest 1
+      #     (requires 3 goblin kills).  IsQuestComplete() returns true and
+      #     LevelComponent::currentXP is incremented by the quest's xpReward.
+      #     Validates the event-driven objective hook and auto-complete path.
+      #
+      #   Test 3 (quest_prereq):
+      #     Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player, 7) is
+      #     false for a fresh player and true after quest 1 is complete.
+      #     Validates the prerequisite gate that enables quest chaining.
+      #
+      #   Test 4 (quest_fail):
+      #     FailQuest() sets isFailed on the QuestEntry.  IsQuestActive()
+      #     and IsQuestComplete() both return false afterwards.
+      #     Validates that failed quests are distinct from active and complete.
+      #
+      # No GPU, audio hardware, or vcpkg packages are required.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M20 -- quest_test scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene quest_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # M20 — Dialogue system acceptance test (CPU-only)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M20 dialogue_test CI
+      # This step validates three M20 criteria without any rendering API calls:
+      #
+      #   Test 1 (dialogue_out_of_range):
+      #     NPC placed at (100, 0, 100), player at origin, interactRange=5.
+      #     After DialogueSystem::Update() isInteractable must be false.
+      #     Validates the XZ-plane proximity check for the "too far" case.
+      #
+      #   Test 2 (dialogue_in_range):
+      #     Player moved to (99, 0, 99) — XZ distance ≈ 1.4 < interactRange=5.
+      #     After Update() isInteractable must be true.
+      #     Validates the proximity check for the "in range" case.
+      #
+      #   Test 3 (dialogue_begin_and_advance):
+      #     BeginDialogue() opens the stub conversation (IsActive()=true).
+      #     AdvanceDialogue() on the terminal node closes it (IsActive()=false).
+      #     Validates the full open → advance → close dialogue lifecycle.
+      #
+      # No GPU, audio hardware, or vcpkg packages are required.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M20 -- dialogue_test scene)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dialogue_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # PAK packager acceptance test
       # -----------------------------------------------------------------------
       # TEACHING NOTE — PAK Packager CI Test

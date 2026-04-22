@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1707 across 51 subsystems.
+**Total lessons:** 1731 across 52 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (70 lessons)
-- [ci/workflows](#ciworkflows) (56 lessons)
+- [ci/workflows](#ciworkflows) (58 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (102 lessons)
 - [engine/ai](#engineai) (49 lessons)
@@ -43,7 +43,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (16 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (76 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (87 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -61,6 +61,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/cook](#toolscook) (12 lessons)
 - [tools/creation_engine.py](#toolscreation_engine.py) (5 lessons)
 - [tools/pak](#toolspak) (14 lessons)
+- [tools/quest_baker](#toolsquest_baker) (11 lessons)
 - [tools/tests](#toolstests) (3 lessons)
 - [tools/validate-assets.py](#toolsvalidate-assets.py) (2 lessons)
 
@@ -1779,9 +1780,69 @@ exercise pure C++17 code paths.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene combat_test
 shell: cmd
 
-### PAK Packager CI Test
+### M20 quest_test CI
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L532) (line 532)
+
+This step validates four M20 criteria without any rendering API calls:
+
+  Test 1 (quest_accept):
+    AcceptQuest(player, 1) returns true and the quest appears in
+    GetActiveQuests().  Validates the GameDatabase lookup,
+    prerequisite check, and QuestEntry allocation path.
+
+  Test 2 (quest_objective):
+    OnEnemyKilled(player, 1) x3 triggers auto-complete for quest 1
+    (requires 3 goblin kills).  IsQuestComplete() returns true and
+    LevelComponent::currentXP is incremented by the quest's xpReward.
+    Validates the event-driven objective hook and auto-complete path.
+
+  Test 3 (quest_prereq):
+    Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player, 7) is
+    false for a fresh player and true after quest 1 is complete.
+    Validates the prerequisite gate that enables quest chaining.
+
+  Test 4 (quest_fail):
+    FailQuest() sets isFailed on the QuestEntry.  IsQuestActive()
+    and IsQuestComplete() both return false afterwards.
+    Validates that failed quests are distinct from active and complete.
+
+No GPU, audio hardware, or vcpkg packages are required.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M20 -- quest_test scene)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene quest_test
+shell: cmd
+
+### M20 dialogue_test CI
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L565) (line 565)
+
+This step validates three M20 criteria without any rendering API calls:
+
+  Test 1 (dialogue_out_of_range):
+    NPC placed at (100, 0, 100), player at origin, interactRange=5.
+    After DialogueSystem::Update() isInteractable must be false.
+    Validates the XZ-plane proximity check for the "too far" case.
+
+  Test 2 (dialogue_in_range):
+    Player moved to (99, 0, 99) — XZ distance ≈ 1.4 < interactRange=5.
+    After Update() isInteractable must be true.
+    Validates the proximity check for the "in range" case.
+
+  Test 3 (dialogue_begin_and_advance):
+    BeginDialogue() opens the stub conversation (IsActive()=true).
+    AdvanceDialogue() on the terminal node closes it (IsActive()=false).
+    Validates the full open → advance → close dialogue lifecycle.
+
+No GPU, audio hardware, or vcpkg packages are required.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M20 -- dialogue_test scene)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dialogue_test
+shell: cmd
+
+### PAK Packager CI Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L592) (line 592)
 
 This step validates pak.exe by packing the vertical_slice_project Cooked/
 directory into a PAK1 archive.  A non-zero exit code (file-not-found,
@@ -1795,7 +1856,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L546) (line 546)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L606) (line 606)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1821,7 +1882,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L585) (line 585)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L645) (line 645)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1847,7 +1908,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L619) (line 619)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L679) (line 679)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1868,7 +1929,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L643) (line 643)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L703) (line 703)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1881,7 +1942,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L656) (line 656)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L716) (line 716)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1896,7 +1957,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L671) (line 671)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L731) (line 731)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1927,7 +1988,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L699) (line 699)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L759) (line 759)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -1936,7 +1997,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L721) (line 721)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L781) (line 781)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -1964,7 +2025,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L756) (line 756)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L816) (line 816)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -1973,7 +2034,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L770) (line 770)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L830) (line 830)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -1995,7 +2056,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L795) (line 795)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L855) (line 855)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -2009,7 +2070,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L819) (line 819)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L879) (line 879)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -2027,7 +2088,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L844) (line 844)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L904) (line 904)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -2038,7 +2099,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L855) (line 855)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L915) (line 915)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -2053,7 +2114,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L877) (line 877)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L937) (line 937)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -25974,6 +26035,8 @@ Usage:
   engine_sandbox.exe --headless --scene bloom_test        # M17 Bloom: bright-pass + blur + composite acceptance test (CI)
   engine_sandbox.exe --headless --scene audio_3d_test     # M18 X3DAudio: listener init + distance rolloff acceptance test (CI)
   engine_sandbox.exe --headless --scene combat_test        # M19 Action Combat: combo FSM + damage formula acceptance test (CI)
+  engine_sandbox.exe --headless --scene quest_test         # M20 Quest system: accept/progress/complete/prereq acceptance test (CI)
+  engine_sandbox.exe --headless --scene dialogue_test      # M20 Dialogue system: proximity/begin/advance acceptance test (CI)
 
 ============================================================================
 
@@ -25985,7 +26048,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L105) (line 105)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L107) (line 107)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -26004,7 +26067,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L120) (line 120)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L122) (line 122)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -26012,7 +26075,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L126) (line 126)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L128) (line 128)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -26030,7 +26093,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L142) (line 142)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L144) (line 144)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -26045,7 +26108,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L155) (line 155)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L157) (line 157)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -26065,7 +26128,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L173) (line 173)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L175) (line 175)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -26079,7 +26142,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L185) (line 185)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L187) (line 187)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -26099,7 +26162,7 @@ include "engine/ai/nav_mesh.hpp"
 
 ### Post-M10 Cinematics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L203) (line 203)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L205) (line 205)
 
 ---------------------------------------------------------------------------
 The cinematic_test scene validates the two new engine/cinematics/ subsystems:
@@ -26116,7 +26179,7 @@ include "engine/cinematics/cinematic_sequencer.hpp"
 
 ### UI Menu Stack headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L218) (line 218)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L220) (line 220)
 
 ---------------------------------------------------------------------------
 The menu_stack_test scene validates the MenuStack navigation subsystem:
@@ -26134,7 +26197,7 @@ include "engine/ui/menu_stack.hpp"
 
 ### SDF Font Renderer headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L234) (line 234)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L236) (line 236)
 
 ---------------------------------------------------------------------------
 The font_test scene validates the SDF FontRenderer subsystem:
@@ -26148,7 +26211,7 @@ The font_test scene validates the SDF FontRenderer subsystem:
 
 ### Why headless font tests?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L245) (line 245)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L247) (line 247)
 
 The SDF atlas generation (CPU) and texture upload (GPU) happen inside Init().
 Running this in headless (WARP) mode on a CI Windows runner exercises the
@@ -26164,7 +26227,7 @@ endif
 
 ### M19 Action Combat headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L259) (line 259)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L261) (line 261)
 
 ---------------------------------------------------------------------------
 The combat_test scene validates the ComboSystem FSM and the CombatSystem
@@ -26196,9 +26259,72 @@ All four tests are pure C++17 CPU tests — no GPU or audio device needed.
 include "engine/combat/combo_system.hpp"
 include "game/systems/CombatSystem.hpp"
 
+### M20 Quest system headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L293) (line 293)
+
+---------------------------------------------------------------------------
+The quest_test scene validates the QuestSystem lifecycle without any
+rendering or audio calls:
+
+  Test 1 (quest_accept):
+    AcceptQuest(player, 1) must return true; the quest must then appear
+    as active in GetActiveQuests().  Validates the happy-path acceptance
+    flow: GameDatabase lookup → prerequisite check → QuestEntry allocation.
+
+  Test 2 (quest_objective):
+    After accepting quest 1 (objective: kill 3 goblins, targetID=1),
+    calling OnEnemyKilled(player, 1) twice must advance progress to 2.
+    Calling it a third time must complete the quest automatically.
+    Validates the event-driven objective hook and auto-complete logic.
+
+  Test 3 (quest_prereq):
+    Quest 7 ("The Crystal's Call") lists quest 1 as a prerequisite.
+    CanAcceptQuest(player, 7) must return false while quest 1 is active.
+    After quest 1 is completed it must return true.
+    Validates the prerequisite gate that enables branching quest chains.
+
+  Test 4 (quest_fail):
+    FailQuest() sets isFailed on the entry.  IsQuestActive() must then
+    return false and IsQuestComplete() must also return false.
+    Validates that failed quests are distinct from active and complete.
+
+All four tests are pure C++17 CPU tests — no GPU or audio device needed.
+---------------------------------------------------------------------------
+include "game/systems/QuestSystem.hpp"
+include "game/GameData.hpp"
+
+### M20 Dialogue system headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L326) (line 326)
+
+---------------------------------------------------------------------------
+The dialogue_test scene validates the DialogueSystem proximity and
+conversation state machine without any rendering calls:
+
+  Test 1 (dialogue_out_of_range):
+    Create an NPC at (100, 0, 100) with interactRange=5 and a player at
+    origin.  After Update(), isInteractable must be false.
+    Validates the proximity check: NPCs far away cannot be talked to.
+
+  Test 2 (dialogue_in_range):
+    Move player to (99, 0, 99) — within interactRange=5.  After Update(),
+    isInteractable must be true.
+    Validates that the system correctly sets the flag when in range.
+
+  Test 3 (dialogue_begin_and_advance):
+    With an interactable NPC, call BeginDialogue(); IsActive() must be true.
+    Call AdvanceDialogue() on the stub terminal node; IsActive() must be
+    false (conversation ended).
+    Validates the full open → advance → close lifecycle.
+
+All three tests are pure C++17 CPU tests — no GPU or audio device needed.
+---------------------------------------------------------------------------
+include "game/systems/dialogue_system.hpp"
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L299) (line 299)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L360) (line 360)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -26215,7 +26341,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L314) (line 314)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L375) (line 375)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -26232,7 +26358,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L327) (line 327)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L388) (line 388)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -26244,7 +26370,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L349) (line 349)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L410) (line 410)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -26263,7 +26389,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L364) (line 364)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L425) (line 425)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -26276,7 +26402,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L377) (line 377)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L438) (line 438)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -26287,7 +26413,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L406) (line 406)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L467) (line 467)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -26302,7 +26428,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L431) (line 431)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L492) (line 492)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -26312,7 +26438,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L461) (line 461)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L522) (line 522)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -26328,7 +26454,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L494) (line 494)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L555) (line 555)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -26338,7 +26464,7 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L515) (line 515)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L576) (line 576)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -26364,7 +26490,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L537) (line 537)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L598) (line 598)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -26393,7 +26519,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L562) (line 562)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L623) (line 623)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -26417,7 +26543,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L670) (line 670)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L731) (line 731)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -26442,7 +26568,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L791) (line 791)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L852) (line 852)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -26463,7 +26589,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L875) (line 875)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L936) (line 936)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -26481,7 +26607,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L889) (line 889)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L950) (line 950)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -26512,7 +26638,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L918) (line 918)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L979) (line 979)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -26520,7 +26646,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L980) (line 980)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1041) (line 1041)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -26543,7 +26669,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1055) (line 1055)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1116) (line 1116)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -26561,7 +26687,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1069) (line 1069)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1130) (line 1130)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -26579,7 +26705,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1102) (line 1102)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1163) (line 1163)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -26605,7 +26731,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1153) (line 1153)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1214) (line 1214)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -26627,7 +26753,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1172) (line 1172)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1233) (line 1233)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -26650,7 +26776,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1253) (line 1253)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1314) (line 1314)
 
 -----------------------------------------------------------
 Verifies that:
@@ -26670,7 +26796,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1270) (line 1270)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1331) (line 1331)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -26690,7 +26816,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1313) (line 1313)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1374) (line 1374)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -26706,7 +26832,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1355) (line 1355)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1416) (line 1416)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -26732,7 +26858,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1377) (line 1377)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1438) (line 1438)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -26755,7 +26881,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1486) (line 1486)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1547) (line 1547)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -26782,7 +26908,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1510) (line 1510)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1571) (line 1571)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -26793,14 +26919,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1533) (line 1533)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1594) (line 1594)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1538) (line 1538)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1599) (line 1599)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -26817,7 +26943,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1586) (line 1586)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1647) (line 1647)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -26852,7 +26978,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1644) (line 1644)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1705) (line 1705)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -26862,7 +26988,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1735) (line 1735)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1796) (line 1796)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -26872,7 +26998,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1803) (line 1803)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1864) (line 1864)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -26880,7 +27006,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1854) (line 1854)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1915) (line 1915)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -26909,7 +27035,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1888) (line 1888)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1949) (line 1949)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -26932,7 +27058,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1939) (line 1939)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2000) (line 2000)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -26955,7 +27081,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1980) (line 1980)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2041) (line 2041)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -26972,7 +27098,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2055) (line 2055)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2116) (line 2116)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -26984,7 +27110,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2136) (line 2136)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2197) (line 2197)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -27002,7 +27128,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2350) (line 2350)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2411) (line 2411)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -27015,7 +27141,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2431) (line 2431)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2492) (line 2492)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -27031,7 +27157,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2444) (line 2444)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2505) (line 2505)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -27048,7 +27174,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2485) (line 2485)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2546) (line 2546)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -27066,7 +27192,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2516) (line 2516)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2577) (line 2577)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -27092,7 +27218,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2560) (line 2560)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2621) (line 2621)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -27132,7 +27258,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2647) (line 2647)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2708) (line 2708)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -27173,7 +27299,7 @@ std::cout << "[OK] bloom_test/load: "
 
 ### What the audio_3d_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2736) (line 2736)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2797) (line 2797)
 
 Test 1 (init):
     XAudio2Backend::Init() is called.  On headless CI with no
@@ -27202,7 +27328,7 @@ int testsFailed = 0;
 
 ### What the combat_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2854) (line 2854)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2915) (line 2915)
 
 All four tests are pure C++17 CPU tests — no D3D11 renderer
   or audio hardware is required.
@@ -27235,7 +27361,7 @@ int testsFailed = 0;
 
 ### We define the same combos here that
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2890) (line 2890)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2951) (line 2951)
 
 appear in combat_config.json so the test is self-
 contained and does not require a file on disk.
@@ -27252,7 +27378,7 @@ cs.AddCombo(aaaDef);
 
 ### Set a short config so tests run fast
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2952) (line 2952)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3013) (line 3013)
 
 CombatConfig cfg;
 cfg.comboWindowSeconds = 0.5f;
@@ -27260,7 +27386,7 @@ cs.SetConfig(cfg);
 
 ### Minimal ECS World for a unit test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3052) (line 3052)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3113) (line 3113)
 
 We create the smallest possible World to exercise a specific
 function (CalculateDamage).  This is the game-engine equivalent
@@ -27271,9 +27397,157 @@ is 512 KB — too large to stack-allocate on Windows.
 auto combatWorld = std::make_unique<World>();
 RegisterAllComponents(*combatWorld);
 
+### What the quest_test validates:
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3205) (line 3205)
+
+All four tests are pure C++17 CPU tests — no D3D11
+  renderer, Jolt physics, or XAudio2 is required.
+  A minimal ECS World is created from the heap (see
+  combat_test teaching note on why heap-allocation is
+  required for World — EntityManager::m_signatures is
+  512 KB alone).
+
+  Test 1 (quest_accept):
+    AcceptQuest(player, 1) must return true.
+    GetActiveQuests() must include quest 1's QuestData.
+    Validates: GameDatabase lookup, free-slot allocation,
+    QuestEntry initialisation.
+
+  Test 2 (quest_objective):
+    OnEnemyKilled(player, 1) x3 advances then auto-completes
+    quest 1 (3 goblins required, targetID=1).
+    IsQuestComplete(player, 1) must be true.
+    Validates: event-driven hook, progress accumulation,
+    and auto-complete when progress == required.
+
+  Test 3 (quest_prereq):
+    Quest 7 has prereqQuestIDs=[1].  CanAcceptQuest(player,7)
+    must be false while quest 1 is active (not complete).
+    After quest 1 is completed it must be true.
+    Validates the prerequisite gate for quest chaining.
+
+  Test 4 (quest_fail):
+    AcceptQuest then FailQuest(player, questID) sets
+    isFailed=true.  IsQuestActive() and IsQuestComplete()
+    must both return false afterwards.
+    Validates the fail path is distinct from active/complete.
+-----------------------------------------------------------
+int testsFailed = 0;
+
+### Why heap-allocate World?
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3243) (line 3243)
+
+EntityManager::m_signatures is a std::array<bitset<64>, 65536>
+which alone is 512 KB.  Stack-allocating World on Windows
+causes STATUS_STACK_OVERFLOW.  All test worlds in this file
+are created via std::make_unique for this reason.
+auto questWorld = std::make_unique<World>();
+RegisterAllComponents(*questWorld);
+
+### Quest 1 "The Road to Dawn" is defined
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3266) (line 3266)
+
+in GameDatabase with no prerequisites so it should always
+be acceptable for a fresh player entity.
+const bool accepted = questSys.AcceptQuest(playerID, 1);
+const bool isActive = questSys.IsQuestActive(playerID, 1);
+const auto active   = questSys.GetActiveQuests(playerID);
+const bool inList   = !active.empty() &&
+active[0]->id == 1;
+
+### GainXP() accumulates XP in pendingXP
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3310) (line 3310)
+
+(banked in the field); it only moves to currentXP when
+the player rests at camp (ApplyBankedXP).  We check
+the sum of both to confirm the reward was credited.
+const auto& lc       = questWorld->GetComponent<LevelComponent>(playerID);
+const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
+
+### A fresh player has not completed quest 1
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3356) (line 3356)
+
+so CanAcceptQuest(7) should return false.
+const bool blockedWithoutPrereq =
+!qs2.CanAcceptQuest(p2, 7);
+
+### A failed quest is neither active nor
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3400) (line 3400)
+
+complete.  The player could potentially re-accept it
+(if the QuestSystem allows it) or it remains failed for
+narrative reasons.  Either way the flags must be clear.
+if (!activeBefore || activeAfter || completeAfter)
+{
+std::cout << "[FAIL] quest_test/quest_fail: "
+"activeBefore=" << activeBefore
+<< " activeAfter=" << activeAfter
+<< " completeAfter=" << completeAfter
+<< " (expected true, false, false).\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] quest_test/quest_fail: "
+"Failed quest 2: active=false, complete=false.\n";
+}
+}
+
+### What the dialogue_test validates:
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3436) (line 3436)
+
+All three tests are pure C++17 CPU tests — no renderer,
+  no audio, no physics.  A minimal ECS World is created
+  with a player entity and one NPC entity.
+
+  Test 1 (dialogue_out_of_range):
+    NPC is placed at (100, 0, 100), player at (0, 0, 0).
+    interactRange = 5.  After DialogueSystem::Update() the
+    NPC's DialogueComponent::isInteractable must be false.
+    Validates: distance > range → not interactable.
+
+  Test 2 (dialogue_in_range):
+    Player is moved to (99, 0, 99) — XZ distance ≈ 1.4,
+    well within interactRange=5.  After Update() the NPC
+    must be interactable.
+    Validates: distance < range → interactable set to true.
+
+  Test 3 (dialogue_begin_and_advance):
+    With the NPC interactable, BeginDialogue() must open the
+    stub conversation (IsActive() == true).
+    AdvanceDialogue() on the stub terminal node must close
+    it (IsActive() == false).
+    Validates: the open → advance → close lifecycle.
+-----------------------------------------------------------
+int testsFailed = 0;
+
+### We only change XZ (horizontal plane);
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3509) (line 3509)
+
+DialogueSystem uses XZ distance, matching the 2.5D
+world layout where Y is the vertical axis.
+playerTf.position = { 99.0f, 0.0f, 99.0f };
+
+### The stub DialogueSystem (M8.6) uses a
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3540) (line 3540)
+
+single terminal node.  AdvanceDialogue() on a terminal
+node should close the conversation (IsActive() → false).
+const bool moreNodes = dlgSys.AdvanceDialogue(*dlgWorld);
+const bool closedOk  = !dlgSys.IsActive();
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3155) (line 3155)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3590) (line 3590)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -27283,7 +27557,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3163) (line 3163)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3598) (line 3598)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -27313,7 +27587,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3191) (line 3191)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3626) (line 3626)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -27336,7 +27610,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3244) (line 3244)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3679) (line 3679)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -27349,7 +27623,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3260) (line 3260)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3695) (line 3695)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -29011,6 +29285,96 @@ is small enough that brute-force scanning has no cost.
 std::string mode;      // "pack" / "list" / "extract"
 std::string inputArg;  // --input or --extract PAK path
 std::string outputArg; // --output
+
+---
+
+## tools/quest_baker
+
+### Package vs Module
+
+**Source:** [`tools/quest_baker/quest_baker/__init__.py`](tools/quest_baker/quest_baker/__init__.py#L4) (line 4)
+
+### What is a "baker"?
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L4) (line 4)
+
+### Separation of Validation and Transformation
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L18) (line 18)
+
+### Result objects vs. exceptions
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L49) (line 49)
+
+### Why compute a SHA-256 hash of the source?
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L92) (line 92)
+
+The engine uses this hash to detect *stale caches*: if the source hash in
+assetdb.json differs from the cooked file's "source_hash" field, the engine
+knows it must re-cook the asset before loading it.
+def _sha256_file(path: Path) -> str:
+"""Return the hex SHA-256 digest of the file at *path*."""
+h = hashlib.sha256()
+with open(path, "rb") as fh:
+for chunk in iter(lambda: fh.read(65536), b""):
+h.update(chunk)
+return h.hexdigest()
+
+### Quest Bank Layout
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L113) (line 113)
+
+### Two-pass validation for cross-references.
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L196) (line 196)
+
+Pass 1: collect all quest IDs so we can validate prerequisites.
+Pass 2: validate objectives and prerequisites against the full set.
+quest_ids: set = set()
+for i, quest in enumerate(quests):
+qid = quest.get("id")
+if not isinstance(qid, int) or qid < 1:
+result.errors.append(
+f"Quest at index {i}: 'id' must be a positive integer."
+)
+elif qid in quest_ids:
+result.errors.append(f"Duplicate quest ID {qid}.")
+else:
+quest_ids.add(qid)
+
+### The quest_index lets the runtime do O(1) ID lookups.
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L269) (line 269)
+
+Without it the runtime would scan the entire quests array each time
+it needs to find a quest by ID — O(N) for every combat kill, item
+pickup, etc.  A dict avoids this.
+quest_index: Dict[str, int] = {
+str(q["id"]): i for i, q in enumerate(quests)
+}
+
+### Dialogue Tree Structure
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L330) (line 330)
+
+### Root node requirement.
+
+**Source:** [`tools/quest_baker/quest_baker/baker.py`](tools/quest_baker/quest_baker/baker.py#L413) (line 413)
+
+DialogueSystem always starts at node ID 0.  Requiring a root node
+means the tree has a deterministic entry point regardless of array
+ordering in the JSON file.
+if 0 not in node_ids:
+result.errors.append(
+"No root node found (a node with id=0 is required as the "
+"entry point for DialogueSystem)."
+)
+return result
+
+### Testing a baker
+
+**Source:** [`tools/quest_baker/tests/test_quest_baker.py`](tools/quest_baker/tests/test_quest_baker.py#L4) (line 4)
 
 ---
 
