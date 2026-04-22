@@ -14,6 +14,8 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 > Every time a subsystem changes status (from ⬜ to 🔨, or 🔨 to ✅), update
 > the entry here so the next Copilot session starts with an accurate picture.
 > Status legend: ✅ complete · 🔨 in progress / partial · ⬜ not started
+>
+> **Assessment reference (2026-04-22):** `docs/ASSESSMENT_2026-04-22.md`.
 
 > **⚠️ ACTIVE POLICY — D3D11 Only (until explicitly stated otherwise)**
 > Vulkan work is **DEFERRED**. All new rendering code targets **D3D11 only**.
@@ -32,7 +34,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Monorepo folder layout | ✅ | All dirs: `src/`, `editor/`, `tools/`, `shared/`, `samples/`, `scripts/`, `shaders/`, `docs/` |
 | Root `CMakeLists.txt` | ✅ | `ENGINE_ENABLE_D3D11` (default ON), `ENGINE_ENABLE_VULKAN` (optional), `ENGINE_ENABLE_TERMINAL`, `BUILD_EDITOR` options; `engine_sandbox` + `game` targets |
 | `CMakePresets.json` | ✅ | `windows-debug`, `windows-debug-engine-only` (D3D11, no SDK required), `windows-debug-vulkan` presets defined |
-| Shared JSON schemas (9 formats) | ✅ | `shared/schemas/`: project, asset_registry, scene, audio_bank, skeleton, anim_clip, anim_graph, quest_bank (M20), dialogue_tree (M20) |
+| Shared JSON schemas (10 formats) | ✅ | `shared/schemas/`: project, asset_registry, scene, audio_bank, skeleton, anim_clip, anim_graph, quest_bank, dialogue_tree, cinematic |
 | Shared runtime headers | ✅ | `shared/runtime/`: `Guid.hpp`, `VersionedFile.hpp`, `Log.hpp` |
 | CI — Linux build + Python tests | ✅ | `.github/workflows/build-linux.yml`: builds terminal game, runs 32+11+15 pytest (audio_authoring, anim_authoring, quest_baker) |
 | CI — asset manifest validation | ✅ | `.github/workflows/validate-assets.yml` |
@@ -40,7 +42,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | CI — contract / golden-file tests | ✅ | `.github/workflows/contract-tests.yml`: runs `cook`, diffs against `tests/golden/assetdb_expected.json`; pytest cook pipeline (13 tests); TEACHING NOTE audit |
 | CI — Architecture Lint | ✅ | `.github/workflows/architecture-lint.yml`: runs `check_architecture.py` (file-size + layer rules) and `extract_teaching_notes.py`; fails if `CURRICULUM_INDEX.md` is stale |
 | `vcpkg.json` | ✅ | Repo root; `nlohmann-json` (M2), `directxtex` (M3 texture), `imgui[docking,dx11-binding,win32-binding]` (editor), `joltphysics` (M5; CI physics job installs via classic-mode vcpkg separately) |
-| Vertical slice sample skeleton | ✅ | `samples/vertical_slice_project/`: `cook_assets.py` (stubs), `Project.json`, `AssetRegistry.json`, `Content/`, `Cooked/` |
+| Vertical slice sample project | 🔨 | `samples/vertical_slice_project/`: schema-valid project + streaming cells + quest/dialogue/combat/cinematic JSON; core Texture/Audio/Animations content still sparse |
 
 ---
 
@@ -173,7 +175,7 @@ They were re-wired to the **D3D11 runtime** in **Milestone M8** (Vulkan wiring r
 | `physics_test` CI scene | ✅ | `--scene physics_test` in `main.cpp`; 3 acceptance tests (drop_sphere, step_ledge, raycast); `build-windows-physics` CI job |
 | `physics_impl.hpp` | ✅ | Internal pImpl header; `PhysicsWorldImpl` struct + Jolt layer filters; never included outside `physics/` |
 
-**M5 is ✅ complete.** Jolt Physics integrated: `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent` + `ColliderComponent` in ECS, `physics_test` headless acceptance scene, CI job. **M6 is ✅ complete.** `SceneHierarchyPanel`, `InspectorPanel`, `SceneSerialiser`, `Play-in-Engine`, headless editor CLI, asset drag-drop (ContentBrowser→SceneEditor), `build-windows-editor` CI job. **M7 is ✅ complete.** `WorldStreamingManager`, `WorldPartition`, `AsyncLoader`; 3 headless acceptance scenes (`streaming_load`, `streaming_evict`, `streaming_async`) in CI. Next: M8 Gameplay Integration.
+**M5 is ✅ complete.** Jolt Physics integrated: `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent` + `ColliderComponent` in ECS, `physics_test` headless acceptance scene, CI job. **M6 is ✅ complete.** `SceneHierarchyPanel`, `InspectorPanel`, `SceneSerialiser`, `Play-in-Engine`, headless editor CLI, asset drag-drop (ContentBrowser→SceneEditor), `build-windows-editor` CI job. **M7 is ✅ complete.** `WorldStreamingManager`, `WorldPartition`, `AsyncLoader`; 3 headless acceptance scenes (`streaming_load`, `streaming_evict`, `streaming_async`) in CI.
 
 ---
 
@@ -210,7 +212,7 @@ They were re-wired to the **D3D11 runtime** in **Milestone M8** (Vulkan wiring r
 | Sample `.level` cooked data | ✅ | `samples/vertical_slice_project/Content/Levels/cell_0_0.cell.json` + `Cooked/Levels/cell_0_0.level`; `cook_assets.py` gains `cook_levels()` |
 | ImGui streaming debug overlay | ✅ | `WorldStreamingManager::DrawDebugOverlay` — colour-coded cell grid (grey/yellow/green/red + white camera outline); editor View menu toggle |
 
-**M7 is ✅ complete (all sub-milestones M7.1–M7.5).** `WorldStreamingManager` + `WorldPartition` + `AsyncLoader` + Zone lifecycle wiring + AssetLoader `.level` integration + cancellation tokens + frame-budget cap + ImGui debug overlay. Three CI acceptance scenes (`streaming_load`, `streaming_evict`, `streaming_async`). **Next step (M8):** Wire all gameplay systems (combat, AI, quests, etc.) into the D3D11 runtime.
+**M7 is ✅ complete (all sub-milestones M7.1–M7.5).** `WorldStreamingManager` + `WorldPartition` + `AsyncLoader` + Zone lifecycle wiring + AssetLoader `.level` integration + cancellation tokens + frame-budget cap + ImGui debug overlay. Three CI acceptance scenes (`streaming_load`, `streaming_evict`, `streaming_async`).
 
 ---
 
@@ -265,12 +267,16 @@ They were re-wired to the **D3D11 runtime** in **Milestone M8** (Vulkan wiring r
 
 ### Next Milestone — What to Work On Now
 
-> **Current position: M22 (Cut-scene baker + cinematic editor panel) ✅ complete. Next: M14 Vulkan catch-up (deferred).**
+> **Current position: M22 ✅ complete; D3D11 feature milestones M16–M21 ✅ complete. Vulkan parity remains deferred (M14).**
 
 Recommended implementation order to reach project completion (D3D11-first policy — see Active Policy box above):
 
 | Priority | Milestone | Key deliverables |
 |----------|-----------|-----------------|
+| **Now** | **M23: Authored content ingestion (D3D11)** | Runtime mesh/material loading from cooked assets; bind authored textures/material params; close procedural-only rendering gap |
+| **Now** | **M24: Vertical slice content population** | Populate `Content/Textures`, `Content/Audio`, `Content/Animations` with real sample assets and verify cook/load path end-to-end |
+| **Now** | **M25: Terrain/world geometry path** | Add terrain/heightmap rendering + collision integration for streamed cells so open-world slice is visually navigable |
+| **Now** | **M26: Save-system CI hardening** | Add dedicated `--scene save_test` acceptance tests for slot round-trip, migration, and auto-save |
 | ~~**1**~~ | ~~**M6: Editor**~~ | ✅ done — SceneHierarchyPanel, InspectorPanel, SceneSerialiser, Play-in-Engine, asset drag-drop |
 | ~~**2**~~ | ~~**M7: World streaming**~~ | ✅ done — WorldStreamingManager + Zone wiring (M7.1), AssetLoader `.level` (M7.2), cancellation tokens (M7.3), frame-budget cap (M7.4), ImGui debug overlay (M7.5) |
 | ~~**3**~~ | ~~**M8: Gameplay integration**~~ | ✅ done — GameRuntime, InputMapper, CameraSystem, HUD, DialogueSystem, Zone streaming → D3D11 (M8.7), SaveSystem, m8_gameplay + m8_streaming CI scenes |
@@ -279,7 +285,7 @@ Recommended implementation order to reach project completion (D3D11-first policy
 | ~~**1 — Now**~~ | ~~**Post-M10: Vehicle physics**~~ | ✅ done — `VehicleSystem` (wheel-ray suspension, spring-damper, Ackermann steering), `WheelState` × 4, vehicle chase camera in CameraSystem, `--scene vehicle_test` CI |
 | ~~**1 — Now**~~ | ~~**Post-M10: Behaviour tree AI**~~ | ✅ done — `BtTree`/`BtSequence`/`BtSelector`/`BtCondition`/`BtAction`/`BtBlackboard`; `FormationSystem` (LINE/V_SHAPE/CIRCLE); grid `NavMesh` (BakeFromGrid, A* with obstacle routing); `--scene bt_test` CI |
 | ~~**1 — Now**~~ | ~~**Post-M10: SDF Font Renderer + pak.exe**~~ | ✅ done — `FontRenderer` (SDF atlas, R8_UNORM D3D11 texture, sdf_text.vs/ps.hlsl, `--scene font_test` CI); `pak.exe` (PAK1 format, `--input`/`--list`/`--extract`, CI test) |
-| ~~**1 — Now**~~ | ~~**Post-M10: Cinematics**~~ | ✅ done (runtime + tests) — `CinematicSequencer` + `CameraRig` + `CameraComponent.cinematicOverride` + `--scene cinematic_test` 3-test headless CI; cut-scene baker tool + editor panel remain ⬜ (M22) |
+| ~~**1 — Now**~~ | ~~**Post-M10: Cinematics**~~ | ✅ done (runtime + tooling) — `CinematicSequencer` + `CameraRig` + `CameraComponent.cinematicOverride` + `--scene cinematic_test` CI + `bake-cinematic` + `CinematicEditorPanel` |
 | ~~**1 — Now**~~ | ~~**M16: D3D11 depth buffer + IBL**~~ | ✅ done — D24 DSV + DepthStencilState wired into DrawFrame; CPU-generated BRDF LUT (64×64) + irradiance cube (16×16×6) + prefiltered env cube (16×16×6×5mip); `pbr_ibl.vs/ps.hlsl`; `--scene pbr_ibl` 4-test CI |
 | ~~**1 — Now**~~ | ~~**M17: D3D11 shadow maps + bloom**~~ | ✅ done — Shadow pass (512×512 D32, depth bias, PCF 3×3 SamplerComparisonState) + LDR bloom demo (4× 256×256 RGBA8 RT ping-pong, Gaussian blur, Reinhard composite); `--scene shadow_test` + `bloom_test` CI |
 | ~~**1 — Now**~~ | ~~**M18: X3DAudio 3D positional audio**~~ | ✅ done — `X3DAudioInitialize` after mastering voice; `SetListenerPosition`/`Compute3DVolume`/`Apply3DAttenuation` on `XAudio2Backend`; per-frame attenuation in `AudioSystem::Update` via `TransformComponent`; `--headless --scene audio_3d_test` 3-test CI |

@@ -5,6 +5,8 @@
 > Every decision, constraint, roadmap entry, and acceptance test is recorded
 > here.  Before opening a PR, re-read this file and verify that your changes
 > satisfy the relevant milestone criteria.
+>
+> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
 
 ---
 
@@ -168,7 +170,7 @@ Every milestone produces an **executable or headless-validation pass** before
 the next milestone starts.  This is non-negotiable.  See
 `docs/PROJECT_MILESTONES.md` for the detailed definition of each milestone.
 
-> **Current position:** M0–M10 all complete. **Next: Post-M10 work** (vehicle physics, behaviour tree AI, cinematics, Vulkan catch-up).
+> **Current position:** M0–M22 complete on the D3D11 path. Vulkan catch-up (M14) remains deferred.
 
 | Milestone | Name | Status | "Done" means |
 |---|---|---|---|
@@ -185,15 +187,14 @@ the next milestone starts.  This is non-negotiable.  See
 | M9 | **PBR Rendering** | ✅ Complete | `pbr_mesh.vs/ps.hlsl` (GGX NDF + Smith G + Schlick F + Reinhard); UV sphere; 3 CBs; `--scene pbr_mesh` CI |
 | M10 | **Dynamic Sky + Weather VFX** | ✅ Complete | `sky_renderer.hpp/.cpp`; `weather_fx.hpp/.cpp`; `sky.vs/ps.hlsl`; `--scene dynamic_sky` 3-test CI |
 
-**Post-M10 work (in order):**
-1. ~~PBR rendering~~ — ✅ Done (M9)
-2. ~~Dynamic sky + weather VFX~~ — ✅ Done (M10)
-3. Vehicle physics — `VehicleComponent` + wheel-ray suspension + chase camera (M11)
-4. Behaviour tree AI — `src/engine/ai/behaviour_tree.hpp/.cpp` + formation system (M12)
-5. Cinematics — `CinematicSequencer` + camera rig + cut-scene editor (M13)
-6. Vulkan catch-up — all DEFERRED items (vulkan_texture, descriptor sets, Vulkan PBR, Vulkan skinning, Vulkan sky) (M14)
-7. Nav-mesh baker + runtime pathfinding
-8. PAK packager — `src/tools/pak/pak_main.cpp` (M15)
+**Post-M10 work status:**
+1. Vehicle physics — ✅ complete (M11)
+2. Behaviour tree AI + formation + nav-mesh runtime — ✅ complete (M12)
+3. Cinematics runtime + baker + editor panel — ✅ complete (M13/M22)
+4. PAK packager + SDF font renderer — ✅ complete (M15)
+5. D3D11 depth/IBL/shadows/bloom + X3DAudio + combo + quest/dialogue tools + baker stubs — ✅ complete (M16–M21)
+6. Vulkan catch-up (textures/descriptors/PBR/skinning/sky/HUD parity) — ⬜ deferred (M14)
+7. **New priority (assessment):** authored content ingestion on D3D11 (runtime mesh/material loading + populated sample assets)
 
 ---
 
@@ -208,10 +209,10 @@ Every executable **must** support a `--headless` flag that:
 
 ```bat
 :: Example — validate the project loads cleanly without a GPU
-engine_sandbox.exe --headless --validate-project samples/ff15_slice/
+engine_sandbox.exe --headless --validate-project samples/vertical_slice_project/
 
 :: Example — simulate 60 frames deterministically (physics, AI, events)
-engine_sandbox.exe --headless --run-sim 60 --project samples/ff15_slice/
+engine_sandbox.exe --headless --run-sim 60 --project samples/vertical_slice_project/
 ```
 
 ### 5.2 Contract tests (golden files)
@@ -234,7 +235,7 @@ ctest --test-dir build -L contract
 
 | Workflow | Trigger | What it does | Status |
 |---|---|---|---|
-| `build-linux.yml` | push / PR | cmake + make; builds terminal `game` + `cook`; runs 32+11 Python pytest | ✅ exists |
+| `build-linux.yml` | push / PR | cmake + make; builds terminal `game`; runs 32+11+15 pytest + creation-engine baker tests | ✅ exists |
 | `validate-assets.yml` | push / PR touching `assets/` | runs `tools/validate-assets.py` | ✅ exists |
 | `build-windows.yml` | push / PR | cmake VS2022; builds `engine_sandbox` + `cook`; headless validate; cook sample project; validate-project | ✅ created (M2) |
 | `contract-tests.yml` | push / PR touching cook/assets | cooks vertical slice on Linux; diffs `assetdb.json` against `tests/golden/assetdb_expected.json`; runs TEACHING NOTE audit | ✅ created (M2) |
