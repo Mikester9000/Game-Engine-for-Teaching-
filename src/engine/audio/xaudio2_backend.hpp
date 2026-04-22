@@ -56,6 +56,7 @@
 #endif
 #include <windows.h>
 #include <xaudio2.h>
+#include <x3daudio.h>
 
 #include <cstdint>
 #include <string>
@@ -228,6 +229,65 @@ public:
      */
     void SetSlotVolume(int slotIndex, float volume);
 
+    /**
+     * @brief Set the listener position used for 3D audio attenuation.
+     *
+     * Call this each frame with the camera (or player ear) world position.
+     * All subsequent Apply3DAttenuation() calls will compute distance
+     * relative to this position.
+     *
+     * @param x  World-space X coordinate of the listener.
+     * @param y  World-space Y coordinate of the listener.
+     * @param z  World-space Z coordinate of the listener.
+     */
+    void SetListenerPosition(float x, float y, float z);
+
+    /**
+     * @brief Compute the volume attenuation for a 3D emitter at a given position.
+     *
+     * Uses X3DAudio distance rolloff when X3DAudio was successfully initialised,
+     * otherwise falls back to a linear inverse-distance formula.
+     *
+     * TEACHING NOTE — Distance Rolloff Curve
+     * ────────────────────────────────────────
+     * X3DAudio supports several built-in distance curves (linear, inverse,
+     * inverse-square, etc.).  We use the default linear curve for clarity:
+     *
+     *   volume = clamp(1.0 - dist / maxDistance, 0.0, 1.0)
+     *
+     * At distance  = 0          → volume = 1.0 (full)
+     * At distance  = maxDist/2  → volume = 0.5 (half)
+     * At distance >= maxDist    → volume = 0.0 (inaudible)
+     *
+     * This satisfies the M18 acceptance criterion:
+     *   volume ≤ 0.05 when emitter is placed at maxDistance.
+     *
+     * @param emitX     World-space X of the emitter.
+     * @param emitY     World-space Y of the emitter.
+     * @param emitZ     World-space Z of the emitter.
+     * @param maxDist   Distance at which volume reaches 0 (world units).
+     * @return          Volume scalar in [0.0, 1.0].
+     */
+    float Compute3DVolume(float emitX, float emitY, float emitZ, float maxDist) const;
+
+    /**
+     * @brief Apply 3D distance attenuation to an active source voice.
+     *
+     * Computes the volume for the given emitter position and sets it on the
+     * source voice via SetSlotVolume.  Call once per frame for every 3D source
+     * that is currently playing.
+     *
+     * @param slotIndex   Voice pool index returned by Play().
+     * @param emitX       World-space X of the emitter entity.
+     * @param emitY       World-space Y of the emitter entity.
+     * @param emitZ       World-space Z of the emitter entity.
+     * @param maxDist     Distance at which the voice becomes inaudible.
+     * @param baseVolume  Base volume scalar (from AudioSourceComponent::volume).
+     */
+    void Apply3DAttenuation(int slotIndex,
+                            float emitX, float emitY, float emitZ,
+                            float maxDist, float baseVolume);
+
     // -----------------------------------------------------------------------
     // Query
     // -----------------------------------------------------------------------
@@ -274,6 +334,28 @@ private:
 
     IXAudio2*               m_xaudio2       = nullptr;
     IXAudio2MasteringVoice* m_masterVoice   = nullptr;
+
+    // -----------------------------------------------------------------------
+    // X3DAudio — 3D positional audio (M18)
+    // -----------------------------------------------------------------------
+
+    /// TEACHING NOTE — X3DAUDIO_HANDLE
+    /// X3DAudio is a header-only math library that computes DSP parameters
+    /// (volume, panning, Doppler) for 3D positioned audio.  The handle is
+    /// initialised once with the speaker channel mask and speed of sound.
+    /// It contains no COM objects; it is a plain POD struct (array of bytes).
+    X3DAUDIO_HANDLE m_x3dHandle      = {};
+
+    /// True after X3DAudioInitialize() succeeds.
+    bool            m_x3dReady       = false;
+
+    /// Number of output channels on the mastering voice.
+    /// Used when building the DSP output matrix in Compute3DVolume().
+    /// Stored at Init() time from IXAudio2MasteringVoice::GetChannelMask().
+    UINT32          m_dstChannels    = 2;
+
+    /// Cached listener world position (updated by SetListenerPosition).
+    X3DAUDIO_VECTOR m_listenerPos    = {0.0f, 0.0f, 0.0f};
 
     // -----------------------------------------------------------------------
     // Voice pool

@@ -61,6 +61,26 @@ void AudioSystem::ShutdownAudio()
 }
 
 // ===========================================================================
+// SetListenerPosition (M18 — 3D positional audio)
+// ===========================================================================
+
+void AudioSystem::SetListenerPosition(float x, float y, float z)
+{
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Forwarding Listener Position to the Backend
+    // -----------------------------------------------------------------------
+    // AudioSystem is the game-facing API; it knows about ECS and music state
+    // but not low-level XAudio2 handles.  It delegates all 3D math to the
+    // backend which owns the X3DAUDIO_HANDLE and the listener cache.
+    //
+    // Call this once per frame (in GameRuntime::Update or the game loop)
+    // before calling AudioSystem::Update(), so that the listener position is
+    // already up-to-date when 3D attenuation is computed for each voice.
+    // -----------------------------------------------------------------------
+    m_backend.SetListenerPosition(x, y, z);
+}
+
+// ===========================================================================
 // RegisterMusicTrack
 // ===========================================================================
 
@@ -184,9 +204,12 @@ void AudioSystem::Update(World& world, float deltaTime)
     // ──────────────────────────────────────────────────
     // World::View iterates only the entities that have AudioSourceComponent.
     // Entities without it are skipped at zero cost.
+    //
+    // We capture `world` by reference so we can query TransformComponent for
+    // 3D emitters inside the same lambda (EntityID is available to us there).
     // -----------------------------------------------------------------------
     world.View<AudioSourceComponent>(
-        [this](EntityID /*id*/, AudioSourceComponent& src)
+        [this, &world](EntityID id, AudioSourceComponent& src)
         {
             if (src.isPlaying && src.voiceIndex == -1)
             {
@@ -208,6 +231,34 @@ void AudioSystem::Update(World& world, float deltaTime)
                 // Voice finished naturally (non-looping clip completed).
                 src.voiceIndex = -1;
                 src.isPlaying  = false;
+            }
+
+            // ---------------------------------------------------------------
+            // TEACHING NOTE — Per-Frame 3D Attenuation (M18)
+            // ---------------------------------------------------------------
+            // For every 3D source that has an active voice slot, we read the
+            // entity's TransformComponent position (world space) and ask the
+            // backend to recompute and apply the distance-based volume.
+            //
+            // We check HasComponent<TransformComponent> first: a 3D audio
+            // source without a transform makes no sense, but we guard against
+            // it rather than crash.  Non-3D (is3D == false) sources are skipped
+            // entirely — they play at full volume regardless of position.
+            // ---------------------------------------------------------------
+            if (src.is3D && src.voiceIndex >= 0)
+            {
+                if (world.HasComponent<TransformComponent>(id))
+                {
+                    const auto& tr = world.GetComponent<TransformComponent>(id);
+                    m_backend.Apply3DAttenuation(
+                        src.voiceIndex,
+                        tr.position.x,
+                        tr.position.y,
+                        tr.position.z,
+                        src.maxDistance,
+                        src.volume * m_sfxVolume
+                    );
+                }
             }
         }
     );

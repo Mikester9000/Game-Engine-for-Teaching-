@@ -181,6 +181,25 @@ public:
     /** @return The current music FSM state. */
     MusicState GetMusicState() const { return m_currentMusicState; }
 
+    /**
+     * @brief Set the listener position used for 3D audio attenuation.
+     *
+     * Call this once per frame with the camera (or player ear) world position.
+     * The position is forwarded to the XAudio2Backend where it is used by
+     * Apply3DAttenuation() to compute distance-based volume rolloff.
+     *
+     * TEACHING NOTE — Who Calls This?
+     * ──────────────────────────────────
+     * In GameRuntime, the camera position is read from CameraSystem each frame
+     * and forwarded to AudioSystem::SetListenerPosition().  This ensures 3D
+     * sounds are always attenuated relative to the current camera location.
+     *
+     * @param x  World-space X coordinate.
+     * @param y  World-space Y coordinate.
+     * @param z  World-space Z coordinate.
+     */
+    void SetListenerPosition(float x, float y, float z);
+
     // -----------------------------------------------------------------------
     // Volume control
     // -----------------------------------------------------------------------

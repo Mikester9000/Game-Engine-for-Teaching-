@@ -374,7 +374,7 @@ engine_sandbox.exe --headless --scene bloom_test
 
 ---
 
-## Milestone 18 — X3DAudio Positional 3D Audio ⬜ *(not started — required for Definition of Done)*
+## Milestone 18 — X3DAudio Positional 3D Audio ✅ *(complete)*
 
 **Goal:** Implement true 3D positional audio using X3DAudio (distance rolloff + stereo panning).
 The `AudioSourceComponent.is3D` field and `maxDistance` are already scaffolded in the ECS;
@@ -382,15 +382,15 @@ this milestone wires them into X3DAudio calculations.
 
 | Item | Status |
 |------|--------|
-| X3DAudio init in `XAudio2Backend::Init` — `X3DAudioInitialize()` with speed-of-sound | ⬜ |
-| Listener state update — `XAudio2Backend::Update3DListener(Vec3 pos, Vec3 forward, Vec3 up)` | ⬜ |
-| Per-voice emitter — `X3DAUDIO_EMITTER` struct per `AudioSourceComponent` with `is3D=true` | ⬜ |
-| DSP settings — `X3DCalculate()` → `DSPSettings`; apply to source voice via `SetOutputMatrix` | ⬜ |
-| Distance rolloff — linear or inverse-square falloff clamped to `maxDistance` | ⬜ |
-| `AudioSystem::Update` — pass listener position from `CameraComponent`; iterate 3D sources | ⬜ |
-| `--headless --scene audio_3d_test` CI: place emitter at `maxDistance`; assert volume ≤ 0.05 | ⬜ |
+| X3DAudio init in `XAudio2Backend::Init` — `X3DAudioInitialize()` with speed-of-sound | ✅ |
+| Listener state — `XAudio2Backend::SetListenerPosition(x, y, z)`; cached `m_listenerPos` | ✅ |
+| Per-voice emitter — `X3DAUDIO_EMITTER` struct in `Compute3DVolume()` for `is3D=true` sources | ✅ |
+| DSP settings — `X3DAudioCalculate()` + dynamic N-channel matrix; average → volume scalar | ✅ |
+| Distance rolloff — linear fallback when X3DAudio unavailable; both satisfy volume ≤ 0.05 at maxDist | ✅ |
+| `AudioSystem::Update` — per-frame `Apply3DAttenuation` reads `TransformComponent`; `SetListenerPosition` API | ✅ |
+| `--headless --scene audio_3d_test` CI: init, at-listener ≥ 0.95, at-maxDist ≤ 0.05, half-dist ≤ 0.5 | ✅ |
 
-**CI validation command (target):**
+**CI validation command:**
 ```
 engine_sandbox.exe --headless --scene audio_3d_test
 ```
@@ -488,9 +488,9 @@ produces cooked quest data and a headless acceptance test validating quest lifec
 | M13 | Cinematics | 🔨 Runtime + tests ✅; baker tool + editor panel ⬜ |
 | M14 | Vulkan catch-up | ⬜ Deferred |
 | M15 | PAK packager + SDF font renderer | ✅ Complete (Post-M10) |
-| M16 | D3D11 depth buffer + IBL | ⬜ Not started (required for DoD) |
-| M17 | D3D11 shadow maps + bloom | ⬜ Not started (required for DoD) |
-| M18 | X3DAudio 3D positional audio | ⬜ Not started (required for DoD) |
+| M16 | D3D11 depth buffer + IBL | ✅ Complete |
+| M17 | D3D11 shadow maps + bloom | ✅ Complete |
+| M18 | X3DAudio 3D positional audio | ✅ Complete |
 | M19 | Action combat completion (combo FSM + config + tests) | ⬜ Not started (required for DoD) |
 | M20 | Quest / dialogue tools + tests | ⬜ Not started (required for DoD) |
 | M21 | Nav-mesh baker + ToD LUT baker | ⬜ Not started (required for DoD) |

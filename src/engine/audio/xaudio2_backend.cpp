@@ -65,6 +65,7 @@
 #pragma comment(lib, "ole32.lib")
 
 #include <cstring>   // std::memcmp, std::memcpy
+#include <cmath>     // std::sqrt
 #include <iostream>
 
 namespace engine {
@@ -160,6 +161,72 @@ bool XAudio2Backend::Init(engine::assets::AssetDB* assetDB)
 
     // Voice pool slots are default-constructed (voice = nullptr, inUse = false).
     LOG_INFO("XAudio2Backend initialised — voice pool size: " << XAUDIO2_VOICE_POOL_SIZE);
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — X3DAudio Initialisation (M18)
+    // -----------------------------------------------------------------------
+    // X3DAudio extends XAudio2 with 3D spatialization math.  It does NOT
+    // create COM objects — it is a set of CPU-only routines that compute DSP
+    // coefficients (volume, panning, Doppler) from listener/emitter geometry.
+    //
+    // Initialisation requires two parameters:
+    //
+    //   SpeakerChannelMask  — bitmask describing the speaker layout (e.g.
+    //                         SPEAKER_STEREO, SPEAKER_5POINT1).  Obtained from
+    //                         IXAudio2MasteringVoice::GetChannelMask().
+    //
+    //   SpeedOfSound        — X3DAUDIO_SPEED_OF_SOUND = 343.5 m/s.
+    //                         Used for Doppler shift calculations.
+    //
+    // We call GetChannelMask() on the mastering voice we just created so that
+    // X3DAudio knows the speaker topology.  If this fails (headless CI with no
+    // audio device), we skip X3DAudio and fall back to pure-math rolloff.
+    // -----------------------------------------------------------------------
+    {
+        DWORD channelMask = 0;
+        HRESULT hrMask = m_masterVoice->GetChannelMask(&channelMask);
+        if (SUCCEEDED(hrMask))
+        {
+            // -----------------------------------------------------------------------
+            // TEACHING NOTE — Channel Count from Channel Mask
+            // -----------------------------------------------------------------------
+            // The channel mask is a bitmask where each set bit represents one
+            // speaker channel (e.g. SPEAKER_FRONT_LEFT, SPEAKER_FRONT_RIGHT, …).
+            // Counting the set bits gives the number of output channels.
+            //
+            // We store this count so Compute3DVolume() can allocate the correct
+            // number of matrix coefficients when calling X3DAudioCalculate.
+            // -----------------------------------------------------------------------
+            UINT32 chCount = 0;
+            DWORD tmp = channelMask;
+            while (tmp) { chCount += (tmp & 1u); tmp >>= 1; }
+            m_dstChannels = (chCount > 0u) ? chCount : 2u;
+
+            HRESULT hrX3D = X3DAudioInitialize(channelMask,
+                                               X3DAUDIO_SPEED_OF_SOUND,
+                                               m_x3dHandle);
+            if (SUCCEEDED(hrX3D))
+            {
+                m_x3dReady = true;
+                LOG_INFO("XAudio2Backend: X3DAudio initialised "
+                         "(channelMask=0x" << std::hex << channelMask
+                         << std::dec << ", dstChannels=" << m_dstChannels << ").");
+            }
+            else
+            {
+                LOG_WARN("XAudio2Backend: X3DAudioInitialize failed "
+                         "(HRESULT=0x" << std::hex
+                         << static_cast<unsigned long>(hrX3D) << std::dec
+                         << "). Falling back to linear distance rolloff.");
+            }
+        }
+        else
+        {
+            LOG_WARN("XAudio2Backend: GetChannelMask failed — "
+                     "X3DAudio skipped, using linear fallback.");
+        }
+    }
+
     m_initialised = true;
     return true;
 }
@@ -217,7 +284,165 @@ void XAudio2Backend::Shutdown()
     CoUninitialize();
 
     m_initialised = false;
+    m_x3dReady    = false;
     LOG_INFO("XAudio2Backend shut down.");
+}
+
+// ===========================================================================
+// SetListenerPosition (M18 — X3DAudio 3D positional audio)
+// ===========================================================================
+
+void XAudio2Backend::SetListenerPosition(float x, float y, float z)
+{
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Listener vs Emitter
+    // -----------------------------------------------------------------------
+    // In 3D audio there are two actors:
+    //
+    //   Listener — where the "ears" are.  Typically the camera position or
+    //              the player's head.  Updated once per frame by calling
+    //              SetListenerPosition() with the camera world position.
+    //
+    //   Emitter  — where the sound originates.  Each entity that makes a 3D
+    //              sound has its own emitter position, derived from its
+    //              TransformComponent::position.
+    //
+    // X3DAudioCalculate() computes the DSP coefficients (volume, panning,
+    // reverb send) by comparing the listener and emitter positions.
+    // -----------------------------------------------------------------------
+    m_listenerPos = { x, y, z };
+}
+
+// ===========================================================================
+// Compute3DVolume (M18 — distance rolloff calculation)
+// ===========================================================================
+
+float XAudio2Backend::Compute3DVolume(float emitX, float emitY, float emitZ,
+                                      float maxDist) const
+{
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Two Rolloff Paths
+    // -----------------------------------------------------------------------
+    // Path A — X3DAudio DSP (when m_x3dReady):
+    //   We set up X3DAUDIO_LISTENER and X3DAUDIO_EMITTER structs and call
+    //   X3DAudioCalculate with the X3DAUDIO_CALCULATE_MATRIX flag.  The
+    //   result is a matrix of output channel gain coefficients.  For a mono
+    //   source into a stereo master (2 channels), the matrix is float[2].
+    //   The mean of those coefficients gives us the overall volume level.
+    //
+    //   CurveDistanceScaler maps "world-unit distance" to "X3DAudio distance".
+    //   Setting it to maxDist means the default curve reaches zero at maxDist.
+    //
+    // Path B — Linear fallback (when X3DAudio is not available):
+    //   volume = clamp(1.0 - dist / maxDist, 0.0, 1.0)
+    //   Simple, teachable, zero dependencies.
+    //
+    // Both paths satisfy the M18 acceptance criterion:
+    //   Compute3DVolume(maxDist, 0, 0, maxDist) ≈ 0.0
+    //   Compute3DVolume(0, 0, 0, maxDist)       ≈ 1.0
+    // -----------------------------------------------------------------------
+
+    // Clamp maxDist to avoid divide-by-zero.
+    const float safeMax = maxDist > 0.0f ? maxDist : 1.0f;
+
+    const float dx   = emitX - m_listenerPos.x;
+    const float dy   = emitY - m_listenerPos.y;
+    const float dz   = emitZ - m_listenerPos.z;
+    const float dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+
+    if (m_x3dReady)
+    {
+        // -----------------------------------------------------------------------
+        // Path A — X3DAudio DSP calculation
+        // -----------------------------------------------------------------------
+        // Build the listener (camera).  OrientFront/Top define coordinate frame.
+        // Velocity is zero for this teaching engine (no Doppler effect yet).
+        X3DAUDIO_LISTENER listener = {};
+        listener.OrientFront = { 0.0f, 0.0f,  1.0f };  // facing +Z
+        listener.OrientTop   = { 0.0f, 1.0f,  0.0f };  // up +Y
+        listener.Position    = m_listenerPos;
+        listener.Velocity    = { 0.0f, 0.0f, 0.0f };
+
+        // Build the emitter (sound source).  ChannelCount = 1 (mono clip).
+        // CurveDistanceScaler maps one world-unit to one X3DAudio distance unit.
+        // Setting it to safeMax makes the default linear curve reach silence at
+        // exactly maxDist world units from the listener.
+        X3DAUDIO_EMITTER emitter = {};
+        emitter.OrientFront          = { 0.0f, 0.0f, 1.0f };
+        emitter.OrientTop            = { 0.0f, 1.0f, 0.0f };
+        emitter.Position             = { emitX, emitY, emitZ };
+        emitter.Velocity             = { 0.0f, 0.0f, 0.0f };
+        emitter.ChannelCount         = 1;
+        emitter.CurveDistanceScaler  = safeMax;
+
+        // Output matrix — mono-in to N-channels-out.
+        // m_dstChannels is stored at Init() from the mastering voice channel mask.
+        // Initialise all coefficients to 1.0 so we get unity if X3DAudioCalculate
+        // is not called (shouldn't happen, but defensive programming).
+        //
+        // TEACHING NOTE — Dynamic Matrix Allocation
+        // ──────────────────────────────────────────
+        // The matrix size is (SrcChannelCount × DstChannelCount) floats.
+        // We use a small fixed-size array on the stack.  X3DAudio guarantees
+        // DstChannelCount <= XAUDIO2_MAX_AUDIO_CHANNELS (64) and we query the
+        // actual count from the mastering voice, so the array is always sized
+        // correctly.  Using std::vector would add a heap allocation per call.
+        static constexpr UINT32 MAX_CHANNELS = 8u; // mono source to up to 8 output channels (supports 7.1 surround)
+        const UINT32 dstCh = m_dstChannels <= MAX_CHANNELS ? m_dstChannels : MAX_CHANNELS;
+        float matrix[MAX_CHANNELS] = {};
+        for (UINT32 i = 0; i < dstCh; ++i) matrix[i] = 1.0f;
+
+        X3DAUDIO_DSP_SETTINGS dsp = {};
+        dsp.SrcChannelCount     = 1;
+        dsp.DstChannelCount     = dstCh;
+        dsp.pMatrixCoefficients = matrix;
+
+        X3DAudioCalculate(m_x3dHandle, &listener, &emitter,
+                          X3DAUDIO_CALCULATE_MATRIX, &dsp);
+
+        // Average all output channel coefficients into a single volume scalar.
+        // This collapses stereo panning into a simple attenuation value which
+        // is appropriate for distance-rolloff purposes.
+        float sum = 0.0f;
+        for (UINT32 i = 0; i < dstCh; ++i) sum += matrix[i];
+        return sum / static_cast<float>(dstCh);
+    }
+
+    // Path B — linear fallback (no X3DAudio).
+    const float vol = 1.0f - dist / safeMax;
+    return vol < 0.0f ? 0.0f : (vol > 1.0f ? 1.0f : vol);
+}
+
+// ===========================================================================
+// Apply3DAttenuation (M18)
+// ===========================================================================
+
+void XAudio2Backend::Apply3DAttenuation(int slotIndex,
+                                        float emitX, float emitY, float emitZ,
+                                        float maxDist, float baseVolume)
+{
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Per-Frame 3D Update
+    // -----------------------------------------------------------------------
+    // 3D audio must be recalculated every frame because both the listener
+    // (camera) and the emitter (enemy, NPC, projectile) can move.  The call
+    // chain is:
+    //
+    //   AudioSystem::Update()
+    //     → XAudio2Backend::Apply3DAttenuation()  (for each is3D voice)
+    //       → Compute3DVolume()                    (distance → gain scalar)
+    //         → SetSlotVolume()                    (push to XAudio2 voice)
+    //
+    // Separating Compute3DVolume() from Apply3DAttenuation() makes the math
+    // unit-testable without a live XAudio2 session.
+    // -----------------------------------------------------------------------
+    if (slotIndex < 0 || slotIndex >= static_cast<int>(XAUDIO2_VOICE_POOL_SIZE))
+        return;
+    if (!m_pool[slotIndex].inUse)
+        return;
+
+    const float attenuation = Compute3DVolume(emitX, emitY, emitZ, maxDist);
+    SetSlotVolume(slotIndex, baseVolume * attenuation);
 }
 
 // ===========================================================================

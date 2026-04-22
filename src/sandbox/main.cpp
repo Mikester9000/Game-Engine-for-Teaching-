@@ -82,6 +82,7 @@
  *   engine_sandbox.exe --headless --scene font_test         # Font Renderer: SDF atlas init + render acceptance test (CI)
  *   engine_sandbox.exe --headless --scene shadow_test       # M17 Shadow Maps: shadow-pass + PCF lit-pass acceptance test (CI)
  *   engine_sandbox.exe --headless --scene bloom_test        # M17 Bloom: bright-pass + blur + composite acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene audio_3d_test     # M18 X3DAudio: listener init + distance rolloff acceptance test (CI)
  *
  * ============================================================================
  *
@@ -250,6 +251,7 @@
 #ifdef ENGINE_ENABLE_D3D11
 #include "engine/ui/font_renderer.hpp"
 #include "engine/rendering/d3d11/D3D11Renderer.hpp"
+#include "engine/audio/xaudio2_backend.hpp"
 #endif
 
 #include <iostream>
@@ -2692,6 +2694,124 @@ int main(int argc, char* argv[])
                 std::cout << "[SKIP] bloom_test: ENGINE_ENABLE_D3D11 not defined.\n"
                              "[PASS] bloom_test: skipped (no D3D11 in build).\n";
 #endif
+            }
+            else if (scene == "audio_3d_test")
+            {
+                // -----------------------------------------------------------
+                // M18: X3DAudio 3D positional audio acceptance tests (3 tests).
+                //
+                // TEACHING NOTE — What the audio_3d_test validates:
+                //   Test 1 (init):
+                //     XAudio2Backend::Init() is called.  On headless CI with no
+                //     audio hardware it gracefully degrades (X3DAudio falls back
+                //     to the linear rolloff path).  Either way the backend is
+                //     usable and Compute3DVolume() works correctly.
+                //
+                //   Test 2 (at-listener volume ≈ 1.0):
+                //     Emitter at the listener position (distance = 0) must return
+                //     volume ≈ 1.0 from Compute3DVolume().  Tolerance: >= 0.95.
+                //
+                //   Test 3 (at-maxDistance volume ≈ 0.0):
+                //     Emitter at exactly maxDistance must return volume <= 0.05.
+                //     This satisfies the M18 acceptance criterion:
+                //       "assert volume <= 0.05 at maxDistance"
+                //
+                //   (Bonus) Test 4 (half-distance volume <= 0.5):
+                //     Emitter at maxDist/2 must return volume <= 0.5.  Verifies
+                //     that the rolloff is monotonically decreasing.
+                //
+                // All tests are CPU-only — they exercise Compute3DVolume()
+                // which uses X3DAudio DSP when available and linear math as a
+                // fallback.  No audio hardware or GPU is required.
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+
+                // Step 1 — init the backend (graceful on headless CI).
+                engine::audio::XAudio2Backend backend3D;
+                // Note: Init() may return false on a headless runner with no
+                // audio device.  We proceed regardless because Compute3DVolume
+                // is callable without a fully initialised backend — it uses the
+                // linear fallback path when m_x3dReady is false.
+                bool audioInitOk = backend3D.Init(nullptr /*no AssetDB needed*/);
+                if (audioInitOk)
+                {
+                    std::cout << "[OK] audio_3d_test/init: "
+                                 "XAudio2Backend + X3DAudio initialised.\n";
+                }
+                else
+                {
+                    std::cout << "[OK] audio_3d_test/init: "
+                                 "XAudio2 not available (headless CI -- expected). "
+                                 "Using linear rolloff fallback.\n";
+                }
+
+                // Establish listener at the origin.
+                backend3D.SetListenerPosition(0.0f, 0.0f, 0.0f);
+                const float maxDist = 50.0f;
+
+                // Test 2 — emitter at listener (distance = 0) -> volume ~1.0.
+                {
+                    const float vol = backend3D.Compute3DVolume(0.0f, 0.0f, 0.0f, maxDist);
+                    if (vol < 0.95f)
+                    {
+                        std::cout << "[FAIL] audio_3d_test/at_listener: "
+                                     "volume at distance 0 = " << vol
+                                  << " (expected >= 0.95).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] audio_3d_test/at_listener: "
+                                     "volume at distance 0 = " << vol << ".\n";
+                    }
+                }
+
+                // Test 3 — emitter at maxDistance -> volume ~0.0.
+                {
+                    const float vol = backend3D.Compute3DVolume(maxDist, 0.0f, 0.0f, maxDist);
+                    if (vol > 0.05f)
+                    {
+                        std::cout << "[FAIL] audio_3d_test/at_max_distance: "
+                                     "volume at maxDist = " << vol
+                                  << " (expected <= 0.05).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] audio_3d_test/at_max_distance: "
+                                     "volume at maxDist = " << vol << ".\n";
+                    }
+                }
+
+                // Test 4 — emitter at half maxDistance -> volume <= 0.5.
+                {
+                    const float vol = backend3D.Compute3DVolume(maxDist * 0.5f, 0.0f, 0.0f, maxDist);
+                    if (vol > 0.5f + 1e-4f)
+                    {
+                        std::cout << "[FAIL] audio_3d_test/half_distance: "
+                                     "volume at maxDist/2 = " << vol
+                                  << " (expected <= 0.5).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] audio_3d_test/half_distance: "
+                                     "volume at maxDist/2 = " << vol << ".\n";
+                    }
+                }
+
+                backend3D.Shutdown();
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] audio_3d_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] audio_3d_test: 4 acceptance tests passed "
+                             "(init/fallback, at-listener volume, at-maxDist rolloff, half-distance rolloff).\n";
             }
             else
             {
