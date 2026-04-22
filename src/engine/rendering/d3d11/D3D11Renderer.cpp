@@ -4401,8 +4401,10 @@ static bool LoadShadowScene(ID3D11Device*                device,
     // Values are highly application-specific.  For a normalised D32_FLOAT map
     // the values below (bias=100, slope=1.5) are a reasonable starting point.
     //
-    // CullMode = FRONT: back-face culling on the shadow pass prevents
-    // "peter-panning" — thin objects casting shadows behind themselves.
+    // CullMode = BACK: standard back-face culling is used during the shadow
+    // pass.  Front-face culling (CULL_FRONT) is an alternative that can reduce
+    // "peter-panning" on thick objects, but requires closed meshes and is not
+    // used here to keep the demo geometry requirements minimal.
     // -----------------------------------------------------------------------
     {
         D3D11_RASTERIZER_DESC rd = {};
@@ -5051,23 +5053,24 @@ void D3D11Renderer::DrawBloomScene()
     m_context->OMSetDepthStencilState(nullptr, 0);
 
     // -----------------------------------------------------------------------
-    // Step 1 — Fill the scene RT with a bright HDR colour (simulates scene).
+    // Step 1 — Fill the scene RT with a bright test colour (simulates scene).
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — Simulated HDR Scene Content
+    // TEACHING NOTE — Simulated Scene Content For Bloom
     // For the bloom demo we bypass a full scene render and simply clear the
-    // scene RT to a very bright colour (values > 1.0 in "virtual HDR").
+    // scene RT to a bright orange test colour stored in a UNORM render target.
     // In a production engine the scene RT is filled by the main render pass
     // (geometry + lighting) and the bloom pipeline then processes its output.
     // Using ClearRenderTargetView keeps the demo self-contained and focuses
     // attention on the bloom pipeline itself.
     //
-    // DXGI_FORMAT_R8G8B8A8_UNORM clamps all values to [0, 1], so values > 1
-    // saturate to 1.0 in the texture.  With the threshold at 0.7, all pixels
-    // of this bright orange colour will pass the bright-pass filter.
+    // This demo does not use a floating-point HDR render target: the colour
+    // stays in the normal [0, 1] range of DXGI_FORMAT_R8G8B8A8_UNORM.
+    // With the threshold at 0.7, this bright orange clear colour still
+    // produces bright-pass output without needing true HDR values.
     // -----------------------------------------------------------------------
     {
         m_context->RSSetViewports(1, &bloomVP);
-        float bright[] = { 1.0f, 0.85f, 0.2f, 1.0f };  // bright orange — well above threshold
+        float bright[] = { 1.0f, 0.85f, 0.2f, 1.0f };  // bright orange — channels exceed the bright-pass threshold
         m_context->OMSetRenderTargets(1, &m_bloomScene.sceneRTV, nullptr);
         m_context->ClearRenderTargetView(m_bloomScene.sceneRTV, bright);
     }

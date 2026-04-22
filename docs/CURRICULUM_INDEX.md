@@ -14547,8 +14547,10 @@ depth-bias feature offsets depth values written to the shadow map:
 Values are highly application-specific.  For a normalised D32_FLOAT map
 the values below (bias=100, slope=1.5) are a reasonable starting point.
 
-CullMode = FRONT: back-face culling on the shadow pass prevents
-"peter-panning" — thin objects casting shadows behind themselves.
+CullMode = BACK: standard back-face culling is used during the shadow
+pass.  Front-face culling (CULL_FRONT) is an alternative that can reduce
+"peter-panning" on thick objects, but requires closed meshes and is not
+used here to keep the demo geometry requirements minimal.
 -----------------------------------------------------------------------
 {
 D3D11_RASTERIZER_DESC rd = {};
@@ -14577,7 +14579,7 @@ return false;
 
 ### SamplerComparisonState (hardware PCF)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4435) (line 4435)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4437) (line 4437)
 
 D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT enables bilinear PCF:
   • Takes a 2×2 neighbourhood, compares each texel, and bilinearly
@@ -14618,7 +14620,7 @@ return false;
 
 ### Reuse the UV Sphere for the Shadow Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4476) (line 4476)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4478) (line 4478)
 
 The same sphere geometry used in the PBR scenes (M9, M16) serves as
 both the shadow caster and the lit object in this demo.  Using a sphere
@@ -14636,7 +14638,7 @@ std::vector<uint16_t> idx(static_cast<size_t>(nIndices));
 
 ### Orthographic Projection for Directional Lights
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4592) (line 4592)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4594) (line 4594)
 
 A directional light has parallel rays (infinite distance), so it uses
 an ORTHOGRAPHIC projection — no perspective foreshortening.
@@ -14648,7 +14650,7 @@ const float eyeZ = -kLightDirZ * 5.0f;
 
 ### Row-Major Matrix Multiply
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4628) (line 4628)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4630) (line 4630)
 
 In row-vector × matrix convention, the chain is:
   clipPos = pos_model × world × lightView × lightProj
@@ -14665,7 +14667,7 @@ lightVP.m[r][c] += lightView.m[r][k] * lightProj.m[k][c];
 
 ### No Colour Output
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4645) (line 4645)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4647) (line 4647)
 
 We bind the shadow DSV but NO colour RTV (first argument = 0, second =
 nullptr).  The rasteriser will still write depth — only colour output
@@ -14675,7 +14677,7 @@ compared to a dummy colour target.
 
 ### OMGetRenderTargets increments the COM ref count of the
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4653) (line 4653)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4655) (line 4655)
 
 returned pointers.  We MUST call Release() on them after restoring.
 ID3D11RenderTargetView* prevRTV = nullptr;
@@ -14684,7 +14686,7 @@ m_context->OMGetRenderTargets(1, &prevRTV, &prevDSV);
 
 ### DSV ↔ SRV Mutual Exclusion
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4700) (line 4700)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4702) (line 4702)
 
 D3D11 does not allow the same sub-resource to be bound simultaneously
 as a DSV (write) and an SRV (read).  We must unbind the DSV first by
@@ -14696,7 +14698,7 @@ m_context->RSSetState(nullptr);
 
 ### Offscreen Render Target Pattern
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4781) (line 4781)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4783) (line 4783)
 
 Bloom requires rendering to TEXTURES that are not the swap-chain back buffer.
 Each bloom RT follows the same three-object pattern:
@@ -14712,7 +14714,7 @@ always alternates: write to tex A → read from tex A (write next tex B).
 
 ### Reusing sky.vs.hlsl as the Full-Screen VS
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4869) (line 4869)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4871) (line 4871)
 
 The full-screen triangle trick (SV_VertexID) generates 3 vertices that
 cover the entire viewport without any vertex buffer.  sky.vs.hlsl already
@@ -14750,7 +14752,7 @@ return code;
 
 ### Structured Cleanup via goto Labels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4988) (line 4988)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4990) (line 4990)
 
 -----------------------------------------------------------------------
 Cascaded cleanup with goto mimics the RAII pattern in systems where
@@ -14786,31 +14788,32 @@ scene.sceneSRV  = nullptr; scene.sceneRTV  = nullptr; scene.sceneTex  = nullptr;
 return false;
 }
 
-### Simulated HDR Scene Content
+### Simulated Scene Content For Bloom
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5056) (line 5056)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5058) (line 5058)
 
 For the bloom demo we bypass a full scene render and simply clear the
-scene RT to a very bright colour (values > 1.0 in "virtual HDR").
+scene RT to a bright orange test colour stored in a UNORM render target.
 In a production engine the scene RT is filled by the main render pass
 (geometry + lighting) and the bloom pipeline then processes its output.
 Using ClearRenderTargetView keeps the demo self-contained and focuses
 attention on the bloom pipeline itself.
 
-DXGI_FORMAT_R8G8B8A8_UNORM clamps all values to [0, 1], so values > 1
-saturate to 1.0 in the texture.  With the threshold at 0.7, all pixels
-of this bright orange colour will pass the bright-pass filter.
+This demo does not use a floating-point HDR render target: the colour
+stays in the normal [0, 1] range of DXGI_FORMAT_R8G8B8A8_UNORM.
+With the threshold at 0.7, this bright orange clear colour still
+produces bright-pass output without needing true HDR values.
 -----------------------------------------------------------------------
 {
 m_context->RSSetViewports(1, &bloomVP);
-float bright[] = { 1.0f, 0.85f, 0.2f, 1.0f };  // bright orange — well above threshold
+float bright[] = { 1.0f, 0.85f, 0.2f, 1.0f };  // bright orange — channels exceed the bright-pass threshold
 m_context->OMSetRenderTargets(1, &m_bloomScene.sceneRTV, nullptr);
 m_context->ClearRenderTargetView(m_bloomScene.sceneRTV, bright);
 }
 
 ### Restoring the Caller's Render Target
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5139) (line 5139)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5142) (line 5142)
 
 The final composite outputs to the render target that the CALLER set up
 (either the swap-chain back buffer in windowed mode, or the 64×64 off-
@@ -15214,7 +15217,7 @@ Key resources:
   cmpSampler            — D3D11_COMPARISON_LESS_EQUAL hardware PCF sampler.
   shadowCB (b0, shadow VS) — 64-byte lightViewProj matrix (ortho).
   litCB    (b0, lit VS+PS) — 272-byte world/view/proj + lightViewProj + lightDir.
-  shadowRast             — cull-front rasterizer with depth bias.
+  shadowRast             — cull-back rasterizer with depth bias.
   shadowDSS              — depth test + write enabled (no stencil).
 -----------------------------------------------------------------------
 struct ShadowScene

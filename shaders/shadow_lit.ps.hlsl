@@ -86,9 +86,9 @@ cbuffer ShadowLitCB : register(b0)
 // TEACHING NOTE — SamplerComparisonState (PCF sampler)
 // D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT enables bilinear PCF:
 //   • Bilinear filtering of comparison results across neighbouring texels.
-//   • D3D11_COMPARISON_LESS: sample PASSES if stored depth > reference.
+//   • D3D11_COMPARISON_LESS_EQUAL: sample PASSES if reference <= stored depth.
 //     (The shadow map stores LIGHT-SPACE depth; we test whether the surface
-//      is closer to the light than the stored occluder.)
+//      is closer to the light than, or equal to, the stored occluder depth.)
 // ---------------------------------------------------------------------------
 Texture2D<float>      g_shadowMap  : register(t0);  ///< 512×512 D32_FLOAT depth map
 SamplerComparisonState g_cmpSampler : register(s0);  ///< PCF comparison sampler

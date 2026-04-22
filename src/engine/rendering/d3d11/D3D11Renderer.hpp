@@ -486,7 +486,7 @@ public:
     //   cmpSampler            — D3D11_COMPARISON_LESS_EQUAL hardware PCF sampler.
     //   shadowCB (b0, shadow VS) — 64-byte lightViewProj matrix (ortho).
     //   litCB    (b0, lit VS+PS) — 272-byte world/view/proj + lightViewProj + lightDir.
-    //   shadowRast             — cull-front rasterizer with depth bias.
+    //   shadowRast             — cull-back rasterizer with depth bias.
     //   shadowDSS              — depth test + write enabled (no stencil).
     // -----------------------------------------------------------------------
     struct ShadowScene
