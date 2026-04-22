@@ -40,6 +40,9 @@ _TOOLS_DIR = _TESTS_DIR.parent
 _REPO_ROOT = _TOOLS_DIR.parent
 _FIXTURES_VALID = _TESTS_DIR / "fixtures" / "valid"
 _FIXTURES_INVALID = _TESTS_DIR / "fixtures" / "invalid"
+_SAMPLE_ASSET_REGISTRY = (
+    _REPO_ROOT / "samples" / "vertical_slice_project" / "AssetRegistry.json"
+)
 
 import importlib.util as _ilu
 
@@ -286,6 +289,27 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(
             rc, 0,
             "assets/examples/ manifests should all pass the validator",
+        )
+
+    def test_cli_asset_registry_auto_schema(self) -> None:
+        """AssetRegistry.json should validate via automatic schema detection."""
+        self.assertTrue(
+            _SAMPLE_ASSET_REGISTRY.exists(),
+            f"Sample registry missing: {_SAMPLE_ASSET_REGISTRY}",
+        )
+        rc = va.main([str(_SAMPLE_ASSET_REGISTRY)])
+        self.assertEqual(
+            rc, 0,
+            "AssetRegistry.json should pass with auto schema detection",
+        )
+
+    def test_cli_asset_registry_explicit_schema(self) -> None:
+        """AssetRegistry.json should validate when shared schema is explicitly passed."""
+        schema_path = str(_REPO_ROOT / "shared" / "schemas" / "asset_registry.schema.json")
+        rc = va.main([str(_SAMPLE_ASSET_REGISTRY), "--schema", schema_path])
+        self.assertEqual(
+            rc, 0,
+            "AssetRegistry.json should pass with explicit shared schema",
         )
 
 

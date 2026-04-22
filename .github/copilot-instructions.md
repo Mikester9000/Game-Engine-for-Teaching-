@@ -34,7 +34,7 @@ studied, and extended. Copilot continuations should follow these rules strictly.
 | Monorepo folder layout | ✅ | All dirs: `src/`, `editor/`, `tools/`, `shared/`, `samples/`, `scripts/`, `shaders/`, `docs/` |
 | Root `CMakeLists.txt` | ✅ | `ENGINE_ENABLE_D3D11` (default ON), `ENGINE_ENABLE_VULKAN` (optional), `ENGINE_ENABLE_TERMINAL`, `BUILD_EDITOR` options; `engine_sandbox` + `game` targets |
 | `CMakePresets.json` | ✅ | `windows-debug`, `windows-debug-engine-only` (D3D11, no SDK required), `windows-debug-vulkan` presets defined |
-| Shared JSON schemas (10 formats) | ✅ | `shared/schemas/`: project, asset_registry, scene, audio_bank, skeleton, anim_clip, anim_graph, quest_bank, dialogue_tree, cinematic |
+| Shared JSON schemas (11 formats) | ✅ | `shared/schemas/`: project, asset_registry, scene, material, audio_bank, skeleton, anim_clip, anim_graph, quest_bank, dialogue_tree, cinematic |
 | Shared runtime headers | ✅ | `shared/runtime/`: `Guid.hpp`, `VersionedFile.hpp`, `Log.hpp` |
 | CI — Linux build + Python tests | ✅ | `.github/workflows/build-linux.yml`: builds terminal game, runs 32+11+15 pytest (audio_authoring, anim_authoring, quest_baker) |
 | CI — asset manifest validation | ✅ | `.github/workflows/validate-assets.yml` |
@@ -403,6 +403,7 @@ All data files shared between the editor, tools, and runtime engine MUST:
 | `project.schema.json`          | 1.0.0   | Editor (project open/save)     |
 | `asset_registry.schema.json`   | 1.0.0   | Editor + Engine (asset lookup) |
 | `scene.schema.json`            | 1.0.0   | Editor + Engine (scene load)   |
+| `material.schema.json`         | 1.0.0   | Editor + Engine (material params) |
 | `audio_bank.schema.json`       | 1.0.0   | Audio tool → Engine            |
 | `skeleton.schema.json`         | 1.0.0   | Anim tool → Engine             |
 | `anim_clip.schema.json`        | 1.0.0   | Anim tool → Engine             |

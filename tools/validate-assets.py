@@ -49,7 +49,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -58,6 +58,7 @@ from typing import Any, Dict, List, Tuple
 _TOOLS_DIR = Path(__file__).resolve().parent
 _REPO_ROOT = _TOOLS_DIR.parent
 _SCHEMA_PATH = _REPO_ROOT / "assets" / "schema" / "asset-manifest.schema.json"
+_ASSET_REGISTRY_SCHEMA_PATH = _REPO_ROOT / "shared" / "schemas" / "asset_registry.schema.json"
 
 # ---------------------------------------------------------------------------
 # Colour helpers (ANSI, disabled on Windows without VT mode)
@@ -101,6 +102,83 @@ def _load_schema(path: Path | None = None) -> Dict[str, Any]:
         )
     with schema_path.open(encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def _try_load_json_object(path: Path) -> Optional[Dict[str, Any]]:
+    """Read a JSON file and return its root object, or None on parse/read error."""
+    try:
+        with path.open(encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _is_asset_registry_manifest(manifest: Dict[str, Any]) -> bool:
+    """Heuristic detection for AssetRegistry.json-style documents.
+
+    TEACHING NOTE — Backward-compatible manifest detection
+    ------------------------------------------------------
+    The repo currently has two JSON families:
+      1) assets/schema/asset-manifest.schema.json   (legacy manifestVersion root)
+      2) shared/schemas/asset_registry.schema.json  (runtime registry root)
+
+    Contributors often run this tool directly on AssetRegistry.json.  Auto-
+    detecting the shape here prevents false failures caused by validating a
+    registry document against the legacy manifest schema.
+    """
+    schema_ref = manifest.get("$schema")
+    if isinstance(schema_ref, str) and "asset_registry.schema.json" in schema_ref:
+        return True
+
+    # Fallback shape-based detection for documents that omit $schema.
+    has_assets = isinstance(manifest.get("assets"), list)
+    has_version = isinstance(manifest.get("version"), str)
+    has_manifest_version = isinstance(manifest.get("manifestVersion"), str)
+    return has_assets and has_version and not has_manifest_version
+
+
+def _is_asset_registry_schema(schema: Dict[str, Any]) -> bool:
+    """Detect whether a loaded schema describes the AssetRegistry format."""
+    req = schema.get("required")
+    if isinstance(req, list):
+        req_set = set(x for x in req if isinstance(x, str))
+        if "manifestVersion" in req_set:
+            return False
+        if {"version", "assets"}.issubset(req_set):
+            return True
+
+    props = schema.get("properties")
+    if isinstance(props, dict):
+        if "manifestVersion" in props:
+            return False
+        return "version" in props and "assets" in props
+
+    return False
+
+
+def _resolve_schema_for_file(
+    manifest_path: Path,
+    explicit_schema_path: Optional[Path],
+    schema_cache: Dict[Path, Dict[str, Any]],
+) -> Tuple[Path, Dict[str, Any]]:
+    """Resolve the schema to use for one manifest file.
+
+    If --schema is provided, always use it.
+    Otherwise auto-detect based on the file's JSON root shape.
+    """
+    if explicit_schema_path is not None:
+        schema_path = explicit_schema_path
+    else:
+        manifest = _try_load_json_object(manifest_path)
+        if manifest is not None and _is_asset_registry_manifest(manifest):
+            schema_path = _ASSET_REGISTRY_SCHEMA_PATH
+        else:
+            schema_path = _SCHEMA_PATH
+
+    if schema_path not in schema_cache:
+        schema_cache[schema_path] = _load_schema(schema_path)
+    return schema_path, schema_cache[schema_path]
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +389,85 @@ def _validate_manifest_builtin(
     return errors
 
 
+_REGISTRY_ASSET_VALID_TYPES = {
+    "texture", "mesh", "material", "audio", "audio_bank",
+    "scene", "skeleton", "anim_clip", "anim_graph",
+    "script", "font", "tilemap", "level",
+}
+_UUID_V4_PATTERN = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+_UUID_V4_RE = re.compile(_UUID_V4_PATTERN)
+
+
+def _validate_registry_builtin(
+    manifest: Dict[str, Any], schema: Dict[str, Any]  # noqa: ARG001 — unused in fallback
+) -> List[str]:
+    """Built-in structural validation for shared/schemas/asset_registry.schema.json."""
+    # Keep the `schema` parameter to preserve signature parity with
+    # _validate_manifest_builtin(), so validate_file() can dispatch either
+    # validator without changing call shape.
+    errors: List[str] = []
+
+    version = manifest.get("version")
+    if not isinstance(version, str) or not _SEMVER_RE.match(version):
+        errors.append("version: missing or not a valid SemVer string (X.Y.Z)")
+
+    generated_at = manifest.get("generatedAt")
+    if generated_at is not None and not isinstance(generated_at, str):
+        errors.append("generatedAt: must be a string when present")
+
+    assets = manifest.get("assets")
+    if not isinstance(assets, list):
+        errors.append("assets: missing or not an array")
+        return errors
+
+    for idx, asset in enumerate(assets):
+        prefix = f"assets[{idx}]"
+        if not isinstance(asset, dict):
+            errors.append(f"{prefix}: expected an object, got {type(asset).__name__}")
+            continue
+
+        for field in ("id", "type", "source"):
+            if field not in asset:
+                errors.append(f"{prefix}: missing required field '{field}'")
+            elif not isinstance(asset[field], str) or not asset[field]:
+                errors.append(f"{prefix}.{field}: must be a non-empty string")
+
+        aid = asset.get("id")
+        if isinstance(aid, str) and aid and not _UUID_V4_RE.match(aid):
+            errors.append(f"{prefix}.id: must be a valid UUID v4 string")
+
+        asset_type = asset.get("type")
+        if isinstance(asset_type, str) and asset_type not in _REGISTRY_ASSET_VALID_TYPES:
+            errors.append(
+                f"{prefix}.type: '{asset_type}' is not one of "
+                f"{sorted(_REGISTRY_ASSET_VALID_TYPES)}"
+            )
+
+        hash_value = asset.get("hash")
+        if hash_value is not None:
+            if not isinstance(hash_value, str):
+                errors.append(f"{prefix}.hash: must be a string")
+            elif hash_value and not _SHA256_RE.match(hash_value):
+                errors.append(
+                    f"{prefix}.hash: must be a 64-character lowercase SHA-256 hex string"
+                )
+
+        for opt_field in ("cooked", "name"):
+            value = asset.get(opt_field)
+            if value is not None and not isinstance(value, str):
+                errors.append(f"{prefix}.{opt_field}: must be a string when present")
+
+        for list_field in ("dependencies", "tags"):
+            value = asset.get(list_field)
+            if value is not None:
+                if not isinstance(value, list):
+                    errors.append(f"{prefix}.{list_field}: must be an array when present")
+                elif not all(isinstance(x, str) for x in value):
+                    errors.append(f"{prefix}.{list_field}: every item must be a string")
+
+    return errors
+
+
 # ---------------------------------------------------------------------------
 # Duplicate ID detection
 # ---------------------------------------------------------------------------
@@ -381,7 +538,10 @@ def validate_file(
             # jsonschema returned nothing — means valid
             pass
     else:
-        errors = _validate_manifest_builtin(manifest, schema)
+        if _is_asset_registry_schema(schema):
+            errors = _validate_registry_builtin(manifest, schema)
+        else:
+            errors = _validate_manifest_builtin(manifest, schema)
 
     # --- duplicate id check (always run) ---
     warnings = _check_duplicate_ids(manifest)
@@ -403,8 +563,14 @@ def _collect_manifests(path: Path) -> List[Path]:
         return [path]
     if path.is_dir():
         return sorted(
-            f for f in path.rglob("*manifest*.json")
-            if not f.name.endswith(".schema.json")
+            f for f in path.rglob("*.json")
+            if (
+                not f.name.endswith(".schema.json")
+                and (
+                    "manifest" in (name_lower := f.name.lower())
+                    or name_lower == "assetregistry.json"
+                )
+            )
         )
     return []
 
@@ -442,8 +608,10 @@ def main(argv: List[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="validate-assets",
         description=(
-            "Validate Game Engine asset manifest files against the canonical\n"
-            "JSON schema (assets/schema/asset-manifest.schema.json).\n\n"
+            "Validate Game Engine asset documents against canonical JSON schemas.\n"
+            "By default the tool auto-detects either legacy asset manifests\n"
+            "(assets/schema/asset-manifest.schema.json) or runtime registries\n"
+            "(shared/schemas/asset_registry.schema.json).\n\n"
             "TEACHING NOTE: This is the asset pipeline's lint step.  Run it\n"
             "before packaging, importing, or shipping any assets."
         ),
@@ -466,13 +634,14 @@ def main(argv: List[str] | None = None) -> int:
     parser.add_argument(
         "--schema",
         metavar="FILE",
-        help=f"Override schema file path (default: assets/schema/asset-manifest.schema.json)",
+        help=(
+            "Override schema file path. If omitted, schema is auto-detected per file:\n"
+            "asset-manifest.schema.json for legacy manifests, or\n"
+            "asset_registry.schema.json for AssetRegistry documents."
+        ),
     )
     args = parser.parse_args(argv)
-
-    # --- resolve schema ---
-    schema_path = Path(args.schema) if args.schema else _SCHEMA_PATH
-    schema = _load_schema(schema_path)
+    explicit_schema_path: Optional[Path] = Path(args.schema) if args.schema else None
 
     # --- resolve paths ---
     if not args.paths:
@@ -497,15 +666,18 @@ def main(argv: List[str] | None = None) -> int:
 
     # --- header ---
     using = "jsonschema (full)" if _has_jsonschema() else "built-in (structural)"
+    schema_label = str(explicit_schema_path) if explicit_schema_path else "auto (per-file)"
     print(_bold(f"\n=== validate-assets — validator: {using} ==="))
-    print(f"Schema : {schema_path}")
+    print(f"Schema : {schema_label}")
     print(f"Files  : {len(manifests)}\n")
 
     total_passed = 0
     total_failed = 0
     total_warnings = 0
+    schema_cache: Dict[Path, Dict[str, Any]] = {}
 
     for mf in manifests:
+        _, schema = _resolve_schema_for_file(mf, explicit_schema_path, schema_cache)
         passed, errors, warnings = validate_file(mf, schema)
         _report(mf, passed, errors, warnings, args.verbose)
         if passed:

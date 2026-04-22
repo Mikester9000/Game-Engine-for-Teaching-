@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../shared/schemas/material.schema.json",
+  "version": "1.0.0",
+  "name": "default_armor",
+  "shadingModel": "pbr_metal_rough",
+  "albedoColor": [0.62, 0.64, 0.68],
+  "metallic": 0.88,
+  "roughness": 0.34,
+  "ao": 1.0,
+  "textures": {
+    "albedo": "Textures/armor_albedo.tex",
+    "normal": "Textures/armor_normal.tex",
+    "metallicRoughness": "Textures/armor_mr.tex",
+    "ao": "Textures/armor_ao.tex"
+  }
+}

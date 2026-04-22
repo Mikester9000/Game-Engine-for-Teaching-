@@ -1,0 +1,9 @@
+# TEACHING NOTE — Root Python dev dependencies
+# --------------------------------------------
+# This file centralises lightweight repository-level Python tooling deps used by
+# local validation commands and CI-adjacent checks.
+#
+# Install with:
+#   python3 -m pip install -r requirements-dev.txt
+pytest==8.3.5
+jsonschema==4.23.0

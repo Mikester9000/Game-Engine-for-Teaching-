@@ -442,7 +442,10 @@ format:
 ### Quick start
 
 ```bash
-# Validate all example manifests (no extra dependencies needed)
+# (Recommended) install repo-level Python dev dependencies once
+python3 -m pip install -r requirements-dev.txt
+
+# Validate all example asset manifests
 python3 tools/validate-assets.py
 
 # Audio Engine: consume an existing manifest and list loaded clips
@@ -452,9 +455,8 @@ python3 tools/audio_engine.py consume \
 # Creation Engine: emit a demo manifest covering all asset types
 python3 tools/creation_engine.py emit --manifest /tmp/demo.json
 
-# Install optional jsonschema for richer validation error messages
-pip install jsonschema
-python3 tools/validate-assets.py assets/examples/ --verbose
+# Validate runtime AssetRegistry.json (schema auto-detected)
+python3 tools/validate-assets.py samples/vertical_slice_project/AssetRegistry.json --verbose
 ```
 
 ### What the manifest covers
