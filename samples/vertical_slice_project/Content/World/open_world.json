@@ -1,0 +1,68 @@
+{
+  "$schema": "../../shared/schemas/scene.schema.json",
+  "version": "1.0.0",
+  "name": "open_world",
+  "description": "Demo_Game open world — multi-biome exploration area with teaching stations.",
+  "spawnPoint": { "x": 512.0, "y": 0.0, "z": 512.0 },
+  "worldSizeX": 1024.0,
+  "worldSizeZ": 1024.0,
+  "cellSizeX": 64.0,
+  "cellSizeZ": 64.0,
+  "biomes": [
+    {
+      "id": "grassland",
+      "displayName": "Lucis Plains",
+      "boundsMinX": 0.0,  "boundsMinZ": 0.0,
+      "boundsMaxX": 512.0, "boundsMaxZ": 512.0,
+      "skyZenithColour":   [0.18, 0.42, 0.88],
+      "skyHorizonColour":  [0.72, 0.84, 0.96],
+      "fogDensity": 0.003,
+      "ambientMusicTrack": "exploration_plains",
+      "spawnTable": ["goblin", "wolf", "anak_calf"]
+    },
+    {
+      "id": "forest",
+      "displayName": "Vesperpool Edge",
+      "boundsMinX": 0.0,   "boundsMinZ": 512.0,
+      "boundsMaxX": 512.0, "boundsMaxZ": 1024.0,
+      "skyZenithColour":   [0.08, 0.14, 0.10],
+      "skyHorizonColour":  [0.20, 0.32, 0.22],
+      "fogDensity": 0.015,
+      "ambientMusicTrack": "exploration_forest",
+      "spawnTable": ["wyvern", "coeurls", "iron_giant"]
+    },
+    {
+      "id": "snow",
+      "displayName": "Ghorovas Rift",
+      "boundsMinX": 512.0, "boundsMinZ": 512.0,
+      "boundsMaxX": 1024.0, "boundsMaxZ": 1024.0,
+      "skyZenithColour":   [0.55, 0.72, 0.92],
+      "skyHorizonColour":  [0.88, 0.92, 0.98],
+      "fogDensity": 0.010,
+      "ambientMusicTrack": "exploration_highland",
+      "spawnTable": ["behemoth_juvenile", "ice_bomb"]
+    },
+    {
+      "id": "desert",
+      "displayName": "Leide Badlands",
+      "boundsMinX": 512.0, "boundsMinZ": 0.0,
+      "boundsMaxX": 1024.0, "boundsMaxZ": 512.0,
+      "skyZenithColour":   [0.62, 0.38, 0.08],
+      "skyHorizonColour":  [0.88, 0.72, 0.42],
+      "fogDensity": 0.006,
+      "ambientMusicTrack": "exploration_desert",
+      "spawnTable": ["sabertusk", "basilisk", "skorpiost"]
+    },
+    {
+      "id": "coast",
+      "displayName": "Cape Caem Shore",
+      "boundsMinX": 384.0, "boundsMinZ": 640.0,
+      "boundsMaxX": 640.0, "boundsMaxZ": 1024.0,
+      "skyZenithColour":   [0.06, 0.30, 0.62],
+      "skyHorizonColour":  [0.28, 0.62, 0.84],
+      "fogDensity": 0.005,
+      "ambientMusicTrack": "exploration_coast",
+      "spawnTable": ["leviathan_juvenile", "seacrab"]
+    }
+  ]
+}

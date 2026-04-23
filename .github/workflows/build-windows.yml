@@ -738,6 +738,27 @@ jobs:
         run: python -m pytest tools/tests/ tests/ -q --tb=short
         shell: cmd
 
+      # -----------------------------------------------------------------------
+      # Demo_Game — OpenWorld headless acceptance test (Epic: Demo_Game)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — demo_world Headless CI Test
+      # ─────────────────────────────────────────────
+      # The --scene demo_world flag exercises the OpenWorld state machine that
+      # powers Demo_Game.  It runs inside engine_sandbox (no separate binary
+      # needed for CI) because engine_sandbox compiles open_world.cpp alongside
+      # its own sources.
+      #
+      # 5 acceptance tests are run:
+      #   1. Init:          12+ teaching stations registered.
+      #   2. Boot:          initial state = BOOT_MENU.
+      #   3. Biome cycle:   auto-advance through LOADING → PLAYING; all biomes.
+      #   4. Teleport:      TeleportToStation("rendering_pbr") → GRASSLAND biome.
+      #   5. Station data:  every station has non-empty id, displayName, sceneHint.
+      # -----------------------------------------------------------------------
+      - name: Run Demo_Game acceptance test (demo_world — OpenWorld state machine)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene demo_world
+        shell: cmd
+
   # --------------------------------------------------------------------------
   # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
   # --------------------------------------------------------------------------
@@ -1207,4 +1228,61 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run headless save-system acceptance tests (M26)
         run: .\build\windows-ninja-debug-save\engine_sandbox.exe --headless --scene save_test
+        shell: cmd
+
+  # --------------------------------------------------------------------------
+  # Demo_Game build job — BUILD_DEMO_GAME=ON (Epic: Demo_Game)
+  # --------------------------------------------------------------------------
+  # TEACHING NOTE — Demo_Game CI Build Job
+  # ============================================================================
+  # This job validates that the demo_game executable compiles successfully.
+  # It uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON,
+  # ENGINE_ENABLE_D3D11=ON).  No Vulkan SDK is needed.
+  #
+  # Steps:
+  #   1. Build engine_sandbox + demo_game + cook (same preset).
+  #   2. Verify demo_game.exe exists.
+  #   3. Run demo_game.exe --headless to exercise the full OpenWorld flow.
+  #
+  # The --headless flag runs the same 5 acceptance tests as
+  #   engine_sandbox --headless --scene demo_world
+  # but through the demo_main.cpp entry point (different code path).
+  #
+  # continue-on-error: false — Demo_Game is a first-class deliverable.
+  # ============================================================================
+  build-windows-demo:
+    name: Build Windows — Demo_Game executable (Epic)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Install Ninja
+        run: choco install ninja -y --no-progress
+        shell: cmd
+
+      - name: Configure CMake (D3D11 + Demo_Game)
+        run: cmake --preset windows-ninja-debug-demo
+        shell: cmd
+
+      - name: Build engine_sandbox + demo_game + cook
+        run: cmake --build --preset windows-ninja-debug-demo
+        shell: cmd
+
+      - name: Verify demo_game.exe exists
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "build\windows-ninja-debug-demo\demo_game.exe")) {
+            throw "demo_game.exe not found — BUILD_DEMO_GAME build failed."
+          }
+          Write-Host "[OK] demo_game.exe found."
+
+      - name: Run Demo_Game headless acceptance test (demo_main path)
+        run: .\build\windows-ninja-debug-demo\demo_game.exe --headless
         shell: cmd

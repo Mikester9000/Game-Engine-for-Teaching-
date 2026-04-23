@@ -231,6 +231,21 @@
         "BUILD_EDITOR": "OFF",
         "ENGINE_ENABLE_PHYSICS": "ON"
       }
+    },
+    {
+      "name": "windows-ninja-debug-demo",
+      "displayName": "Windows Debug — Demo_Game open-world executable (Ninja, portable)",
+      "description": "Portable Windows preset using Ninja. Builds engine_sandbox + demo_game with D3D11 backend. demo_game is the standalone open-world player-facing executable. No Qt or Vulkan SDK required.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENGINE_ENABLE_D3D11": "ON",
+        "ENGINE_ENABLE_VULKAN": "OFF",
+        "ENGINE_ENABLE_TERMINAL": "OFF",
+        "BUILD_EDITOR": "OFF",
+        "BUILD_DEMO_GAME": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -360,6 +375,16 @@
       "configurePreset": "windows-ninja-debug-save",
       "targets": [
         "engine_sandbox"
+      ]
+    },
+    {
+      "name": "windows-ninja-debug-demo",
+      "displayName": "Build Windows Debug Demo_Game (Ninja, portable)",
+      "configurePreset": "windows-ninja-debug-demo",
+      "targets": [
+        "engine_sandbox",
+        "demo_game",
+        "cook"
       ]
     }
   ]

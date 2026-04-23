@@ -92,6 +92,25 @@ message(STATUS "Engine build SHA : ${ENGINE_GIT_SHA}")
 option(BUILD_EDITOR "Build the Dear ImGui Creation Suite editor" OFF)
 
 # ---------------------------------------------------------------------------
+# Top-level option: Build the Demo_Game standalone executable
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Demo_Game Executable
+# ─────────────────────────────────────────────────────────────────────────────
+# Demo_Game is the player-facing binary built from src/demo_game/demo_main.cpp.
+# It reuses all engine + gameplay sources from engine_sandbox but starts
+# directly in the open-world game mode with a boot menu.
+#
+# Enable it with:
+#   cmake --preset windows-debug-demo
+#   cmake --preset windows-debug-engine-only -DBUILD_DEMO_GAME=ON
+#
+# Build target: demo_game
+#   demo_game.exe --headless           # CI validation (no window)
+#   demo_game.exe                      # Full windowed open world
+# ─────────────────────────────────────────────────────────────────────────────
+option(BUILD_DEMO_GAME "Build the Demo_Game standalone open-world executable" OFF)
+
+# ---------------------------------------------------------------------------
 # C++ standard
 # ---------------------------------------------------------------------------
 # TEACHING NOTE — C++17 is required for:
@@ -805,6 +824,11 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         # dependencies.  It compiles on Linux (terminal game) and Windows alike.
         # JSON loading inside it is guarded by ENGINE_ENABLE_JSON.
         src/engine/combat/combo_system.cpp
+        # TEACHING NOTE — Demo_Game OpenWorld state machine
+        # open_world.cpp is a pure C++17 module with no D3D11 or Win32
+        # dependency.  It is compiled into engine_sandbox so the headless
+        # --scene demo_world acceptance test is available in every CI build.
+        src/demo_game/open_world.cpp
     )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})
@@ -1129,6 +1153,136 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     endif() # ENGINE_ENABLE_D3D11
 
 endif() # WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN)
+
+# ---------------------------------------------------------------------------
+# demo_game target — Demo_Game standalone open-world executable (Epic: Demo_Game)
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Demo_Game vs engine_sandbox
+# ─────────────────────────────────────────────────────────────────────────────
+# engine_sandbox is the internal test harness; demo_game is the player-facing
+# binary.  Both share the same engine + gameplay source files; the only
+# difference is the entry point:
+#
+#   engine_sandbox  → src/sandbox/main.cpp  (--scene dispatch, CI tests)
+#   demo_game       → src/demo_game/demo_main.cpp (open world, boot menu)
+#
+# The OpenWorld state machine (open_world.hpp/.cpp) is a NEW pure-C++17
+# module compiled into both demo_game (primary) and engine_sandbox (for the
+# --scene demo_world CI headless test).  It has no D3D11 or Win32 dependency.
+#
+# Usage:
+#   demo_game.exe                # windowed: boot menu → open world
+#   demo_game.exe --headless     # CI: headless demo_world acceptance test
+# ─────────────────────────────────────────────────────────────────────────────
+if(BUILD_DEMO_GAME AND WIN32 AND ENGINE_ENABLE_D3D11)
+
+    # TEACHING NOTE — DEMO_GAME_SOURCES reuses the same set as SANDBOX_SOURCES
+    # but replaces src/sandbox/main.cpp with src/demo_game/demo_main.cpp.
+    # We also add the new demo_game/ module files.
+    set(DEMO_GAME_SOURCES
+        src/demo_game/demo_main.cpp
+        src/demo_game/open_world.cpp
+        src/engine/platform/win32/Win32Window.cpp
+        src/engine/core/Logger.cpp
+        src/engine/core/engine_config.cpp
+        src/engine/assets/asset_db.cpp
+        src/engine/assets/asset_loader.cpp
+        src/engine/animation/skeleton.cpp
+        src/engine/animation/anim_clip.cpp
+        src/engine/animation/blend_tree.cpp
+        src/engine/animation/animation_system.cpp
+        src/engine/animation/ik_solver.cpp
+        src/engine/ai/behaviour_tree.cpp
+        src/engine/ai/formation_system.cpp
+        src/engine/ai/nav_mesh.cpp
+        src/engine/cinematics/camera_rig.cpp
+        src/engine/cinematics/cinematic_sequencer.cpp
+        src/engine/rendering/d3d11/D3D11Renderer.cpp
+        src/engine/rendering/d3d11/d3d11_texture.cpp
+        src/engine/animation/gpu_skinning.cpp
+        src/engine/rendering/sky_renderer.cpp
+        src/engine/rendering/weather_fx.cpp
+        src/engine/ui/font_renderer.cpp
+        src/engine/rendering/d3d11/terrain_renderer.cpp
+        src/engine/audio/xaudio2_backend.cpp
+        src/engine/audio/audio_system.cpp
+        src/engine/physics/hit_volume.cpp
+        src/engine/scene/scene_serialiser.cpp
+        src/engine/world/async_loader.cpp
+        src/engine/world/world_partition.cpp
+        src/engine/world/world_streaming.cpp
+        src/sandbox/test_world.cpp
+        src/game/systems/CombatSystem.cpp
+        src/game/systems/AISystem.cpp
+        src/game/systems/WeatherSystem.cpp
+        src/game/systems/QuestSystem.cpp
+        src/game/systems/InventorySystem.cpp
+        src/game/systems/ShopSystem.cpp
+        src/game/systems/CampSystem.cpp
+        src/game/world/TileMap.cpp
+        src/game/world/WorldMap.cpp
+        src/game/world/Zone.cpp
+        src/game/world/GameStreamingManager.cpp
+        src/sandbox/game_runtime.cpp
+        src/game/systems/input_mapper.cpp
+        src/game/systems/dialogue_system.cpp
+        src/engine/rendering/camera_system.cpp
+        src/engine/ui/hud.cpp
+        src/engine/ui/menu_stack.cpp
+        src/engine/save/save_system.cpp
+        src/engine/combat/combo_system.cpp
+    )
+
+    if(LUA_BUNDLED)
+        list(APPEND DEMO_GAME_SOURCES src/engine/scripting/LuaEngine.cpp)
+    endif()
+
+    add_executable(demo_game ${DEMO_GAME_SOURCES})
+
+    target_include_directories(demo_game PRIVATE src/)
+
+    target_link_libraries(demo_game PRIVATE
+        d3d11.lib dxgi.lib d3dcompiler.lib xaudio2.lib ole32.lib
+    )
+
+    set(DEMO_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+        ENGINE_ENABLE_D3D11
+        "ENGINE_VERSION_SHA=\"${ENGINE_GIT_SHA}\"")
+
+    if(nlohmann_json_FOUND)
+        target_link_libraries(demo_game PRIVATE nlohmann_json::nlohmann_json)
+        list(APPEND DEMO_DEFS ENGINE_ENABLE_JSON)
+    endif()
+
+    if(LUA_BUNDLED)
+        target_link_libraries(demo_game PRIVATE ${LUA_LIBRARIES})
+        list(APPEND DEMO_DEFS ENGINE_ENABLE_LUA)
+    endif()
+
+    target_compile_definitions(demo_game PRIVATE ${DEMO_DEFS})
+
+    if(MSVC)
+        set_target_properties(demo_game PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+    endif()
+
+    # Copy HLSL shaders alongside demo_game.exe at build time.
+    add_custom_command(TARGET demo_game POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:demo_game>/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${HLSL_SHADERS}
+            "$<TARGET_FILE_DIR:demo_game>/shaders/"
+        COMMENT "Copying D3D11 HLSL shaders to demo_game output directory"
+    )
+
+    message(STATUS "  demo_game target : ON (BUILD_DEMO_GAME=ON)")
+else()
+    if(BUILD_DEMO_GAME AND NOT WIN32)
+        message(STATUS "  demo_game target : SKIPPED (requires WIN32 + ENGINE_ENABLE_D3D11)")
+    else()
+        message(STATUS "  demo_game target : OFF (pass -DBUILD_DEMO_GAME=ON to enable)")
+    endif()
+endif()
 
 # ---------------------------------------------------------------------------
 # cook target — standalone C++ asset cooker (Milestone M2)
