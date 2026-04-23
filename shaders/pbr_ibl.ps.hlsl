@@ -104,9 +104,8 @@ cbuffer LightCB : register(b1)
 // TEACHING NOTE — Constant Buffer b2 (Material)
 // ---------------------------------------------------------------------------
 // The metallic-roughness workflow is the glTF 2.0 / Unreal / Unity HDRP
-// standard.  All parameters are stored as constant values in M16 (no
-// per-pixel texture maps yet — those arrive in M17 with albedo/metallic/
-// roughness/AO map sampling added to this shader).
+// standard.  M23 keeps scalar defaults in the constant buffer and multiplies
+// them by authored texture maps when those maps are bound.
 // ---------------------------------------------------------------------------
 cbuffer MaterialCB : register(b2)
 {
@@ -148,6 +147,10 @@ cbuffer MaterialCB : register(b2)
 Texture2D   g_brdfLut          : register(t0);
 TextureCube g_irradianceCube   : register(t1);
 TextureCube g_prefilteredEnv   : register(t2);
+Texture2D   g_albedoMap        : register(t3);  // RGB base-colour multiplier
+Texture2D   g_normalMap        : register(t4);  // Tangent-like normal perturbation
+Texture2D   g_metallicRoughnessMap : register(t5); // G=roughness, B=metallic
+Texture2D   g_aoMap            : register(t6);  // R ambient occlusion multiplier
 SamplerState g_linearSampler   : register(s0);
 
 // ---------------------------------------------------------------------------
@@ -301,16 +304,20 @@ float4 main(PSInput i) : SV_TARGET
     //     R = reflect(-V, N) = 2*(N·V)*N - V
     //     Used to sample the prefiltered specular cubemap.
     // -----------------------------------------------------------------------
-    float3 N      = normalize(i.worldNrm);
+    float3 nTex = g_normalMap.Sample(g_linearSampler, i.uv).xyz * 2.0f - 1.0f;
+    float3 N      = normalize(i.worldNrm + nTex * 0.25f);
     float3 V      = normalize(g_cameraPos - i.worldPos);
     float3 R      = reflect(-V, N);
     float  NdotV  = max(dot(N, V), 0.0f);
 
-    // Material properties (constant for the entire sphere in M16).
-    float3 albedo    = g_albedo;
-    float  metallic  = g_metallic;
-    float  roughness = g_roughness;
-    float  ao        = g_ao;
+    // Material properties (M23: scalar defaults multiplied by authored maps).
+    float3 albedoTex = g_albedoMap.Sample(g_linearSampler, i.uv).rgb;
+    float2 mrTex     = g_metallicRoughnessMap.Sample(g_linearSampler, i.uv).gb;
+    float  aoTex     = g_aoMap.Sample(g_linearSampler, i.uv).r;
+    float3 albedo    = saturate(g_albedo * albedoTex);
+    float  metallic  = saturate(g_metallic * mrTex.y);
+    float  roughness = saturate(g_roughness * mrTex.x);
+    float  ao        = saturate(g_ao * aoTex);
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — F0: Reflectance at Normal Incidence

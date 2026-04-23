@@ -6,7 +6,7 @@ This document captures the deep repository assessment requested on 2026-04-22 an
 
 - D3D11 is the active and feature-rich renderer path; Vulkan parity remains intentionally deferred.
 - Milestones M16–M22 are implemented and CI-covered on the D3D11 path.
-- The largest remaining gap to an early-beta FFXV-style slice is **runtime ingestion of authored content** (mesh/material loading + populated sample assets), not core rendering algorithms.
+- The largest remaining gap to an early-beta FFXV-style slice is now **content population** (`Content/Textures`, `Content/Audio`, `Content/Animations`) rather than core rendering algorithms.
 - The sample project has strong schema/config coverage but sparse real content in `Content/Textures`, `Content/Audio`, and `Content/Animations`.
 
 ## Confirmed Completed Areas
@@ -17,21 +17,17 @@ This document captures the deep repository assessment requested on 2026-04-22 an
 
 ## Critical Remaining Gaps (Prioritized)
 
-1. **M23 (new): Authored content ingestion on D3D11**
-   - Runtime mesh/material loading from cooked assets into draw path.
-   - Bind authored texture sets (albedo/normal/metallic-roughness/AO) where available.
-
-2. **M24 (new): Vertical slice content population**
+1. **M24 (new): Vertical slice content population**
    - Populate texture/audio/animation sample content in `samples/vertical_slice_project/Content/`.
    - Validate full author→cook→load path with non-placeholder assets.
 
-3. **M25 (new): Terrain/world geometry path**
+2. **M25 (new): Terrain/world geometry path**
    - Add terrain/world geometry rendering + collision support for streamed cells.
 
-4. **M26 (new): Save-system CI hardening**
+3. **M26 (new): Save-system CI hardening**
    - Add dedicated `--scene save_test` acceptance coverage for round-trip, migration, and auto-save.
 
-5. **M14: Vulkan catch-up (still deferred)**
+4. **M14: Vulkan catch-up (still deferred)**
    - Resume only when D3D11 early-beta slice goals above are met.
 
 ## Evidence Anchors (representative paths)
@@ -50,4 +46,3 @@ When status conflicts are found across docs, reconcile them against this assessm
 - `docs/ROADMAP.md`
 - `docs/PROJECT_MILESTONES.md`
 - `docs/FF15_REQUIREMENTS_BLUEPRINT.md`
-

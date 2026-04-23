@@ -202,7 +202,7 @@ The following items are needed to satisfy the "Project Completion Definition" in
 
 | Milestone | Feature | Key deliverables |
 |-----------|---------|-----------------|
-| **M23 (new)** | D3D11 authored content ingestion | Runtime mesh/material loading from cooked assets into D3D11 draw path; bind authored albedo/normal/MR/AO where available |
+| **M23 (new)** | D3D11 authored content ingestion | ✅ Complete — runtime authored mesh/material ingestion in D3D11 path, with authored texture-slot binding + robust fallback maps |
 | **M24 (new)** | Sample content population | Populate `samples/vertical_slice_project` with real texture/audio/animation assets (not only `.gitkeep` placeholders) |
 | **M25 (new)** | Terrain + world geometry | Terrain/heightmap rendering path and collision integration for streamed cells |
 | **M26 (new)** | Save/load dedicated CI | Add `--scene save_test` acceptance tests for 15-slot save, migration, and auto-save flow |

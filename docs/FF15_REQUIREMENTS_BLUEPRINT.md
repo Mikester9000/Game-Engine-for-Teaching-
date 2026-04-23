@@ -390,8 +390,8 @@ teaching slice but must follow the same pipeline shape.
 
 > **D3D11 Visuals Quality Bar note:** D3D11 depth buffer, IBL, directional shadow maps,
 > and bloom are implemented and CI-covered (`pbr_ibl`, `shadow_test`, `bloom_test`).
-> Remaining gaps to reach an early-beta slice are now content-ingestion and world-geometry
-> focused (runtime mesh/material loading, terrain/world geometry, and populated sample content).
+> Remaining gaps to reach an early-beta slice are now content-population and world-geometry
+> focused (terrain/world geometry and populated sample content).
 
 | # | Subsystem | Runtime | Tool | Tests | Notes |
 |---|---|---|---|---|---|
@@ -420,7 +420,7 @@ content and runtime ingestion gaps.
 
 | Feature | Status | Prerequisite | Milestone |
 |---------|--------|-------------|-----------|
-| Runtime mesh/material loading from cooked assets | ⬜ | AssetDB + AssetLoader | M23 (new) |
+| Runtime mesh/material loading from cooked assets | ✅ | AssetDB + AssetLoader | M23 (new, complete) |
 | Populated sample textures/audio/animations in `vertical_slice_project` | ⬜ | runtime ingestion path | M24 (new) |
 | Terrain/world geometry rendering + collision path for streamed cells | ⬜ | mesh/content ingestion | M25 (new) |
 | Dedicated save-system headless acceptance suite (`save_test`) | ⬜ | SaveSystem runtime | M26 (new) |
