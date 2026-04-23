@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1892 across 55 subsystems.
+**Total lessons:** 1928 across 55 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (73 lessons)
-- [ci/workflows](#ciworkflows) (67 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (75 lessons)
+- [ci/workflows](#ciworkflows) (70 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (104 lessons)
@@ -23,13 +23,13 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/audio](#engineaudio) (42 lessons)
 - [engine/cinematics](#enginecinematics) (42 lessons)
 - [engine/combat](#enginecombat) (21 lessons)
-- [engine/core](#enginecore) (50 lessons)
+- [engine/core](#enginecore) (64 lessons)
 - [engine/ecs](#engineecs) (41 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (64 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (371 lessons)
+- [engine/rendering](#enginerendering) (378 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -45,7 +45,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (35 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (112 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (122 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -120,9 +120,42 @@ Or the manual workflow:
   cmake .. -G "Visual Studio 17 2022" -A x64
   cmake --build . --config Debug --target engine_sandbox
 
-### Optional Subprojects
+### Embedding the Build Commit SHA
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L51) (line 51)
+
+─────────────────────────────────────────────────────────────────────────────
+Post-crash reproduction requires knowing *which* build a dump came from.
+We embed the short git SHA at CMake configure time so it is compiled into
+the binary as a string literal.  The SHA is exposed via:
+
+  engine_sandbox.exe --version   →  "engine_sandbox abc1234"
+  LOG_INFO at startup            →  "[Init] Build: abc1234"
+
+How it works:
+  1. find_package(Git QUIET) locates git on PATH.
+  2. execute_process() runs 'git rev-parse --short HEAD' at configure time.
+  3. The result is stored in ENGINE_GIT_SHA.
+  4. The macro is forwarded to engine_sandbox via target_compile_definitions.
+─────────────────────────────────────────────────────────────────────────────
+find_package(Git QUIET)
+if(Git_FOUND)
+execute_process(
+COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+OUTPUT_VARIABLE ENGINE_GIT_SHA
+OUTPUT_STRIP_TRAILING_WHITESPACE
+ERROR_QUIET
+)
+endif()
+if(NOT ENGINE_GIT_SHA)
+set(ENGINE_GIT_SHA "unknown")
+endif()
+message(STATUS "Engine build SHA : ${ENGINE_GIT_SHA}")
+
+### Optional Subprojects
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L84) (line 84)
 
 The editor uses Dear ImGui (MIT, zero install) rendered via D3D11.
 It requires vcpkg to install the imgui[docking,dx11-binding,win32-binding]
@@ -135,7 +168,7 @@ option(BUILD_EDITOR "Build the Dear ImGui Creation Suite editor" OFF)
 
 ### C++17 is required for:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L64) (line 64)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L97) (line 97)
 
 • if constexpr             (used in LuaEngine::SetGlobal<T>)
   • std::optional            (future use)
@@ -147,7 +180,7 @@ set(CMAKE_CXX_EXTENSIONS        OFF)
 
 ### CMake Options
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L95) (line 95)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L128) (line 128)
 
 option() declares a boolean flag the user can set on the cmake command line:
   cmake .. -DENGINE_ENABLE_TERMINAL=OFF
@@ -161,7 +194,7 @@ We gate the terminal (ncurses) renderer to non-Windows platforms because:
 
 ### ENGINE_ENABLE_TERMINAL
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L106) (line 106)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L139) (line 139)
 
 Defaults to ON everywhere EXCEPT Windows (where ncurses is unavailable).
 if(WIN32)
@@ -172,7 +205,7 @@ endif()
 
 ### ENGINE_ENABLE_D3D11 (default ON on Windows)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L115) (line 115)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L148) (line 148)
 
 ---------------------------------------------------------------------------
 Direct3D 11 is the *default* Windows renderer.  It ships with Windows 7+
@@ -193,7 +226,7 @@ endif()
 
 ### ENGINE_ENABLE_VULKAN (optional, high-end path)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L134) (line 134)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L167) (line 167)
 
 ---------------------------------------------------------------------------
 Vulkan is the *high-end / modern* renderer backend.  It is built when ON
@@ -217,7 +250,7 @@ endif()
 
 ### ENGINE_ENABLE_PHYSICS (M5 Jolt Physics)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L156) (line 156)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L189) (line 189)
 
 ---------------------------------------------------------------------------
 Jolt Physics (MIT licence, by Jorrit Rouwe) is a high-performance physics
@@ -241,7 +274,7 @@ option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration (M5)" ON)
 
 ### find_package(Jolt CONFIG)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L178) (line 178)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L211) (line 211)
 
 The vcpkg port for joltphysics (v5+) provides a CMake config that
 registers the imported target Jolt::Jolt.  The CMake package name is
@@ -261,7 +294,7 @@ endif()
 
 ### nlohmann/json in the engine
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L198) (line 198)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L231) (line 231)
 
 nlohmann-json is already in vcpkg.json (required by cook.exe and the editor).
 When the vcpkg toolchain is active, find_package(nlohmann_json) will find it
@@ -282,7 +315,7 @@ endif()
 
 ### find_package(Curses) sets:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L221) (line 221)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L254) (line 254)
 
 CURSES_LIBRARIES    — ncurses link flags
   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
@@ -296,7 +329,7 @@ endif()
 
 ### Build Lua from source (preferred)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L233) (line 233)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L266) (line 266)
 
 ──────────────────────────────────────────────────
 Lua is a small, self-contained library (~30 .c files).  Building it from the
@@ -318,7 +351,7 @@ Detection order:
 
 ### Building a static library from C source in CMake
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L260) (line 260)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L293) (line 293)
 
 -----------------------------------------------------------------------
 add_library(target STATIC files…) compiles the listed .c files and
@@ -330,7 +363,7 @@ include_directories() needed at the call-site.
 
 ### Platform compile flags for Lua
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L286) (line 286)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L319) (line 319)
 
 On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
 popen().  On Windows MSVC we disable several noisy warnings that come from
@@ -352,7 +385,7 @@ endif()
 
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L342) (line 342)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L375) (line 375)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -383,7 +416,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L384) (line 384)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L417) (line 417)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -393,7 +426,7 @@ if(ENGINE_ENABLE_TERMINAL)
 
 ### Post-M10 Behaviour Tree AI (terminal game).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L408) (line 408)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L441) (line 441)
 
 The engine/ai/ layer is pure C++17 with no rendering or platform
 dependencies — it builds on Linux (ncurses game) and Windows alike.
@@ -403,7 +436,7 @@ src/engine/ai/nav_mesh.cpp
 
 ### M19 Action Combat: ComboSystem FSM (terminal game).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L414) (line 414)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L447) (line 447)
 
 The ComboSystem is renderer-agnostic and builds on Linux unchanged.
 src/engine/combat/combo_system.cpp
@@ -412,7 +445,7 @@ src/game/Game.cpp
 
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L438) (line 438)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L471) (line 471)
 
 The terminal game links against Lua 5.5 (built from bundled source or
 found as a system package).  ENGINE_ENABLE_LUA activates the Lua
@@ -424,7 +457,7 @@ endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L460) (line 460)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L493) (line 493)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -449,7 +482,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Animation Runtime Sources (M4)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L498) (line 498)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L532) (line 532)
 
 -----------------------------------------------------------------------
 The animation runtime is renderer-agnostic: it runs on both D3D11 and
@@ -464,7 +497,7 @@ src/engine/animation/animation_system.cpp
 
 ### M4b: IK solver (renderer-agnostic, pure C++17).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L509) (line 509)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L543) (line 543)
 
 Two-Bone analytical IK and FABRIK iterative N-joint IK.
 Lives in animation/ alongside the other CPU-side animation systems.
@@ -473,7 +506,7 @@ src/engine/animation/ik_solver.cpp
 
 ### Behaviour Tree AI Sources (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L516) (line 516)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L550) (line 550)
 
 -----------------------------------------------------------------------
 The engine/ai/ layer provides THREE complementary AI systems:
@@ -498,7 +531,7 @@ src/engine/ai/nav_mesh.cpp
 
 ### Cinematics Sources (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L539) (line 539)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L573) (line 573)
 
 -----------------------------------------------------------------------
 The engine/cinematics/ layer provides TWO subsystems for cut-scene
@@ -527,7 +560,7 @@ src/engine/cinematics/cinematic_sequencer.cpp
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L568) (line 568)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L602) (line 602)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -539,7 +572,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L576) (line 576)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L610) (line 610)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -547,7 +580,7 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 
 ### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L580) (line 580)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L614) (line 614)
 
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
@@ -555,7 +588,7 @@ src/engine/animation/gpu_skinning.cpp
 
 ### M10: SkyRenderer + WeatherFx are renderer-agnostic
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L584) (line 584)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L618) (line 618)
 
 CPU objects that compute time-of-day sky colours and weather state.
 They are compiled alongside D3D11Renderer because D3D11Renderer
@@ -566,7 +599,7 @@ src/engine/rendering/weather_fx.cpp
 
 ### Post-M10: SDF FontRenderer (D3D11 text rendering).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L591) (line 591)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L625) (line 625)
 
 font_renderer.cpp builds a CPU-side signed distance field atlas from
 an embedded 8×8 bitmap font, uploads it as an R8_UNORM D3D11 texture,
@@ -576,7 +609,7 @@ src/engine/ui/font_renderer.cpp
 
 ### M25: TerrainRenderer (heightmap-driven grid mesh).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L597) (line 597)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L631) (line 631)
 
 terrain_renderer.cpp generates a W×H vertex/index grid from float
 height samples, compiles terrain.vs/ps.hlsl at runtime via
@@ -588,7 +621,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L621) (line 621)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L655) (line 655)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -601,13 +634,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L634) (line 634)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L668) (line 668)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L636) (line 636)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L670) (line 670)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -634,7 +667,7 @@ src/engine/physics/raycast.cpp
 
 ### M11 Vehicle Physics (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L659) (line 659)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L693) (line 693)
 
 vehicle_system.cpp implements the VehicleSystem: four wheel-ray
 suspension raycasts, spring-damper force model, Ackermann steering,
@@ -644,7 +677,7 @@ src/engine/vehicle/vehicle_system.cpp
 
 ### M25 Terrain Collision
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L665) (line 665)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L699) (line 699)
 
 terrain_collision.cpp creates a JPH::HeightFieldShape from a
 float height array and registers it as a static physics body.
@@ -661,7 +694,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional JSON sources
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L682) (line 682)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L716) (line 716)
 
 scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
 The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
@@ -675,7 +708,7 @@ src/engine/scene/scene_serialiser.cpp
 
 ### M7 World Streaming Source Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L696) (line 696)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L730) (line 730)
 
 ─────────────────────────────────────────────────────
 The three world-streaming modules are pure C++17 with no platform or
@@ -697,7 +730,7 @@ src/engine/world/world_streaming.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L752) (line 752)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -710,7 +743,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L731) (line 731)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L765) (line 765)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -733,7 +766,7 @@ src/game/world/Zone.cpp
 
 ### M7.1: GameStreamingManager wires Zone lifecycle into
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L750) (line 750)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L784) (line 784)
 
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
@@ -741,7 +774,7 @@ src/game/world/GameStreamingManager.cpp
 
 ### M8 Gameplay Integration: new systems.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L754) (line 754)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L788) (line 788)
 
 game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
 input_mapper.cpp reads Win32 key state → ECS components.
@@ -760,7 +793,7 @@ src/engine/save/save_system.cpp
 
 ### M19 Action Combat: ComboSystem FSM.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L769) (line 769)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L803) (line 803)
 
 combo_system.cpp is pure C++17 with no platform or rendering
 dependencies.  It compiles on Linux (terminal game) and Windows alike.
@@ -770,7 +803,7 @@ src/engine/combat/combo_system.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L795) (line 795)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L829) (line 829)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -782,7 +815,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L804) (line 804)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L838) (line 838)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -791,7 +824,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L814) (line 814)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L848) (line 848)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -803,7 +836,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L823) (line 823)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L857) (line 857)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -813,7 +846,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L833) (line 833)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L867) (line 867)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -822,7 +855,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L839) (line 839)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L873) (line 873)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -831,18 +864,19 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L844) (line 844)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L878) (line 878)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
 ENGINE_ENABLE_D3D11 / ENGINE_ENABLE_VULKAN flow into RendererFactory.hpp
 so the factory can gate which concrete renderer header(s) it includes.
 -----------------------------------------------------------------------
-set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+"ENGINE_VERSION_SHA=\"${ENGINE_GIT_SHA}\"")
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L860) (line 860)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L895) (line 895)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -853,7 +887,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L868) (line 868)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L903) (line 903)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -863,7 +897,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L880) (line 880)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L915) (line 915)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -897,7 +931,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L912) (line 912)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L947) (line 947)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -912,7 +946,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L927) (line 927)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L962) (line 962)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -927,7 +961,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L969) (line 969)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1004) (line 1004)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -950,7 +984,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L990) (line 990)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1025) (line 1025)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -971,7 +1005,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1007) (line 1007)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1042) (line 1042)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -981,7 +1015,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1013) (line 1013)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1048) (line 1048)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -993,7 +1027,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1021) (line 1021)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1056) (line 1056)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -1005,7 +1039,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Post-M10: SDF text rendering HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1029) (line 1029)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1064) (line 1064)
 
 sdf_text.vs.hlsl transforms screen-space pixel quads to NDC.
 sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
@@ -1015,7 +1049,7 @@ sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
 
 ### M16: PBR + Image-Based Lighting (IBL) shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1035) (line 1035)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1070) (line 1070)
 
 pbr_ibl.vs.hlsl is structurally identical to pbr_mesh.vs.hlsl —
   it outputs worldPos, worldNrm, and UV to the pixel shader.
@@ -1032,7 +1066,7 @@ pbr_ibl.ps.hlsl adds the full split-sum IBL ambient:
 
 ### M17: Directional shadow map shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1049) (line 1049)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1084) (line 1084)
 
 shadow.vs.hlsl       — depth-only VS for the shadow pass (one matrix
   multiply, no PS output).  Identity world is baked into lightViewProj.
@@ -1046,7 +1080,7 @@ shadow_lit.ps.hlsl   — lit-pass PS: 3×3 PCF shadow lookup via
 
 ### M17: HDR bloom post-processing shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1060) (line 1060)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1095) (line 1095)
 
 All three passes reuse sky.vs.hlsl as the full-screen triangle VS
 (SV_VertexID → full-screen quad trick — no vertex buffer needed).
@@ -1064,7 +1098,7 @@ bloom_composite.ps.hlsl — adds bloom × g_bloomStrength to the scene,
 
 ### M25: Terrain heightmap shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1075) (line 1075)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1110) (line 1110)
 
 terrain.vs.hlsl transforms the CPU-generated heightmap grid vertices
   (pos, normal, uv) through world→view→clip matrices and passes
@@ -1078,7 +1112,7 @@ Both use a shared TerrainCB constant buffer bound to b0 in both stages.
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1101) (line 1101)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1136) (line 1136)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -1100,7 +1134,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1120) (line 1120)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1155) (line 1155)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -1111,7 +1145,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1128) (line 1128)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1163) (line 1163)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -1121,7 +1155,7 @@ endif()
 
 ### PAK1 Packager Tool
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1142) (line 1142)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1177) (line 1177)
 
 ─────────────────────────────────────────────────────────────────────────────
 The pak tool bundles an input directory into a binary .pak archive
@@ -1146,7 +1180,7 @@ src/engine/core/Logger.cpp
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1168) (line 1168)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1203) (line 1203)
 
 Same reasoning as cook.exe: stdout/stderr must be visible in a terminal.
 if(MSVC)
@@ -1155,7 +1189,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1197) (line 1197)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1232) (line 1232)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -1164,7 +1198,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1204) (line 1204)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1239) (line 1239)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1176,6 +1210,59 @@ message(STATUS "BUILD_EDITOR=ON: including editor/ subproject (Dear ImGui)")
 add_subdirectory(editor)
 else()
 message(STATUS "BUILD_EDITOR=OFF: skipping editor/ (pass -DBUILD_EDITOR=ON to include)")
+endif()
+
+### CMake install()
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1255) (line 1255)
+
+─────────────────────────────────────────────────────────────────────────────
+Running `cmake --install <build-dir> --prefix dist/` copies all installed
+files into a self-contained directory ready for redistribution.
+
+What gets installed:
+  bin/engine_sandbox.exe   — the main engine runtime
+  bin/cook.exe             — standalone asset cooker
+  bin/pak.exe              — PAK archive packager
+  bin/shaders/             — all HLSL shader source files (compiled at
+                             runtime by D3DCompileFromFile)
+  bin/Cooked/              — pre-cooked vertical-slice assets
+  bin/AssetRegistry.json   — asset registry for the cooked project
+  bin/lua55.dll            — Lua 5.5 runtime DLL (if present)
+  bin/engine_config.json   — default user-editable settings file
+
+Usage:
+  cmake --install build/windows-ninja-release-engine-only --prefix dist/
+  dist\bin\engine_sandbox.exe --headless --scene dynamic_sky
+─────────────────────────────────────────────────────────────────────────────
+if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
+install(TARGETS engine_sandbox cook pak
+RUNTIME DESTINATION bin
+)
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders/"
+DESTINATION bin/shaders
+FILES_MATCHING PATTERN "*.hlsl"
+)
+if(EXISTS "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/Cooked")
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/Cooked/"
+DESTINATION bin/Cooked
+)
+endif()
+if(EXISTS "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/AssetRegistry.json")
+install(FILES "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/AssetRegistry.json"
+DESTINATION bin
+)
+endif()
+if(EXISTS "${CMAKE_SOURCE_DIR}/Lua/lua55.dll")
+install(FILES "${CMAKE_SOURCE_DIR}/Lua/lua55.dll"
+DESTINATION bin
+)
+endif()
+if(EXISTS "${CMAKE_SOURCE_DIR}/engine_config.json")
+install(FILES "${CMAKE_SOURCE_DIR}/engine_config.json"
+DESTINATION bin
+)
+endif()
 endif()
 
 ---
@@ -1997,9 +2084,48 @@ preset because it has no platform or renderer dependencies.
 run: .\build\windows-ninja-debug-engine-only\pak.exe --input samples\vertical_slice_project\Cooked\ --output samples\vertical_slice_project\Cooked\test_output.pak
 shell: cmd
 
-### M5 Physics CI Job
+### PAK Round-Trip Validation (CI-3)
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L698) (line 698)
+
+Packing is only useful if extracting works too.  This step:
+  1. Extracts the PAK archive to a temp directory.
+  2. Runs engine_sandbox --validate-project on the extracted content.
+If pak.exe --extract is broken or the extracted AssetDB is corrupted,
+this gate catches it before the bug reaches a release build.
+-----------------------------------------------------------------------
+- name: Extract PAK archive (CI-3)
+run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted
+shell: cmd
+
+### Validate extracted PAK content (CI-3)
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L709) (line 709)
+
+engine_sandbox --validate-project reads the AssetDB from the extracted
+directory and verifies every registered asset can be opened.  A non-zero
+exit code means the PAK round-trip corrupted the AssetDB or a cooked
+asset — this gate catches extraction bugs before they reach a release build.
+- name: Validate extracted PAK content (CI-3)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project %TEMP%\pak_extracted
+shell: cmd
+
+### Windows Python Tests (CI-1)
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L721) (line 721)
+
+The Python tool tests (tools/tests/, tests/) normally run only in the
+Linux job.  Running them on Windows catches Windows-specific regressions
+such as path separator bugs (backslash vs forward slash) in cook_assets.py
+or struct.pack byte-order assumptions in the baker tools.
+-----------------------------------------------------------------------
+- name: Install Python dev dependencies (CI-1)
+run: python -m pip install -r requirements-dev.txt --quiet
+shell: cmd
+
+### M5 Physics CI Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L738) (line 738)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -2025,7 +2151,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L737) (line 737)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L777) (line 777)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -2051,7 +2177,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L771) (line 771)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L811) (line 811)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -2072,7 +2198,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L795) (line 795)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L835) (line 835)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -2085,7 +2211,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L808) (line 808)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L848) (line 848)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -2100,7 +2226,7 @@ shell: cmd
 
 ### terrain_test in the physics job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L823) (line 823)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L863) (line 863)
 
 The engine-only job (no Jolt) skips test 3 (physics_collision) gracefully.
 This physics job has ENGINE_ENABLE_PHYSICS=ON, so all three subtests run:
@@ -2114,7 +2240,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L837) (line 837)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L877) (line 877)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -2145,7 +2271,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L865) (line 865)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L905) (line 905)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -2154,7 +2280,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L887) (line 887)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L927) (line 927)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -2182,7 +2308,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L922) (line 922)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L962) (line 962)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -2191,7 +2317,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L936) (line 936)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L976) (line 976)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -2213,7 +2339,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L961) (line 961)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1001) (line 1001)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -2227,7 +2353,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L985) (line 985)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1025) (line 1025)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -2245,7 +2371,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1010) (line 1010)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1050) (line 1050)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -2256,7 +2382,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1021) (line 1021)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1061) (line 1061)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -2271,7 +2397,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1043) (line 1043)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1083) (line 1083)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -2286,7 +2412,7 @@ continue-on-error: true
 
 ### M26 Save-System CI Job (build-windows-save-test)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1058) (line 1058)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1098) (line 1098)
 
 ============================================================================
 This job validates the full save-system acceptance suite (M26).  It:
@@ -2323,7 +2449,7 @@ continue-on-error: false  # TEACHING NOTE — hard M26 CI gate
 
 ### Classic-mode vcpkg install (save-test job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1108) (line 1108)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1148) (line 1148)
 
 -----------------------------------------------------------------------
 We install nlohmann-json in classic mode from $env:TEMP (no vcpkg.json
@@ -2342,7 +2468,7 @@ key: vcpkg-nlohmann-json-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1134) (line 1134)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1174) (line 1174)
 
 Same reason as the physics job: the project vcpkg.json contains
 imgui[docking] which may not resolve on the CI runner's vcpkg
@@ -2359,7 +2485,7 @@ shell: pwsh
 
 ### Save tests are CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1154) (line 1154)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1194) (line 1194)
 
 All three tests exercise only the filesystem, ECS World, and
 nlohmann/json serialisation.  No D3D11 device is created and no
@@ -9600,6 +9726,202 @@ Avoid "magic numbers" scattered through the codebase (e.g. writing 64.0f
 in 20 different files for tile size).  Centralise them here.  If you need
 to change the tile size, change ONE constant and recompile.
 
+### Conditional compilation with ENGINE_ENABLE_JSON
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L5) (line 5)
+
+──────────────────────────────────────────────────────────────────
+This file uses nlohmann/json when the ENGINE_ENABLE_JSON compile definition
+is present (set by CMakeLists.txt when the vcpkg package is installed).
+
+When ENGINE_ENABLE_JSON is NOT defined (minimal build without vcpkg), the
+Load() and Save() functions are no-ops that return false — the engine still
+works, just with hardcoded defaults.
+
+This pattern is used throughout the engine for optional features:
+  #ifdef ENGINE_ENABLE_FEATURE
+      // feature-specific code
+  #endif
+
+### value_or() idiom for JSON defaults
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L19) (line 19)
+
+────────────────────────────────────────────────────
+nlohmann/json's value() method returns a default when a key is missing:
+  j["resolution"].value("width", 1280)
+This makes forward-compatible deserialization trivial: old config files
+without a new field still produce correct defaults.
+
+### std::ifstream text mode on Windows
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L42) (line 42)
+
+We use the default (text) mode here — std::ifstream without std::ios::binary.
+On Windows, text mode translates "\r\n" to "\n" on read.  For JSON, this
+is harmless: the parser treats whitespace uniformly.  Binary mode is only
+needed when reading raw byte arrays where a '\r' byte has semantic meaning.
+std::ifstream f(path);
+if (!f.is_open())
+{
+Missing config is normal on first run — use defaults silently.
+return false;
+}
+
+### Read raw JSON integers as int first, then clamp to
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L60) (line 60)
+
+[kMinDim, kMaxDim] before storing in the uint32_t fields.  This prevents
+a negative or zero JSON value from wrapping to a huge unsigned number
+and producing a window dimension the OS rejects.
+if (j.contains("resolution"))
+{
+const int rawW = j["resolution"].value("width",  static_cast<int>(resolution.width));
+const int rawH = j["resolution"].value("height", static_cast<int>(resolution.height));
+resolution.width  = static_cast<uint32_t>(std::max(kResolutionMinDim, std::min(kResolutionMaxDim, rawW)));
+resolution.height = static_cast<uint32_t>(std::max(kResolutionMinDim, std::min(kResolutionMaxDim, rawH)));
+}
+
+### EngineConfig::Load() is intentionally silent.
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L89) (line 89)
+
+Diagnostics are surfaced via the bool return value so the caller can
+route them through the engine Logger, ensuring they appear in the
+Saved/Logs/*.log file rather than bypassing it via direct console I/O.
+return true;
+}
+catch (const std::exception&)
+{
+
+### Parse errors are recoverable user-data problems.
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L97) (line 97)
+
+We keep EngineConfig free of direct console I/O; higher-level startup
+code can decide how to surface the failure through the active logger.
+return false;
+}
+else
+ENGINE_ENABLE_JSON is not defined — JSON parsing unavailable.
+The engine will use compiled-in default values.
+(void)path;
+return false;
+endif
+}
+
+### dump(4) formats the JSON with 4-space indentation,
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L127) (line 127)
+
+making it easy for users to read and edit in any text editor.
+f << j.dump(4) << "\n";
+return true;
+else
+(void)path;
+return false;
+endif
+}
+
+### Engine Configuration (LC-3)
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L8) (line 8)
+
+============================================================================
+Hard-coding values like window resolution or audio volume forces users to
+recompile just to change a setting — a terrible user experience.
+
+The EngineConfig system solves this by reading a JSON file at startup:
+
+  engine_config.json (sits next to engine_sandbox.exe)
+  {
+    "resolution": { "width": 1280, "height": 720 },
+    "audio":      { "masterVolume": 1.0 },
+    "keys":       { "attack": "Z", "dodge": "X", "jump": "Space" }
+  }
+
+If the file does not exist, sensible defaults are used automatically.
+
+============================================================================
+
+### Why JSON for Config?
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L25) (line 25)
+
+============================================================================
+JSON is a good config format because:
+  • Human-readable and editable in any text editor.
+  • Widely supported (nlohmann/json already in vcpkg.json).
+  • Self-documenting (field names are visible in the file).
+  • Forward compatible: unknown fields are ignored, so older binaries
+    still work when new fields are added.
+
+Alternative formats: INI (simpler but no nesting), TOML (cleaner but less
+tool support), XML (verbose), binary (fast but not human-editable).
+
+============================================================================
+
+### Dependency on ENGINE_ENABLE_JSON
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L38) (line 38)
+
+============================================================================
+The JSON parsing path is gated on ENGINE_ENABLE_JSON (defined when
+nlohmann/json is available via vcpkg).  When the macro is NOT defined,
+EngineConfig::Load() is a no-op and all members keep their default values.
+This ensures the config system compiles even on minimal builds.
+============================================================================
+
+### uint32_t for pixel dimensions
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L55) (line 55)
+
+Window APIs (Win32, D3D11 swap-chain) all use unsigned types for width and
+height.  Storing them as uint32_t here eliminates the sign-to-unsigned
+conversion at the call site and prevents a negative JSON value from silently
+wrapping to a huge window dimension.  Load() additionally clamps values to
+the range [kResolutionMinDim, kResolutionMaxDim] so no bad value can reach
+the OS.
+
+The named constants are defined here so documentation and tests can refer to
+the same values without duplicating them.
+static constexpr int kResolutionMinDim =    64;  ///< Minimum window dimension in pixels.
+static constexpr int kResolutionMaxDim = 16384;  ///< Maximum window dimension in pixels.
+
+### Key names are stored as single-character strings ("Z") or
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L85) (line 85)
+
+named keys ("Space", "Escape").  InputMapper converts them to Win32 VK codes
+at startup.
+struct KeysConfig
+{
+std::string attack = "Z";       ///< Attack / confirm button.
+std::string dodge  = "X";       ///< Dodge / cancel button.
+std::string jump   = "Space";   ///< Jump button.
+std::string menu   = "Escape";  ///< Open main menu.
+std::string interact = "F";     ///< Interact / talk.
+};
+
+### Fail-soft loading
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L114) (line 114)
+
+The function intentionally returns false without throwing so the engine
+can start with defaults if no config file is present.  A missing config
+is normal on a fresh install; a parse error indicates a user error that
+should be reported but not crash the engine.
+
+### Silent Load()
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L120) (line 120)
+
+EngineConfig::Load() does not write to stdout or stderr.  All success /
+failure diagnostics are returned via the bool result so the caller can
+route them through the engine Logger, ensuring they appear in the
+Saved/Logs/*.log file rather than bypassing it via direct console I/O.
+
 ---
 
 ## engine/ecs
@@ -13599,7 +13921,7 @@ Target: Windows (MSVC)
 
 ### pragma comment(lib, ...) vs CMake target_link_libraries
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L43) (line 43)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L44) (line 44)
 
 ---------------------------------------------------------------------------
 On MSVC we can tell the linker which .lib to pull in directly from source
@@ -13616,7 +13938,7 @@ pragma comment(lib, "d3dcompiler.lib")
 
 ### Quad Vertex Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L75) (line 75)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L76) (line 76)
 
 Each vertex carries a 2-D NDC position (no Z — the VS sets it to 0) and a
 2-D UV coordinate.  D3D11 convention: UV (0,0) = top-left of the texture.
@@ -13632,7 +13954,7 @@ pragma pack(pop)
 
 ### Index Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L97) (line 97)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L98) (line 98)
 
 Two clockwise triangles (D3D11 default front face) sharing the diagonal edge:
   Triangle 0: top-left (0), top-right (1), bottom-left (2)
@@ -13641,7 +13963,7 @@ static const uint16_t kQuadIndices[6] = { 0, 1, 2, 1, 3, 2 };
 
 ### SkinnedVertex Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L107) (line 107)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L108) (line 108)
 
 The skinned mesh vertex format carries:
   pos       — bind-pose position in NDC space (z=0, w=1)
@@ -13666,7 +13988,7 @@ pragma pack(pop)
 
 ### Skinned Strip Geometry
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L129) (line 129)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L130) (line 130)
 
 5 rows × 2 vertices = 10 vertices forming a vertical strip in NDC.
   x = ±0.10 NDC (narrow strip for clarity)
@@ -13690,7 +14012,7 @@ Row 0: y = -0.80  — fully weighted to bone 0 (static anchor)
 
 ### Index Buffer (4 quads = 8 triangles = 24 indices)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L167) (line 167)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L168) (line 168)
 
 Vertex layout (strip, left = x=-0.1, right = x=+0.1, y increases upward):
   Row 0 (y=-0.8):  v0 (left)   v1 (right)
@@ -13721,7 +14043,7 @@ static const uint16_t kSkinnedIndices[24] =
 
 ### Driver Type Selection
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L217) (line 217)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L218) (line 218)
 
 -----------------------------------------------------------------------
 D3D_DRIVER_TYPE_HARDWARE — uses the physical GPU (fastest).
@@ -13737,7 +14059,7 @@ headless ? D3D_DRIVER_TYPE_WARP
 
 ### Feature Levels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L231) (line 231)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L232) (line 232)
 
 -----------------------------------------------------------------------
 We request feature levels in descending order.  D3D11CreateDevice picks
@@ -13760,7 +14082,7 @@ sizeof(featureLevels) / sizeof(featureLevels[0]));
 
 ### Device Creation Flags
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L252) (line 252)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L253) (line 253)
 
 -----------------------------------------------------------------------
 D3D11_CREATE_DEVICE_DEBUG enables the D3D11 debug layer (analogous to
@@ -13774,7 +14096,7 @@ endif
 
 ### D3D11CreateDevice vs D3D11CreateDeviceAndSwapChain
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L266) (line 266)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L267) (line 267)
 
 We separate device creation from swap chain creation so that headless
 mode can skip the swap chain entirely (no HWND needed).
@@ -13794,7 +14116,7 @@ D3D11_SDK_VERSION,
 
 ### Fallback from Debug Layer to No-Debug
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L286) (line 286)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L287) (line 287)
 
 -----------------------------------------------------------------------
 On some Windows installations the optional D3D11 debug layer DLL
@@ -13816,7 +14138,7 @@ D3D11_SDK_VERSION,
 
 ### DXGI Swap Chain Description
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L351) (line 351)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L352) (line 352)
 
 -----------------------------------------------------------------------
 IDXGISwapChain is the bridge between D3D11 and the OS window manager.
@@ -13843,7 +14165,7 @@ scDesc.Windowed                           = TRUE;
 
 ### DXGI_SWAP_EFFECT_DISCARD
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L374) (line 374)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L375) (line 375)
 
 The oldest swap effect; supported on all D3D11 hardware.  The contents
 of the back buffer are undefined after Present — we always clear so it
@@ -13852,7 +14174,7 @@ scDesc.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
 ### Obtaining the IDXGIFactory via the Device's Adapter
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L381) (line 381)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L382) (line 382)
 
 -----------------------------------------------------------------------
 We must create the swap chain through the same DXGI factory that owns
@@ -13865,7 +14187,7 @@ IDXGIFactory* dxgiFactory = nullptr;
 
 ### Render-Target View (RTV)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L424) (line 424)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L425) (line 425)
 
 A RTV is a "view" that tells D3D11 which texture sub-resource to render
 into.  Here we point it at the swap chain's back buffer.
@@ -13880,7 +14202,7 @@ return false;
 
 ### Caching Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L445) (line 445)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L446) (line 446)
 
 -----------------------------------------------------------------------
 Store the back-buffer size so DrawFrame can set the viewport and bind
@@ -13892,7 +14214,7 @@ m_height = height;
 
 ### Creating the Depth Buffer (M16)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L455) (line 455)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L456) (line 456)
 
 -----------------------------------------------------------------------
 Now that we have the swap-chain dimensions, create the depth-stencil
@@ -13907,7 +14229,7 @@ return false;
 
 ### Flush and Flush-to-Idle before release
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L499) (line 499)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L500) (line 500)
 
 Before releasing any D3D11 objects we flush the immediate context so
 any in-flight GPU commands are drained.  Without this, destroying
@@ -13917,14 +14239,14 @@ m_context->Flush();
 
 ### m_depthStencilState is device-level (not swap-chain-sized),
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L508) (line 508)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L509) (line 509)
 
 so we release it in Shutdown rather than in ReleaseSwapChainResources.
 if (m_depthStencilState) { m_depthStencilState->Release(); m_depthStencilState = nullptr; }
 
 ### D3D11 Frame Setup: Bind RTV + DSV + Viewport
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L528) (line 528)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L529) (line 529)
 
 -----------------------------------------------------------------------
 Before issuing any draw or clear commands we must:
@@ -13947,7 +14269,7 @@ Before issuing any draw or clear commands we must:
 
 ### D3D11 Clear
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L566) (line 566)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L567) (line 567)
 
 -----------------------------------------------------------------------
 ClearRenderTargetView fills the back buffer with a solid colour.
@@ -13964,7 +14286,7 @@ D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 ### Scene Draw Pass (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L581) (line 581)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L582) (line 582)
 
 -----------------------------------------------------------------------
 If a scene has been loaded via LoadScene(), draw it on top of the clear
@@ -13975,11 +14297,14 @@ M3: textured_quad — a UV-mapped full-screen quad.
 M4b: skinned_mesh — a GPU-skinned animated strip (2-joint skeleton).
 -----------------------------------------------------------------------
 if (m_quadScene.loaded && m_currentScene == "textured_quad")
+{
+SCOPED_GPU_EVENT(m_context, L"Textured Quad");
 DrawTexturedQuad();
+}
 
 ### Advancing the demo animation timer.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L593) (line 593)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L597) (line 597)
 
 m_sceneTime accumulates real elapsed time (seconds) and is used by
 DrawSkinnedMesh() to compute a sinusoidal joint rotation angle, and by
@@ -13990,7 +14315,7 @@ m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
 
 ### Sky Draw Order
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L613) (line 613)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L626) (line 626)
 
 The sky is drawn AFTER clearing the back buffer but could optionally be
 drawn first since it uses depth 0.9999 (behind everything).  In a full
@@ -14002,13 +14327,14 @@ matter.
 m_skyRenderer.Update(1/60) advances the time-of-day each frame.
 if (m_skyScene.loaded && m_currentScene == "dynamic_sky")
 {
+SCOPED_GPU_EVENT(m_context, L"Dynamic Sky");
 m_skyRenderer.Update(1.0f / 60.0f);
 DrawSky();
 }
 
 ### Present interval
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L637) (line 637)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L657) (line 657)
 
 -----------------------------------------------------------------------
 Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
@@ -14020,7 +14346,7 @@ m_swapChain->Present(1, 0);
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L655) (line 655)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L675) (line 675)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -14029,7 +14355,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### Recreate the depth buffer to match the new back-buffer size.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L696) (line 696)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L716) (line 716)
 
 The depth buffer must always be the same width×height as the back buffer.
 Release the old DSV + DST and create new ones at the new dimensions.
@@ -14039,7 +14365,7 @@ CreateDepthStencilBuffer(width, height);
 
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L710) (line 710)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L730) (line 730)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -14064,7 +14390,7 @@ return false;
 
 ### COM Reference Counting
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L759) (line 759)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L779) (line 779)
 
 COM objects are reference-counted.  CreateRenderTargetView internally
 calls AddRef on the texture, so the texture stays alive even after we
@@ -14079,7 +14405,7 @@ return false;
 
 ### Validating the Scene Pipeline in Headless Mode (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L776) (line 776)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L796) (line 796)
 
 -----------------------------------------------------------------------
 If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
@@ -14098,7 +14424,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the GPU skinning scene (M4b).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L796) (line 796)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L816) (line 816)
 
 We bind the off-screen RTV, set a matching 64×64 viewport, and call
 DrawSkinnedMesh() once.  This validates that the skinned mesh pipeline
@@ -14114,7 +14440,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the PBR scene (M9).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L813) (line 813)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L833) (line 833)
 
 Same pattern as skinned_mesh: bind the 64×64 off-screen RTV, set the
 matching viewport, and call DrawPBRMesh() once.  This validates that
@@ -14132,7 +14458,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the PBR + IBL scene (M16).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L832) (line 832)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L852) (line 852)
 
 Same 64×64 offscreen RTV pattern.  DrawPBRIBLMesh() validates that:
   • pbr_ibl.vs.hlsl + pbr_ibl.ps.hlsl compile under WARP.
@@ -14152,7 +14478,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the dynamic sky scene (M10).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L853) (line 853)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L873) (line 873)
 
 Bind the 64×64 off-screen RTV and call DrawSky() once.  This validates
 that the sky shaders (sky.vs.hlsl + sky.ps.hlsl), the sky constant
@@ -14168,7 +14494,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the shadow map scene (M17).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L871) (line 871)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L891) (line 891)
 
 -----------------------------------------------------------------------
 DrawShadowScene() executes two passes:
@@ -14193,7 +14519,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the bloom scene (M17).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L899) (line 899)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L919) (line 919)
 
 -----------------------------------------------------------------------
 DrawBloomScene() executes four full-screen triangle passes:
@@ -14217,7 +14543,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### C++ requires functions to be declared before use.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L936) (line 936)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L956) (line 956)
 
 LoadSkinnedMeshScene is a file-scope static helper defined later in this
 translation unit.  Rather than move the entire 300-line function above
@@ -14229,7 +14555,7 @@ D3D11Renderer::SkinnedMeshScene& scene);
 
 ### Runtime HLSL Compilation with D3DCompileFromFile
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1081) (line 1081)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1101) (line 1101)
 
 -----------------------------------------------------------------------
 D3D11 shaders are written in HLSL and can be compiled either:
@@ -14252,7 +14578,7 @@ Windows filesystem API uses UTF-16 internally.
 
 ### Embedded Fallback HLSL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1107) (line 1107)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1127) (line 1127)
 
 -----------------------------------------------------------------------
 If the .hlsl files are not present on disk (e.g. a minimal CI run that
@@ -14270,7 +14596,7 @@ static const char* kVsFallback =
 
 ### std::wstring for Win32 wide-char path
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1141) (line 1141)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1161) (line 1161)
 
 D3DCompileFromFile requires a LPCWSTR (wide string) path.
 std::filesystem::path::wstring() gives us that on MSVC.
@@ -14290,7 +14616,7 @@ D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
 
 ### Creating Shader Objects
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1221) (line 1221)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1241) (line 1241)
 
 -----------------------------------------------------------------------
 D3D11 separates shader compilation (→ bytecode blob) from shader object
@@ -14304,7 +14630,7 @@ nullptr, &m_quadScene.vs);
 
 ### Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1253) (line 1253)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1273) (line 1273)
 
 -----------------------------------------------------------------------
 The Input Assembler (IA) stage needs to know how the raw bytes in the
@@ -14327,7 +14653,7 @@ D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 ### Vertex and Index Buffers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1289) (line 1289)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1309) (line 1309)
 
 -----------------------------------------------------------------------
 D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
@@ -14348,7 +14674,7 @@ bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
 
 ### Texture Loading vs Fallback
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1338) (line 1338)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1358) (line 1358)
 
 -----------------------------------------------------------------------
 We look for a test DDS texture in the shaderDir's parent (project root)
@@ -14367,7 +14693,7 @@ ddsPath = ddsPath.lexically_normal();
 
 ### Procedural 1×1 White Fallback Texture
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1364) (line 1364)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1384) (line 1384)
 
 -----------------------------------------------------------------------
 When no DDS file is present we create a 1×1 RGBA8 white texture
@@ -14378,7 +14704,7 @@ std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n
 
 ### LoadScene_SkinnedMesh (private helper — inlined in LoadScene)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1444) (line 1444)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1464) (line 1464)
 
 We use a local lambda at file scope to keep the main LoadScene() readable.
 All resource creation follows the same pattern as the textured quad:
@@ -14386,7 +14712,7 @@ All resource creation follows the same pattern as the textured quad:
 
 ### Fallback HLSL for the skinned mesh vertex shader.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1457) (line 1457)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1477) (line 1477)
 
 -----------------------------------------------------------------------
 This is a minimal version of skinned_mesh.vs.hlsl that performs linear
@@ -14411,7 +14737,7 @@ static const char* kSkinnedVsFallback =
 
 ### SkinnedVertex Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1564) (line 1564)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1584) (line 1584)
 
 The D3D11_INPUT_ELEMENT_DESC array must exactly match the SkinnedVertex
 struct defined at the top of this file (field order and byte offsets).
@@ -14434,7 +14760,7 @@ D3D11_INPUT_ELEMENT_DESC layout[] =
 
 ### Why cull-none for the skinning demo?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1637) (line 1637)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1657) (line 1657)
 
 The strip starts facing the camera but rotates 360° as bone 1 oscillates.
 With the default back-face culling the strip disappears every 180°.
@@ -14457,7 +14783,7 @@ return false;
 
 ### The D3D11 Draw Call Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1669) (line 1669)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1689) (line 1689)
 
 -----------------------------------------------------------------------
 Every draw call in D3D11 requires the full pipeline state to be set:
@@ -14472,7 +14798,7 @@ We set IA, VS, and PS here for the quad draw call.
 
 ### PSSetShaderResources / PSSetSamplers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1681) (line 1681)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1701) (line 1701)
 
 These calls bind texture resources and sampler states to HLSL registers.
 register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
@@ -14481,7 +14807,7 @@ register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
 
 ### Constructing the Skin Matrices for the 2-Joint Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1737) (line 1737)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1757) (line 1757)
 
 -----------------------------------------------------------------------
 The demo skeleton has two joints:
@@ -14507,7 +14833,7 @@ const float angle = std::sin(m_sceneTime * 1.5f) * (kPi * 0.25f);  // ±45°
 
 ### Input Assembler (IA) Stage Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1772) (line 1772)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1792) (line 1792)
 
 -----------------------------------------------------------------------
 We set the same four IA parameters as any other draw call:
@@ -14521,7 +14847,7 @@ m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 ### DrawIndexed
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1796) (line 1796)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1816) (line 1816)
 
 -----------------------------------------------------------------------
 DrawIndexed(indexCount, startIndex, baseVertex):
@@ -14533,7 +14859,7 @@ m_context->DrawIndexed(static_cast<UINT>(m_skinnedScene.indexCount), 0, 0);
 
 ### Release Order (LIFO vs Creation Order)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1818) (line 1818)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1838) (line 1838)
 
 COM objects must be released in reverse-creation order when one object
 holds a reference to another.  For independent scene objects (shaders,
@@ -14542,7 +14868,7 @@ reverse makes intent clear.
 
 ### Release order: state objects first (they don't depend on
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1848) (line 1848)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1868) (line 1868)
 
 shaders), then shaders, then geometry buffers, then the CB.
 if (m_skinnedScene.rastState)   { m_skinnedScene.rastState->Release();   m_skinnedScene.rastState   = nullptr; }
@@ -14554,7 +14880,7 @@ if (m_skinnedScene.vertexBuf)   { m_skinnedScene.vertexBuf->Release();   m_skinn
 
 ### Release in reverse creation order (LIFO):
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1862) (line 1862)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1882) (line 1882)
 
 state objects first (no dependents), then shaders, then buffers.
 if (m_pbrScene.rastState)   { m_pbrScene.rastState->Release();   m_pbrScene.rastState   = nullptr; }
@@ -14571,7 +14897,7 @@ m_pbrScene.loaded     = false;
 
 ### The sky scene only has three objects: VS, PS, and the
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1877) (line 1877)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1897) (line 1897)
 
 sky constant buffer.  No vertex buffer or input layout to release (the
 full-screen triangle uses SV_VertexID — no IA stage resources needed).
@@ -14582,7 +14908,7 @@ m_skyScene.loaded = false;
 
 ### Release IBL textures.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1886) (line 1886)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1906) (line 1906)
 
 The raw ID3D11Texture2D* objects must be released separately from the
 SRVs.  When CreateShaderResourceView() was called, the SRV got its own
@@ -14622,7 +14948,7 @@ m_pbrIblScene.loaded     = false;
 
 ### Release Order for Shadow Resources
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1924) (line 1924)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1944) (line 1944)
 
 The shadow map SRV and DSV both reference the same underlying texture
 (shadowTex).  The SRV and DSV each add a COM reference when created, so
@@ -14650,7 +14976,7 @@ m_shadowScene.loaded     = false;
 
 ### Releasing Render Targets
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1950) (line 1950)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1970) (line 1970)
 
 Each offscreen RT consists of three objects: the ID3D11Texture2D (raw
 GPU memory), an ID3D11RenderTargetView (write access), and an
@@ -14688,7 +15014,7 @@ m_bloomScene.loaded = false;
 
 ### PBR Per-Frame Constant Buffer Update
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1998) (line 1998)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2018) (line 2018)
 
 -----------------------------------------------------------------------
 The world matrix changes every frame (the sphere rotates slowly around
@@ -14707,7 +15033,7 @@ Proj matrix: FovY=60°, aspect from current back-buffer, near=0.1, far=100.
 
 ### LookAt matrix (Right-Handed, row-major D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2021) (line 2021)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2041) (line 2041)
 
 -----------------------------------------------------------------------
 We build the view matrix manually to show the derivation:
@@ -14727,7 +15053,7 @@ Vec3 up     = { 0.0f, 1.0f, 0.0f };
 
 ### Perspective Projection (Right-Handed, D3D11 Z=[0,1])
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2049) (line 2049)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2069) (line 2069)
 
 -----------------------------------------------------------------------
 D3D11 maps view-space z ∈ [-near, -far] to NDC z ∈ [0, 1].
@@ -14752,7 +15078,7 @@ float f      = 1.0f / std::tan(kFovY * 0.5f);   // cot(FovY/2)
 
 ### Map / Unmap for DYNAMIC buffers.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2082) (line 2082)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2102) (line 2102)
 
 D3D11_MAP_WRITE_DISCARD tells the driver "discard the old contents and
 give me a new pointer to write into".  This avoids GPU/CPU stalls: the
@@ -14773,7 +15099,7 @@ std::memcpy(pfData.proj,         projMat.Data(),  64);
 
 ### Input Assembler (IA) stage setup.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2111) (line 2111)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2131) (line 2131)
 
 We must set:
   1. The primitive topology (triangles, lines, etc.).
@@ -14791,7 +15117,7 @@ m_context->IASetInputLayout(m_pbrScene.inputLayout);
 
 ### Updating the Sky Constant Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2155) (line 2155)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2175) (line 2175)
 
 -----------------------------------------------------------------------
 m_skyRenderer.Update(dt) is called by DrawFrame each frame to advance
@@ -14809,7 +15135,7 @@ engine::rendering::SkyShaderConstants constants = m_skyRenderer.GetShaderConstan
 
 ### Sky Pipeline State
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2180) (line 2180)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2200) (line 2200)
 
 -----------------------------------------------------------------------
 The sky draw uses the absolute minimum pipeline state:
@@ -14834,7 +15160,7 @@ The sky draw uses the absolute minimum pipeline state:
 
 ### The sky VS does not use any constant buffers.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2210) (line 2210)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2230) (line 2230)
 
 Explicitly clear b0 of the VS stage so no stale matrix CB from a
 previous draw call bleeds into the sky VS's register space.
@@ -14843,7 +15169,7 @@ m_context->VSSetConstantBuffers(0, 1, &nullCB);
 
 ### Draw(3, 0): Full-Screen Triangle, No Vertex Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2221) (line 2221)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2241) (line 2241)
 
 -----------------------------------------------------------------------
 Draw(vertexCount, startVertexLocation):
@@ -14859,7 +15185,7 @@ m_context->Draw(3, 0);
 
 ### Embedded PBR Shader Fallbacks
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2254) (line 2254)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2274) (line 2274)
 
 -----------------------------------------------------------------------
 As with the textured_quad and skinned_mesh scenes, we include minimal
@@ -14884,7 +15210,7 @@ static const char* kPBRVsFallback =
 
 ### kPi for the UV sphere generation inside LoadPBRMeshScene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2288) (line 2288)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2308) (line 2308)
 
 math_types.hpp defines engine::math::kPi, but that name requires the
 engine::math namespace which is not open at file scope here.  We declare a
@@ -14895,7 +15221,7 @@ static constexpr float kPi = 3.14159265358979323846f;
 
 ### M23 authored material ingestion (JSON-lite parser)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2297) (line 2297)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2317) (line 2317)
 
 -----------------------------------------------------------------------
 The first M23 runtime step is reading authored PBR material parameters from
@@ -14921,7 +15247,7 @@ std::string loadedFromPath;
 
 ### A material key may appear multiple times in different
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2332) (line 2332)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2352) (line 2352)
 
 JSON scopes (for example "ao" as scalar and "ao" texture slot).
 We keep scanning until we find a numeric value instead of trusting the
@@ -14937,7 +15263,7 @@ return false;
 
 ### Same compile helper pattern as the skinned mesh scene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2729) (line 2729)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2749) (line 2749)
 
 We attempt to compile from the .hlsl file on disk; if that fails (file
 missing, syntax error) we fall back to the embedded string.  This
@@ -14952,7 +15278,7 @@ HRESULT   hr     = E_FAIL;
 
 ### D3D11 Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2797) (line 2797)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2817) (line 2817)
 
 The input layout maps each field of the C++ vertex struct to a
 semantic name in the HLSL VSInput struct.  We have three fields:
@@ -14984,7 +15310,7 @@ return false;
 
 ### UV Sphere Parametric Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2829) (line 2829)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2849) (line 2849)
 
 A UV sphere is generated by sweeping a circle (latitude) around the
 Y axis (longitude).  Parameters:
@@ -15016,7 +15342,7 @@ constexpr int N_SLICES = 16;
 
 ### Triangle winding (clockwise from outside of sphere).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2903) (line 2903)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2923) (line 2923)
 
 Triangle 1: top-left, bottom-left, top-right
 Triangle 2: top-right, bottom-left, bottom-right
@@ -15027,7 +15353,7 @@ indices[iIdx++] = v1;
 
 ### IMMUTABLE vs DYNAMIC buffers for geometry.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2921) (line 2921)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2941) (line 2941)
 
 The sphere geometry never changes, so we use D3D11_USAGE_IMMUTABLE:
   • GPU-only access (no CPU write after creation).
@@ -15052,7 +15378,7 @@ return false;
 
 ### D3D11 Constant Buffer Size Rules.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2962) (line 2962)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2982) (line 2982)
 
 A D3D11 constant buffer must be a MULTIPLE of 16 bytes.
 The perFrameCB holds four 4×4 float matrices = 4 × 64 = 256 bytes. ✓
@@ -15079,7 +15405,7 @@ return buf;
 
 ### Uploading data to a DYNAMIC constant buffer at init.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2998) (line 2998)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3018) (line 3018)
 
 For the very first upload we use D3D11_MAP_WRITE_DISCARD (same as the
 per-frame update).  The resource has never been used by the GPU, so
@@ -15088,7 +15414,7 @@ per-frame update).  The resource has never been used by the GPU, so
 
 ### Light direction points TOWARD the light (toward the source),
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3005) (line 3005)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3025) (line 3025)
 
 so the dot product N·L is positive for surfaces facing the light.
 struct alignas(16) LightData {
@@ -15116,7 +15442,7 @@ lightData.padL2           = 0.0f;
 
 ### Workaround: use device->GetImmediateContext to get
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3036) (line 3036)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3056) (line 3056)
 
 a context pointer for the one-time init upload.  In a production
 engine the context would be passed as a parameter.
@@ -15135,7 +15461,7 @@ ctx->Release();
 
 ### Material Parameters for a Gold-like Surface:
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3053) (line 3053)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3073) (line 3073)
 
 albedo   = warm orange-gold (reflected tint for metals = albedo)
   metallic = 0.9  (mostly metallic; a small dielectric contribution
@@ -15156,7 +15482,7 @@ matData.matPad[0] = matData.matPad[1] = 0.0f;
 
 ### Cull-None for the PBR Demo Sphere.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3102) (line 3102)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3122) (line 3122)
 
 The default D3D11 rasterizer state back-face culls (removes triangles
 whose vertices wind clockwise from the camera's perspective).  For a
@@ -15180,7 +15506,7 @@ device->CreateRasterizerState(&rd, &scene.rastState);
 
 ### Minimal Pipeline for a Sky Scene
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3140) (line 3140)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3160) (line 3160)
 
 ──────────────────────────────────────────────────
 The sky is the simplest possible D3D11 pipeline:
@@ -15197,7 +15523,7 @@ This simplicity makes the sky scene a perfect study example for D3D11 basics:
 
 ### Embedded Sky Shader Fallbacks
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3155) (line 3155)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3175) (line 3175)
 
 -----------------------------------------------------------------------
 As with all other scenes, we include minimal inline HLSL strings as
@@ -15220,7 +15546,7 @@ static const char* kSkyVsFallback =
 
 ### compile helper (same pattern as all other scene loaders)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3196) (line 3196)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3216) (line 3216)
 
 -----------------------------------------------------------------------
 auto compile = [&](const fs::path& path, const char* fallback,
@@ -15232,7 +15558,7 @@ HRESULT   hr     = E_FAIL;
 
 ### Sky Constant Buffer Size
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3281) (line 3281)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3301) (line 3301)
 
 SkyShaderConstants is 80 bytes (5 × float4 = 5 × 16 bytes).
 D3D11 requires constant buffers to be multiples of 16 bytes.
@@ -15247,7 +15573,7 @@ static_assert(sizeof(engine::rendering::SkyShaderConstants) % 16 == 0,
 
 ### Depth Buffer Creation in D3D11
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3315) (line 3315)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3335) (line 3335)
 
 ===========================================================================
 Creating a D3D11 depth buffer requires three steps:
@@ -15283,7 +15609,7 @@ sized and are recreated on every resize.
 
 ### D3D11_DEPTH_STENCIL_VIEW_DESC
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3379) (line 3379)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3399) (line 3399)
 
 ViewDimension = TEXTURE2D means we bind the entire 2D texture as depth.
 MipSlice = 0 selects the single mip level we created above.
@@ -15295,7 +15621,7 @@ dsvDesc.Texture2D.MipSlice = 0;
 
 ### Why create the state here and not in Init()?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3401) (line 3401)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3421) (line 3421)
 
 The state is logically part of the depth buffer setup.  Keeping all
 three objects together makes the initialisation sequence obvious and
@@ -15312,7 +15638,7 @@ dsStateDesc.StencilEnable  = FALSE;   // Not used yet
 
 ### We do NOT release m_depthStencilState here because it is
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3434) (line 3434)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3454) (line 3454)
 
 device-level and not swap-chain-sized.  Releasing it on resize would
 force an unnecessary CreateDepthStencilState() round-trip.  It is
@@ -15323,7 +15649,7 @@ if (m_depthStencilTex)  { m_depthStencilTex->Release();  m_depthStencilTex  = nu
 
 ### Image-Based Lighting (IBL) Procedural Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3445) (line 3445)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3465) (line 3465)
 
 ===========================================================================
 A production engine loads IBL textures from pre-cooked HDR cubemap files.
@@ -15352,7 +15678,7 @@ fills the data — no further updates are needed.
 
 ### Hammersley Quasi-Random Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3474) (line 3474)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3494) (line 3494)
 
 ---------------------------------------------------------------------------
 The Hammersley sequence gives a well-distributed set of 2D sample points
@@ -15375,7 +15701,7 @@ return static_cast<float>(bits) * 2.3283064365386963e-10f; // 1/2^32
 
 ### GGX Importance Sampling (Tangent Space)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3501) (line 3501)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3521) (line 3521)
 
 ---------------------------------------------------------------------------
 Given two uniform random numbers (xi1, xi2) and a roughness α, this
@@ -15397,7 +15723,7 @@ float phi      = 2.0f * kPi * xi1;
 
 ### epsilon placement: add to the full denominator expression
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3519) (line 3519)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3539) (line 3539)
 
 so the protection is clearly outside the main formula term.
 float cosTheta = std::sqrt((1.0f - xi2) /
@@ -15410,7 +15736,7 @@ cosTheta };
 
 ### Smith-Schlick-GGX Geometry (IBL variant)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3530) (line 3530)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3550) (line 3550)
 
 ---------------------------------------------------------------------------
 For the BRDF LUT precomputation we use the IBL variant of k:
@@ -15428,7 +15754,7 @@ return NdotV / (NdotV * (1.0f - k) + k + 1e-7f);
 
 ### Integrate BRDF for one (NoV, roughness) sample
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3551) (line 3551)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3571) (line 3571)
 
 ---------------------------------------------------------------------------
 This computes the two components of the split-sum BRDF LUT for a single
@@ -15453,7 +15779,7 @@ float Vz = NdotV;
 
 ### Procedural Sky Environment Colour
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3608) (line 3608)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3628) (line 3628)
 
 ---------------------------------------------------------------------------
 Returns a physically plausible sky colour for a given world-space direction.
@@ -15473,7 +15799,7 @@ float ny = dy / len;   // normalised elevation component
 
 ### Cubemap Face Direction (D3D11 convention)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3642) (line 3642)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3662) (line 3662)
 
 ---------------------------------------------------------------------------
 D3D11 cubemaps use a left-handed coordinate system per face:
@@ -15503,7 +15829,7 @@ default: dx = -u; dy = -v;  dz = -1;  break;   // -Z (face 5)
 
 ### Orthonormal Basis from a Normal Vector
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3670) (line 3670)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3690) (line 3690)
 
 ---------------------------------------------------------------------------
 To integrate over a hemisphere aligned with a surface normal N, we need
@@ -15523,7 +15849,7 @@ if (std::abs(ny) > 0.999f) { ux = 0.0f; uy = 0.0f; uz = 1.0f; }
 
 ### BRDF LUT Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3709) (line 3709)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3729) (line 3729)
 
 The LUT is a 2D texture indexed by (NoV = U, roughness = V).
 Row 0 = roughness 0, row (size-1) = roughness 1.
@@ -15532,7 +15858,7 @@ pixels.resize(size * size * 2);   // 2 bytes per texel (RG8)
 
 ### Hemisphere Integration for Irradiance
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3743) (line 3743)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3763) (line 3763)
 
 For each texel on the cubemap face, we find the world-space direction
 (the surface normal N), build a tangent basis, and sum cosine-weighted
@@ -15549,7 +15875,7 @@ float fu = (static_cast<float>(col) + 0.5f) / static_cast<float>(size)
 
 ### Prefiltered Environment Map Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3804) (line 3804)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3824) (line 3824)
 
 For each texel (= reflection direction R), we importance-sample the
 GGX NDF to generate a set of half-vectors H.  We reflect R around each
@@ -15561,7 +15887,7 @@ At roughness=1 (mip 4) we sample a broad hemisphere → blurry env.
 
 ### Roughness clamping
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3813) (line 3813)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3833) (line 3833)
 
 roughness=0 (perfect mirror) causes ImportanceSampleGGX to produce all
 samples concentrated at the mirror direction.  For the very first mip we
@@ -15570,7 +15896,7 @@ float eff_roughness = std::max(roughness, 0.04f);
 
 ### Input Layout for PBR+IBL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4026) (line 4026)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4046) (line 4046)
 
 Same layout as pbr_mesh: POSITION (float3) + NORMAL (float3) + TEXCOORD0 (float2).
 Each vertex is 32 bytes.  The layout must match the vertex shader's
@@ -15584,7 +15910,7 @@ D3D11_INPUT_ELEMENT_DESC inputElems[] = {
 
 ### UV Sphere vs Icosphere
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4052) (line 4052)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4072) (line 4072)
 
 A UV sphere divides the sphere into stacks (latitudinal rings) and
 slices (longitudinal strips).  It is simple to generate and gives clean
@@ -15600,7 +15926,7 @@ std::string authoredMeshPath;
 
 ### Constant Buffer Sizes must be multiples of 16 bytes.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4128) (line 4128)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4148) (line 4148)
 
 PerFrameCB: 4 × float4x4 = 256 bytes.
 LightCB:    2 × float4 + float3 + float = 48 bytes → pad to 48.
@@ -15620,7 +15946,7 @@ return buf;
 
 ### We use an immediate DeviceContext write via Map/Unmap
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4159) (line 4159)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4179) (line 4179)
 
 instead of UpdateSubresource because the CB is DYNAMIC.  UpdateSubresource
 on a DYNAMIC buffer is slower than Map/Unmap on some drivers.
@@ -15636,7 +15962,7 @@ device->GetImmediateContext(&ctx);
 
 ### Fallback map conventions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4230) (line 4230)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4250) (line 4250)
 
 Albedo fallback:              white (1,1,1)
   Normal fallback:              +Z tangent normal (0.5,0.5,1.0)
@@ -15663,7 +15989,7 @@ const uint8_t kDefaultAO[4]      = {255, 255, 255, 255};
 
 ### DXGI_FORMAT_R8G8_UNORM
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4289) (line 4289)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4309) (line 4309)
 
 Two 8-bit channels (R=scale, G=bias).  UNORM means values are
 interpreted as [0.0, 1.0] in the shader.  The LUT encodes values in
@@ -15677,7 +16003,7 @@ GenerateBRDFLUT(lutPixels, kLUTSize, 128);
 
 ### D3D11_RESOURCE_MISC_TEXTURECUBE
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4322) (line 4322)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4342) (line 4342)
 
 Setting MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE on a Texture2D
 with ArraySize = 6 tells D3D11 that the six array slices are the six
@@ -15693,7 +16019,7 @@ GenerateIrradianceFace(face, kCubeSize, 64, allFaces);
 
 ### RGBA8 vs RGB8
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4354) (line 4354)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4374) (line 4374)
 
 D3D11 does not support RGB8 (24-bit) textures natively.  The
 closest supported format is RGBA8 (32-bit).  We must convert our
@@ -15709,7 +16035,7 @@ rgba[i*4+3] = 255;
 
 ### Multi-Mip Cubemap Upload
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4389) (line 4389)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4409) (line 4409)
 
 Each mip level of each face is a separate D3D11_SUBRESOURCE_DATA.
 The total number of subresources = 6 faces × 5 mip levels = 30.
@@ -15723,7 +16049,7 @@ std::cout << "[IBL] Generating prefiltered env cubemap ("
 
 ### Sampler State for IBL Textures
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4474) (line 4474)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4494) (line 4494)
 
 All three IBL textures use a linear filter sampler with CLAMP address
 mode.  CLAMP is important for the BRDF LUT (NoV and roughness are both
@@ -15746,7 +16072,7 @@ if (FAILED(hr)) { std::cerr << "[IBL] CreateSamplerState failed.\n"; return fals
 
 ### Per-Frame Constant Buffer Update (PBR + IBL)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4523) (line 4523)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4543) (line 4543)
 
 -----------------------------------------------------------------------
 The per-frame CB holds the world, worldInvTrans, view, and proj matrices.
@@ -15759,7 +16085,7 @@ Mat4 worldMat = Mat4::Rotation(Quat::FromAxisAngle(Vec3::Up(), angle));
 
 ### Binding IBL Textures
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4597) (line 4597)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4617) (line 4617)
 
 -----------------------------------------------------------------------
 The PS declares:
@@ -15791,7 +16117,7 @@ m_context->PSSetSamplers(0, 1, &m_pbrIblScene.linearSampler);
 
 ### Two-Pass Shadow Rendering Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4638) (line 4638)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4658) (line 4658)
 
 Shadow map rendering requires:
   (a) A depth texture that the GPU can WRITE to (DepthStencilView).
@@ -15808,7 +16134,7 @@ shadow_lit.ps.hlsl — lit PS: 3×3 PCF shadow comparison + Lambert diffuse.
 
 ### Shadow Map Texture Format
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4676) (line 4676)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4696) (line 4696)
 
 -----------------------------------------------------------------------
 DXGI_FORMAT_R32_TYPELESS lets us create BOTH a DSV (write-only depth)
@@ -15824,7 +16150,7 @@ be used as an SRV format; TYPELESS is the bridge.
 
 ### Compile Helper Lambda (same pattern as other scenes)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4739) (line 4739)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4759) (line 4759)
 
 Try the .hlsl file from shaderDir first; return failure if not found.
 The shadow shaders have no embedded fallback string — they require the
@@ -15860,7 +16186,7 @@ return code;
 
 ### Shared Input Layout for Shadow and Lit Passes
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4792) (line 4792)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4812) (line 4812)
 
 Both the shadow VS and the lit VS accept the same vertex layout
 (position + normal + UV).  We create ONE input layout using the shadow
@@ -15890,7 +16216,7 @@ return false;
 
 ### Shadow CB (64 bytes, b0 of shadow VS)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4869) (line 4869)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4889) (line 4889)
 
 The shadow pass only needs the combined lightViewProj matrix (one float4x4
 = 64 bytes).  We upload it once at the start of each shadow draw call.
@@ -15918,7 +16244,7 @@ return false;
 
 ### Lit CB (272 bytes, b0 of lit VS + lit PS)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4894) (line 4894)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4914) (line 4914)
 
 Contains: world, view, proj, lightViewProj, lightDir.
 Both stages share the same CB object — we bind it to VS slot 0 and
@@ -15946,7 +16272,7 @@ return false;
 
 ### Depth Bias for Shadow Maps
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4945) (line 4945)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4965) (line 4965)
 
 Shadow acne arises because the shadow map depth and the re-computed
 surface depth differ by a tiny floating-point error.  The rasterizer
@@ -15991,7 +16317,7 @@ return false;
 
 ### SamplerComparisonState (hardware PCF)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4990) (line 4990)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5010) (line 5010)
 
 D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT enables bilinear PCF:
   • Takes a 2×2 neighbourhood, compares each texel, and bilinearly
@@ -16032,7 +16358,7 @@ return false;
 
 ### Reuse the UV Sphere for the Shadow Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5031) (line 5031)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5051) (line 5051)
 
 The same sphere geometry used in the PBR scenes (M9, M16) serves as
 both the shadow caster and the lit object in this demo.  Using a sphere
@@ -16050,7 +16376,7 @@ std::vector<uint16_t> idx(static_cast<size_t>(nIndices));
 
 ### Orthographic Projection for Directional Lights
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5147) (line 5147)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5167) (line 5167)
 
 A directional light has parallel rays (infinite distance), so it uses
 an ORTHOGRAPHIC projection — no perspective foreshortening.
@@ -16062,7 +16388,7 @@ const float eyeZ = -kLightDirZ * 5.0f;
 
 ### Row-Major Matrix Multiply
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5183) (line 5183)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5203) (line 5203)
 
 In row-vector × matrix convention, the chain is:
   clipPos = pos_model × world × lightView × lightProj
@@ -16079,7 +16405,7 @@ lightVP.m[r][c] += lightView.m[r][k] * lightProj.m[k][c];
 
 ### No Colour Output
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5200) (line 5200)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5220) (line 5220)
 
 We bind the shadow DSV but NO colour RTV (first argument = 0, second =
 nullptr).  The rasteriser will still write depth — only colour output
@@ -16089,7 +16415,7 @@ compared to a dummy colour target.
 
 ### OMGetRenderTargets increments the COM ref count of the
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5208) (line 5208)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5228) (line 5228)
 
 returned pointers.  We MUST call Release() on them after restoring.
 ID3D11RenderTargetView* prevRTV = nullptr;
@@ -16098,7 +16424,7 @@ m_context->OMGetRenderTargets(1, &prevRTV, &prevDSV);
 
 ### DSV ↔ SRV Mutual Exclusion
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5255) (line 5255)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5275) (line 5275)
 
 D3D11 does not allow the same sub-resource to be bound simultaneously
 as a DSV (write) and an SRV (read).  We must unbind the DSV first by
@@ -16110,7 +16436,7 @@ m_context->RSSetState(nullptr);
 
 ### Offscreen Render Target Pattern
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5336) (line 5336)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5356) (line 5356)
 
 Bloom requires rendering to TEXTURES that are not the swap-chain back buffer.
 Each bloom RT follows the same three-object pattern:
@@ -16126,7 +16452,7 @@ always alternates: write to tex A → read from tex A (write next tex B).
 
 ### Reusing sky.vs.hlsl as the Full-Screen VS
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5424) (line 5424)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5444) (line 5444)
 
 The full-screen triangle trick (SV_VertexID) generates 3 vertices that
 cover the entire viewport without any vertex buffer.  sky.vs.hlsl already
@@ -16164,7 +16490,7 @@ return code;
 
 ### Structured Cleanup via goto Labels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5543) (line 5543)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5563) (line 5563)
 
 -----------------------------------------------------------------------
 Cascaded cleanup with goto mimics the RAII pattern in systems where
@@ -16202,7 +16528,7 @@ return false;
 
 ### Simulated Scene Content For Bloom
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5611) (line 5611)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5631) (line 5631)
 
 For the bloom demo we bypass a full scene render and simply clear the
 scene RT to a bright orange test colour stored in a UNORM render target.
@@ -16225,7 +16551,7 @@ m_context->ClearRenderTargetView(m_bloomScene.sceneRTV, bright);
 
 ### Restoring the Caller's Render Target
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5695) (line 5695)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5715) (line 5715)
 
 The final composite outputs to the render target that the CALLER set up
 (either the swap-chain back buffer in windowed mode, or the 64×64 off-
@@ -16937,6 +17263,103 @@ Usage:
       ctx->PSSetSamplers(0, 1, &smp);
   }
 @endcode
+
+### PF-2: PIX / RenderDoc Event Markers
+
+**Source:** [`src/engine/rendering/d3d11/scoped_gpu_event.hpp`](src/engine/rendering/d3d11/scoped_gpu_event.hpp#L8) (line 8)
+
+============================================================================
+GPU profilers like PIX (Microsoft) and RenderDoc (open-source) can capture
+a single frame of GPU commands and let you inspect every draw call, resource
+binding, and shader invocation.
+
+Without labels, a frame capture looks like an anonymous list of "Draw 3
+indices", "Draw 6 indices", etc.  With event markers, the capture shows:
+
+  ▼ Shadow pass        ← SCOPED_GPU_EVENT(ctx, "Shadow pass")
+      Draw 3 indices   ← shadow mesh
+  ▼ Lit pass           ← SCOPED_GPU_EVENT(ctx, "Lit pass")
+      Draw 6 indices   ← full-screen quad
+  ▼ Bloom bright-pass  ← SCOPED_GPU_EVENT(ctx, "Bloom bright-pass")
+      ...
+
+============================================================================
+
+### Implementation Strategy
+
+**Source:** [`src/engine/rendering/d3d11/scoped_gpu_event.hpp`](src/engine/rendering/d3d11/scoped_gpu_event.hpp#L25) (line 25)
+
+============================================================================
+PIX requires the WinPixEventRuntime NuGet/vcpkg package which may not
+always be present.  We use D3D11's built-in ID3DUserDefinedAnnotation
+interface instead — it ships with every D3D11 installation and is
+automatically visible in PIX and RenderDoc without any extra package.
+
+How ID3DUserDefinedAnnotation works:
+  1. Query the interface from the D3D11 device context:
+       context->QueryInterface(__uuidof(ID3DUserDefinedAnnotation), &ann);
+  2. Call ann->BeginEvent(L"Shadow pass") at the start of a render pass.
+  3. Call ann->EndEvent() at the end.
+  4. PIX / RenderDoc show these labels in the event list.
+
+### Why <d3d11_1.h> and not <d3d11.h>?
+
+**Source:** [`src/engine/rendering/d3d11/scoped_gpu_event.hpp`](src/engine/rendering/d3d11/scoped_gpu_event.hpp#L39) (line 39)
+
+ID3DUserDefinedAnnotation was introduced in D3D11.1 (Windows 8 SDK).
+<d3d11.h> only declares the base D3D11 interfaces (ID3D11Device,
+ID3D11DeviceContext, …).  <d3d11_1.h> declares the extended D3D11.1
+interfaces including ID3DUserDefinedAnnotation.  d3d11_1.h #includes
+d3d11.h internally, so replacing the include is safe.
+
+The QueryInterface itself still works on devices created without D3D11.1
+flags — WARP and real GPUs with Windows 7 feature packs support it.
+
+The SCOPED_GPU_EVENT macro wraps this in a RAII guard so EndEvent() is
+always called even if an early return is hit.
+
+============================================================================
+
+### RAII Guards
+
+**Source:** [`src/engine/rendering/d3d11/scoped_gpu_event.hpp`](src/engine/rendering/d3d11/scoped_gpu_event.hpp#L53) (line 53)
+
+============================================================================
+A RAII guard is a local object whose destructor performs cleanup.
+The C++ runtime guarantees destructors are called when the object goes out
+of scope — even via early return or exception.  This eliminates the
+"forgot to call EndEvent()" bug class.
+
+============================================================================
+
+### No-op fallback
+
+**Source:** [`src/engine/rendering/d3d11/scoped_gpu_event.hpp`](src/engine/rendering/d3d11/scoped_gpu_event.hpp#L61) (line 61)
+
+============================================================================
+On non-Windows builds (or when D3D11 is not available) all macros expand to
+nothing so the code compiles and runs without any overhead.
+============================================================================
+
+### We embed this in the header so it can be inlined by the
+
+**Source:** [`src/engine/rendering/d3d11/scoped_gpu_event.hpp`](src/engine/rendering/d3d11/scoped_gpu_event.hpp#L74) (line 74)
+
+compiler.  The struct is only 8 bytes on 64-bit (one pointer) so the RAII
+overhead is negligible.
+---------------------------------------------------------------------------
+struct ScopedGpuEvent
+{
+ID3DUserDefinedAnnotation* ann = nullptr;
+
+### QueryInterface follows the COM programming model used by
+
+**Source:** [`src/engine/rendering/d3d11/scoped_gpu_event.hpp`](src/engine/rendering/d3d11/scoped_gpu_event.hpp#L88) (line 88)
+
+all of D3D11.  Every COM object can be "cast" to a different interface
+by calling QueryInterface with the interface GUID.  If the object does
+not implement the requested interface, QueryInterface returns E_NOINTERFACE
+and we simply disable annotations for this event.
 
 ### Heightmap Grid Mesh Generation
 
@@ -27468,7 +27891,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L128) (line 128)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L130) (line 130)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -27487,7 +27910,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L143) (line 143)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L145) (line 145)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -27495,7 +27918,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L149) (line 149)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L151) (line 151)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -27513,7 +27936,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L165) (line 165)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L167) (line 167)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -27528,7 +27951,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L178) (line 178)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L180) (line 180)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -27548,7 +27971,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L198) (line 198)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -27562,7 +27985,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L208) (line 208)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L210) (line 210)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -27582,7 +28005,7 @@ include "engine/ai/nav_mesh.hpp"
 
 ### Post-M10 Cinematics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L226) (line 226)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L228) (line 228)
 
 ---------------------------------------------------------------------------
 The cinematic_test scene validates the two new engine/cinematics/ subsystems:
@@ -27599,7 +28022,7 @@ include "engine/cinematics/cinematic_sequencer.hpp"
 
 ### UI Menu Stack headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L241) (line 241)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L243) (line 243)
 
 ---------------------------------------------------------------------------
 The menu_stack_test scene validates the MenuStack navigation subsystem:
@@ -27617,7 +28040,7 @@ include "engine/ui/menu_stack.hpp"
 
 ### SDF Font Renderer headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L257) (line 257)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L259) (line 259)
 
 ---------------------------------------------------------------------------
 The font_test scene validates the SDF FontRenderer subsystem:
@@ -27631,7 +28054,7 @@ The font_test scene validates the SDF FontRenderer subsystem:
 
 ### Why headless font tests?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L268) (line 268)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L270) (line 270)
 
 The SDF atlas generation (CPU) and texture upload (GPU) happen inside Init().
 Running this in headless (WARP) mode on a CI Windows runner exercises the
@@ -27647,7 +28070,7 @@ endif
 
 ### M19 Action Combat headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L282) (line 282)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L284) (line 284)
 
 ---------------------------------------------------------------------------
 The combat_test scene validates the ComboSystem FSM and the CombatSystem
@@ -27681,7 +28104,7 @@ include "game/systems/CombatSystem.hpp"
 
 ### M20 Quest system headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L314) (line 314)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L316) (line 316)
 
 ---------------------------------------------------------------------------
 The quest_test scene validates the QuestSystem lifecycle without any
@@ -27716,7 +28139,7 @@ include "game/GameData.hpp"
 
 ### M20 Dialogue system headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L347) (line 347)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L349) (line 349)
 
 ---------------------------------------------------------------------------
 The dialogue_test scene validates the DialogueSystem proximity and
@@ -27744,7 +28167,7 @@ include "game/systems/dialogue_system.hpp"
 
 ### M26 Save System headless test (save_test)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L373) (line 373)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L375) (line 375)
 
 ---------------------------------------------------------------------------
 M26 implements the full three-part acceptance suite for the production
@@ -27768,7 +28191,7 @@ include "engine/save/save_schema.hpp"
 
 ### M25 Terrain headless tests (terrain_test)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L395) (line 395)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L397) (line 397)
 
 ---------------------------------------------------------------------------
 terrain_renderer.hpp provides the two-phase TerrainRenderer:
@@ -27796,7 +28219,7 @@ endif
 
 ### M24 authored_content headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L421) (line 421)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L423) (line 423)
 
 ---------------------------------------------------------------------------
 The authored_content scene validates that the cook pipeline produced proper
@@ -27819,9 +28242,74 @@ immediately rather than silently using the 1×1 white fallback SRV.
 ---------------------------------------------------------------------------
 <filesystem> is already included transitively; add fstream for binary read.
 
+### LC-2: Minidump writer (SetUnhandledExceptionFilter)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L458) (line 458)
+
+---------------------------------------------------------------------------
+When engine_sandbox crashes without a try/catch handler the OS terminates
+the process with no useful artefact.  This handler intercepts the
+unhandled exception signal and writes a .dmp file to Saved/Crashes/.
+
+A .dmp file can be opened in Visual Studio or WinDbg and shows the exact
+call stack, register state, and local variables at the time of the crash —
+even for a crash you cannot reproduce locally.
+
+How it works:
+  1. SetUnhandledExceptionFilter registers our callback *before* the OS
+     default behaviour (showing "Application has stopped working").
+  2. MiniDumpWriteDump writes the process memory snapshot to a file.
+  3. We return EXCEPTION_EXECUTE_HANDLER — the process terminates after
+     the handler returns.
+
+Requirements: dbghelp.lib (ships with the Windows SDK).
+---------------------------------------------------------------------------
+ifdef _WIN32
+include <windows.h>
+include <dbghelp.h>
+pragma comment(lib, "dbghelp.lib")
+
+### Crash dump directory
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L489) (line 489)
+
+We honour the same ENGINE_SAVE_DIR environment variable used by the
+logger so that crash dumps land alongside log files in whichever save
+directory the operator configured.  When the variable is absent we fall
+back to "Saved" (relative to the current working directory), matching the
+logger's default.
+char saveBuf[MAX_PATH] = "Saved";
+GetEnvironmentVariableA("ENGINE_SAVE_DIR", saveBuf, sizeof(saveBuf));
+
+### PID-suffixed dump filename
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L504) (line 504)
+
+Using crash_<pid>.dmp instead of crash.dmp prevents a new crash from
+silently overwriting the dump from a previous crash.  The PID is always
+unique within a running system, so each crash gets its own file.
+char dmpPath[MAX_PATH + 48];
+const DWORD pid = GetCurrentProcessId();
+sprintf_s(dmpPath, sizeof(dmpPath), kDumpFmt, crashDir, pid);
+
+### EXCEPTION_EXECUTE_HANDLER
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L529) (line 529)
+
+Returning this constant tells Windows to:
+  1. Execute the exception handler (the code above, which wrote the .dmp).
+  2. Then terminate the process normally (ExitProcess).
+The alternative return values are:
+  EXCEPTION_CONTINUE_SEARCH     — pass to the next handler in the chain.
+  EXCEPTION_CONTINUE_EXECUTION  — resume execution at the faulting instruction
+                                  (dangerous: the process state is corrupt).
+We want HANDLER: write the dump, then die cleanly.
+}
+endif // _WIN32
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L455) (line 455)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L542) (line 542)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -27836,9 +28324,26 @@ fs::path dir = p.has_parent_path() ? p.parent_path() : fs::path(".");
 return (dir / "shaders" / "").string();   // trailing separator
 }
 
+### Executable Directory Resolution
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L557) (line 557)
+
+---------------------------------------------------------------------------
+engine_config.json is placed next to the executable by CMake (or the user).
+We resolve the path relative to the exe so the config is found regardless
+of the current working directory — whether the binary is double-clicked,
+launched from a debugger, or run from a different directory in the terminal.
+---------------------------------------------------------------------------
+static std::string GetExeDir(const char* argv0)
+{
+namespace fs = std::filesystem;
+fs::path p(argv0);
+return (p.has_parent_path() ? p.parent_path() : fs::path(".")).string();
+}
+
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L470) (line 470)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L572) (line 572)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -27847,15 +28352,36 @@ routes it to the correct Windows entry point when we use /SUBSYSTEM:CONSOLE.
 ---------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-try
+-----------------------------------------------------------------------
+Install the unhandled exception handler FIRST so any crash (even during
+static initialisation helpers later in main) produces a .dmp file.
+-----------------------------------------------------------------------
+ifdef _WIN32
+SetUnhandledExceptionFilter(CrashHandler);
+endif
+
+### AP-4: --version flag
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L591) (line 591)
+
+-------------------------------------------------------------------
+Print the short git SHA baked in at compile time and exit.
+ENGINE_VERSION_SHA is defined in CMakeLists.txt via:
+  target_compile_definitions(engine_sandbox PRIVATE
+      "ENGINE_VERSION_SHA=\"${ENGINE_GIT_SHA}\"")
+-------------------------------------------------------------------
+ifndef ENGINE_VERSION_SHA
+ define ENGINE_VERSION_SHA "unknown"
+endif
+if (argc >= 2 && std::strcmp(argv[1], "--version") == 0)
 {
--------------------------------------------------------------------
-Step 0 — Parse command-line arguments.
--------------------------------------------------------------------
+std::cout << "engine_sandbox " ENGINE_VERSION_SHA "\n";
+return 0;
+}
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L483) (line 483)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L610) (line 610)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -27867,7 +28393,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L505) (line 505)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L632) (line 632)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -27886,7 +28412,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L520) (line 520)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L647) (line 647)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -27897,9 +28423,45 @@ rendererArg = argv[++i];
 }
 }
 
+### Timestamped Log Files
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L665) (line 665)
+
+Each run writes its log to a unique timestamped file so logs from
+multiple sessions do not overwrite each other.  This is essential
+for post-mortem debugging: the log file from yesterday's crash
+still exists alongside today's log.
+
+Log directory: $ENGINE_SAVE_DIR/Logs/  (default: Saved/Logs/)
+File name:     engine_YYYYMMDD_HHMMSS.log
+
+The directory is created automatically if it does not exist so
+a fresh install does not require manual setup.
+-------------------------------------------------------------------
+{
+namespace fs = std::filesystem;
+
+### Append process ID to the timestamp
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L699) (line 699)
+
+Multiple engine instances launched within the same second would
+produce identical filenames without the PID suffix, causing one
+log to silently overwrite another.  The PID is always unique
+within a running system so it guarantees a collision-free name.
+ifdef _WIN32
+const unsigned long pid = static_cast<unsigned long>(GetCurrentProcessId());
+else
+const unsigned long pid = static_cast<unsigned long>(getpid());
+endif
+const std::string logPath = (logDir / ("engine_" + std::string(tsBuf) +
+"_" + std::to_string(pid) + ".log")).string();
+Logger::Instance().Init(logPath, LogLevel::DEBUG, /*echoConsole=*/true);
+}
+
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L533) (line 533)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L717) (line 717)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -27910,7 +28472,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L562) (line 562)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L746) (line 746)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -27925,7 +28487,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L587) (line 587)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L771) (line 771)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -27933,9 +28495,48 @@ with no GPU driver (via the WARP software renderer).
 -------------------------------------------------------------------
 const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
+### Configuration Path Resolution
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L781) (line 781)
+
+We resolve engine_config.json relative to the executable directory
+(same strategy as GetShaderDir) so the config is found regardless of
+the current working directory.  A missing config file is fine; the
+EngineConfig struct keeps its default field values.
+-------------------------------------------------------------------
+engine::core::EngineConfig engConfig;
+{
+namespace fs = std::filesystem;
+const std::string configPath =
+(fs::path(GetExeDir(argv[0])) / "engine_config.json").string();
+const bool loaded = engConfig.Load(configPath);
+Route diagnostics through the Logger (already initialised above)
+so they appear in Saved/Logs/*.log rather than only on stdout.
+if (loaded)
+LOG_INFO("[EngineConfig] Loaded: " + configPath +
+"  resolution=" + std::to_string(engConfig.resolution.width) +
+"x" + std::to_string(engConfig.resolution.height) +
+"  masterVol=" + std::to_string(engConfig.audio.masterVolume));
+else
+LOG_INFO("[EngineConfig] No config at: " + configPath + " — using defaults.");
+}
+
+### Resolution types
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L815) (line 815)
+
+engConfig.resolution.width/height are uint32_t (same as Win32Window::Init's
+parameter types) and have been clamped to [64, 16384] by EngineConfig::Load(),
+so no sign conversion or silent wrap-around can occur here.
+if (!window.Init(title, engConfig.resolution.width, engConfig.resolution.height, headless))
+{
+std::cerr << "[engine_sandbox] Failed to create window.\n";
+return 1;
+}
+
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L617) (line 617)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L833) (line 833)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -27951,7 +28552,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L650) (line 650)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L866) (line 866)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -27961,7 +28562,7 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L671) (line 671)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L887) (line 887)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -27987,7 +28588,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L693) (line 693)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L909) (line 909)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -28016,7 +28617,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L718) (line 718)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L934) (line 934)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -28040,7 +28641,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L826) (line 826)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1042) (line 1042)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -28065,7 +28666,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L947) (line 947)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1163) (line 1163)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -28086,7 +28687,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1031) (line 1031)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1247) (line 1247)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -28104,7 +28705,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1045) (line 1045)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1261) (line 1261)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -28135,7 +28736,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1074) (line 1074)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1290) (line 1290)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -28143,7 +28744,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1136) (line 1136)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1352) (line 1352)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -28166,7 +28767,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1211) (line 1211)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1427) (line 1427)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -28184,7 +28785,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1225) (line 1225)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1441) (line 1441)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -28202,7 +28803,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1258) (line 1258)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1474) (line 1474)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -28228,7 +28829,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1309) (line 1309)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1525) (line 1525)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -28250,7 +28851,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1328) (line 1328)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1544) (line 1544)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -28273,7 +28874,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1409) (line 1409)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1625) (line 1625)
 
 -----------------------------------------------------------
 Verifies that:
@@ -28293,7 +28894,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1426) (line 1426)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1642) (line 1642)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -28313,7 +28914,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1469) (line 1469)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1685) (line 1685)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -28329,7 +28930,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1511) (line 1511)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1727) (line 1727)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -28355,7 +28956,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1533) (line 1533)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1749) (line 1749)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -28378,7 +28979,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1642) (line 1642)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1858) (line 1858)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -28405,7 +29006,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1666) (line 1666)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1882) (line 1882)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -28416,14 +29017,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1689) (line 1689)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1905) (line 1905)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1694) (line 1694)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1910) (line 1910)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -28440,7 +29041,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1742) (line 1742)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1958) (line 1958)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -28475,7 +29076,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1800) (line 1800)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2016) (line 2016)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -28485,7 +29086,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1891) (line 1891)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2107) (line 2107)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -28495,7 +29096,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1959) (line 1959)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2175) (line 2175)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -28503,7 +29104,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2010) (line 2010)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2226) (line 2226)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -28532,7 +29133,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2044) (line 2044)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2260) (line 2260)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -28555,7 +29156,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2095) (line 2095)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2311) (line 2311)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -28578,7 +29179,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2136) (line 2136)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2352) (line 2352)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -28595,7 +29196,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2211) (line 2211)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2427) (line 2427)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -28607,7 +29208,7 @@ CinematicSequencer seq;
 
 ### What is a "timed audio event"?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2281) (line 2281)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2497) (line 2497)
 
 In a cut-scene, a sound effect must play at a precise moment:
 e.g. a door creak at t=0.3 s or a sword clash at t=1.5 s.
@@ -28617,7 +29218,7 @@ because we check immediately after advancing m_shotTime.
 
 ### Why not test with XAudio2 here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2288) (line 2288)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2504) (line 2504)
 
 The acceptance test only needs to verify the callback fires
 at the right time.  Coupling to XAudio2 would require a
@@ -28630,7 +29231,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2381) (line 2381)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2597) (line 2597)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -28648,7 +29249,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2595) (line 2595)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2811) (line 2811)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -28661,7 +29262,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2676) (line 2676)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2892) (line 2892)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -28677,7 +29278,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2689) (line 2689)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2905) (line 2905)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -28694,7 +29295,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2730) (line 2730)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2946) (line 2946)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -28712,7 +29313,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2761) (line 2761)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2977) (line 2977)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -28738,7 +29339,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2805) (line 2805)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3021) (line 3021)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -28778,7 +29379,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2892) (line 2892)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3108) (line 3108)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -28819,7 +29420,7 @@ std::cout << "[OK] bloom_test/load: "
 
 ### What the audio_3d_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2981) (line 2981)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3197) (line 3197)
 
 Test 1 (init):
     XAudio2Backend::Init() is called.  On headless CI with no
@@ -28848,7 +29449,7 @@ int testsFailed = 0;
 
 ### What the combat_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3099) (line 3099)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3315) (line 3315)
 
 All four tests are pure C++17 CPU tests — no D3D11 renderer
   or audio hardware is required.
@@ -28881,7 +29482,7 @@ int testsFailed = 0;
 
 ### We define the same combos here that
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3135) (line 3135)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3351) (line 3351)
 
 appear in combat_config.json so the test is self-
 contained and does not require a file on disk.
@@ -28898,7 +29499,7 @@ cs.AddCombo(aaaDef);
 
 ### Set a short config so tests run fast
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3197) (line 3197)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3413) (line 3413)
 
 CombatConfig cfg;
 cfg.comboWindowSeconds = 0.5f;
@@ -28906,7 +29507,7 @@ cs.SetConfig(cfg);
 
 ### Minimal ECS World for a unit test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3297) (line 3297)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3513) (line 3513)
 
 We create the smallest possible World to exercise a specific
 function (CalculateDamage).  This is the game-engine equivalent
@@ -28919,7 +29520,7 @@ RegisterAllComponents(*combatWorld);
 
 ### What the quest_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3389) (line 3389)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3605) (line 3605)
 
 All four tests are pure C++17 CPU tests — no D3D11
   renderer, Jolt physics, or XAudio2 is required.
@@ -28957,7 +29558,7 @@ int testsFailed = 0;
 
 ### Why heap-allocate World?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3427) (line 3427)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3643) (line 3643)
 
 EntityManager::m_signatures is a std::array<bitset<64>, 65536>
 which alone is 512 KB.  Stack-allocating World on Windows
@@ -28968,7 +29569,7 @@ RegisterAllComponents(*questWorld);
 
 ### Quest 1 "The Road to Dawn" is defined
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3450) (line 3450)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3666) (line 3666)
 
 in GameDatabase with no prerequisites so it should always
 be acceptable for a fresh player entity.
@@ -28980,7 +29581,7 @@ active[0]->id == 1;
 
 ### GainXP() accumulates XP in pendingXP
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3494) (line 3494)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3710) (line 3710)
 
 (banked in the field); it only moves to currentXP when
 the player rests at camp (ApplyBankedXP).  We check
@@ -28990,7 +29591,7 @@ const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
 
 ### A fresh player has not completed quest 1
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3540) (line 3540)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3756) (line 3756)
 
 so CanAcceptQuest(6) should return false.
 const bool blockedWithoutPrereq =
@@ -28998,7 +29599,7 @@ const bool blockedWithoutPrereq =
 
 ### A failed quest is neither active nor
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3584) (line 3584)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3800) (line 3800)
 
 complete.  The player could potentially re-accept it
 (if the QuestSystem allows it) or it remains failed for
@@ -29021,7 +29622,7 @@ std::cout << "[OK] quest_test/quest_fail: "
 
 ### What the dialogue_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3620) (line 3620)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3836) (line 3836)
 
 All three tests are pure C++17 CPU tests — no renderer,
   no audio, no physics.  A minimal ECS World is created
@@ -29050,7 +29651,7 @@ int testsFailed = 0;
 
 ### We only change XZ (horizontal plane);
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3693) (line 3693)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3909) (line 3909)
 
 DialogueSystem uses XZ distance, matching the 2.5D
 world layout where Y is the vertical axis.
@@ -29059,7 +29660,7 @@ dlgWorld->GetComponent<TransformComponent>(playerID).position =
 
 ### The stub DialogueSystem (M8.6) uses a
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3726) (line 3726)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3942) (line 3942)
 
 single terminal node.  AdvanceDialogue() on a terminal
 node should close the conversation (IsActive() → false).
@@ -29068,7 +29669,7 @@ const bool closedOk  = !dlgSys.IsActive();
 
 ### M26 Save-System CI Acceptance Suite
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3767) (line 3767)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3983) (line 3983)
 
 ──────────────────────────────────────────────────────────
 Three correctness properties validated here, matching the
@@ -29121,7 +29722,7 @@ int testsFailed = 0;
 
 ### Temp directory isolation with clock-based uniqueness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3820) (line 3820)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4036) (line 4036)
 
 Appending a nanosecond timestamp to the directory name prevents two
 concurrent engine_sandbox processes (e.g. parallel CI matrix jobs
@@ -29137,7 +29738,7 @@ const std::string saveDirStr = testSaveDir.string() + "/";
 
 ### Error checking for filesystem setup
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3834) (line 3834)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4050) (line 4050)
 
 Failing to set up the temp directory (e.g. permissions,
 locked files from a previous crashed run) would cause all
@@ -29169,7 +29770,7 @@ return 1;
 
 ### Graceful skip without ENGINE_ENABLE_JSON
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3866) (line 3866)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4082) (line 4082)
 
 The full three tests require nlohmann/json for Save() and
 Load().  Rather than reporting a false [FAIL] when the
@@ -29196,7 +29797,7 @@ Test 1 — Round-trip equivalence
 
 ### Deterministic world state for round-trip
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3889) (line 3889)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4105) (line 4105)
 
 We set specific values for HP, position, and a quest entry
 so that the assertions below are unambiguous.  Using magic
@@ -29209,7 +29810,7 @@ const EntityID playerID = worldA.CreateEntity();
 
 ### Compare all three axes
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3963) (line 3963)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4179) (line 4179)
 
 Checking only x and z would miss a bug where
 y is corrupted by a float serialisation error
@@ -29220,7 +29821,7 @@ tf2.position.z == 200.0f);
 
 ### Full quest field validation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3974) (line 3974)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4190) (line 4190)
 
 Asserting every saved field (questID,
 objective, progress, required, isComplete)
@@ -29238,7 +29839,7 @@ break; // found the player entity
 
 ### Inline fixture for older-version saves
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4011) (line 4011)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4227) (line 4227)
 
 Rather than checking in an external fixture file, we write
 a "0.9.0"-versioned JSON payload inline using std::ofstream.
@@ -29261,7 +29862,7 @@ Raw JSON string — written to slot 1 via ofstream.
 
 ### Raw string literals (R"(...)") in C++11+
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4030) (line 4030)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4246) (line 4246)
 
 avoid the need to escape every double-quote inside the
 JSON payload.  The delimiter "JSON" is arbitrary but
@@ -29283,7 +29884,7 @@ static const char kFixtureJSON[] = R"JSON({
 
 ### Validate the fixture write before Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4051) (line 4051)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4267) (line 4267)
 
 If the ofstream fails to open (permissions, disk full),
 the file will be absent.  Load() would then return false
@@ -29310,7 +29911,7 @@ std::cout << "[FAIL] save_test 2/3: Migration — "
 
 ### Simulating CampSystem::Rest auto-save hook
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4128) (line 4128)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4344) (line 4344)
 
 In the live game, CampSystem::Rest() calls SaveSystem::AutoSave()
 after all HP/MP restoration.  The headless test invokes the
@@ -29328,7 +29929,7 @@ const EntityID campPlayerID = worldCamp.CreateEntity();
 
 ### Always check the error_code from file_size
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4170) (line 4170)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4386) (line 4386)
 
 fs::file_size(path, ec) returns uintmax_t(-1) on error and
 sets ec.  Checking only fileSize == 0 would treat an error-
@@ -29340,7 +29941,7 @@ slotExists ? fs::file_size(autoPath, ecSize)
 
 ### Explicit HP assertion after Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4192) (line 4192)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4408) (line 4408)
 
 Asserting that the loaded world contains an entity with
 hp==350/maxHp==500 proves data integrity, not just that
@@ -29362,7 +29963,7 @@ worldLoaded.GetEntityManager()
 
 ### M25 Terrain Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4261) (line 4261)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4477) (line 4477)
 
 ──────────────────────────────────────────────────────────
 Three acceptance criteria matching the milestone definition
@@ -29393,7 +29994,7 @@ in docs/PROJECT_MILESTONES.md §M25:
 
 ### Why a 4×4 heightmap?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4289) (line 4289)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4505) (line 4505)
 
 Jolt's JPH::HeightFieldShape requires a power-of-2 sample
 count.  4 is the smallest valid value (2^2) that produces at
@@ -29402,7 +30003,7 @@ least one non-trivial quad, making it the minimum useful test.
 
 ### Why downcast here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4313) (line 4313)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4529) (line 4529)
 
 The headless acceptance tests need the raw ID3D11Device*
 to create auxiliary D3D11 objects (terrain VB, IB, CB,
@@ -29414,7 +30015,7 @@ bool testOk = false;
 
 ### HeightFieldShape sample count constraint
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4394) (line 4394)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4610) (line 4610)
 
 BakeTerrainCollider requires a power-of-2 sample count.
 We use 4 (2^2) — the smallest valid value for Jolt.
@@ -29423,7 +30024,7 @@ static constexpr float kWorldSize = kCellSize * (kW - 1); // 6.0 m
 
 ### Graceful skip when physics is absent
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4460) (line 4460)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4676) (line 4676)
 
 The standard Windows CI job builds without Jolt Physics (no
 vcpkg install in that job).  We skip test 3 rather than fail
@@ -29435,7 +30036,7 @@ endif // ENGINE_ENABLE_PHYSICS
 
 ### M24 Authored Content Acceptance Suite
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4483) (line 4483)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4699) (line 4699)
 
 =========================================================
 The authored_content scene is a pure filesystem check with no
@@ -29466,7 +30067,7 @@ Acceptance criteria:
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4661) (line 4661)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4877) (line 4877)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -29476,7 +30077,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4669) (line 4669)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4885) (line 4885)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -29506,7 +30107,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4697) (line 4697)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4913) (line 4913)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -29529,7 +30130,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4750) (line 4750)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4966) (line 4966)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -29542,7 +30143,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4766) (line 4766)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4982) (line 4982)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

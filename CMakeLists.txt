@@ -46,6 +46,39 @@ cmake_minimum_required(VERSION 3.16)
 project(EducationalGameEngine VERSION 1.0 LANGUAGES CXX C)
 
 # ---------------------------------------------------------------------------
+# Git SHA version stamping (AP-4)
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Embedding the Build Commit SHA
+# ─────────────────────────────────────────────────────────────────────────────
+# Post-crash reproduction requires knowing *which* build a dump came from.
+# We embed the short git SHA at CMake configure time so it is compiled into
+# the binary as a string literal.  The SHA is exposed via:
+#
+#   engine_sandbox.exe --version   →  "engine_sandbox abc1234"
+#   LOG_INFO at startup            →  "[Init] Build: abc1234"
+#
+# How it works:
+#   1. find_package(Git QUIET) locates git on PATH.
+#   2. execute_process() runs 'git rev-parse --short HEAD' at configure time.
+#   3. The result is stored in ENGINE_GIT_SHA.
+#   4. The macro is forwarded to engine_sandbox via target_compile_definitions.
+# ─────────────────────────────────────────────────────────────────────────────
+find_package(Git QUIET)
+if(Git_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE ENGINE_GIT_SHA
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+if(NOT ENGINE_GIT_SHA)
+    set(ENGINE_GIT_SHA "unknown")
+endif()
+message(STATUS "Engine build SHA : ${ENGINE_GIT_SHA}")
+
+# ---------------------------------------------------------------------------
 # Monorepo top-level option: Build the Dear ImGui editor
 # ---------------------------------------------------------------------------
 # TEACHING NOTE -- Optional Subprojects
@@ -489,6 +522,7 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         src/sandbox/main.cpp
         src/engine/platform/win32/Win32Window.cpp
         src/engine/core/Logger.cpp
+        src/engine/core/engine_config.cpp
         src/engine/assets/asset_db.cpp
         src/engine/assets/asset_loader.cpp
     )
@@ -847,7 +881,8 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     # ENGINE_ENABLE_D3D11 / ENGINE_ENABLE_VULKAN flow into RendererFactory.hpp
     # so the factory can gate which concrete renderer header(s) it includes.
     # -----------------------------------------------------------------------
-    set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
+    set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+        "ENGINE_VERSION_SHA=\"${ENGINE_GIT_SHA}\"")
 
     if(ENGINE_ENABLE_D3D11)
         list(APPEND SANDBOX_DEFS ENGINE_ENABLE_D3D11)
@@ -1212,5 +1247,58 @@ if(BUILD_EDITOR)
     add_subdirectory(editor)
 else()
     message(STATUS "BUILD_EDITOR=OFF: skipping editor/ (pass -DBUILD_EDITOR=ON to include)")
+endif()
+
+# ---------------------------------------------------------------------------
+# CMake install() target — distributable packaging (AP-3)
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — CMake install()
+# ─────────────────────────────────────────────────────────────────────────────
+# Running `cmake --install <build-dir> --prefix dist/` copies all installed
+# files into a self-contained directory ready for redistribution.
+#
+# What gets installed:
+#   bin/engine_sandbox.exe   — the main engine runtime
+#   bin/cook.exe             — standalone asset cooker
+#   bin/pak.exe              — PAK archive packager
+#   bin/shaders/             — all HLSL shader source files (compiled at
+#                              runtime by D3DCompileFromFile)
+#   bin/Cooked/              — pre-cooked vertical-slice assets
+#   bin/AssetRegistry.json   — asset registry for the cooked project
+#   bin/lua55.dll            — Lua 5.5 runtime DLL (if present)
+#   bin/engine_config.json   — default user-editable settings file
+#
+# Usage:
+#   cmake --install build/windows-ninja-release-engine-only --prefix dist/
+#   dist\bin\engine_sandbox.exe --headless --scene dynamic_sky
+# ─────────────────────────────────────────────────────────────────────────────
+if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
+    install(TARGETS engine_sandbox cook pak
+        RUNTIME DESTINATION bin
+    )
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/shaders/"
+        DESTINATION bin/shaders
+        FILES_MATCHING PATTERN "*.hlsl"
+    )
+    if(EXISTS "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/Cooked")
+        install(DIRECTORY "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/Cooked/"
+            DESTINATION bin/Cooked
+        )
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/AssetRegistry.json")
+        install(FILES "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project/AssetRegistry.json"
+            DESTINATION bin
+        )
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/Lua/lua55.dll")
+        install(FILES "${CMAKE_SOURCE_DIR}/Lua/lua55.dll"
+            DESTINATION bin
+        )
+    endif()
+    if(EXISTS "${CMAKE_SOURCE_DIR}/engine_config.json")
+        install(FILES "${CMAKE_SOURCE_DIR}/engine_config.json"
+            DESTINATION bin
+        )
+    endif()
 endif()
 

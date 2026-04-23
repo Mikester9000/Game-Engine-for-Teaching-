@@ -1,0 +1,16 @@
+{
+    "resolution": {
+        "width": 1280,
+        "height": 720
+    },
+    "audio": {
+        "masterVolume": 1.0
+    },
+    "keys": {
+        "attack": "Z",
+        "dodge": "X",
+        "jump": "Space",
+        "menu": "Escape",
+        "interact": "F"
+    }
+}

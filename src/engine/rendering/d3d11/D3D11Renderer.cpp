@@ -38,6 +38,7 @@
 
 #include "engine/rendering/d3d11/D3D11Renderer.hpp"
 #include "engine/math/math_types.hpp"
+#include "engine/rendering/d3d11/scoped_gpu_event.hpp"
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — pragma comment(lib, ...) vs CMake target_link_libraries
@@ -588,7 +589,10 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     // M4b: skinned_mesh — a GPU-skinned animated strip (2-joint skeleton).
     // -----------------------------------------------------------------------
     if (m_quadScene.loaded && m_currentScene == "textured_quad")
+    {
+        SCOPED_GPU_EVENT(m_context, L"Textured Quad");
         DrawTexturedQuad();
+    }
 
     // TEACHING NOTE — Advancing the demo animation timer.
     // m_sceneTime accumulates real elapsed time (seconds) and is used by
@@ -599,15 +603,24 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
 
     if (m_skinnedScene.loaded && m_currentScene == "skinned_mesh")
+    {
+        SCOPED_GPU_EVENT(m_context, L"Skinned Mesh");
         DrawSkinnedMesh();
+    }
 
     // M9: PBR sphere scene
     if (m_pbrScene.loaded && m_currentScene == "pbr_mesh")
+    {
+        SCOPED_GPU_EVENT(m_context, L"PBR Mesh");
         DrawPBRMesh();
+    }
 
     // M16: PBR + IBL sphere scene
     if (m_pbrIblScene.loaded && m_currentScene == "pbr_ibl")
+    {
+        SCOPED_GPU_EVENT(m_context, L"PBR IBL");
         DrawPBRIBLMesh();
+    }
 
     // M10: Dynamic sky scene
     // TEACHING NOTE — Sky Draw Order
@@ -621,17 +634,24 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     // m_skyRenderer.Update(1/60) advances the time-of-day each frame.
     if (m_skyScene.loaded && m_currentScene == "dynamic_sky")
     {
+        SCOPED_GPU_EVENT(m_context, L"Dynamic Sky");
         m_skyRenderer.Update(1.0f / 60.0f);
         DrawSky();
     }
 
     // M17: Shadow map demo — two-pass (depth pass + lit PCF pass).
     if (m_shadowScene.loaded && m_currentScene == "shadow_test")
+    {
+        SCOPED_GPU_EVENT(m_context, L"Shadow Scene");
         DrawShadowScene();
+    }
 
     // M17: Bloom post-processing demo — bright-pass + blur + composite.
     if (m_bloomScene.loaded && m_currentScene == "bloom_test")
+    {
+        SCOPED_GPU_EVENT(m_context, L"Bloom Scene");
         DrawBloomScene();
+    }
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Present interval
