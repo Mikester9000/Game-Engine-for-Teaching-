@@ -2631,7 +2631,8 @@ static bool LoadAuthoredTextureWithFallback(ID3D11Device* device,
     const bool fallbackCreated = CreateSolidTextureSRV(device, fallbackRGBA, &outFallbackTex, &outFallbackSRV);
     if (!fallbackCreated)
     {
-        std::cerr << "[D3D11Renderer] Failed to create fallback authored texture SRV.\n";
+        std::cerr << "[D3D11Renderer] Failed to create fallback authored texture SRV for: "
+                  << (relPath.empty() ? "<default>" : relPath) << "\n";
         return false;
     }
     return true;
@@ -2686,7 +2687,7 @@ static bool TryLoadAuthoredMesh(std::vector<float>& outVerts,
         }
 
         const std::size_t vertexCount = verts.size() / 8;
-        bool indicesInRange = (vertexCount > 0);
+        bool indicesInRange = (vertexCount > 0 && !idx.empty());
         for (uint16_t i : idx)
         {
             if (i >= vertexCount)
@@ -4250,35 +4251,33 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
             };
             const uint8_t kDefaultAO[4]      = {255, 255, 255, 255};
 
-            if (!LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                                 authoredMat.albedoTextureRelPath,
-                                                 kWhite,
-                                                 scene.albedoMap,
-                                                 scene.albedoFallbackTex,
-                                                 scene.albedoFallbackSRV) ||
-                !LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                                 authoredMat.normalTextureRelPath,
-                                                 kFlatNormal,
-                                                 scene.normalMap,
-                                                 scene.normalFallbackTex,
-                                                 scene.normalFallbackSRV) ||
-                !LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                                 authoredMat.metallicRoughnessTextureRelPath,
-                                                 kDefaultMR,
-                                                 scene.metallicRoughnessMap,
-                                                 scene.metallicRoughnessFallbackTex,
-                                                 scene.metallicRoughnessFallbackSRV) ||
-                !LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                                 authoredMat.aoTextureRelPath,
-                                                 kDefaultAO,
-                                                 scene.aoMap,
-                                                 scene.aoFallbackTex,
-                                                 scene.aoFallbackSRV))
-            {
-                ctx->Release();
-                return false;
-            }
+            const bool allTexturesLoaded =
+                LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                authoredMat.albedoTextureRelPath,
+                                                kWhite,
+                                                scene.albedoMap,
+                                                scene.albedoFallbackTex,
+                                                scene.albedoFallbackSRV) &&
+                LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                authoredMat.normalTextureRelPath,
+                                                kFlatNormal,
+                                                scene.normalMap,
+                                                scene.normalFallbackTex,
+                                                scene.normalFallbackSRV) &&
+                LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                authoredMat.metallicRoughnessTextureRelPath,
+                                                kDefaultMR,
+                                                scene.metallicRoughnessMap,
+                                                scene.metallicRoughnessFallbackTex,
+                                                scene.metallicRoughnessFallbackSRV) &&
+                LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                authoredMat.aoTextureRelPath,
+                                                kDefaultAO,
+                                                scene.aoMap,
+                                                scene.aoFallbackTex,
+                                                scene.aoFallbackSRV);
             ctx->Release();
+            if (!allTexturesLoaded) return false;
         }
     }
 
