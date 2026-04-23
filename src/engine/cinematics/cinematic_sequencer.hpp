@@ -123,6 +123,31 @@ struct ShotEntry
     float       duration;      ///< How long (in seconds) to play this shot.
     std::string label;         ///< Optional human-readable name (for debugging).
 
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Per-shot audio events
+    // -----------------------------------------------------------------------
+    // A cinematic shot can trigger audio clips at specific times (e.g. a
+    // footstep sound at t=0.3 s, a sword clash at t=0.7 s).  Storing events
+    // per-shot keeps them relative to the shot's local time, which makes
+    // authoring intuitive: you think in shot-local seconds, not absolute
+    // timeline seconds.  The sequencer fires each event once when
+    // m_shotTime reaches event.time and resets the fired flags when the
+    // shot restarts (e.g. SkipToShot / Play).
+    // -----------------------------------------------------------------------
+
+    /**
+     * @struct AudioEventEntry
+     * @brief A timed audio trigger within a cinematic shot.
+     */
+    struct AudioEventEntry
+    {
+        float       time;    ///< Shot-local trigger time (seconds, ≥ 0).
+        std::string clipID;  ///< Asset ID of the audio clip to play.
+    };
+
+    std::vector<AudioEventEntry> audioEvents; ///< Sorted by time (ascending).
+    mutable std::vector<bool>    eventFired;  ///< Parallel fired-flag array.
+
     ShotEntry() = default;
     ShotEntry(CameraRig r, float dur, std::string lbl = "")
         : rig(std::move(r)), duration(dur), label(std::move(lbl))
@@ -171,6 +196,26 @@ public:
      */
     void AddShot(CameraRig rig, float duration, std::string label = "");
 
+    /**
+     * @brief Add a timed audio event to the most recently added shot.
+     *
+     * When Tick() advances past @p t (shot-local seconds), the callback
+     * registered via SetOnAudioEvent() is invoked exactly once with @p clipID.
+     * The event fires at most once per playthrough of the shot; calling Play()
+     * or SkipToShot() resets all fired flags.
+     *
+     * TEACHING NOTE — Why shot-local time?
+     * Shot-local time makes authoring intuitive: "the sword clash sound fires
+     * 0.3 seconds into this shot" regardless of where that shot falls on the
+     * global timeline.  Absolute timestamps would require recalculating event
+     * times every time the shot order changes in the editor.
+     *
+     * @param t       Shot-local time in seconds (must be ≥ 0 and ≤ shot duration).
+     * @param clipID  Asset ID of the audio clip to trigger.
+     * @throws std::logic_error if no shots have been added yet.
+     */
+    void AddAudioEvent(float t, std::string clipID);
+
     // =========================================================================
     // Callbacks
     // =========================================================================
@@ -195,6 +240,23 @@ public:
      * @param cb  Called with no arguments when the last shot completes.
      */
     void SetOnComplete(std::function<void()> cb);
+
+    /**
+     * @brief Register a callback invoked each time a timed audio event fires.
+     *
+     * The callback receives the clip ID string provided to AddAudioEvent().
+     * This decouples the sequencer from the audio system: the game layer
+     * registers this callback and calls AudioSystem::Play(clipID) in response.
+     *
+     * TEACHING NOTE — Decoupled audio triggering
+     * The sequencer does not call AudioSystem directly because:
+     *   1. The sequencer lives in engine/cinematics/ with no dependency on audio.
+     *   2. The same callback mechanism works in headless tests (no XAudio2).
+     *   3. The game layer can remap clip IDs (e.g. localisation, difficulty).
+     *
+     * @param cb  Called with the clipID of the triggered audio event.
+     */
+    void SetOnAudioEvent(std::function<void(const std::string&)> cb);
 
     // =========================================================================
     // Playback control
@@ -314,6 +376,7 @@ private:
 
     std::function<void(int)> m_onShotChanged;  ///< Fired on every cut.
     std::function<void()>    m_onComplete;     ///< Fired when all shots finish.
+    std::function<void(const std::string&)> m_onAudioEvent; ///< Fired on timed audio events.
 };
 
 } // namespace cinematics

@@ -439,3 +439,438 @@ def test_bake_terrain_roundtrips_sample_vertical_slice_asset() -> None:
     heights = struct.unpack(f"<{num_samples}f", blob[header_size:])
     assert len(heights) == expected_w * expected_h
     assert all(v >= 0.0 for v in heights), "All height samples must be >= 0"
+
+
+# ===========================================================================
+# bake_collision tests (PHY1)
+# ===========================================================================
+
+def test_bake_collision_writes_expected_binary_layout(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — PHY1 binary layout contract test
+    ─────────────────────────────────────────────────
+    Verify the header and total size of a baked collision mesh.
+
+    PHY1 layout:
+        4s  magic ("PHY1")
+        H   version = 1
+        I   vertex_count (V)
+        I   index_count  (I)   must be multiple of 3
+        V*12 float32 vertex data (x, y, z per vertex)
+        I*4  uint32  index data  (triangle list)
+    Total: 14 + V*12 + I*4 bytes.
+    """
+    obj_path = tmp_path / "quad.obj"
+    obj_path.write_text(
+        "\n".join([
+            "v 0 0 0",
+            "v 2 0 0",
+            "v 2 0 2",
+            "v 0 0 2",
+            "f 1 2 3",
+            "f 1 3 4",
+        ]),
+        encoding="utf-8",
+    )
+    out_path = tmp_path / "cooked" / "physics" / "quad.phys"
+    stats = ce.bake_collision(obj_path, out_path)
+
+    assert out_path.exists()
+    blob = out_path.read_bytes()
+
+    header_fmt = "<4sHII"
+    header_size = struct.calcsize(header_fmt)  # 14 bytes
+    magic, version, vc, ic = struct.unpack(header_fmt, blob[:header_size])
+
+    assert magic == b"PHY1"
+    assert version == 1
+    assert vc == 4           # four vertices
+    assert ic == 6           # two triangles → 6 indices
+    assert ic % 3 == 0       # must be a triangle list
+
+    expected_size = header_size + vc * 12 + ic * 4
+    assert len(blob) == expected_size
+
+    assert stats["vertices"] == 4
+    assert stats["indices"] == 6
+    assert stats["bytes"] == expected_size
+
+
+def test_bake_collision_vertex_roundtrip(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — Vertex position fidelity
+    ─────────────────────────────────────────
+    Every vertex position in the OBJ must survive the round-trip through
+    PHY1 binary serialisation with < 1e-4 absolute error per component.
+    """
+    obj_path = tmp_path / "triangle.obj"
+    obj_path.write_text("v 1.5 2.5 3.5\nv 4.0 5.0 6.0\nv 7.25 8.75 9.125\nf 1 2 3",
+                        encoding="utf-8")
+    out_path = tmp_path / "tri.phys"
+    ce.bake_collision(obj_path, out_path)
+
+    blob = out_path.read_bytes()
+    header_size = struct.calcsize("<4sHII")
+    verts = struct.unpack("<9f", blob[header_size: header_size + 36])
+    expected = [1.5, 2.5, 3.5, 4.0, 5.0, 6.0, 7.25, 8.75, 9.125]
+    for i, (exp, act) in enumerate(zip(expected, verts)):
+        assert abs(act - exp) < 1e-4, f"Vertex component {i}: expected {exp}, got {act}"
+
+
+def test_bake_collision_rejects_obj_without_vertices(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — Empty OBJ validation
+    ──────────────────────────────────────
+    An OBJ with no vertex lines must raise ValueError.
+    """
+    obj_path = tmp_path / "empty.obj"
+    obj_path.write_text("# just a comment\n", encoding="utf-8")
+    try:
+        ce.bake_collision(obj_path, tmp_path / "empty.phys")
+    except ValueError as exc:
+        assert "vertices" in str(exc).lower()
+    else:
+        raise AssertionError("Expected ValueError for empty OBJ")
+
+
+def test_bake_collision_rejects_obj_without_faces(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — No-face OBJ validation
+    ───────────────────────────────────────
+    An OBJ with vertices but no face lines must raise ValueError.
+    """
+    obj_path = tmp_path / "nofaces.obj"
+    obj_path.write_text("v 0 0 0\nv 1 0 0\nv 0 0 1\n", encoding="utf-8")
+    try:
+        ce.bake_collision(obj_path, tmp_path / "nofaces.phys")
+    except ValueError as exc:
+        assert "face" in str(exc).lower() or "triangle" in str(exc).lower()
+    else:
+        raise AssertionError("Expected ValueError for OBJ without faces")
+
+
+def test_bake_collision_creates_output_directories(tmp_path: Path) -> None:
+    """bake_collision must create missing parent directories."""
+    obj_path = tmp_path / "t.obj"
+    obj_path.write_text("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3", encoding="utf-8")
+    deep_out = tmp_path / "a" / "b" / "c" / "t.phys"
+    ce.bake_collision(obj_path, deep_out)
+    assert deep_out.exists()
+    assert deep_out.stat().st_size > 0
+
+
+def test_bake_collision_roundtrips_vertical_slice_arena_plane() -> None:
+    """
+    TEACHING NOTE — Sample asset contract test
+    ───────────────────────────────────────────
+    Bake the committed arena_plane.obj from the vertical slice project and
+    verify the PHY1 header is valid.  This acts as a regression guard: if
+    the OBJ format changes or the baker breaks, this test fails immediately.
+    """
+    repo_root = Path(__file__).resolve().parents[2]
+    obj_path = repo_root / "samples/vertical_slice_project/Content/AI/arena_plane.obj"
+    if not obj_path.exists():
+        import pytest
+        pytest.skip(f"arena_plane.obj not found: {obj_path}")
+
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td) / "arena_plane.phys"
+        stats = ce.bake_collision(obj_path, out)
+        blob = out.read_bytes()
+
+    magic, version, vc, ic = struct.unpack("<4sHII", blob[:14])
+    assert magic == b"PHY1"
+    assert version == 1
+    assert vc > 0
+    assert ic > 0
+    assert ic % 3 == 0
+    assert stats["bytes"] == 14 + vc * 12 + ic * 4
+
+
+# ===========================================================================
+# bake_font tests (FNT1)
+# ===========================================================================
+
+def _make_font_json(tmp_path: Path, **overrides) -> Path:
+    """Helper: write a minimal valid font.json."""
+    data = {
+        "name": "test_font",
+        "glyphSize": 8,
+        "atlasCols": 16,
+        "atlasRows": 6,
+        "firstChar": 32,
+        "charCount": 96,
+    }
+    data.update(overrides)
+    p = tmp_path / "test.font.json"
+    p.write_text(json.dumps(data), encoding="utf-8")
+    return p
+
+
+def test_bake_font_writes_expected_binary_layout(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — FNT1 binary layout contract test
+    ─────────────────────────────────────────────────
+    Verify header fields and total size for a standard 128×48 atlas.
+
+    FNT1 layout:
+        4s  magic ("FNT1")
+        H   version = 1
+        H   atlasWidth  (pixels)
+        H   atlasHeight (pixels)
+        H   glyphCount
+        H   glyphSize
+        H   firstChar
+        glyphCount * 20 bytes  glyph table (5 floats: u0 v0 u1 v1 advance)
+        atlasWidth * atlasHeight bytes  SDF R8 pixel data
+    """
+    src = _make_font_json(tmp_path)
+    out = tmp_path / "cooked" / "ui" / "test.font"
+    stats = ce.bake_font(src, out)
+
+    blob = out.read_bytes()
+    header_fmt = "<4sHHHHHH"
+    hsize = struct.calcsize(header_fmt)  # 14 bytes
+    magic, version, aw, ah, gc, gs, fc = struct.unpack(header_fmt, blob[:hsize])
+
+    assert magic == b"FNT1"
+    assert version == 1
+    assert aw == 128   # 16 cols * 8 px
+    assert ah == 48    # 6 rows * 8 px
+    assert gc == 96
+    assert gs == 8
+    assert fc == 32
+
+    glyph_table_bytes = gc * 20  # 5 floats * 4 bytes each
+    pixel_bytes = aw * ah
+    expected_total = hsize + glyph_table_bytes + pixel_bytes
+    assert len(blob) == expected_total
+
+    assert stats["glyphs"] == 96
+    assert stats["atlasWidth"] == 128
+    assert stats["atlasHeight"] == 48
+    assert stats["bytes"] == expected_total
+
+
+def test_bake_font_glyph_uv_coverage(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — UV coordinate correctness
+    ───────────────────────────────────────────
+    For each glyph the baker must write UV coordinates that tile correctly
+    inside the atlas:
+      • u0 < u1 and v0 < v1 (positive extents)
+      • u1 == u0 + 1/atlasCols  (exactly one column wide)
+      • v1 == v0 + 1/atlasRows  (exactly one row tall)
+    """
+    src = _make_font_json(tmp_path, glyphSize=8, atlasCols=16, atlasRows=6,
+                          firstChar=32, charCount=96)
+    out = tmp_path / "uv_test.font"
+    ce.bake_font(src, out)
+
+    blob = out.read_bytes()
+    hsize = struct.calcsize("<4sHHHHHH")  # 16 bytes (4s + 6×H)
+    glyph_table = blob[hsize: hsize + 96 * 20]
+
+    expected_u_step = 1.0 / 16
+    expected_v_step = 1.0 / 6
+    for i in range(96):
+        offset = i * 20
+        u0, v0, u1, v1, adv = struct.unpack("<5f", glyph_table[offset: offset + 20])
+        assert u0 < u1
+        assert v0 < v1
+        assert abs((u1 - u0) - expected_u_step) < 1e-5, f"glyph {i}: u span wrong"
+        assert abs((v1 - v0) - expected_v_step) < 1e-5, f"glyph {i}: v span wrong"
+        assert abs(adv - 1.0) < 1e-5, f"glyph {i}: advance should be 1.0 (monospace)"
+
+
+def test_bake_font_rejects_invalid_glyph_size(tmp_path: Path) -> None:
+    """bake_font must reject glyphSize < 4."""
+    src = _make_font_json(tmp_path, glyphSize=2)
+    try:
+        ce.bake_font(src, tmp_path / "bad.font")
+    except ValueError as exc:
+        assert "glyphsize" in str(exc).lower() or "4" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for glyphSize < 4")
+
+
+def test_bake_font_rejects_undersized_atlas(tmp_path: Path) -> None:
+    """bake_font must reject atlas that cannot fit charCount glyphs."""
+    src = _make_font_json(tmp_path, atlasCols=2, atlasRows=2, charCount=96)
+    try:
+        ce.bake_font(src, tmp_path / "tiny.font")
+    except ValueError as exc:
+        assert "charcount" in str(exc).lower() or "96" in str(exc) or "cells" in str(exc).lower()
+    else:
+        raise AssertionError("Expected ValueError for undersized atlas")
+
+
+def test_bake_font_creates_output_directories(tmp_path: Path) -> None:
+    """bake_font must create missing parent directories."""
+    src = _make_font_json(tmp_path)
+    deep_out = tmp_path / "a" / "b" / "c" / "test.font"
+    ce.bake_font(src, deep_out)
+    assert deep_out.exists()
+    assert deep_out.stat().st_size > 0
+
+
+def test_bake_font_roundtrips_vertical_slice_asset() -> None:
+    """
+    TEACHING NOTE — Sample asset contract test
+    ───────────────────────────────────────────
+    Bake the committed ffxv_ui.font.json from the vertical slice project
+    and verify the FNT1 header matches the declared glyph grid.
+    """
+    repo_root = Path(__file__).resolve().parents[2]
+    src = repo_root / "samples/vertical_slice_project/Content/UI/Fonts/ffxv_ui.font.json"
+    if not src.exists():
+        import pytest
+        pytest.skip(f"ffxv_ui.font.json not found: {src}")
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td) / "ffxv_ui.font"
+        stats = ce.bake_font(src, out)
+        blob = out.read_bytes()
+
+    magic, version, aw, ah, gc, gs, fc = struct.unpack("<4sHHHHHH", blob[:16])
+    assert magic == b"FNT1"
+    assert version == 1
+    assert aw == 128   # 16 * 8
+    assert ah == 48    # 6 * 8
+    assert gc == 96
+    assert gs == 8
+    assert fc == 32
+    assert stats["bytes"] == 16 + 96 * 20 + 128 * 48
+
+
+# ===========================================================================
+# bake_road tests (RD01)
+# ===========================================================================
+
+def _make_road_json(tmp_path: Path, waypoints=None, name="test_road") -> Path:
+    """Helper: write a minimal valid road JSON."""
+    if waypoints is None:
+        waypoints = [{"x": 0.0, "y": 0.0, "z": 0.0}, {"x": 10.0, "y": 0.0, "z": 0.0}]
+    data = {"name": name, "waypoints": waypoints}
+    p = tmp_path / f"{name}.road.json"
+    p.write_text(json.dumps(data), encoding="utf-8")
+    return p
+
+
+def test_bake_road_writes_expected_binary_layout(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — RD01 binary layout contract test
+    ─────────────────────────────────────────────────
+    Verify header fields and total size.
+
+    RD01 layout:
+        4s  magic ("RD01")
+        H   version = 1
+        I   waypoint_count (N)
+        N*12 float32 positions (x, y, z per waypoint)
+    Total: 10 + N*12 bytes.
+    """
+    wps = [{"x": 0.0, "y": 0.0, "z": 0.0},
+           {"x": 5.0, "y": 1.0, "z": 2.0},
+           {"x": 10.0, "y": 0.0, "z": 4.0}]
+    src = _make_road_json(tmp_path, waypoints=wps)
+    out = tmp_path / "cooked" / "roads" / "test.road"
+    stats = ce.bake_road(src, out)
+
+    blob = out.read_bytes()
+    header_fmt = "<4sHI"
+    hsize = struct.calcsize(header_fmt)  # 10 bytes
+    magic, version, wc = struct.unpack(header_fmt, blob[:hsize])
+
+    assert magic == b"RD01"
+    assert version == 1
+    assert wc == 3
+
+    expected_total = hsize + 3 * 12
+    assert len(blob) == expected_total
+
+    assert stats["waypoints"] == 3
+    assert stats["bytes"] == expected_total
+
+
+def test_bake_road_position_roundtrip(tmp_path: Path) -> None:
+    """
+    TEACHING NOTE — Waypoint position fidelity
+    ────────────────────────────────────────────
+    Every waypoint position must survive float32 serialisation with < 1e-4
+    absolute error per component.
+    """
+    wps = [
+        {"x": 1.5, "y": 2.25, "z": -3.75},
+        {"x": 10.0, "y": 0.0, "z": 5.5},
+    ]
+    src = _make_road_json(tmp_path, waypoints=wps)
+    out = tmp_path / "fidelity.road"
+    ce.bake_road(src, out)
+
+    blob = out.read_bytes()
+    hsize = struct.calcsize("<4sHI")
+    positions = struct.unpack("<6f", blob[hsize:])
+    expected = [1.5, 2.25, -3.75, 10.0, 0.0, 5.5]
+    for i, (exp, act) in enumerate(zip(expected, positions)):
+        assert abs(act - exp) < 1e-4, f"Position component {i}: expected {exp}, got {act}"
+
+
+def test_bake_road_rejects_single_waypoint(tmp_path: Path) -> None:
+    """bake_road must reject fewer than 2 waypoints."""
+    src = _make_road_json(tmp_path, waypoints=[{"x": 0.0, "y": 0.0, "z": 0.0}])
+    try:
+        ce.bake_road(src, tmp_path / "bad.road")
+    except ValueError as exc:
+        assert "2" in str(exc) or "waypoint" in str(exc).lower()
+    else:
+        raise AssertionError("Expected ValueError for single waypoint")
+
+
+def test_bake_road_rejects_missing_waypoints_key(tmp_path: Path) -> None:
+    """bake_road must raise ValueError if 'waypoints' key is absent."""
+    src = tmp_path / "nowaypoints.json"
+    src.write_text(json.dumps({"name": "no_wp"}), encoding="utf-8")
+    try:
+        ce.bake_road(src, tmp_path / "nowaypoints.road")
+    except ValueError as exc:
+        assert "waypoint" in str(exc).lower()
+    else:
+        raise AssertionError("Expected ValueError for missing waypoints key")
+
+
+def test_bake_road_creates_output_directories(tmp_path: Path) -> None:
+    """bake_road must create missing parent directories."""
+    src = _make_road_json(tmp_path)
+    deep_out = tmp_path / "a" / "b" / "c" / "test.road"
+    ce.bake_road(src, deep_out)
+    assert deep_out.exists()
+    assert deep_out.stat().st_size > 0
+
+
+def test_bake_road_roundtrips_vertical_slice_asset() -> None:
+    """
+    TEACHING NOTE — Sample asset contract test
+    ───────────────────────────────────────────
+    Bake the committed regalia_route.road.json from the vertical slice project
+    and verify the RD01 binary has the correct waypoint count and header.
+    """
+    repo_root = Path(__file__).resolve().parents[2]
+    src = repo_root / "samples/vertical_slice_project/Content/Roads/regalia_route.road.json"
+    if not src.exists():
+        import pytest
+        pytest.skip(f"regalia_route.road.json not found: {src}")
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td) / "regalia_route.road"
+        stats = ce.bake_road(src, out)
+        blob = out.read_bytes()
+
+    magic, version, wc = struct.unpack("<4sHI", blob[:10])
+    assert magic == b"RD01"
+    assert version == 1
+    assert wc == 12   # 12 waypoints in the sample JSON
+    assert stats["bytes"] == 10 + 12 * 12

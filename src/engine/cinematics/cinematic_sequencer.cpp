@@ -89,7 +89,39 @@ void CinematicSequencer::AddShot(CameraRig rig, float duration, std::string labe
         LOG_WARN("CinematicSequencer::AddShot — shot duration <= 0; clamped to 0.001 s.");
         duration = 0.001f;
     }
-    m_shots.emplace_back(std::move(rig), duration, std::move(label));
+    ShotEntry entry(std::move(rig), duration, std::move(label));
+    m_shots.push_back(std::move(entry));
+}
+
+void CinematicSequencer::AddAudioEvent(float t, std::string clipID)
+{
+    // TEACHING NOTE — Authoring guard
+    // AddAudioEvent() must be called after AddShot() because events are stored
+    // per-shot.  Calling it with no shots is a logic error in the authoring
+    // code (not a runtime user error), so we log an error and return.
+    if (m_shots.empty())
+    {
+        LOG_ERROR("CinematicSequencer::AddAudioEvent — no shots added; call AddShot() first.");
+        return;
+    }
+
+    ShotEntry& shot = m_shots.back();
+
+    // TEACHING NOTE — Clamping event time to shot duration
+    // If an author accidentally sets an event time past the shot duration we
+    // clamp it to the last valid frame rather than silently discarding it.
+    // The warning tells them something is off without crashing.
+    const float clampedT = std::max(0.0f, std::min(t, shot.duration));
+    if (std::abs(clampedT - t) > 1e-6f)
+    {
+        LOG_WARN("CinematicSequencer::AddAudioEvent — event time clamped to shot duration.");
+    }
+
+    ShotEntry::AudioEventEntry ev;
+    ev.time   = clampedT;
+    ev.clipID = std::move(clipID);
+    shot.audioEvents.push_back(std::move(ev));
+    shot.eventFired.push_back(false);  // parallel fired-flag array stays in sync
 }
 
 // ===========================================================================
@@ -106,6 +138,11 @@ void CinematicSequencer::SetOnComplete(std::function<void()> cb)
     m_onComplete = std::move(cb);
 }
 
+void CinematicSequencer::SetOnAudioEvent(std::function<void(const std::string&)> cb)
+{
+    m_onAudioEvent = std::move(cb);
+}
+
 // ===========================================================================
 // Playback control
 // ===========================================================================
@@ -117,6 +154,16 @@ void CinematicSequencer::Play()
         LOG_WARN("CinematicSequencer::Play — no shots added; nothing to play.");
         m_complete = true;
         return;
+    }
+
+    // TEACHING NOTE — Resetting audio event fired flags on Play()
+    // Each call to Play() starts the sequence from scratch, so all audio
+    // events must be eligible to fire again.  We reset the fired flags for
+    // every shot so events reliably trigger even if the sequence is replayed.
+    for (ShotEntry& shot : m_shots)
+    {
+        for (bool& fired : shot.eventFired)
+            fired = false;
     }
 
     m_currentShot = 0;
@@ -151,6 +198,12 @@ void CinematicSequencer::SkipToShot(int shotIndex)
     m_playing     = true;
     m_complete    = false;
 
+    // Reset fired flags for the target shot so audio events can re-fire
+    // when the shot is replayed from the beginning.
+    ShotEntry& shot = m_shots[static_cast<size_t>(m_currentShot)];
+    for (bool& fired : shot.eventFired)
+        fired = false;
+
     if (m_onShotChanged)
         m_onShotChanged(m_currentShot);
 }
@@ -173,6 +226,33 @@ void CinematicSequencer::Tick(float dt)
     }
 
     m_shotTime += dt;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Timed audio event dispatch
+    // -----------------------------------------------------------------------
+    // After advancing m_shotTime we check each unfired audio event in the
+    // current shot.  If m_shotTime has reached or passed the event's time,
+    // we mark it fired and invoke m_onAudioEvent.
+    //
+    // We check BEFORE the carry-over loop so that events fire at the
+    // correct shot-local time, not the carry-over time of the next shot.
+    // Events that were declared at exactly t=shotDuration will fire here
+    // (m_shotTime >= event.time) before the carry-over advances the shot.
+    // -----------------------------------------------------------------------
+    if (m_currentShot >= 0 && m_currentShot < static_cast<int>(m_shots.size()))
+    {
+        ShotEntry& curShot = m_shots[static_cast<size_t>(m_currentShot)];
+        for (size_t i = 0; i < curShot.audioEvents.size(); ++i)
+        {
+            if (!curShot.eventFired[i] &&
+                m_shotTime >= curShot.audioEvents[i].time)
+            {
+                curShot.eventFired[i] = true;
+                if (m_onAudioEvent)
+                    m_onAudioEvent(curShot.audioEvents[i].clipID);
+            }
+        }
+    }
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Carry-over loop
@@ -206,6 +286,28 @@ void CinematicSequencer::Tick(float dt)
                 m_onComplete();
 
             return;
+        }
+
+        // Reset audio event fired flags for the new shot so events
+        // that fall within the carry-over time range can still fire.
+        if (m_currentShot < static_cast<int>(m_shots.size()))
+        {
+            ShotEntry& nextShot = m_shots[static_cast<size_t>(m_currentShot)];
+            for (bool& fired : nextShot.eventFired)
+                fired = false;
+
+            // Fire any audio events in the new shot that fall within
+            // the carry-over time (m_shotTime already advanced by remainder).
+            for (size_t i = 0; i < nextShot.audioEvents.size(); ++i)
+            {
+                if (!nextShot.eventFired[i] &&
+                    m_shotTime >= nextShot.audioEvents[i].time)
+                {
+                    nextShot.eventFired[i] = true;
+                    if (m_onAudioEvent)
+                        m_onAudioEvent(nextShot.audioEvents[i].clipID);
+                }
+            }
         }
 
         // Fire shot-change event.
