@@ -583,6 +583,181 @@ sun elevation formula validated; weather fog transitions validated.
 
 ---
 
+## Milestone M23 — D3D11 Authored Content Ingestion ✅ *(complete)*
+
+> **Documentation backfill:** This section documents work that was **already merged**
+> as part of the post-M22 D3D11 authored ingestion PR.  It is included here for
+> completeness so the milestone list has no gaps between M22 and M24.
+
+> **What's done:** D3D11 runtime authored mesh/material loading from cooked assets
+> in the `pbr_ibl` scene path; authored material parameter ingestion; authored texture
+> slot binding (albedo/normal/metallic-roughness/AO) with robust 1×1 fallback maps
+> when textures are missing.
+
+### Goals
+- Load authored mesh geometry from cooked asset files via `AssetDB` + `AssetLoader`.
+- Bind authored albedo, normal, metallic-roughness, and AO textures to D3D11 PS slots t3–t6.
+- Fall back gracefully to 1×1 white/flat textures when authored assets are absent.
+
+### Deliverables
+| File | Description |
+|---|---|
+| `src/engine/rendering/d3d11/D3D11Renderer.cpp` | `pbr_ibl` scene path — authored mesh discovery via `ENGINE_PROJECT_ROOT`, DDS-first texture resolution, PS slot binding t3–t6 |
+| `samples/vertical_slice_project/Content/Materials/` | `default_armor.material.json` sample material; baked by `cook_assets.py` into `Cooked/Materials/` |
+| `shared/schemas/material.schema.json` | JSON Schema for `.material.json` authored format |
+| `samples/vertical_slice_project/cook_assets.py` | `cook_materials()` step added; writes `Cooked/Materials/*.material` and registers `type: material` in `AssetRegistry.json` |
+
+### Acceptance tests
+
+```bat
+:: Build engine_sandbox with ENGINE_ENABLE_D3D11
+cmake --preset windows-debug-engine-only
+cmake --build --preset windows-debug-engine-only
+
+:: Headless authored ingestion validation
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --scene pbr_ibl
+:: Expected: [PASS] pbr_ibl: all 4 acceptance tests passed.
+
+:: Validate project loads authored assets
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --validate-project samples\vertical_slice_project\
+:: Expected: prints an AssetDB load count and ends with:
+::           [PASS] AssetDB validated successfully.
+```
+
+**Done means:** `--headless --scene pbr_ibl` exits 0 with authored texture slots bound; `--validate-project` exits 0.
+
+---
+
+## Milestone M24 — Vertical Slice Content Population
+
+**Status:** ⬜ Not started
+
+### Goals
+- Replace `.gitkeep` placeholders in `samples/vertical_slice_project/Content/Textures`,
+  `Content/Audio`, and `Content/Animations` with real (non-trivial) sample assets.
+- Validate the full author → cook → load path end-to-end with these non-placeholder assets.
+- Ensure the vertical slice project demonstrates every subsystem with real authored content
+  so a student can study a realistic example from source.
+
+### Deliverables
+| File | Description |
+|---|---|
+| `samples/vertical_slice_project/Content/Textures/` | At least one real BC1/BC3/BC7 DDS texture (e.g. `character_albedo.dds`, `terrain_albedo.dds`) registered in `AssetRegistry.json` |
+| `samples/vertical_slice_project/Content/Audio/` | At least one real WAV clip (e.g. `battle_theme.wav`, `footstep.wav`) registered in `AssetRegistry.json` |
+| `samples/vertical_slice_project/Content/Animations/` | At least one real `.anim` clip or glTF skeleton export registered in `AssetRegistry.json` |
+| `samples/vertical_slice_project/AssetRegistry.json` | Updated registry entries for all new content; hashes and cooked paths valid |
+| `samples/vertical_slice_project/cook_assets.py` | Cook pipeline exercises all new content types without errors |
+| `samples/vertical_slice_project/Cooked/` | All new content cooked and present in `Cooked/`; `assetdb.json` updated |
+
+### Acceptance tests
+
+```bat
+:: Cook the vertical slice project
+cd samples\vertical_slice_project
+python cook_assets.py
+:: Expected: exits 0; Cooked/ populated with texture, audio, and animation artifacts.
+
+:: Validate cooked registry against schema
+python ..\..\tools\validate-assets.py AssetRegistry.json
+:: Expected: reports a PASS summary (for example, "Result: PASS — all manifests are valid.").
+
+:: Headless project load — confirms engine can resolve and open all registered assets
+:: TEACHING NOTE — path matches the windows-debug-engine-only preset output directory.
+..\..\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --validate-project .
+:: Expected: prints an AssetDB load count and ends with:
+::           [PASS] AssetDB validated successfully.
+```
+
+**Done means:** `cook_assets.py` exits 0; `validate-assets.py` reports no errors; `--headless --validate-project` exits 0; at least 1 real texture (DDS), 1 WAV clip, and 1 animation clip are registered in `AssetRegistry.json` and loadable via the engine; no `.gitkeep`-only directories remain in `Content/Textures`, `Content/Audio`, or `Content/Animations`.
+
+---
+
+## Milestone M25 — Terrain / World Geometry Path
+
+**Status:** ⬜ Not started
+
+### Goals
+- Add terrain/heightmap rendering support so streamed open-world cells are visually
+  navigable (not just an empty skybox).
+- Wire terrain collision into the Jolt `PhysicsWorld` so the character capsule lands
+  on terrain instead of falling through it.
+- Demonstrate end-to-end: authored heightmap → cook → streamed cell → rendered + collidable.
+
+### Deliverables
+| File | Description |
+|---|---|
+| `src/engine/rendering/d3d11/terrain_renderer.hpp/.cpp` | `TerrainRenderer`: heightmap upload (R16_UNORM or R32_FLOAT D3D11 texture); vertex grid generation; D3D11 draw call; PBR-compatible lit pass |
+| `shaders/terrain.vs.hlsl` + `shaders/terrain.ps.hlsl` | SM 4.0 terrain vertex/pixel shaders; heightmap displacement in VS; simple diffuse + normal lighting in PS |
+| `src/engine/physics/terrain_collision.hpp/.cpp` | `BakeTerrainCollider`: generates a `JPH::HeightFieldShape` from heightmap data; registers with `PhysicsWorld` |
+| `tools/creation_engine.py` `bake-terrain` subcommand | Raw heightmap (PNG/R16 binary) → cooked `.terrain` (header + height samples + metadata) |
+| `samples/vertical_slice_project/Content/Terrain/` | Sample `world_heightmap.png` (or `.r16`); corresponding `.terrain` registered in `AssetRegistry.json` |
+| `src/sandbox/main.cpp` | ✅ **Already done (PR1)** — `--scene terrain_test` dispatch wired into scene registry |
+| `.github/workflows/build-windows.yml` | ✅ **Already done (PR1)** — `--headless --scene terrain_test` step present in Windows CI job |
+
+### Acceptance tests
+
+```bat
+:: Build with physics enabled (set VCPKG_ROOT to your vcpkg installation path)
+cmake --preset windows-debug-engine-only ^
+  -DENGINE_ENABLE_PHYSICS=ON ^
+  -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
+cmake --build --preset windows-debug-engine-only
+
+:: Headless terrain acceptance
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --scene terrain_test
+:: Expected output (3 tests):
+:: [OK] terrain_test 1/3: TerrainRenderer Init — D3D11 resources created on WARP.
+:: [OK] terrain_test 2/3: Heightmap displacement — vertex Y > 0 for non-zero height sample.
+:: [OK] terrain_test 3/3: Terrain collision — sphere dropped from height lands on terrain, not at Y=0.
+:: [PASS] terrain_test: all 3 acceptance tests passed.
+```
+
+**Done means:** `--headless --scene terrain_test` exits 0 in CI; character capsule rests on terrain surface rather than falling through it.
+
+---
+
+## Milestone M26 — Save-System CI Hardening
+
+**Status:** ⬜ Not started
+
+### Goals
+- Add a dedicated `--scene save_test` headless acceptance suite that exercises the
+  production `SaveSystem` (15-slot + auto-save + migration) introduced in M8.8.
+- Cover three critical correctness properties from `docs/FF15_REQUIREMENTS_BLUEPRINT.md`
+  section 12 (Save System):
+  1. **Round-trip equivalence** — serialise world state → save → load → assert component data identical.
+  2. **Corruption / migration** — corrupt or version-bump a save payload → load → assert graceful migration or error, not crash.
+  3. **Auto-save trigger** — simulate `CampSystem::Rest` → assert auto-save slot written and non-empty.
+
+### Deliverables
+| File | Description |
+|---|---|
+| `src/sandbox/main.cpp` | ✅ **Already done (PR1)** — `--scene save_test` dispatch wired into scene registry |
+| Scene implementation (in `D3D11Renderer` or `main.cpp`) | `SaveTestScene` running 3 sub-tests; passes or fails with `[PASS]`/`[FAIL]` output |
+| `src/engine/save/save_system.hpp/.cpp` | No new logic required if M8.8 is complete; only the headless test harness is new |
+| `.github/workflows/build-windows.yml` | ✅ **Already done (PR1)** — `--headless --scene save_test` step present in Windows headless CI job |
+| `tests/save_fixtures/` *(optional)* | Version-1 JSON fixture for migration test; keeps scene code simple |
+
+### Acceptance tests
+
+```bat
+:: Build engine_sandbox
+cmake --preset windows-debug-engine-only
+cmake --build --preset windows-debug-engine-only
+
+:: Headless save-system acceptance
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --scene save_test
+:: Expected output (3 tests):
+:: [OK] save_test 1/3: Round-trip — save slot 0; load slot 0; HP matches.
+:: [OK] save_test 2/3: Migration — load v0 fixture; version bumped to current; no crash.
+:: [OK] save_test 3/3: Auto-save — CampSystem::Rest fires; slot 'autosave' written.
+:: [PASS] save_test: all 3 acceptance tests passed.
+```
+
+**Done means:** `--headless --scene save_test` exits 0 in CI; all three sub-tests (round-trip, migration, auto-save) pass on WARP.
+
+---
+
 ## Future Milestones (Post-M15)
 
 > **Last verified: 2026-04-22**
@@ -596,6 +771,10 @@ sun elevation formula validated; weather fog transitions validated.
 | M20 | Quest / Dialogue Tools + Tests | Quest/dialogue bakers + acceptance tests (`quest_test`, `dialogue_test`) | ✅ Complete |
 | M21 | Tool Stubs: Nav-mesh + ToD LUT | `bake-navmesh` + `bake-tod` commands with pytest coverage | ✅ Complete (stub tooling milestone) |
 | M22 | Cinematic Baker + Editor Panel | `bake-cinematic`; `CinematicEditorPanel.hpp/.cpp` | ✅ Complete |
+| M23 | D3D11 Authored Content Ingestion | Runtime mesh/material loading + authored texture-slot binding in D3D11 scene path | ✅ Complete |
+| M24 | Vertical Slice Content Population | Real assets in `Content/Textures`, `Content/Audio`, `Content/Animations`; cook+load verified | ⬜ Not started |
+| M25 | Terrain / World Geometry Path | Terrain/heightmap rendering + collision for streamed cells; `terrain_test` CI | ⬜ Not started |
+| M26 | Save-System CI Hardening | `--scene save_test` acceptance suite (round-trip, migration, auto-save) | ⬜ Not started |
 | M14 | Vulkan Catch-up | All DEFERRED Vulkan items (textures, descriptors, PBR, skinning, sky, HUD) — see M14 section; no separate M23 | ⬜ Deferred |
 
 ---
@@ -630,4 +809,7 @@ sun elevation formula validated; weather fog transitions validated.
 | M20 | Quest / dialogue tools + tests | ✅ Complete |
 | M21 | Nav-mesh baker + ToD LUT baker | ✅ Complete (stub tooling milestone) |
 | M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
-| M23 | Merged into M14 Vulkan Catch-up (do not track separately) | — |
+| M23 | D3D11 Authored Content Ingestion | ✅ Complete |
+| M24 | Vertical Slice Content Population | ⬜ Not started |
+| M25 | Terrain / World Geometry Path | ⬜ Not started |
+| M26 | Save-System CI Hardening | ⬜ Not started |
