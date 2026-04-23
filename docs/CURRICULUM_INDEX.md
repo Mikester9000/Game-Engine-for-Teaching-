@@ -6,14 +6,13 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1826 across 55 subsystems.
+**Total lessons:** 1812 across 54 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (73 lessons)
-- [build_check/scripts](#build_checkscripts) (14 lessons)
 - [ci/workflows](#ciworkflows) (61 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
@@ -1177,129 +1176,6 @@ add_subdirectory(editor)
 else()
 message(STATUS "BUILD_EDITOR=OFF: skipping editor/ (pass -DBUILD_EDITOR=ON to include)")
 endif()
-
----
-
-## build_check/scripts
-
-### Why Architecture Enforcement Matters
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L6) (line 6)
-
-### Forbidden-Include Table
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L55) (line 55)
-
-----------------------------------------
-Each entry in LAYER_RULES maps a *source layer* (a glob-like path prefix
-relative to ``src/``) to the set of *forbidden* path substrings that must
-NOT appear in its ``#include`` directives.
-
-The table is taken directly from COPILOT_CONTINUATION.md § 3.3:
-
-  Layer              May depend on       Must NOT depend on
-  engine/core/       (nothing else)      everything below
-  engine/ecs/        core/               game/, tools
-  engine/rendering/  core/, ecs/         game/
-  engine/audio/      core/, ecs/         game/, rendering/
-  engine/animation/  core/, ecs/         game/
-  engine/physics/    core/, ecs/         game/
-  game/systems/      engine/             tools/, editor/
-  game/world/        engine/, systems/   tools/, editor/
-  tools/             engine/core/        game/
-
-Implementation note: we match on the *normalised* include path string
-(forward slashes, relative to the repo root ``src/`` directory).
-
-### Teaching Exceptions to the 500-Line Rule
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L96) (line 96)
-
-----------------------------------------------------------
-These files intentionally exceed 500 lines because their size is
-*pedagogically justified*: the ECS is studied as a whole, and splitting
-it would obscure the relationships between components.  Every exception
-must be listed here with a rationale comment.
-
-Files listed here are exempt from the line-count violation check but are
-still subject to all other checks (layer boundaries, TEACHING NOTEs).
-
-### Suppressing Known Pre-existing Violations
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L191) (line 191)
-
-----------------------------------------------------------
-A freshly introduced lint rule will almost always find violations in existing
-code.  The correct workflow is:
-
-  1. List all *pre-existing* violations here with a clear rationale and a
-     TODO comment noting the refactor needed to remove them.
-  2. New violations that are NOT in this list immediately fail CI.
-  3. Work through the list over time, removing entries as the refactors land.
-
-Key: (repo-relative file path, forbidden include substring)
-Value: human-readable rationale for allowing the exception.
-
-### Why 500 Lines?
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L292) (line 292)
-
-### Include-Based Layer Checking
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L334) (line 334)
-
-### Documentation as a First-Class Requirement
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L414) (line 414)
-
-### skip_dirs excludes build artefacts and third-party sources.
-
-**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L451) (line 451)
-
-"Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
-source that intentionally has no TEACHING NOTE blocks and may be large.
-Scanning it would produce false-positive warnings.
-skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules", "Lua"}
-result: list[Path] = []
-for path in sorted(repo_root.rglob("*")):
-if any(part in skip_dirs for part in path.parts):
-continue
-if path.suffix in (".cpp", ".hpp", ".h", ".c"):
-result.append(path)
-return result
-
-### Script-Defined Abilities
-
-**Source:** [`build_check/scripts/enemies.lua`](build_check/scripts/enemies.lua#L6) (line 6)
-
-### Automated Documentation Extraction
-
-**Source:** [`build_check/scripts/extract_teaching_notes.py`](build_check/scripts/extract_teaching_notes.py#L6) (line 6)
-
-### Deterministic Line Endings
-
-**Source:** [`build_check/scripts/extract_teaching_notes.py`](build_check/scripts/extract_teaching_notes.py#L435) (line 435)
-
--------------------------------------------
-Explicitly write LF (\n) line endings regardless of the host platform.
-Without this, Python's default text mode on Windows translates every \n
-to \r\n (CRLF), causing ``git diff --exit-code`` to detect a spurious
-difference whenever the index is regenerated on a Windows CI runner or
-developer machine.  We open in binary mode and encode ourselves to
-guarantee byte-identical output across Linux, macOS, and Windows.
-output_path.write_bytes(markdown.encode("utf-8"))
-
-### Why Lua for Scripting?
-
-**Source:** [`build_check/scripts/main.lua`](build_check/scripts/main.lua#L6) (line 6)
-
-### Tables as Modules
-
-**Source:** [`build_check/scripts/main.lua`](build_check/scripts/main.lua#L25) (line 25)
-
-### Data-Driven Quests with Lua
-
-**Source:** [`build_check/scripts/quests.lua`](build_check/scripts/quests.lua#L6) (line 6)
 
 ---
 

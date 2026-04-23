@@ -398,9 +398,9 @@ def test_bake_terrain_roundtrips_sample_vertical_slice_asset() -> None:
     The test loads the ACTUAL cooked binary from the repo and verifies:
       1. Magic == "TRN1"
       2. Version == 1
-      3. Grid is 16×16
-      4. CellSize == 4.0
-      5. All 256 height values are non-negative (terrain is above the XZ plane)
+      3. Grid dimensions and cell size match the authored JSON source
+      4. Sample count in payload equals width * height
+      5. All height values are non-negative (terrain stays above the XZ plane)
     """
     repo_root = Path(__file__).resolve().parents[2]
     cooked_path = (
@@ -408,9 +408,22 @@ def test_bake_terrain_roundtrips_sample_vertical_slice_asset() -> None:
         / "samples" / "vertical_slice_project"
         / "Cooked" / "Terrain" / "highland.terrain"
     )
+    source_path = (
+        repo_root
+        / "samples" / "vertical_slice_project"
+        / "Content" / "Terrain" / "highland.terrain.json"
+    )
     if not cooked_path.exists():
         import pytest
         pytest.skip(f"Cooked terrain asset not found: {cooked_path}")
+    if not source_path.exists():
+        import pytest
+        pytest.skip(f"Source terrain asset not found: {source_path}")
+
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    expected_w = int(source["width"])
+    expected_h = int(source["height"])
+    expected_cs = float(source["cellSize"])
 
     blob = cooked_path.read_bytes()
     header_size = struct.calcsize("<4sHHHf")
@@ -418,11 +431,11 @@ def test_bake_terrain_roundtrips_sample_vertical_slice_asset() -> None:
 
     assert magic == b"TRN1"
     assert version == 1
-    assert w == 16
-    assert h == 16
-    assert abs(cs - 4.0) < 1e-5
+    assert w == expected_w
+    assert h == expected_h
+    assert abs(cs - expected_cs) < 1e-5
 
     num_samples = w * h
     heights = struct.unpack(f"<{num_samples}f", blob[header_size:])
+    assert len(heights) == expected_w * expected_h
     assert all(v >= 0.0 for v in heights), "All height samples must be >= 0"
-
