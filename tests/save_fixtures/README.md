@@ -25,15 +25,24 @@ golden file; sync is enforced by convention:
    `kFixtureJSON` raw string literal inside the `save_test` block
    (Test 2) in `src/sandbox/main.cpp`.
 2. If you update the `kFixtureJSON` inline string, also update this file.
-3. A quick `diff` between the golden file and the inline string is the
-   manual verification step.  Run it before merging any fixture change:
+3. A manual diff is the verification step.  Run the following before
+   merging any fixture change:
 
    ```bash
-   # Compare inline constant (extracted from main.cpp) against the golden file.
-   grep -A 20 'kFixtureJSON\[\]' src/sandbox/main.cpp | diff - tests/save_fixtures/v0_9_0_minimal.json
+   # Extract the JSON payload from the inline C++ raw string literal,
+   # then diff against the golden file.  A zero-exit (no output) = in sync.
+   python3 - << 'EOF' | diff - tests/save_fixtures/v0_9_0_minimal.json
+   import re
+   src = open('src/sandbox/main.cpp').read()
+   m = re.search(r'R"JSON\((.*?)\)JSON"', src, re.DOTALL)
+   if m:
+       print(m.group(1), end='')
+   EOF
    ```
 
-   A zero-exit diff confirms they are identical.
+   Note: the plain `grep -A N 'kFixtureJSON'` approach does NOT work because
+   it includes the surrounding C++ syntax (`static const char ...` and
+   `R"JSON(` / `)JSON";`), making `diff` always report differences.
 
 ## Adding a new fixture
 

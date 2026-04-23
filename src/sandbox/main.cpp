@@ -3676,18 +3676,48 @@ int main(int argc, char* argv[])
                 namespace fs = std::filesystem;
 
                 // Unique temp directory — isolates parallel CI runs.
-                // TEACHING NOTE — Temp directory isolation
-                // Using a named sub-directory ("save_test_m26") under the
-                // system temp dir guarantees a clean slate for each run while
-                // keeping the path short enough for Windows MAX_PATH limits.
+                // TEACHING NOTE — Temp directory isolation with clock-based uniqueness
+                // Appending a nanosecond timestamp to the directory name prevents two
+                // concurrent engine_sandbox processes (e.g. parallel CI matrix jobs
+                // on the same machine) from racing on remove_all() and
+                // create_directories().  std::chrono::steady_clock is already
+                // included in main.cpp and is the most portable option.
+                const auto saveTestNonce =
+                    std::chrono::steady_clock::now().time_since_epoch().count();
                 const fs::path testSaveDir =
-                    fs::temp_directory_path() / "save_test_m26";
+                    fs::temp_directory_path() /
+                    ("save_test_m26_" + std::to_string(saveTestNonce));
                 const std::string saveDirStr = testSaveDir.string() + "/";
 
                 // Wipe any leftover files from a prior run, then recreate.
-                std::error_code ecClean;
-                fs::remove_all(testSaveDir, ecClean);
-                fs::create_directories(testSaveDir, ecClean);
+                // TEACHING NOTE — Error checking for filesystem setup
+                // Failing to set up the temp directory (e.g. permissions,
+                // locked files from a previous crashed run) would cause all
+                // three tests to silently pass-or-fail for the wrong reasons.
+                // We check both fs::remove_all and fs::create_directories and
+                // abort with a clear [FAIL] message if either fails.
+                std::error_code ecRemove;
+                fs::remove_all(testSaveDir, ecRemove);
+                if (ecRemove)
+                {
+                    std::cout << "[FAIL] save_test: could not clean temp dir '"
+                              << testSaveDir.string() << "': "
+                              << ecRemove.message() << "\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::error_code ecMkdir;
+                fs::create_directories(testSaveDir, ecMkdir);
+                if (ecMkdir)
+                {
+                    std::cout << "[FAIL] save_test: could not create temp dir '"
+                              << testSaveDir.string() << "': "
+                              << ecMkdir.message() << "\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
 
 #ifndef ENGINE_ENABLE_JSON
                 // -----------------------------------------------------------
@@ -3787,16 +3817,30 @@ int main(int argc, char* argv[])
                                 const auto& h2  = worldB.GetComponent<HealthComponent>(eid);
                                 const auto& tf2 = worldB.GetComponent<TransformComponent>(eid);
 
-                                hpMatch  = (h2.hp == 420 && h2.maxHp == 500);
+                                hpMatch  = (h2.hp == 420 && h2.maxHp == 500 &&
+                                            h2.mp ==  80 && h2.maxMp == 100);
+                                // TEACHING NOTE — Compare all three axes
+                                // Checking only x and z would miss a bug where
+                                // y is corrupted by a float serialisation error
+                                // (e.g. NaN or wrong field mapping).
                                 posMatch = (tf2.position.x == 100.0f &&
+                                            tf2.position.y ==   0.0f &&
                                             tf2.position.z == 200.0f);
 
                                 if (worldB.HasComponent<QuestComponent>(eid))
                                 {
                                     const auto& qc2 = worldB.GetComponent<QuestComponent>(eid);
+                                    // TEACHING NOTE — Full quest field validation
+                                    // Asserting every saved field (questID,
+                                    // objective, progress, required, isComplete)
+                                    // catches accidental field-alias bugs where
+                                    // two adjacent integer fields swap at rest.
                                     questMatch = (qc2.activeCount == 1 &&
-                                                  qc2.quests[0].questID  == 42 &&
-                                                  qc2.quests[0].progress == 3);
+                                                  qc2.quests[0].questID    == 42 &&
+                                                  qc2.quests[0].objective  ==  1 &&
+                                                  qc2.quests[0].progress   ==  3 &&
+                                                  qc2.quests[0].required   ==  5 &&
+                                                  qc2.quests[0].isComplete == false);
                                 }
                                 break; // found the player entity
                             }
@@ -3863,14 +3907,34 @@ int main(int argc, char* argv[])
 
                     // Write the fixture directly to the save directory so
                     // SaveSystem::Load(world, 1) will find it at slot 1's path.
+                    // TEACHING NOTE — Validate the fixture write before Load()
+                    // If the ofstream fails to open (permissions, disk full),
+                    // the file will be absent.  Load() would then return false
+                    // and the test would incorrectly classify that as "graceful
+                    // error path".  We assert the fixture exists and is non-zero
+                    // before calling Load(), so a write failure is a real [FAIL].
                     const fs::path fixturePath = testSaveDir / "save_1.json";
                     {
                         std::ofstream ofs(fixturePath);
                         ofs << kFixtureJSON;
                     }
+                    std::error_code ecFix;
+                    const uintmax_t fixSz = fs::file_size(fixturePath, ecFix);
+                    const bool fixtureWriteOk = (!ecFix && fixSz > 0);
+                    if (!fixtureWriteOk)
+                    {
+                        std::cout << "[FAIL] save_test 2/3: Migration — "
+                                     "could not write v0.9.0 fixture to '"
+                                  << fixturePath.string() << "' ("
+                                  << (ecFix ? ecFix.message() : "empty file")
+                                  << ").\n";
+                        ++testsFailed;
+                    }
 
                     engine::save::SaveSystem saver(saveDirStr);
                     World worldMig;
+                    if (fixtureWriteOk)
+                    {
                     const bool loadOk = saver.Load(worldMig, /*slot=*/1);
 
                     if (!loadOk)
@@ -3914,6 +3978,7 @@ int main(int argc, char* argv[])
                                          "to current; no crash.\n";
                         }
                     }
+                    } // if (fixtureWriteOk)
                 } // Test 2
 
                 // ===========================================================
@@ -3961,20 +4026,32 @@ int main(int argc, char* argv[])
                             saver.SlotExists(engine::save::kAutoSaveSlot);
                         const fs::path autoPath = testSaveDir / "save_auto.json";
                         std::error_code ecSize;
+                        // TEACHING NOTE — Always check the error_code from file_size
+                        // fs::file_size(path, ec) returns uintmax_t(-1) on error and
+                        // sets ec.  Checking only fileSize == 0 would treat an error-
+                        // return (0xFFFF…) as "large file = ok", which is wrong.
+                        // We check ecSize first and treat any error as a [FAIL].
                         const uintmax_t fileSize =
-                            slotExists ? fs::file_size(autoPath, ecSize) : 0;
+                            slotExists ? fs::file_size(autoPath, ecSize)
+                                       : static_cast<uintmax_t>(0);
 
-                        if (!slotExists || fileSize == 0)
+                        if (!slotExists || ecSize || fileSize == 0)
                         {
                             std::cout << "[FAIL] save_test 3/3: Auto-save — "
-                                         "slot missing or empty ("
+                                         "slot missing, empty, or size error ("
                                       << "exists=" << slotExists
-                                      << " size="  << fileSize << ").\n";
+                                      << " size="  << fileSize
+                                      << (ecSize ? " err=" + ecSize.message() : "")
+                                      << ").\n";
                             ++testsFailed;
                         }
                         else
                         {
-                            // Load back and verify HP survives the auto-save.
+                            // Load back and verify HP round-trips through the auto-save.
+                            // TEACHING NOTE — Explicit HP assertion after Load()
+                            // Asserting that the loaded world contains an entity with
+                            // hp==350/maxHp==500 proves data integrity, not just that
+                            // the file was written and the parser didn't crash.
                             World worldLoaded;
                             const bool loadOk =
                                 saver.Load(worldLoaded, engine::save::kAutoSaveSlot);
@@ -3986,9 +4063,39 @@ int main(int argc, char* argv[])
                             }
                             else
                             {
-                                std::cout << "[OK] save_test 3/3: Auto-save — "
-                                             "CampSystem::Rest fires; slot 'autosave' "
-                                             "written (" << fileSize << " bytes).\n";
+                                std::vector<EntityID> autoLiving;
+                                worldLoaded.GetEntityManager()
+                                    .GetLivingEntities(autoLiving);
+
+                                bool hpRoundTrip = false;
+                                for (EntityID eid : autoLiving)
+                                {
+                                    if (worldLoaded.HasComponent<HealthComponent>(eid))
+                                    {
+                                        const auto& ha =
+                                            worldLoaded.GetComponent<HealthComponent>(eid);
+                                        if (ha.hp == 350 && ha.maxHp == 500)
+                                        {
+                                            hpRoundTrip = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (!hpRoundTrip)
+                                {
+                                    std::cout << "[FAIL] save_test 3/3: Auto-save — "
+                                                 "loaded autosave but HP=350/maxHp=500 "
+                                                 "not found in restored world.\n";
+                                    ++testsFailed;
+                                }
+                                else
+                                {
+                                    std::cout << "[OK] save_test 3/3: Auto-save — "
+                                                 "CampSystem::Rest fires; slot 'autosave' "
+                                                 "written (" << fileSize << " bytes); "
+                                                 "HP round-trips correctly.\n";
+                                }
                             }
                         }
                     }
