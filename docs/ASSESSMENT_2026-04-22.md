@@ -1,5 +1,13 @@
 # Monorepo State Assessment — 2026-04-22
 
+> **Superseded by:** `docs/ASSESSMENT_2026-04-23.md` (2026-04-23 follow-up assessment).
+> The "Critical Remaining Gaps" listed below were addressed as follows after this assessment:
+> - **M25** (terrain) → ✅ Complete via PR #76
+> - **M26** (save-system CI) → ✅ Complete (all CI wired)
+> - **M24** (content population) → 🔨 Assets populated via PR #77; cook verification pending
+>
+> Consult `docs/ASSESSMENT_2026-04-23.md` for the current state and prioritized plan.
+
 This document captures the deep repository assessment requested on 2026-04-22 and is the reference snapshot used to reconcile planning and status docs.
 
 ## Executive Summary
