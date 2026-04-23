@@ -4640,6 +4640,8 @@ int main(int argc, char* argv[])
                 std::cout << "[PASS] authored_content: all 3 acceptance tests passed "
                              "(file count, DDS magic, header validity).\n";
             }
+            else
+            {
                 // M0 baseline: device init succeeded.
                 std::cout << "[PASS] " << renderer->BackendName()
                           << " device initialised. Headless mode: "
