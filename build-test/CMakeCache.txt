@@ -57,7 +57,7 @@ CMAKE_CXX_FLAGS_RELEASE:STRING=-O3 -DNDEBUG
 CMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=-O2 -g -DNDEBUG
 
 //C compiler
-CMAKE_C_COMPILER:FILEPATH=/usr/bin/cc
+CMAKE_C_COMPILER:STRING=/usr/bin/cc
 
 //A wrapper around 'ar' adding the appropriate '--plugin' option
 // for the GCC compiler
@@ -248,6 +248,7 @@ CURSES_NCURSES_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libncurses.so
 //Build the D3D11 renderer backend (GT610-compatible)
 ENGINE_ENABLE_D3D11:BOOL=OFF
 
+//Build Jolt Physics integration (M5)
 ENGINE_ENABLE_PHYSICS:BOOL=OFF
 
 //Build the ncurses terminal renderer target

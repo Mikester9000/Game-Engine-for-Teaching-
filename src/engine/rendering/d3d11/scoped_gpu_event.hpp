@@ -36,6 +36,16 @@
  *   3. Call ann->EndEvent() at the end.
  *   4. PIX / RenderDoc show these labels in the event list.
  *
+ * TEACHING NOTE — Why <d3d11_1.h> and not <d3d11.h>?
+ * ID3DUserDefinedAnnotation was introduced in D3D11.1 (Windows 8 SDK).
+ * <d3d11.h> only declares the base D3D11 interfaces (ID3D11Device,
+ * ID3D11DeviceContext, …).  <d3d11_1.h> declares the extended D3D11.1
+ * interfaces including ID3DUserDefinedAnnotation.  d3d11_1.h #includes
+ * d3d11.h internally, so replacing the include is safe.
+ *
+ * The QueryInterface itself still works on devices created without D3D11.1
+ * flags — WARP and real GPUs with Windows 7 feature packs support it.
+ *
  * The SCOPED_GPU_EVENT macro wraps this in a RAII guard so EndEvent() is
  * always called even if an early return is hit.
  *
@@ -56,7 +66,7 @@
  */
 
 #ifdef _WIN32
-#  include <d3d11.h>
+#  include <d3d11_1.h>   // ID3DUserDefinedAnnotation (D3D11.1 annotation interface)
 
 // ---------------------------------------------------------------------------
 // ScopedGpuEvent — RAII wrapper around ID3DUserDefinedAnnotation.
