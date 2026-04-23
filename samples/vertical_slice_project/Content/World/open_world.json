@@ -1,7 +1,5 @@
 {
-  "$schema": "../../shared/schemas/scene.schema.json",
   "version": "1.0.0",
-  "name": "open_world",
   "description": "Demo_Game open world — multi-biome exploration area with teaching stations.",
   "spawnPoint": { "x": 512.0, "y": 0.0, "z": 512.0 },
   "worldSizeX": 1024.0,

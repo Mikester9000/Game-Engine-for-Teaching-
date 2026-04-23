@@ -1254,6 +1254,9 @@ jobs:
     name: Build Windows — Demo_Game executable (Epic)
     runs-on: windows-latest
 
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

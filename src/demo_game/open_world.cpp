@@ -192,8 +192,12 @@ void OpenWorld::UpdateLoading(float dt, bool headless)
     // ─────────────────────────────────────────
     // In a real engine this state waits for the async streaming system (M7)
     // to warm up the first ring of cells around the spawn point.  Here we
-    // simply wait 0.1 seconds in headless mode (vs. 1.5 s for a real splash).
-    const float waitTime = headless ? 0.1f : 1.5f;
+    // simply wait a brief time in headless mode (vs. a longer splash time
+    // for a real windowed game so the player can read the loading screen).
+    static constexpr float kHeadlessLoadTimeSeconds = 0.1f;
+    static constexpr float kWindowedLoadTimeSeconds = 1.5f;
+    const float waitTime = headless ? kHeadlessLoadTimeSeconds
+                                    : kWindowedLoadTimeSeconds;
 
     if (m_stateTime >= waitTime)
     {
@@ -210,12 +214,14 @@ void OpenWorld::UpdatePlaying(float dt, bool headless)
     // ──────────────────────────────────
     // In a real implementation the biome is determined by the player's world
     // coordinates (sampled from a biome map texture or Voronoi diagram).  Here
-    // we cycle through biomes every kHeadlessFrames / 5 frames in headless mode
+    // we cycle through biomes every kFramesPerBiome frames in headless mode
     // to exercise the full set of sky colours in CI without travelling.
     if (headless)
     {
-        constexpr int kFramesPerBiome = kHeadlessFrames / 5;
-        int biomeIdx = (m_frameCount / kFramesPerBiome) % 5;
+        // kBiomeCount must match the number of BiomeType enum values (5).
+        static constexpr int kBiomeCount    = 5;
+        static constexpr int kFramesPerBiome = kHeadlessFrames / kBiomeCount;
+        const int biomeIdx = (m_frameCount / kFramesPerBiome) % kBiomeCount;
         m_currentBiome = static_cast<BiomeType>(biomeIdx);
 
         if (m_frameCount >= kHeadlessFrames)

@@ -4918,11 +4918,18 @@ int main(int argc, char* argv[])
                 }
 
                 // ── Test 3: Full headless flow ──────────────────────────────
+                // TEACHING NOTE — Extra guard frames
+                // We allow kHeadlessFrames + 4 iterations to give the state
+                // machine a small margin for the BOOT_MENU auto-advance (2 frames)
+                // and the LOADING phase (at least 1 frame at 1/60 s >= 0.1 s load
+                // wait), before we reach the PLAYING+biome-cycle frames proper.
+                // The loop exits early via the `break` once IsHeadlessDone() is true.
                 constexpr float kDt = 1.0f / 60.0f;
-                for (int f = 0; f < OpenWorld::kHeadlessFrames + 4; ++f)
+                constexpr int   kExtraGuardFrames = 4; // boot (2) + loading (>=1) + margin
+                for (int f = 0; f < OpenWorld::kHeadlessFrames + kExtraGuardFrames; ++f)
                 {
                     ow.Update(kDt, /*headless=*/true);
-                    if (ow.IsHeadlessDone()) break;
+                    if (ow.IsHeadlessDone()) { break; }
                 }
                 if (!ow.IsHeadlessDone())
                 {

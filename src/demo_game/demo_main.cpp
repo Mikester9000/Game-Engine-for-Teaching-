@@ -167,12 +167,20 @@ static int RunHeadless()
     // -----------------------------------------------------------------------
     // 3. Run frames until headless completion (auto-advance boot menu).
     // -----------------------------------------------------------------------
-    constexpr float kDt = 1.0f / 60.0f;
-    for (int f = 0; f < OpenWorld::kHeadlessFrames + 4; ++f)
+    // TEACHING NOTE — Extra guard frames
+    // We allow kHeadlessFrames + kExtraGuardFrames iterations so the
+    // BOOT_MENU auto-advance (2 frames) and LOADING phase (>= 1 frame)
+    // complete before we start counting the PLAYING biome-cycle frames.
+    // -----------------------------------------------------------------------
+    constexpr float kDt             = 1.0f / 60.0f;
+    constexpr int   kExtraGuardFrames = 4; // boot (2) + loading (>=1) + margin
+    for (int f = 0; f < OpenWorld::kHeadlessFrames + kExtraGuardFrames; ++f)
     {
         world.Update(kDt, /*headless=*/true);
         if (world.IsHeadlessDone())
+        {
             break;
+        }
     }
 
     if (!world.IsHeadlessDone())
@@ -242,7 +250,7 @@ static int RunWindowed(const DemoArgs& args)
     engine::platform::Win32Window window;
     constexpr int kWidth  = 1280;
     constexpr int kHeight = 720;
-    if (!window.Init(L"Demo_Game \u2014 Open World", kWidth, kHeight))
+    if (!window.Init(L"Demo_Game - Open World", kWidth, kHeight))
     {
         std::cerr << "[FATAL] demo_game: Win32Window::Init() failed.\n";
         return 1;
@@ -295,7 +303,14 @@ static int RunWindowed(const DemoArgs& args)
     // -----------------------------------------------------------------------
     // Main loop.
     // -----------------------------------------------------------------------
+    // TEACHING NOTE — F1 key state tracking (windowed mode)
+    // We track whether F1 was down in the previous frame to detect a rising
+    // edge (key just pressed).  Using a local bool avoids static state inside
+    // the loop body.  In a full implementation this would live in InputMapper
+    // or an InputSystem component so multiple systems can react.
+    // -----------------------------------------------------------------------
     bool debugMenuOpen = false; // F1 overlay toggle
+    bool f1WasDown     = false; // previous-frame F1 state for rising-edge detect
 
     while (window.IsRunning())
     {
@@ -312,17 +327,15 @@ static int RunWindowed(const DemoArgs& args)
         const float dt = static_cast<float>(window.GetDeltaTime());
 
         // -----------------------------------------------------------------
-        // Input: F1 → debug menu toggle, ESC → pause/boot-menu.
+        // Input: F1 → debug menu toggle.
         // TEACHING NOTE — Key-State Polling (Win32)
-        // Win32Window's PollEvents processes WM_KEYDOWN messages and
-        // stores them in an internal set.  Here we use the Win32 API
-        // GetAsyncKeyState for a simple real-time key poll until a
-        // proper IsKeyJustPressed API is added to Win32Window.
-        // Note: GetAsyncKeyState checks current physical key state;
-        // the 0x8000 mask tests the "key is down" bit.
+        // GetAsyncKeyState returns the real-time physical key state;
+        // 0x8000 is the "currently held down" bit.  We track the previous
+        // frame state in f1WasDown to detect a rising edge (just pressed).
+        // In a full engine this would be routed through EventBus so multiple
+        // systems can react without each polling the Win32 API directly.
         // -----------------------------------------------------------------
-        static bool f1WasDown = false;
-        const bool  f1IsDown  = (::GetAsyncKeyState(VK_F1) & 0x8000) != 0;
+        const bool f1IsDown = (::GetAsyncKeyState(VK_F1) & 0x8000) != 0;
         if (f1IsDown && !f1WasDown)
         {
             debugMenuOpen = !debugMenuOpen;
@@ -353,16 +366,22 @@ static int RunWindowed(const DemoArgs& args)
 
         // Tick gameplay systems once per frame when in PLAYING state.
         if (gameRuntime && world.IsPlaying())
+        {
             gameRuntime->Update(dt);
+        }
 
         // -----------------------------------------------------------------
         // Render.
         // -----------------------------------------------------------------
         float r, g, b;
         if (gameRuntime && world.IsPlaying())
+        {
             gameRuntime->GetClearColour(r, g, b);
+        }
         else
+        {
             world.GetClearColour(r, g, b);
+        }
 
         renderer->DrawFrame(r, g, b, static_cast<float>(window.GetDeltaTime()));
     }
