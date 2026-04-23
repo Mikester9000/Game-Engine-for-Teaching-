@@ -702,8 +702,14 @@ jobs:
       # If pak.exe --extract is broken or the extracted AssetDB is corrupted,
       # this gate catches it before the bug reaches a release build.
       # -----------------------------------------------------------------------
+      # TEACHING NOTE — Extract PAK content into a Cooked/ subdirectory (CI-3)
+      # The PAK archive contains the Cooked/ directory contents (built from
+      # samples\vertical_slice_project\Cooked\).  We extract into
+      # %TEMP%\pak_extracted\Cooked so that the next step can run
+      # --validate-project %TEMP%\pak_extracted — which appends \Cooked\ when
+      # looking for assetdb.json, matching the extracted layout exactly.
       - name: Extract PAK archive (CI-3)
-        run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted
+        run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted\Cooked
         shell: cmd
 
       # TEACHING NOTE — Validate extracted PAK content (CI-3)
