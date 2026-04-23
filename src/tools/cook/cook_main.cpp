@@ -76,6 +76,8 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <cctype>
 #include <cstring>  // std::strcmp
 
 // ============================================================================
@@ -427,6 +429,67 @@ int main(int argc, char* argv[])
         // already exists and index it in assetdb.json.
         if (fs::is_directory(srcPath))
         {
+            // TEACHING NOTE — Stub aggregate build for audio_bank
+            // CI invokes cook.exe directly in a fresh checkout where cooked
+            // aggregate outputs might not already exist. For audio banks we
+            // emit a minimal .bank.json from discovered source clips so the
+            // runtime has a concrete cooked artifact path to load/index.
+            if (entry.type == "audio_bank" && !fs::exists(dstPath))
+            {
+                std::vector<fs::path> clipPaths;
+                for (const auto& dirEnt : fs::recursive_directory_iterator(srcPath))
+                {
+                    if (!dirEnt.is_regular_file())
+                        continue;
+
+                    std::string ext = dirEnt.path().extension().string();
+                    for (char& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    if (ext == ".wav" || ext == ".ogg" || ext == ".mp3")
+                        clipPaths.push_back(dirEnt.path());
+                }
+                std::sort(clipPaths.begin(), clipPaths.end());
+
+                std::ofstream bankOut(dstPath);
+                if (!bankOut.is_open())
+                {
+                    std::cerr << "[cook] ERROR: Cannot write aggregate audio bank: "
+                              << dstPath.string() << "\n";
+                    ++errors;
+                    continue;
+                }
+
+                std::string bankName = dstPath.stem().string();
+                const std::string bankSuffix = ".bank";
+                if (bankName.size() > bankSuffix.size() &&
+                    bankName.compare(bankName.size() - bankSuffix.size(),
+                                     bankSuffix.size(), bankSuffix) == 0)
+                {
+                    bankName.erase(bankName.size() - bankSuffix.size());
+                }
+
+                bankOut << "{\n";
+                bankOut << "  \"version\": \"1.0.0\",\n";
+                bankOut << "  \"bankId\": \"" << json_escape(entry.id) << "\",\n";
+                bankOut << "  \"bankName\": \"" << json_escape(bankName) << "\",\n";
+                bankOut << "  \"clips\": [\n";
+
+                for (std::size_t i = 0; i < clipPaths.size(); ++i)
+                {
+                    std::string clipSource = fs::relative(clipPaths[i], projectPath).string();
+                    for (char& ch : clipSource)
+                        if (ch == '\\') ch = '/';
+
+                    bankOut << "    { \"id\": \"" << json_escape(entry.id + ":" + std::to_string(i))
+                            << "\", \"name\": \"" << json_escape(clipPaths[i].stem().string())
+                            << "\", \"source\": \"" << json_escape(clipSource) << "\" }";
+                    if (i + 1 < clipPaths.size()) bankOut << ",";
+                    bankOut << "\n";
+                }
+
+                bankOut << "  ]\n";
+                bankOut << "}\n";
+            }
+
             if (!fs::exists(dstPath))
             {
                 std::cerr << "[cook] ERROR: Aggregate asset output missing: "

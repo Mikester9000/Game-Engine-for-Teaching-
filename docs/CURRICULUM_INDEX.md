@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1839 across 55 subsystems.
+**Total lessons:** 1841 across 55 subsystems.
 
 ---
 
@@ -61,7 +61,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/audio_authoring](#toolsaudio_authoring) (28 lessons)
 - [tools/audio_engine.py](#toolsaudio_engine.py) (6 lessons)
 - [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
-- [tools/cook](#toolscook) (12 lessons)
+- [tools/cook](#toolscook) (14 lessons)
 - [tools/creation_engine.py](#toolscreation_engine.py) (14 lessons)
 - [tools/pak](#toolspak) (14 lessons)
 - [tools/quest_baker](#toolsquest_baker) (14 lessons)
@@ -30432,7 +30432,7 @@ C++ Standard: C++17
 
 ### Using std::filesystem (C++17)
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L82) (line 82)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L84) (line 84)
 
 ============================================================================
 std::filesystem provides cross-platform directory and path manipulation.
@@ -30448,7 +30448,7 @@ namespace fs = std::filesystem;
 
 ### Minimal JSON helpers for cook output
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L96) (line 96)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L98) (line 98)
 
 ============================================================================
 For M2 we hand-write the JSON output rather than using a JSON library.
@@ -30463,7 +30463,7 @@ namespace
 
 ### JSON string escaping rules:
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L112) (line 112)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L114) (line 114)
 
 \  → \\      (backslash)
   "  → \"      (double quote)
@@ -30492,7 +30492,7 @@ return out;
 
 ### Simple JSON parsing with braces tracking
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L180) (line 180)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L182) (line 182)
 
 The registry contains an array of objects.  We extract each object using
 brace-depth tracking (same technique used in AssetDB::Load), then pull out
@@ -30511,7 +30511,7 @@ return {};
 
 ### Main function structure for a tool
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L245) (line 245)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L247) (line 247)
 
 ============================================================================
 A well-structured command-line tool main() does:
@@ -30531,7 +30531,7 @@ bool        verbose = false;
 
 ### Incremental cooking (future enhancement)
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L341) (line 341)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L343) (line 343)
 
 A real cooker checks the hash of the source file against the stored
 hash in the registry.  If they match, the asset is up-to-date and the
@@ -30545,7 +30545,7 @@ int  errors  = 0;
 
 ### Source path resolution strategy
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L359) (line 359)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L361) (line 361)
 
 AssetRegistry.json stores the source path in two possible conventions:
   1. Relative to the project root (e.g., "Content/Maps/file.json")
@@ -30557,7 +30557,7 @@ fs::path srcPath;
 
 ### Derived cooked path
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L404) (line 404)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L406) (line 406)
 
 When no cooked path is specified, we place the asset under
 Cooked/<AssetType>/<filename>.  This mirrors Unreal Engine's
@@ -30565,9 +30565,37 @@ cooked content layout where each asset type has its own folder.
 dstPath = cookedDir / entry.type / srcPath.filename();
 }
 
+### Aggregate assets (e.g. audio banks)
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L424) (line 424)
+
+Some registry entries represent a cooked artifact produced from a
+source DIRECTORY rather than a single file (for example an audio
+bank built from Content/Audio/ into one .bank.json file). In that
+case we don't copy the directory; we verify the cooked artifact
+already exists and index it in assetdb.json.
+if (fs::is_directory(srcPath))
+{
+
+### Stub aggregate build for audio_bank
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L432) (line 432)
+
+CI invokes cook.exe directly in a fresh checkout where cooked
+aggregate outputs might not already exist. For audio banks we
+emit a minimal .bank.json from discovered source clips so the
+runtime has a concrete cooked artifact path to load/index.
+if (entry.type == "audio_bank" && !fs::exists(dstPath))
+{
+std::vector<fs::path> clipPaths;
+for (const auto& dirEnt : fs::recursive_directory_iterator(srcPath))
+{
+if (!dirEnt.is_regular_file())
+continue;
+
 ### Why a separate assetdb.json and not just use the registry?
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L456) (line 456)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L553) (line 553)
 
 AssetRegistry.json can be very large in a real project (hundreds of
 fields per asset).  assetdb.json is a stripped-down runtime index:
