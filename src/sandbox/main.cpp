@@ -3665,8 +3665,17 @@ int main(int argc, char* argv[])
                 // Shared temp directory for this test run.
                 // TEACHING NOTE — We isolate each CI run under a unique temp
                 // sub-directory so parallel runs on the same machine don't race.
-                const std::string testSaveDir =
-                    (fs::temp_directory_path() / "save_test_pr1").string() + "/";
+                // Use fs::path concatenation (not string+"/") so the path
+                // separator is always correct on every OS.
+                const fs::path testSaveDir =
+                    fs::temp_directory_path() / "save_test_pr1";
+
+                // Construct SaveSystem once; reuse across all three tests.
+                // TEACHING NOTE — A single SaveSystem construction is enough:
+                // each test only calls read-side helpers (SlotExists, DeleteSlot)
+                // that do not mutate persistent state, so all three can share
+                // the same instance without interference.
+                engine::save::SaveSystem saver(testSaveDir.string() + "/");
 
                 // --- Test 1: slot_invariants ---
                 {
@@ -3674,8 +3683,7 @@ int main(int argc, char* argv[])
                     const bool autoSlotOk   = (engine::save::kAutoSaveSlot == 15);
                     const bool totalSlotsOk = (engine::save::kTotalSlots   == 16);
 
-                    // Construct SaveSystem; slot 0 must not exist yet.
-                    engine::save::SaveSystem saver(testSaveDir);
+                    // Slot 0 must not exist yet in the fresh temp directory.
                     const bool slot0Empty = !saver.SlotExists(0);
 
                     if (!slotCountOk || !autoSlotOk || !totalSlotsOk || !slot0Empty)
@@ -3703,7 +3711,6 @@ int main(int argc, char* argv[])
                     // not exist.  Games call it to "clear" a slot the user
                     // selects; that slot may already be absent (first run,
                     // or previously cleared).  Silent success is correct.
-                    engine::save::SaveSystem saver(testSaveDir);
                     const bool deleteOk = saver.DeleteSlot(0);
 
                     if (!deleteOk)
