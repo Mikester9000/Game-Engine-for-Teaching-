@@ -2326,28 +2326,40 @@ static void SkipJsonWhitespace(const char*& p)
 static bool ExtractJsonNumber(const std::string& json, const char* key, float& outValue)
 {
     const std::string token = std::string("\"") + key + "\"";
-    std::size_t pos = json.find(token);
-    if (pos == std::string::npos) {
+    std::size_t searchPos = 0;
+    bool foundKey = false;
+
+    // TEACHING NOTE — A material key may appear multiple times in different
+    // JSON scopes (for example "ao" as scalar and "ao" texture slot).
+    // We keep scanning until we find a numeric value instead of trusting the
+    // first textual match.
+    while ((searchPos = json.find(token, searchPos)) != std::string::npos)
+    {
+        foundKey = true;
+        const std::size_t colonPos = json.find(':', searchPos + token.size());
+        if (colonPos == std::string::npos) {
+            std::cerr << "[D3D11Renderer] Authored material parse: missing ':' for key '" << key << "'.\n";
+            return false;
+        }
+
+        const char* p = json.c_str() + colonPos + 1;
+        SkipJsonWhitespace(p);
+
+        char* end = nullptr;
+        const float v = std::strtof(p, &end);
+        if (end != p) {
+            outValue = v;
+            return true;
+        }
+        searchPos += token.size();
+    }
+
+    if (!foundKey) {
         std::cerr << "[D3D11Renderer] Authored material parse: missing key '" << key << "'.\n";
-        return false;
-    }
-    pos = json.find(':', pos + token.size());
-    if (pos == std::string::npos) {
-        std::cerr << "[D3D11Renderer] Authored material parse: missing ':' for key '" << key << "'.\n";
-        return false;
-    }
-
-    const char* p = json.c_str() + pos + 1;
-    SkipJsonWhitespace(p);
-
-    char* end = nullptr;
-    float v = std::strtof(p, &end);
-    if (end == p) {
+    } else {
         std::cerr << "[D3D11Renderer] Authored material parse: non-numeric value for key '" << key << "'.\n";
-        return false;
     }
-    outValue = v;
-    return true;
+    return false;
 }
 
 static bool ExtractJsonFloat3(const std::string& json, const char* key, float out3[3])
@@ -2435,6 +2447,51 @@ static std::filesystem::path ReplaceTexExtensionWithDDS(const std::filesystem::p
     return p;
 }
 
+static std::vector<std::filesystem::path> BuildAuthoredProjectCandidates()
+{
+    namespace fs = std::filesystem;
+    std::vector<fs::path> out;
+    auto addIfMissing = [&](const fs::path& p)
+    {
+        if (p.empty()) return;
+        const fs::path abs = fs::absolute(p);
+        if (std::find(out.begin(), out.end(), abs) == out.end()) out.push_back(abs);
+    };
+
+    if (const char* envRoot = std::getenv("ENGINE_PROJECT_ROOT")) {
+        addIfMissing(envRoot);
+    }
+
+    addIfMissing("samples/vertical_slice_project");
+    addIfMissing("../../samples/vertical_slice_project");
+    return out;
+}
+
+static std::filesystem::path FindFirstFileInProjectSubdir(
+    const std::vector<std::filesystem::path>& projectRoots,
+    const std::filesystem::path& subdir,
+    const char* extension)
+{
+    namespace fs = std::filesystem;
+    for (const fs::path& root : projectRoots)
+    {
+        const fs::path dir = root / subdir;
+        if (!fs::exists(dir) || !fs::is_directory(dir)) continue;
+
+        std::vector<fs::path> candidates;
+        for (const auto& entry : fs::directory_iterator(dir))
+        {
+            if (!entry.is_regular_file()) continue;
+            if (entry.path().extension() == extension) {
+                candidates.push_back(fs::absolute(entry.path()));
+            }
+        }
+        std::sort(candidates.begin(), candidates.end());
+        if (!candidates.empty()) return candidates.front();
+    }
+    return {};
+}
+
 static std::filesystem::path TryResolveAuthoredTexturePath(const AuthoredMaterialParams& mat,
                                                            const std::string& relPath)
 {
@@ -2445,13 +2502,14 @@ static std::filesystem::path TryResolveAuthoredTexturePath(const AuthoredMateria
     const fs::path projectRoot  = materialPath.parent_path().parent_path().parent_path();
     fs::path texRel = fs::path(relPath);
 
+    const fs::path ddsRel = ReplaceTexExtensionWithDDS(texRel);
     const fs::path candidates[] = {
+        projectRoot / "Cooked"  / ddsRel,
+        projectRoot / "Content" / ddsRel,
         projectRoot / "Cooked"  / texRel,
         projectRoot / "Content" / texRel,
-        fs::absolute(projectRoot / "Cooked"  / ReplaceTexExtensionWithDDS(texRel)),
-        fs::absolute(projectRoot / "Content" / ReplaceTexExtensionWithDDS(texRel)),
-        fs::absolute(texRel),
-        fs::absolute(ReplaceTexExtensionWithDDS(texRel))
+        fs::absolute(ddsRel),
+        fs::absolute(texRel)
     };
 
     for (const fs::path& p : candidates)
@@ -2465,19 +2523,14 @@ static std::filesystem::path TryResolveAuthoredTexturePath(const AuthoredMateria
 static bool TryLoadAuthoredMaterial(AuthoredMaterialParams& outMat)
 {
     namespace fs = std::filesystem;
+    const auto projectRoots = BuildAuthoredProjectCandidates();
+    const fs::path cookedMaterial = FindFirstFileInProjectSubdir(projectRoots, "Cooked/Materials", ".material");
+    const fs::path rawMaterial = FindFirstFileInProjectSubdir(projectRoots, "Content/Materials", ".json");
+    const fs::path candidates[] = { cookedMaterial, rawMaterial };
 
-    const fs::path candidates[] = {
-        fs::path("samples/vertical_slice_project/Cooked/Materials/default_armor.material"),
-        fs::path("samples/vertical_slice_project/Content/Materials/default_armor.material.json"),
-        fs::path("../../samples/vertical_slice_project/Cooked/Materials/default_armor.material"),
-        fs::path("../../samples/vertical_slice_project/Content/Materials/default_armor.material.json")
-    };
-
-    for (const fs::path& relPath : candidates)
+    for (const fs::path& absPath : candidates)
     {
-        const fs::path absPath = fs::absolute(relPath);
-        if (!fs::exists(absPath))
-            continue;
+        if (absPath.empty() || !fs::exists(absPath)) continue;
 
         std::ifstream f(absPath, std::ios::in);
         if (!f.is_open())
@@ -2558,7 +2611,7 @@ static bool CreateSolidTextureSRV(ID3D11Device* device,
     return true;
 }
 
-static void LoadAuthoredTextureWithFallback(ID3D11Device* device,
+static bool LoadAuthoredTextureWithFallback(ID3D11Device* device,
                                             ID3D11DeviceContext* context,
                                             const AuthoredMaterialParams& mat,
                                             const std::string& relPath,
@@ -2573,11 +2626,15 @@ static void LoadAuthoredTextureWithFallback(ID3D11Device* device,
         outTexture.LoadFromFile(device, context, resolved.string()))
     {
         std::cout << "[D3D11Renderer] Loaded authored texture: " << resolved.string() << "\n";
+        return true;
     }
-    else
+    const bool fallbackCreated = CreateSolidTextureSRV(device, fallbackRGBA, &outFallbackTex, &outFallbackSRV);
+    if (!fallbackCreated)
     {
-        CreateSolidTextureSRV(device, fallbackRGBA, &outFallbackTex, &outFallbackSRV);
+        std::cerr << "[D3D11Renderer] Failed to create fallback authored texture SRV.\n";
+        return false;
     }
+    return true;
 }
 
 static bool TryLoadAuthoredMesh(std::vector<float>& outVerts,
@@ -2585,17 +2642,14 @@ static bool TryLoadAuthoredMesh(std::vector<float>& outVerts,
                                 std::string& outPath)
 {
     namespace fs = std::filesystem;
-    const fs::path candidates[] = {
-        fs::path("samples/vertical_slice_project/Cooked/Meshes/default_armor.mesh"),
-        fs::path("samples/vertical_slice_project/Content/Meshes/default_armor.mesh"),
-        fs::path("../../samples/vertical_slice_project/Cooked/Meshes/default_armor.mesh"),
-        fs::path("../../samples/vertical_slice_project/Content/Meshes/default_armor.mesh")
-    };
+    const auto projectRoots = BuildAuthoredProjectCandidates();
+    const fs::path cookedMesh = FindFirstFileInProjectSubdir(projectRoots, "Cooked/Meshes", ".mesh");
+    const fs::path rawMesh = FindFirstFileInProjectSubdir(projectRoots, "Content/Meshes", ".mesh");
+    const fs::path candidates[] = { cookedMesh, rawMesh };
 
-    for (const fs::path& relPath : candidates)
+    for (const fs::path& absPath : candidates)
     {
-        const fs::path absPath = fs::absolute(relPath);
-        if (!fs::exists(absPath)) continue;
+        if (absPath.empty() || !fs::exists(absPath)) continue;
         std::ifstream in(absPath);
         if (!in.is_open()) continue;
 
@@ -2631,7 +2685,25 @@ static bool TryLoadAuthoredMesh(std::vector<float>& outVerts,
             }
         }
 
-        if (!verts.empty() && !idx.empty())
+        const std::size_t vertexCount = verts.size() / 8;
+        bool indicesInRange = (vertexCount > 0);
+        for (uint16_t i : idx)
+        {
+            if (i >= vertexCount)
+            {
+                indicesInRange = false;
+                break;
+            }
+        }
+
+        if (!indicesInRange)
+        {
+            std::cerr << "[D3D11Renderer] Authored mesh rejected (index out of range): "
+                      << absPath.string() << "\n";
+            continue;
+        }
+
+        if (vertexCount > 0 && !idx.empty())
         {
             outVerts = std::move(verts);
             outIndices = std::move(idx);
@@ -4178,30 +4250,34 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
             };
             const uint8_t kDefaultAO[4]      = {255, 255, 255, 255};
 
-            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                            authoredMat.albedoTextureRelPath,
-                                            kWhite,
-                                            scene.albedoMap,
-                                            scene.albedoFallbackTex,
-                                            scene.albedoFallbackSRV);
-            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                            authoredMat.normalTextureRelPath,
-                                            kFlatNormal,
-                                            scene.normalMap,
-                                            scene.normalFallbackTex,
-                                            scene.normalFallbackSRV);
-            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                            authoredMat.metallicRoughnessTextureRelPath,
-                                            kDefaultMR,
-                                            scene.metallicRoughnessMap,
-                                            scene.metallicRoughnessFallbackTex,
-                                            scene.metallicRoughnessFallbackSRV);
-            LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
-                                            authoredMat.aoTextureRelPath,
-                                            kDefaultAO,
-                                            scene.aoMap,
-                                            scene.aoFallbackTex,
-                                            scene.aoFallbackSRV);
+            if (!LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                 authoredMat.albedoTextureRelPath,
+                                                 kWhite,
+                                                 scene.albedoMap,
+                                                 scene.albedoFallbackTex,
+                                                 scene.albedoFallbackSRV) ||
+                !LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                 authoredMat.normalTextureRelPath,
+                                                 kFlatNormal,
+                                                 scene.normalMap,
+                                                 scene.normalFallbackTex,
+                                                 scene.normalFallbackSRV) ||
+                !LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                 authoredMat.metallicRoughnessTextureRelPath,
+                                                 kDefaultMR,
+                                                 scene.metallicRoughnessMap,
+                                                 scene.metallicRoughnessFallbackTex,
+                                                 scene.metallicRoughnessFallbackSRV) ||
+                !LoadAuthoredTextureWithFallback(device, ctx, authoredMat,
+                                                 authoredMat.aoTextureRelPath,
+                                                 kDefaultAO,
+                                                 scene.aoMap,
+                                                 scene.aoFallbackTex,
+                                                 scene.aoFallbackSRV))
+            {
+                ctx->Release();
+                return false;
+            }
             ctx->Release();
         }
     }
