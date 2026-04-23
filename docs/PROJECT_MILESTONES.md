@@ -585,6 +585,10 @@ sun elevation formula validated; weather fog transitions validated.
 
 ## Milestone M23 — D3D11 Authored Content Ingestion ✅ *(complete)*
 
+> **Documentation backfill:** This section documents work that was **already merged**
+> as part of the post-M22 D3D11 authored ingestion PR.  It is included here for
+> completeness so the milestone list has no gaps between M22 and M24.
+
 > **What's done:** D3D11 runtime authored mesh/material loading from cooked assets
 > in the `pbr_ibl` scene path; authored material parameter ingestion; authored texture
 > slot binding (albedo/normal/metallic-roughness/AO) with robust 1×1 fallback maps
@@ -611,12 +615,13 @@ cmake --preset windows-debug-engine-only
 cmake --build --preset windows-debug-engine-only
 
 :: Headless authored ingestion validation
-.\engine_sandbox.exe --headless --scene pbr_ibl
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --scene pbr_ibl
 :: Expected: [PASS] pbr_ibl: all 4 acceptance tests passed.
 
 :: Validate project loads authored assets
-.\engine_sandbox.exe --headless --validate-project samples\vertical_slice_project\
-:: Expected: [PASS] AssetDB loaded. N assets registered.
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --validate-project samples\vertical_slice_project\
+:: Expected: prints an AssetDB load count and ends with:
+::           [PASS] AssetDB validated successfully.
 ```
 
 **Done means:** `--headless --scene pbr_ibl` exits 0 with authored texture slots bound; `--validate-project` exits 0.
@@ -654,14 +659,16 @@ python cook_assets.py
 
 :: Validate cooked registry against schema
 python ..\..\tools\validate-assets.py AssetRegistry.json
-:: Expected: All N assets valid.
+:: Expected: reports a PASS summary (for example, "Result: PASS — all manifests are valid.").
 
 :: Headless project load — confirms engine can resolve and open all registered assets
-..\..\build\Debug\engine_sandbox.exe --headless --validate-project .
-:: Expected: [PASS] AssetDB loaded. N assets registered.
+:: TEACHING NOTE — path matches the windows-debug-engine-only preset output directory.
+..\..\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --validate-project .
+:: Expected: prints an AssetDB load count and ends with:
+::           [PASS] AssetDB validated successfully.
 ```
 
-**Done means:** `cook_assets.py` exits 0; `validate-assets.py` reports no errors; `--headless --validate-project` exits 0; no `.gitkeep`-only directories remain in `Content/Textures`, `Content/Audio`, or `Content/Animations`.
+**Done means:** `cook_assets.py` exits 0; `validate-assets.py` reports no errors; `--headless --validate-project` exits 0; at least 1 real texture (DDS), 1 WAV clip, and 1 animation clip are registered in `AssetRegistry.json` and loadable via the engine; no `.gitkeep`-only directories remain in `Content/Textures`, `Content/Audio`, or `Content/Animations`.
 
 ---
 
@@ -684,19 +691,20 @@ python ..\..\tools\validate-assets.py AssetRegistry.json
 | `src/engine/physics/terrain_collision.hpp/.cpp` | `BakeTerrainCollider`: generates a `JPH::HeightFieldShape` from heightmap data; registers with `PhysicsWorld` |
 | `tools/creation_engine.py` `bake-terrain` subcommand | Raw heightmap (PNG/R16 binary) → cooked `.terrain` (header + height samples + metadata) |
 | `samples/vertical_slice_project/Content/Terrain/` | Sample `world_heightmap.png` (or `.r16`); corresponding `.terrain` registered in `AssetRegistry.json` |
-| `src/sandbox/main.cpp` | `--scene terrain_test` headless scene dispatch |
-| `.github/workflows/build-windows.yml` | `--headless --scene terrain_test` step in Windows CI job |
+| `src/sandbox/main.cpp` | ✅ **Already done (PR1)** — `--scene terrain_test` dispatch wired into scene registry |
+| `.github/workflows/build-windows.yml` | ✅ **Already done (PR1)** — `--headless --scene terrain_test` step present in Windows CI job |
 
 ### Acceptance tests
 
 ```bat
-:: Build with physics enabled
-cmake --preset windows-ninja-debug-physics ^
-  -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake
-cmake --build --preset windows-ninja-debug-physics
+:: Build with physics enabled (set VCPKG_ROOT to your vcpkg installation path)
+cmake --preset windows-debug-engine-only ^
+  -DENGINE_ENABLE_PHYSICS=ON ^
+  -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake
+cmake --build --preset windows-debug-engine-only
 
 :: Headless terrain acceptance
-.\engine_sandbox.exe --headless --scene terrain_test
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --scene terrain_test
 :: Expected output (3 tests):
 :: [OK] terrain_test 1/3: TerrainRenderer Init — D3D11 resources created on WARP.
 :: [OK] terrain_test 2/3: Heightmap displacement — vertex Y > 0 for non-zero height sample.
@@ -724,10 +732,10 @@ cmake --build --preset windows-ninja-debug-physics
 ### Deliverables
 | File | Description |
 |---|---|
-| `src/sandbox/main.cpp` | `--scene save_test` dispatch wired into scene registry |
+| `src/sandbox/main.cpp` | ✅ **Already done (PR1)** — `--scene save_test` dispatch wired into scene registry |
 | Scene implementation (in `D3D11Renderer` or `main.cpp`) | `SaveTestScene` running 3 sub-tests; passes or fails with `[PASS]`/`[FAIL]` output |
 | `src/engine/save/save_system.hpp/.cpp` | No new logic required if M8.8 is complete; only the headless test harness is new |
-| `.github/workflows/build-windows.yml` | `--headless --scene save_test` step added to Windows headless CI job |
+| `.github/workflows/build-windows.yml` | ✅ **Already done (PR1)** — `--headless --scene save_test` step present in Windows headless CI job |
 | `tests/save_fixtures/` *(optional)* | Version-1 JSON fixture for migration test; keeps scene code simple |
 
 ### Acceptance tests
@@ -738,7 +746,7 @@ cmake --preset windows-debug-engine-only
 cmake --build --preset windows-debug-engine-only
 
 :: Headless save-system acceptance
-.\engine_sandbox.exe --headless --scene save_test
+.\build\windows-debug-engine-only\Debug\engine_sandbox.exe --headless --scene save_test
 :: Expected output (3 tests):
 :: [OK] save_test 1/3: Round-trip — save slot 0; load slot 0; HP matches.
 :: [OK] save_test 2/3: Migration — load v0 fixture; version bumped to current; no crash.
