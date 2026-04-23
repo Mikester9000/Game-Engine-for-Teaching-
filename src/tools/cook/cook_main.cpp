@@ -138,6 +138,30 @@ static std::string json_escape(const std::string& s)
 }
 
 // ---------------------------------------------------------------------------
+// normalize_path_separators
+// ---------------------------------------------------------------------------
+// Convert Windows separators to forward slashes for portable JSON output.
+// ---------------------------------------------------------------------------
+static std::string normalize_path_separators(std::string path)
+{
+    for (char& ch : path)
+        if (ch == '\\') ch = '/';
+    return path;
+}
+
+// ---------------------------------------------------------------------------
+// to_lower_ascii
+// ---------------------------------------------------------------------------
+// Lowercase helper for simple case-insensitive extension comparisons.
+// ---------------------------------------------------------------------------
+static std::string to_lower_ascii(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+}
+
+// ---------------------------------------------------------------------------
 // extract_json_string_value
 // ---------------------------------------------------------------------------
 // Minimal JSON string-value extractor for reading AssetRegistry.json.
@@ -442,8 +466,7 @@ int main(int argc, char* argv[])
                     if (!dirEnt.is_regular_file())
                         continue;
 
-                    std::string ext = dirEnt.path().extension().string();
-                    for (char& c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    std::string ext = to_lower_ascii(dirEnt.path().extension().string());
                     if (ext == ".wav" || ext == ".ogg" || ext == ".mp3")
                         clipPaths.push_back(dirEnt.path());
                 }
@@ -475,11 +498,10 @@ int main(int argc, char* argv[])
 
                 for (std::size_t i = 0; i < clipPaths.size(); ++i)
                 {
-                    std::string clipSource = fs::relative(clipPaths[i], projectPath).string();
-                    for (char& ch : clipSource)
-                        if (ch == '\\') ch = '/';
+                    std::string clipSource =
+                        normalize_path_separators(fs::relative(clipPaths[i], projectPath).string());
 
-                    bankOut << "    { \"id\": \"" << json_escape(entry.id + ":" + std::to_string(i))
+                    bankOut << "    { \"id\": \"" << json_escape(clipSource)
                             << "\", \"name\": \"" << json_escape(clipPaths[i].stem().string())
                             << "\", \"source\": \"" << json_escape(clipSource) << "\" }";
                     if (i + 1 < clipPaths.size()) bankOut << ",";
@@ -507,9 +529,8 @@ int main(int argc, char* argv[])
                           << "  (prebuilt aggregate)\n";
             }
 
-            std::string relCooked = fs::relative(dstPath, projectPath).string();
-            for (char& ch : relCooked)
-                if (ch == '\\') ch = '/';
+            std::string relCooked =
+                normalize_path_separators(fs::relative(dstPath, projectPath).string());
 
             dbEntries.push_back({ entry.id, relCooked });
             ++cooked;
@@ -538,10 +559,8 @@ int main(int argc, char* argv[])
 
         // Compute relative cooked path for assetdb.json.
         // Use forward slashes for portability (engine on Linux/Windows).
-        std::string relCooked = fs::relative(dstPath, projectPath).string();
-        // Normalise path separators to forward slash.
-        for (char& ch : relCooked)
-            if (ch == '\\') ch = '/';
+        std::string relCooked =
+            normalize_path_separators(fs::relative(dstPath, projectPath).string());
 
         dbEntries.push_back({ entry.id, relCooked });
         ++cooked;
