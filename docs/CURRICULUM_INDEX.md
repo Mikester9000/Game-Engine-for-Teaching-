@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1765 across 54 subsystems.
+**Total lessons:** 1766 across 54 subsystems.
 
 ---
 
@@ -42,7 +42,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/systems](#gamesystems) (99 lessons)
 - [game/world](#gameworld) (90 lessons)
 - [requirements-dev.txt](#requirements-dev.txt) (1 lesson)
-- [samples/vertical_slice_project](#samplesvertical_slice_project) (24 lessons)
+- [samples/vertical_slice_project](#samplesvertical_slice_project) (25 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
 - [sandbox/main.cpp](#sandboxmain.cpp) (95 lessons)
@@ -25919,9 +25919,24 @@ rel = src.relative_to(anim_src)     # relative to Animations/
 source_rel = "Animations/" + str(rel)
 source_hash = sha256_file(src)
 
+### Surface malformed content during stub cooking
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L513) (line 513)
+
+Silent fallback makes it hard for content creators to notice
+that a file is invalid JSON and may be misclassified.  We log
+a warning and continue with an empty object so the cook pass
+remains resilient while still reporting the issue.
+print(
+f"  [WARN] {src.name}: invalid animation JSON at "
+f"line {exc.lineno}, column {exc.colno} ({exc.msg})"
+)
+raw = {}
+is_skeleton = _is_skeleton_file(raw, src)
+
 ### M23 groundwork: authored material ingestion
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L552) (line 552)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L561) (line 561)
 
 For M23 we start by treating authored materials as first-class cooked assets.
 Designers author *.material.json files in Content/Materials/.  The cook step
@@ -25935,7 +25950,7 @@ ensure_dir(materials_dst)
 
 ### Parse-check before cook output
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L572) (line 572)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L581) (line 581)
 
 We fail fast on malformed material JSON so bad content never reaches
 Cooked/ where the runtime would otherwise fail much later.
@@ -25957,11 +25972,11 @@ continue
 
 ### M7.2: Level / Streaming Cell Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L616) (line 616)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L625) (line 625)
 
 ### Why .level instead of keeping .cell.json?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L634) (line 634)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L643) (line 643)
 
 Renaming to .level makes it explicit that this is a COOKED, runtime-ready
 file — not a raw source file.  The extension signals the content pipeline
@@ -25973,7 +25988,7 @@ ensure_dir(levels_dst)
 
 ### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L648) (line 648)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L657) (line 657)
 
 Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
 leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -25984,7 +25999,7 @@ dst.parent.mkdir(parents=True, exist_ok=True)
 
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L695) (line 695)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L704) (line 704)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -25997,7 +26012,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L709) (line 709)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L718) (line 718)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
