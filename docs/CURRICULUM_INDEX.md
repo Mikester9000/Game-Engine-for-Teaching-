@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1886 across 55 subsystems.
+**Total lessons:** 1890 across 55 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (73 lessons)
-- [ci/workflows](#ciworkflows) (66 lessons)
+- [ci/workflows](#ciworkflows) (67 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (104 lessons)
@@ -42,10 +42,10 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/systems](#gamesystems) (99 lessons)
 - [game/world](#gameworld) (90 lessons)
 - [requirements-dev.txt](#requirements-dev.txt) (1 lesson)
-- [samples/vertical_slice_project](#samplesvertical_slice_project) (32 lessons)
+- [samples/vertical_slice_project](#samplesvertical_slice_project) (33 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (110 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (112 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -1952,9 +1952,39 @@ Runs the three M25 acceptance subtests defined in src/sandbox/main.cpp:
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
 shell: cmd
 
-### PAK Packager CI Test
+### M24 Cook Verification CI Gate
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L639) (line 639)
+
+=============================================
+These two steps close the M24 "cook pipeline completeness" gap:
+
+  Step 1: Run cook_assets.py
+    Converts all PNGs in Content/Textures/ to DDS RGBA8 .tex files,
+    processes WAV audio, and bakes animation data.  Requires Python 3.9+
+    and Pillow (installed via pip in the "Set up Python" step above).
+    A non-zero exit code means the cook script itself is broken.
+
+  Step 2: authored_content scene
+    A pure filesystem acceptance test (no GPU required):
+      Test 1 — At least 10 .tex files exist under Cooked/Textures/.
+      Test 2 — Every .tex file starts with the 4-byte DDS magic 'DDS '.
+      Test 3 — Every DDS_HEADER.dwSize field equals 124 (spec requirement).
+    If any .tex file lacks DDS magic the test fails with a clear message,
+    rather than silently using the 1×1 white fallback SRV at runtime.
+
+Why separate from the physics job?
+  cook_assets.py is a pure Python step; it runs in the engine-only job
+  (no Jolt SDK needed) and is checked before PAK packaging so the pak
+  archive always contains freshly cooked DDS textures.
+-----------------------------------------------------------------------
+- name: Install Pillow for cook_assets.py (M24)
+run: pip install "Pillow>=11.1.0"
+shell: cmd
+
+### PAK Packager CI Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L679) (line 679)
 
 This step validates pak.exe by packing the vertical_slice_project Cooked/
 directory into a PAK1 archive.  A non-zero exit code (file-not-found,
@@ -1968,7 +1998,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L653) (line 653)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L693) (line 693)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1994,7 +2024,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L692) (line 692)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L732) (line 732)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -2020,7 +2050,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L726) (line 726)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L766) (line 766)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -2041,7 +2071,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L750) (line 750)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L790) (line 790)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -2054,7 +2084,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L763) (line 763)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L803) (line 803)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -2069,7 +2099,7 @@ shell: cmd
 
 ### terrain_test in the physics job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L778) (line 778)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L818) (line 818)
 
 The engine-only job (no Jolt) skips test 3 (physics_collision) gracefully.
 This physics job has ENGINE_ENABLE_PHYSICS=ON, so all three subtests run:
@@ -2083,7 +2113,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L792) (line 792)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L832) (line 832)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -2114,7 +2144,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L820) (line 820)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L860) (line 860)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -2123,7 +2153,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L842) (line 842)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L882) (line 882)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -2151,7 +2181,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L877) (line 877)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L917) (line 917)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -2160,7 +2190,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L891) (line 891)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L931) (line 931)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -2182,7 +2212,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L916) (line 916)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L956) (line 956)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -2196,7 +2226,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L940) (line 940)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L980) (line 980)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -2214,7 +2244,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L965) (line 965)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1005) (line 1005)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -2225,7 +2255,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L976) (line 976)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1016) (line 1016)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -2240,7 +2270,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L998) (line 998)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1038) (line 1038)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -2255,7 +2285,7 @@ continue-on-error: true
 
 ### M26 Save-System CI Job (build-windows-save-test)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1013) (line 1013)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1053) (line 1053)
 
 ============================================================================
 This job validates the full save-system acceptance suite (M26).  It:
@@ -2292,7 +2322,7 @@ continue-on-error: false  # TEACHING NOTE — hard M26 CI gate
 
 ### Classic-mode vcpkg install (save-test job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1063) (line 1063)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1103) (line 1103)
 
 -----------------------------------------------------------------------
 We install nlohmann-json in classic mode from $env:TEMP (no vcpkg.json
@@ -2311,7 +2341,7 @@ key: vcpkg-nlohmann-json-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1089) (line 1089)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1129) (line 1129)
 
 Same reason as the physics job: the project vcpkg.json contains
 imgui[docking] which may not resolve on the CI runner's vcpkg
@@ -2328,7 +2358,7 @@ shell: pwsh
 
 ### Save tests are CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1109) (line 1109)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1149) (line 1149)
 
 All three tests exercise only the filesystem, ECS World, and
 nlohmann/json serialisation.  No D3D11 device is created and no
@@ -26623,6 +26653,7 @@ pytest==8.3.5
 jsonschema==4.23.0
 numpy>=1.24.0
 scipy>=1.10.0
+Pillow>=11.1.0
 
 ---
 
@@ -26662,7 +26693,7 @@ _HAS_ANIM_ENGINE = False
 
 ### Importing creation_engine from the tools directory
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L81) (line 81)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L87) (line 87)
 
 ---------------------------------------------------------------------------
 The creation_engine.py baker functions (bake_collision, bake_font,
@@ -26677,7 +26708,7 @@ sys.path.insert(0, str(_TOOLS_DIR))
 
 ### Hashing
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L100) (line 100)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L106) (line 106)
 
 We store a hash of each source asset in the registry.  On the next cook
 run we compare the current hash to the stored one.  If they match, the
@@ -26691,7 +26722,7 @@ return h.hexdigest()
 
 ### Stable GUIDs across cook runs
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L131) (line 131)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L137) (line 137)
 
 ──────────────────────────────────────────────
 A GUID is *stable* if it never changes once assigned — even when the cook
@@ -26701,7 +26732,7 @@ golden-file contract test all hardcode the GUID of specific assets.
 
 ### Explicit reset for re-entrant safety
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L149) (line 149)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L155) (line 155)
 
 This function currently runs once from main(), but we clear caches first
 so future callers (tests/tools that may invoke multiple cook passes in one
@@ -26723,7 +26754,7 @@ pass  # If the file is malformed, ignore and generate fresh GUIDs.
 
 ### Incremental cook / GUID stability
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L172) (line 172)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L178) (line 178)
 
 ──────────────────────────────────────────────────
 Use this instead of new_guid() whenever you register an asset entry that
@@ -26732,42 +26763,38 @@ the registry does not yet contain an entry for the asset (first cook run).
 
 ### Incremental cook
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L191) (line 191)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L197) (line 197)
 
 We use the existing registry to skip redundant work:
 1. If the source hash changed, re-cook.
 2. If the cooked file is missing, re-cook.
-3. Otherwise, keep the previous cooked output and just refresh the
+3. If *require_dds* is True and the cooked file lacks the DDS magic
+bytes ('DDS '), re-cook.  This catches the case where a previous
+run wrote a raw PNG copy instead of a proper DDS RGBA8 file.
+4. Otherwise, keep the previous cooked output and just refresh the
 in-memory registry entry for this run.
 """
 if not source_hash:
 
 ### Defensive fallback
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L199) (line 199)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L208) (line 208)
 
 A missing hash means we cannot verify content identity safely.
 Re-cook to avoid reusing potentially stale cooked outputs.
 return True
 
-### Texture Cooking (Stub)
+### Why DDS Instead of Raw PNG?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L227) (line 227)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L250) (line 250)
 
-A real cook step would:
-1. Decode the PNG with Pillow or stb_image.
-2. Generate mip levels (halve dimensions until 1×1).
-3. Compress to BC1/BC3/BC7 using ispc_texcomp or DirectXTex.
-4. Write a custom .tex binary header + compressed mip data.
-For now we just copy the file to Cooked/ to show the pipeline structure.
-"""
-texture_src = CONTENT_DIR / "Textures"
-texture_dst = COOKED_DIR  / "Textures"
-ensure_dir(texture_dst)
+### Texture Cooking (DDS RGBA8)
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L363) (line 363)
 
 ### Audio Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L273) (line 273)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L430) (line 430)
 
 When the  tools/audio_authoring  package is installed, this function uses
 the  audio_engine.dsp  module to normalise each WAV file (target LUFS,
@@ -26776,7 +26803,7 @@ true-peak ceiling) before writing to Cooked/Audio/.  It also writes a
 
 ### Why normalise at cook time?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L282) (line 282)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L439) (line 439)
 
 Normalising audio during the cook step (not at runtime) means:
 1. The runtime doesn't waste CPU cycles on DSP during gameplay.
@@ -26790,7 +26817,7 @@ ensure_dir(audio_dst)
 
 ### Hash for aggregate assets
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L364) (line 364)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L521) (line 521)
 
 An audio bank is assembled from multiple WAV source files, so there
 is no single source file to hash.  We hash the cooked bank JSON
@@ -26800,7 +26827,7 @@ bank_hash = sha256_file(bank_path)
 
 ### Scene Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L388) (line 388)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L545) (line 545)
 
 For simple JSON scenes, cooking is mostly a copy + validation step.
 A real cook might:
@@ -26814,7 +26841,7 @@ ensure_dir(maps_dst)
 
 ### Type detection heuristic
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L431) (line 431)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L588) (line 588)
 
 The ``AnimAssetPipeline`` (anim_engine Path A) identifies skeletons by
 checking whether the ``$schema`` field contains the word ``"skeleton"``
@@ -26824,7 +26851,7 @@ the same ``type`` and cooked file extension as the real pipeline would.
 
 ### Animation Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L452) (line 452)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L609) (line 609)
 
 When the  tools/anim_authoring  package is installed, this function uses
 the  AnimAssetPipeline  class from  animation_engine.integration  to
@@ -26833,7 +26860,7 @@ the cooked .skelc / .animc files.
 
 ### Type detection in stub mode
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L512) (line 512)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L669) (line 669)
 
 The AnimAssetPipeline (Path A) distinguishes skeletons from clips
 via the "$schema" field.  We replicate that logic here so that stub
@@ -26846,7 +26873,7 @@ source_hash = hashlib.sha256(source_bytes).hexdigest()
 
 ### Surface malformed content during stub cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L527) (line 527)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L684) (line 684)
 
 Silent fallback makes it hard for content creators to notice
 that a file is invalid JSON and may be misclassified.  We log
@@ -26861,7 +26888,7 @@ is_skeleton = _is_skeleton_file(raw, src)
 
 ### M23 groundwork: authored material ingestion
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L575) (line 575)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L732) (line 732)
 
 For M23 we start by treating authored materials as first-class cooked assets.
 Designers author *.material.json files in Content/Materials/.  The cook step
@@ -26875,7 +26902,7 @@ ensure_dir(materials_dst)
 
 ### Parse-check before cook output
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L595) (line 595)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L752) (line 752)
 
 We fail fast on malformed material JSON so bad content never reaches
 Cooked/ where the runtime would otherwise fail much later.
@@ -26897,11 +26924,11 @@ continue
 
 ### M7.2: Level / Streaming Cell Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L639) (line 639)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L796) (line 796)
 
 ### Why .level instead of keeping .cell.json?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L657) (line 657)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L814) (line 814)
 
 Renaming to .level makes it explicit that this is a COOKED, runtime-ready
 file — not a raw source file.  The extension signals the content pipeline
@@ -26913,7 +26940,7 @@ ensure_dir(levels_dst)
 
 ### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L671) (line 671)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L828) (line 828)
 
 Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
 leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -26924,11 +26951,11 @@ dst.parent.mkdir(parents=True, exist_ok=True)
 
 ### M27: Collision Mesh Cooking (PHY1 Baker)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L718) (line 718)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L875) (line 875)
 
 ### Why not ship raw OBJ to the runtime?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L727) (line 727)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L884) (line 884)
 
 OBJ is a text format designed for 3D DCC tools (Blender, Maya).  Parsing
 text at runtime is slow and the format includes data the physics engine
@@ -26944,11 +26971,11 @@ _HAS_CE = False
 
 ### M27: Font Atlas Cooking (FNT1 Baker)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L794) (line 794)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L951) (line 951)
 
 ### Why teach offline SDF generation?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L805) (line 805)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L962) (line 962)
 
 Signed Distance Fields are the standard technique for resolution-independent
 GPU font rendering (used in FFXV HUD, Unity TextMeshPro, Valve's Dota 2 HUD).
@@ -26964,11 +26991,11 @@ _HAS_CE = False
 
 ### M27: Road Spline Cooking (RD01 Baker)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L864) (line 864)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1021) (line 1021)
 
 ### Road waypoints vs Bezier curves
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L875) (line 875)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1032) (line 1032)
 
 A production road system would upsample waypoints into a Bezier or
 Catmull-Rom spline for smooth camera and steering transitions.  For
@@ -26983,7 +27010,7 @@ _HAS_CE = False
 
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L933) (line 933)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1090) (line 1090)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -26996,7 +27023,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L947) (line 947)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1104) (line 1104)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
@@ -27375,12 +27402,13 @@ Usage:
   engine_sandbox.exe --headless --scene dialogue_test      # M20 Dialogue system: proximity/begin/advance acceptance test (CI)
   engine_sandbox.exe --headless --scene save_test          # M26 Save system: round-trip, migration, auto-save acceptance tests (CI)
   engine_sandbox.exe --headless --scene terrain_test       # M25 Terrain: renderer init + heightmap displacement + physics collision (CI)
+  engine_sandbox.exe --headless --scene authored_content   # M24 Cook verification: DDS magic check on all cooked .tex files (CI)
 
 ============================================================================
 
 ### How to add a new headless scene
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L93) (line 93)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L94) (line 94)
 
 ============================================================================
 Follow these three steps so future PRs never need to touch this file again:
@@ -27408,7 +27436,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L127) (line 127)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L128) (line 128)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -27427,7 +27455,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L142) (line 142)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L143) (line 143)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -27435,7 +27463,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L148) (line 148)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L149) (line 149)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -27453,7 +27481,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L164) (line 164)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L165) (line 165)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -27468,7 +27496,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L177) (line 177)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L178) (line 178)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -27488,7 +27516,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L195) (line 195)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L196) (line 196)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -27502,7 +27530,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L207) (line 207)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L208) (line 208)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -27522,7 +27550,7 @@ include "engine/ai/nav_mesh.hpp"
 
 ### Post-M10 Cinematics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L225) (line 225)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L226) (line 226)
 
 ---------------------------------------------------------------------------
 The cinematic_test scene validates the two new engine/cinematics/ subsystems:
@@ -27539,7 +27567,7 @@ include "engine/cinematics/cinematic_sequencer.hpp"
 
 ### UI Menu Stack headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L240) (line 240)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L241) (line 241)
 
 ---------------------------------------------------------------------------
 The menu_stack_test scene validates the MenuStack navigation subsystem:
@@ -27557,7 +27585,7 @@ include "engine/ui/menu_stack.hpp"
 
 ### SDF Font Renderer headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L256) (line 256)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L257) (line 257)
 
 ---------------------------------------------------------------------------
 The font_test scene validates the SDF FontRenderer subsystem:
@@ -27571,7 +27599,7 @@ The font_test scene validates the SDF FontRenderer subsystem:
 
 ### Why headless font tests?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L267) (line 267)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L268) (line 268)
 
 The SDF atlas generation (CPU) and texture upload (GPU) happen inside Init().
 Running this in headless (WARP) mode on a CI Windows runner exercises the
@@ -27587,7 +27615,7 @@ endif
 
 ### M19 Action Combat headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L281) (line 281)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L282) (line 282)
 
 ---------------------------------------------------------------------------
 The combat_test scene validates the ComboSystem FSM and the CombatSystem
@@ -27621,7 +27649,7 @@ include "game/systems/CombatSystem.hpp"
 
 ### M20 Quest system headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L313) (line 313)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L314) (line 314)
 
 ---------------------------------------------------------------------------
 The quest_test scene validates the QuestSystem lifecycle without any
@@ -27656,7 +27684,7 @@ include "game/GameData.hpp"
 
 ### M20 Dialogue system headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L346) (line 346)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L347) (line 347)
 
 ---------------------------------------------------------------------------
 The dialogue_test scene validates the DialogueSystem proximity and
@@ -27684,7 +27712,7 @@ include "game/systems/dialogue_system.hpp"
 
 ### M26 Save System headless test (save_test)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L372) (line 372)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L373) (line 373)
 
 ---------------------------------------------------------------------------
 M26 implements the full three-part acceptance suite for the production
@@ -27708,7 +27736,7 @@ include "engine/save/save_schema.hpp"
 
 ### M25 Terrain headless tests (terrain_test)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L394) (line 394)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L395) (line 395)
 
 ---------------------------------------------------------------------------
 terrain_renderer.hpp provides the two-phase TerrainRenderer:
@@ -27734,9 +27762,34 @@ ifdef ENGINE_ENABLE_PHYSICS
  include "engine/physics/terrain_collision.hpp"
 endif
 
+### M24 authored_content headless test
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L421) (line 421)
+
+---------------------------------------------------------------------------
+The authored_content scene validates that the cook pipeline produced proper
+DDS files — not raw PNG copies.  It is a pure filesystem acceptance test:
+
+  1. Locate the vertical-slice project root (via ENGINE_PROJECT_ROOT env
+     var or the well-known relative path).
+  2. Enumerate every .tex file under Cooked/Textures/.
+  3. Verify each file starts with the 4-byte DDS magic 'DDS '
+     (0x20534444 little-endian).
+  4. Fail if fewer than kMinExpectedTextures textures are found, or if any
+     file lacks the DDS magic bytes (meaning it is still a raw PNG copy).
+
+This test runs CPU-only (no GPU required) and succeeds even in WARP
+headless mode — making it suitable for the engine-only CI job.
+
+The test is intentionally simple and direct: if cook_assets.py forgot to
+call _png_to_dds_rgba8() for any texture, this scene catches it
+immediately rather than silently using the 1×1 white fallback SRV.
+---------------------------------------------------------------------------
+<filesystem> is already included transitively; add fstream for binary read.
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L429) (line 429)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L453) (line 453)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -27753,7 +27806,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L444) (line 444)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L468) (line 468)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -27770,7 +27823,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L457) (line 457)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L481) (line 481)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -27782,7 +27835,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L479) (line 479)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L503) (line 503)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -27801,7 +27854,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L494) (line 494)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L518) (line 518)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -27814,7 +27867,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L507) (line 507)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L531) (line 531)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -27825,7 +27878,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L536) (line 536)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L560) (line 560)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -27840,7 +27893,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L561) (line 561)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L585) (line 585)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -27850,7 +27903,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L591) (line 591)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L615) (line 615)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -27866,7 +27919,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L624) (line 624)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L648) (line 648)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -27876,7 +27929,7 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L645) (line 645)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L669) (line 669)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -27902,7 +27955,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L667) (line 667)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L691) (line 691)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -27931,7 +27984,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L692) (line 692)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L716) (line 716)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -27955,7 +28008,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L800) (line 800)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L824) (line 824)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -27980,7 +28033,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L921) (line 921)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L945) (line 945)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -28001,7 +28054,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1005) (line 1005)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1029) (line 1029)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -28019,7 +28072,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1019) (line 1019)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1043) (line 1043)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -28050,7 +28103,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1048) (line 1048)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1072) (line 1072)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -28058,7 +28111,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1110) (line 1110)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1134) (line 1134)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -28081,7 +28134,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1185) (line 1185)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1209) (line 1209)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -28099,7 +28152,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1199) (line 1199)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1223) (line 1223)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -28117,7 +28170,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1232) (line 1232)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1256) (line 1256)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -28143,7 +28196,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1283) (line 1283)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1307) (line 1307)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -28165,7 +28218,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1302) (line 1302)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1326) (line 1326)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -28188,7 +28241,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1383) (line 1383)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1407) (line 1407)
 
 -----------------------------------------------------------
 Verifies that:
@@ -28208,7 +28261,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1400) (line 1400)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1424) (line 1424)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -28228,7 +28281,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1443) (line 1443)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1467) (line 1467)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -28244,7 +28297,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1485) (line 1485)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1509) (line 1509)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -28270,7 +28323,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1507) (line 1507)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1531) (line 1531)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -28293,7 +28346,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1616) (line 1616)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1640) (line 1640)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -28320,7 +28373,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1640) (line 1640)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1664) (line 1664)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -28331,14 +28384,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1663) (line 1663)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1687) (line 1687)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1668) (line 1668)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1692) (line 1692)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -28355,7 +28408,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1716) (line 1716)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1740) (line 1740)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -28390,7 +28443,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1774) (line 1774)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1798) (line 1798)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -28400,7 +28453,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1865) (line 1865)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1889) (line 1889)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -28410,7 +28463,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1933) (line 1933)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1957) (line 1957)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -28418,7 +28471,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1984) (line 1984)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2008) (line 2008)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -28447,7 +28500,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2018) (line 2018)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2042) (line 2042)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -28470,7 +28523,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2069) (line 2069)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2093) (line 2093)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -28493,7 +28546,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2110) (line 2110)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2134) (line 2134)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -28510,7 +28563,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2185) (line 2185)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2209) (line 2209)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -28522,7 +28575,7 @@ CinematicSequencer seq;
 
 ### What is a "timed audio event"?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2255) (line 2255)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2279) (line 2279)
 
 In a cut-scene, a sound effect must play at a precise moment:
 e.g. a door creak at t=0.3 s or a sword clash at t=1.5 s.
@@ -28532,7 +28585,7 @@ because we check immediately after advancing m_shotTime.
 
 ### Why not test with XAudio2 here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2262) (line 2262)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2286) (line 2286)
 
 The acceptance test only needs to verify the callback fires
 at the right time.  Coupling to XAudio2 would require a
@@ -28545,7 +28598,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2355) (line 2355)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2379) (line 2379)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -28563,7 +28616,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2569) (line 2569)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2593) (line 2593)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -28576,7 +28629,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2650) (line 2650)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2674) (line 2674)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -28592,7 +28645,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2663) (line 2663)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2687) (line 2687)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -28609,7 +28662,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2704) (line 2704)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2728) (line 2728)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -28627,7 +28680,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2735) (line 2735)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2759) (line 2759)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -28653,7 +28706,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2779) (line 2779)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2803) (line 2803)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -28693,7 +28746,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2866) (line 2866)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2890) (line 2890)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -28734,7 +28787,7 @@ std::cout << "[OK] bloom_test/load: "
 
 ### What the audio_3d_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2955) (line 2955)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2979) (line 2979)
 
 Test 1 (init):
     XAudio2Backend::Init() is called.  On headless CI with no
@@ -28763,7 +28816,7 @@ int testsFailed = 0;
 
 ### What the combat_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3073) (line 3073)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3097) (line 3097)
 
 All four tests are pure C++17 CPU tests — no D3D11 renderer
   or audio hardware is required.
@@ -28796,7 +28849,7 @@ int testsFailed = 0;
 
 ### We define the same combos here that
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3109) (line 3109)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3133) (line 3133)
 
 appear in combat_config.json so the test is self-
 contained and does not require a file on disk.
@@ -28813,7 +28866,7 @@ cs.AddCombo(aaaDef);
 
 ### Set a short config so tests run fast
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3171) (line 3171)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3195) (line 3195)
 
 CombatConfig cfg;
 cfg.comboWindowSeconds = 0.5f;
@@ -28821,7 +28874,7 @@ cs.SetConfig(cfg);
 
 ### Minimal ECS World for a unit test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3271) (line 3271)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3295) (line 3295)
 
 We create the smallest possible World to exercise a specific
 function (CalculateDamage).  This is the game-engine equivalent
@@ -28834,7 +28887,7 @@ RegisterAllComponents(*combatWorld);
 
 ### What the quest_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3363) (line 3363)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3387) (line 3387)
 
 All four tests are pure C++17 CPU tests — no D3D11
   renderer, Jolt physics, or XAudio2 is required.
@@ -28872,7 +28925,7 @@ int testsFailed = 0;
 
 ### Why heap-allocate World?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3401) (line 3401)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3425) (line 3425)
 
 EntityManager::m_signatures is a std::array<bitset<64>, 65536>
 which alone is 512 KB.  Stack-allocating World on Windows
@@ -28883,7 +28936,7 @@ RegisterAllComponents(*questWorld);
 
 ### Quest 1 "The Road to Dawn" is defined
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3424) (line 3424)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3448) (line 3448)
 
 in GameDatabase with no prerequisites so it should always
 be acceptable for a fresh player entity.
@@ -28895,7 +28948,7 @@ active[0]->id == 1;
 
 ### GainXP() accumulates XP in pendingXP
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3468) (line 3468)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3492) (line 3492)
 
 (banked in the field); it only moves to currentXP when
 the player rests at camp (ApplyBankedXP).  We check
@@ -28905,7 +28958,7 @@ const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
 
 ### A fresh player has not completed quest 1
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3514) (line 3514)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3538) (line 3538)
 
 so CanAcceptQuest(6) should return false.
 const bool blockedWithoutPrereq =
@@ -28913,7 +28966,7 @@ const bool blockedWithoutPrereq =
 
 ### A failed quest is neither active nor
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3558) (line 3558)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3582) (line 3582)
 
 complete.  The player could potentially re-accept it
 (if the QuestSystem allows it) or it remains failed for
@@ -28936,7 +28989,7 @@ std::cout << "[OK] quest_test/quest_fail: "
 
 ### What the dialogue_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3594) (line 3594)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3618) (line 3618)
 
 All three tests are pure C++17 CPU tests — no renderer,
   no audio, no physics.  A minimal ECS World is created
@@ -28965,7 +29018,7 @@ int testsFailed = 0;
 
 ### We only change XZ (horizontal plane);
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3667) (line 3667)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3691) (line 3691)
 
 DialogueSystem uses XZ distance, matching the 2.5D
 world layout where Y is the vertical axis.
@@ -28974,7 +29027,7 @@ dlgWorld->GetComponent<TransformComponent>(playerID).position =
 
 ### The stub DialogueSystem (M8.6) uses a
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3700) (line 3700)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3724) (line 3724)
 
 single terminal node.  AdvanceDialogue() on a terminal
 node should close the conversation (IsActive() → false).
@@ -28983,7 +29036,7 @@ const bool closedOk  = !dlgSys.IsActive();
 
 ### M26 Save-System CI Acceptance Suite
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3741) (line 3741)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3765) (line 3765)
 
 ──────────────────────────────────────────────────────────
 Three correctness properties validated here, matching the
@@ -29036,7 +29089,7 @@ int testsFailed = 0;
 
 ### Temp directory isolation with clock-based uniqueness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3794) (line 3794)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3818) (line 3818)
 
 Appending a nanosecond timestamp to the directory name prevents two
 concurrent engine_sandbox processes (e.g. parallel CI matrix jobs
@@ -29052,7 +29105,7 @@ const std::string saveDirStr = testSaveDir.string() + "/";
 
 ### Error checking for filesystem setup
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3808) (line 3808)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3832) (line 3832)
 
 Failing to set up the temp directory (e.g. permissions,
 locked files from a previous crashed run) would cause all
@@ -29084,7 +29137,7 @@ return 1;
 
 ### Graceful skip without ENGINE_ENABLE_JSON
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3840) (line 3840)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3864) (line 3864)
 
 The full three tests require nlohmann/json for Save() and
 Load().  Rather than reporting a false [FAIL] when the
@@ -29111,7 +29164,7 @@ Test 1 — Round-trip equivalence
 
 ### Deterministic world state for round-trip
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3863) (line 3863)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3887) (line 3887)
 
 We set specific values for HP, position, and a quest entry
 so that the assertions below are unambiguous.  Using magic
@@ -29124,7 +29177,7 @@ const EntityID playerID = worldA.CreateEntity();
 
 ### Compare all three axes
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3937) (line 3937)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3961) (line 3961)
 
 Checking only x and z would miss a bug where
 y is corrupted by a float serialisation error
@@ -29135,7 +29188,7 @@ tf2.position.z == 200.0f);
 
 ### Full quest field validation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3948) (line 3948)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3972) (line 3972)
 
 Asserting every saved field (questID,
 objective, progress, required, isComplete)
@@ -29153,7 +29206,7 @@ break; // found the player entity
 
 ### Inline fixture for older-version saves
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3985) (line 3985)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4009) (line 4009)
 
 Rather than checking in an external fixture file, we write
 a "0.9.0"-versioned JSON payload inline using std::ofstream.
@@ -29176,7 +29229,7 @@ Raw JSON string — written to slot 1 via ofstream.
 
 ### Raw string literals (R"(...)") in C++11+
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4004) (line 4004)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4028) (line 4028)
 
 avoid the need to escape every double-quote inside the
 JSON payload.  The delimiter "JSON" is arbitrary but
@@ -29198,7 +29251,7 @@ static const char kFixtureJSON[] = R"JSON({
 
 ### Validate the fixture write before Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4025) (line 4025)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4049) (line 4049)
 
 If the ofstream fails to open (permissions, disk full),
 the file will be absent.  Load() would then return false
@@ -29225,7 +29278,7 @@ std::cout << "[FAIL] save_test 2/3: Migration — "
 
 ### Simulating CampSystem::Rest auto-save hook
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4102) (line 4102)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4126) (line 4126)
 
 In the live game, CampSystem::Rest() calls SaveSystem::AutoSave()
 after all HP/MP restoration.  The headless test invokes the
@@ -29243,7 +29296,7 @@ const EntityID campPlayerID = worldCamp.CreateEntity();
 
 ### Always check the error_code from file_size
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4144) (line 4144)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4168) (line 4168)
 
 fs::file_size(path, ec) returns uintmax_t(-1) on error and
 sets ec.  Checking only fileSize == 0 would treat an error-
@@ -29255,7 +29308,7 @@ slotExists ? fs::file_size(autoPath, ecSize)
 
 ### Explicit HP assertion after Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4166) (line 4166)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4190) (line 4190)
 
 Asserting that the loaded world contains an entity with
 hp==350/maxHp==500 proves data integrity, not just that
@@ -29277,7 +29330,7 @@ worldLoaded.GetEntityManager()
 
 ### M25 Terrain Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4235) (line 4235)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4259) (line 4259)
 
 ──────────────────────────────────────────────────────────
 Three acceptance criteria matching the milestone definition
@@ -29308,7 +29361,7 @@ in docs/PROJECT_MILESTONES.md §M25:
 
 ### Why a 4×4 heightmap?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4263) (line 4263)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4287) (line 4287)
 
 Jolt's JPH::HeightFieldShape requires a power-of-2 sample
 count.  4 is the smallest valid value (2^2) that produces at
@@ -29317,7 +29370,7 @@ least one non-trivial quad, making it the minimum useful test.
 
 ### Why downcast here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4287) (line 4287)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4311) (line 4311)
 
 The headless acceptance tests need the raw ID3D11Device*
 to create auxiliary D3D11 objects (terrain VB, IB, CB,
@@ -29329,7 +29382,7 @@ bool testOk = false;
 
 ### HeightFieldShape sample count constraint
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4368) (line 4368)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4392) (line 4392)
 
 BakeTerrainCollider requires a power-of-2 sample count.
 We use 4 (2^2) — the smallest valid value for Jolt.
@@ -29338,7 +29391,7 @@ static constexpr float kWorldSize = kCellSize * (kW - 1); // 6.0 m
 
 ### Graceful skip when physics is absent
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4434) (line 4434)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4458) (line 4458)
 
 The standard Windows CI job builds without Jolt Physics (no
 vcpkg install in that job).  We skip test 3 rather than fail
@@ -29348,9 +29401,40 @@ std::cout << "[OK] terrain_test 3/3: (ENGINE_ENABLE_PHYSICS not "
 "defined — physics collision test skipped).\n";
 endif // ENGINE_ENABLE_PHYSICS
 
+### M24 Authored Content Acceptance Suite
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4481) (line 4481)
+
+=========================================================
+The authored_content scene is a pure filesystem check with no
+GPU dependency.  It verifies:
+
+  1. At least kMinExpectedTextures .tex files exist under
+     Cooked/Textures/ (checking the cook ran successfully).
+
+  2. Every .tex file starts with the 4-byte DDS magic 'DDS '
+     (ASCII 0x44 0x44 0x53 0x20), confirming cook_assets.py
+     wrote real DDS RGBA8 content rather than raw PNG bytes.
+
+  3. Each DDS header has a valid dwSize field (must equal 124,
+     per the DDS specification).
+
+Why DDS magic?
+==============
+The d3d11_texture.cpp loader checks the 4-byte magic before
+parsing any header field.  A file without this magic silently
+fails to load and the engine substitutes the 1×1 white fallback
+SRV.  This test makes the failure loud and CI-detectable.
+
+Acceptance criteria:
+  • ≥ kMinExpectedTextures files found.
+  • 0 files with non-DDS magic (no PNG copies).
+  • 0 files with corrupt DDS_HEADER.dwSize.
+---------------------------------------------------------------
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4468) (line 4468)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4657) (line 4657)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -29360,7 +29444,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4476) (line 4476)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4665) (line 4665)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -29390,7 +29474,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4504) (line 4504)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4693) (line 4693)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -29413,7 +29497,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4557) (line 4557)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4746) (line 4746)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -29426,7 +29510,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4573) (line 4573)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4762) (line 4762)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

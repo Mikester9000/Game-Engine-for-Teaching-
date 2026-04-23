@@ -88,6 +88,7 @@
  *   engine_sandbox.exe --headless --scene dialogue_test      # M20 Dialogue system: proximity/begin/advance acceptance test (CI)
  *   engine_sandbox.exe --headless --scene save_test          # M26 Save system: round-trip, migration, auto-save acceptance tests (CI)
  *   engine_sandbox.exe --headless --scene terrain_test       # M25 Terrain: renderer init + heightmap displacement + physics collision (CI)
+ *   engine_sandbox.exe --headless --scene authored_content   # M24 Cook verification: DDS magic check on all cooked .tex files (CI)
  *
  * ============================================================================
  * TEACHING NOTE — How to add a new headless scene
@@ -415,6 +416,29 @@
 #ifdef ENGINE_ENABLE_PHYSICS
 #  include "engine/physics/terrain_collision.hpp"
 #endif
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M24 authored_content headless test
+// ---------------------------------------------------------------------------
+// The authored_content scene validates that the cook pipeline produced proper
+// DDS files — not raw PNG copies.  It is a pure filesystem acceptance test:
+//
+//   1. Locate the vertical-slice project root (via ENGINE_PROJECT_ROOT env
+//      var or the well-known relative path).
+//   2. Enumerate every .tex file under Cooked/Textures/.
+//   3. Verify each file starts with the 4-byte DDS magic 'DDS '
+//      (0x20534444 little-endian).
+//   4. Fail if fewer than kMinExpectedTextures textures are found, or if any
+//      file lacks the DDS magic bytes (meaning it is still a raw PNG copy).
+//
+// This test runs CPU-only (no GPU required) and succeeds even in WARP
+// headless mode — making it suitable for the engine-only CI job.
+//
+// The test is intentionally simple and direct: if cook_assets.py forgot to
+// call _png_to_dds_rgba8() for any texture, this scene catches it
+// immediately rather than silently using the 1×1 white fallback SRV.
+// ---------------------------------------------------------------------------
+// <filesystem> is already included transitively; add fstream for binary read.
 
 #include <fstream>      // std::ofstream — save fixture writes in save_test
 #include <iostream>
@@ -4449,8 +4473,173 @@ int main(int argc, char* argv[])
                 std::cout << "[PASS] terrain_test: 3 acceptance tests passed "
                              "(renderer init, heightmap displacement, physics collision).\n";
             }
-            else
+            else if (scene == "authored_content")
             {
+                // ---------------------------------------------------------------
+                // M24 (authored_content): Cook pipeline DDS verification.
+                //
+                // TEACHING NOTE — M24 Authored Content Acceptance Suite
+                // =========================================================
+                // The authored_content scene is a pure filesystem check with no
+                // GPU dependency.  It verifies:
+                //
+                //   1. At least kMinExpectedTextures .tex files exist under
+                //      Cooked/Textures/ (checking the cook ran successfully).
+                //
+                //   2. Every .tex file starts with the 4-byte DDS magic 'DDS '
+                //      (ASCII 0x44 0x44 0x53 0x20), confirming cook_assets.py
+                //      wrote real DDS RGBA8 content rather than raw PNG bytes.
+                //
+                //   3. Each DDS header has a valid dwSize field (must equal 124,
+                //      per the DDS specification).
+                //
+                // Why DDS magic?
+                // ==============
+                // The d3d11_texture.cpp loader checks the 4-byte magic before
+                // parsing any header field.  A file without this magic silently
+                // fails to load and the engine substitutes the 1×1 white fallback
+                // SRV.  This test makes the failure loud and CI-detectable.
+                //
+                // Acceptance criteria:
+                //   • ≥ kMinExpectedTextures files found.
+                //   • 0 files with non-DDS magic (no PNG copies).
+                //   • 0 files with corrupt DDS_HEADER.dwSize.
+                // ---------------------------------------------------------------
+
+                namespace fs = std::filesystem;
+
+                // --- Step 1: Locate vertical-slice project root ---
+                // Honour ENGINE_PROJECT_ROOT env var first; fall back to the
+                // well-known repo-relative path used by every CI job.
+                fs::path projectRoot;
+                if (const char* envRoot = std::getenv("ENGINE_PROJECT_ROOT"))
+                    projectRoot = fs::path(envRoot);
+                if (projectRoot.empty() || !fs::exists(projectRoot))
+                    projectRoot = fs::path("samples/vertical_slice_project");
+                if (projectRoot.empty() || !fs::exists(projectRoot))
+                    projectRoot = fs::path("../../samples/vertical_slice_project");
+
+                const fs::path cookedTexDir = projectRoot / "Cooked" / "Textures";
+
+                if (!fs::exists(cookedTexDir) || !fs::is_directory(cookedTexDir))
+                {
+                    std::cout << "[FAIL] authored_content 1/3: Cooked/Textures/ "
+                                 "directory not found at '"
+                              << cookedTexDir.string() << "'. "
+                                 "Run cook_assets.py first.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+
+                // Collect all .tex files recursively.
+                std::vector<fs::path> texFiles;
+                for (const auto& entry : fs::recursive_directory_iterator(cookedTexDir))
+                {
+                    if (entry.is_regular_file() && entry.path().extension() == ".tex")
+                        texFiles.push_back(entry.path());
+                }
+                std::sort(texFiles.begin(), texFiles.end());
+
+                // Expected minimum: we know the vertical slice project has
+                // textures for character (12), props (12), terrain (16) = 40.
+                // Allow a generous lower bound in case some are skipped.
+                constexpr int kMinExpectedTextures = 10;
+
+                // --- Test 1: Enough cooked texture files ---
+                if (static_cast<int>(texFiles.size()) < kMinExpectedTextures)
+                {
+                    std::cout << "[FAIL] authored_content 1/3: only "
+                              << texFiles.size() << " .tex file(s) found under '"
+                              << cookedTexDir.string() << "' — expected at least "
+                              << kMinExpectedTextures << ". "
+                                 "Run cook_assets.py to populate Cooked/.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[OK] authored_content 1/3: found " << texFiles.size()
+                          << " cooked .tex files (>= " << kMinExpectedTextures << " required).\n";
+
+                // --- Tests 2 & 3: DDS magic + header validity ---
+                // 'DDS ' magic = 0x44 0x44 0x53 0x20 in little-endian.
+                constexpr uint8_t kDDSMagic[4] = { 0x44, 0x44, 0x53, 0x20 };
+                // DDS_HEADER.dwSize (bytes 4–7) must equal 124.
+                constexpr uint32_t kDDSHeaderSize = 124u;
+
+                int ddsFailCount    = 0;
+                int hdrFailCount    = 0;
+
+                for (const fs::path& texPath : texFiles)
+                {
+                    // Read first 8 bytes (magic + dwSize).
+                    std::ifstream f(texPath, std::ios::binary);
+                    if (!f.is_open())
+                    {
+                        std::cout << "  [FAIL] " << texPath.filename().string()
+                                  << " — cannot open\n";
+                        ++ddsFailCount;
+                        continue;
+                    }
+
+                    uint8_t header8[8] = {};
+                    f.read(reinterpret_cast<char*>(header8), 8);
+                    const std::streamsize bytesRead = f.gcount();
+                    f.close();
+
+                    if (bytesRead < 8 ||
+                        std::memcmp(header8, kDDSMagic, 4) != 0)
+                    {
+                        std::cout << "  [FAIL] " << texPath.filename().string()
+                                  << " — missing DDS magic (first 4 bytes: "
+                                  << std::hex << std::uppercase
+                                  << static_cast<int>(header8[0]) << " "
+                                  << static_cast<int>(header8[1]) << " "
+                                  << static_cast<int>(header8[2]) << " "
+                                  << static_cast<int>(header8[3])
+                                  << std::dec << "). Re-run cook_assets.py.\n";
+                        ++ddsFailCount;
+                        continue;
+                    }
+
+                    // Check DDS_HEADER.dwSize (little-endian uint32 at offset 4).
+                    uint32_t dwSize = 0u;
+                    std::memcpy(&dwSize, header8 + 4, 4);
+                    if (dwSize != kDDSHeaderSize)
+                    {
+                        std::cout << "  [FAIL] " << texPath.filename().string()
+                                  << " — DDS_HEADER.dwSize = " << dwSize
+                                  << " (expected 124). File may be corrupt.\n";
+                        ++hdrFailCount;
+                    }
+                }
+
+                if (ddsFailCount > 0)
+                {
+                    std::cout << "[FAIL] authored_content 2/3: " << ddsFailCount
+                              << " file(s) lack DDS magic bytes. "
+                                 "Re-run cook_assets.py with Pillow installed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[OK] authored_content 2/3: all " << texFiles.size()
+                          << " .tex files have valid DDS magic ('DDS ').\n";
+
+                if (hdrFailCount > 0)
+                {
+                    std::cout << "[FAIL] authored_content 3/3: " << hdrFailCount
+                              << " file(s) have invalid DDS_HEADER.dwSize.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[OK] authored_content 3/3: all " << texFiles.size()
+                          << " .tex files have DDS_HEADER.dwSize == 124.\n";
+
+                std::cout << "[PASS] authored_content: all 3 acceptance tests passed "
+                             "(file count, DDS magic, header validity).\n";
+            }
                 // M0 baseline: device init succeeded.
                 std::cout << "[PASS] " << renderer->BackendName()
                           << " device initialised. Headless mode: "
