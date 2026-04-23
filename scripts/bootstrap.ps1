@@ -42,7 +42,11 @@ Write-Host "[bootstrap] Repo root: $RepoRoot" -ForegroundColor Cyan
 # ---------------------------------------------------------------------------
 if (-not (Test-Path "$VcpkgRoot\vcpkg.exe")) {
     Write-Host "[bootstrap] vcpkg not found at $VcpkgRoot — cloning and bootstrapping..." -ForegroundColor Yellow
-    git clone https://github.com/microsoft/vcpkg.git $VcpkgRoot --depth 1
+    # TEACHING NOTE — do not use a shallow clone (--depth 1) for vcpkg here.
+    # vcpkg manifest mode with a pinned builtin-baseline requires the baseline
+    # commit to exist in the local clone; a shallow clone may not contain it.
+    # A full clone keeps manifest resolution reproducible for students and CI.
+    git clone https://github.com/microsoft/vcpkg.git $VcpkgRoot
     & "$VcpkgRoot\bootstrap-vcpkg.bat" -disableMetrics
 } else {
     Write-Host "[bootstrap] vcpkg found at $VcpkgRoot" -ForegroundColor Green

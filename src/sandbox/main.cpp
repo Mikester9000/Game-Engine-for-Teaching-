@@ -481,11 +481,35 @@
 
 static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* ep)
 {
-    // Create the crash dump directory.
-    CreateDirectoryA("Saved",         nullptr);
-    CreateDirectoryA("Saved/Crashes", nullptr);
+    // Named constants so the directory layout and filename format are defined
+    // in one place — a future rename only changes these two lines.
+    static constexpr char kCrashSubdir[]  = "\\Crashes";
+    static constexpr char kDumpFmt[]      = "%s\\crash_%lu.dmp";
 
-    HANDLE f = CreateFileA("Saved/Crashes/crash.dmp",
+    // TEACHING NOTE — Crash dump directory
+    // We honour the same ENGINE_SAVE_DIR environment variable used by the
+    // logger so that crash dumps land alongside log files in whichever save
+    // directory the operator configured.  When the variable is absent we fall
+    // back to "Saved" (relative to the current working directory), matching the
+    // logger's default.
+    char saveBuf[MAX_PATH] = "Saved";
+    GetEnvironmentVariableA("ENGINE_SAVE_DIR", saveBuf, sizeof(saveBuf));
+
+    char crashDir[MAX_PATH + 16];
+    sprintf_s(crashDir, sizeof(crashDir), "%s%s", saveBuf, kCrashSubdir);
+
+    CreateDirectoryA(saveBuf,    nullptr);
+    CreateDirectoryA(crashDir,   nullptr);
+
+    // TEACHING NOTE — PID-suffixed dump filename
+    // Using crash_<pid>.dmp instead of crash.dmp prevents a new crash from
+    // silently overwriting the dump from a previous crash.  The PID is always
+    // unique within a running system, so each crash gets its own file.
+    char dmpPath[MAX_PATH + 48];
+    const DWORD pid = GetCurrentProcessId();
+    sprintf_s(dmpPath, sizeof(dmpPath), kDumpFmt, crashDir, pid);
+
+    HANDLE f = CreateFileA(dmpPath,
         GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
         FILE_ATTRIBUTE_NORMAL, nullptr);
 
@@ -527,6 +551,21 @@ static std::string GetShaderDir(const char* argv0)
     fs::path p(argv0);
     fs::path dir = p.has_parent_path() ? p.parent_path() : fs::path(".");
     return (dir / "shaders" / "").string();   // trailing separator
+}
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Executable Directory Resolution
+// ---------------------------------------------------------------------------
+// engine_config.json is placed next to the executable by CMake (or the user).
+// We resolve the path relative to the exe so the config is found regardless
+// of the current working directory — whether the binary is double-clicked,
+// launched from a debugger, or run from a different directory in the terminal.
+// ---------------------------------------------------------------------------
+static std::string GetExeDir(const char* argv0)
+{
+    namespace fs = std::filesystem;
+    fs::path p(argv0);
+    return (p.has_parent_path() ? p.parent_path() : fs::path(".")).string();
 }
 
 // ---------------------------------------------------------------------------
@@ -739,13 +778,28 @@ int main(int argc, char* argv[])
         // -------------------------------------------------------------------
         // LC-3: Load engine configuration from engine_config.json.
         // -------------------------------------------------------------------
-        // TEACHING NOTE — Configuration Loading
-        // We load config before creating the window so the resolved resolution
-        // is available to Win32Window::Init().  A missing config file is fine;
-        // the EngineConfig struct keeps its default field values.
+        // TEACHING NOTE — Configuration Path Resolution
+        // We resolve engine_config.json relative to the executable directory
+        // (same strategy as GetShaderDir) so the config is found regardless of
+        // the current working directory.  A missing config file is fine; the
+        // EngineConfig struct keeps its default field values.
         // -------------------------------------------------------------------
         engine::core::EngineConfig engConfig;
-        engConfig.Load("engine_config.json");
+        {
+            namespace fs = std::filesystem;
+            const std::string configPath =
+                (fs::path(GetExeDir(argv[0])) / "engine_config.json").string();
+            const bool loaded = engConfig.Load(configPath);
+            // Route diagnostics through the Logger (already initialised above)
+            // so they appear in Saved/Logs/*.log rather than only on stdout.
+            if (loaded)
+                LOG_INFO("[EngineConfig] Loaded: " + configPath +
+                         "  resolution=" + std::to_string(engConfig.resolution.width) +
+                         "x" + std::to_string(engConfig.resolution.height) +
+                         "  masterVol=" + std::to_string(engConfig.audio.masterVolume));
+            else
+                LOG_INFO("[EngineConfig] No config at: " + configPath + " — using defaults.");
+        }
 
         // -------------------------------------------------------------------
         // Step 2 — Create and initialise the Win32 window.
@@ -758,6 +812,10 @@ int main(int argc, char* argv[])
                 ? L"Engine Sandbox \u2014 Vulkan"
                 : L"Engine Sandbox \u2014 D3D11";
 
+        // TEACHING NOTE — Resolution types
+        // engConfig.resolution.width/height are uint32_t (same as Win32Window::Init's
+        // parameter types) and have been clamped to [64, 16384] by EngineConfig::Load(),
+        // so no sign conversion or silent wrap-around can occur here.
         if (!window.Init(title, engConfig.resolution.width, engConfig.resolution.height, headless))
         {
             std::cerr << "[engine_sandbox] Failed to create window.\n";

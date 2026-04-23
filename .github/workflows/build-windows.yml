@@ -706,6 +706,15 @@ jobs:
         run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted
         shell: cmd
 
+      # TEACHING NOTE — Validate extracted PAK content (CI-3)
+      # engine_sandbox --validate-project reads the AssetDB from the extracted
+      # directory and verifies every registered asset can be opened.  A non-zero
+      # exit code means the PAK round-trip corrupted the AssetDB or a cooked
+      # asset — this gate catches extraction bugs before they reach a release build.
+      - name: Validate extracted PAK content (CI-3)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project %TEMP%\pak_extracted
+        shell: cmd
+
       # -----------------------------------------------------------------------
       # CI-1: Run Python tool tests on Windows
       # -----------------------------------------------------------------------

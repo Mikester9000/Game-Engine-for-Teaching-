@@ -26,8 +26,8 @@
 
 #include "engine_config.hpp"
 
+#include <algorithm>
 #include <fstream>
-#include <iostream>
 
 #ifdef ENGINE_ENABLE_JSON
 #  include <nlohmann/json.hpp>
@@ -56,11 +56,17 @@ bool EngineConfig::Load(const std::string& path)
         json j;
         f >> j;
 
-        // Resolution block — .value() returns the default if the key is absent.
+        // Resolution block.
+        // TEACHING NOTE — Read raw JSON integers as int first, then clamp to
+        // [kMinDim, kMaxDim] before storing in the uint32_t fields.  This prevents
+        // a negative or zero JSON value from wrapping to a huge unsigned number
+        // and producing a window dimension the OS rejects.
         if (j.contains("resolution"))
         {
-            resolution.width  = j["resolution"].value("width",  resolution.width);
-            resolution.height = j["resolution"].value("height", resolution.height);
+            const int rawW = j["resolution"].value("width",  static_cast<int>(resolution.width));
+            const int rawH = j["resolution"].value("height", static_cast<int>(resolution.height));
+            resolution.width  = static_cast<uint32_t>(std::max(kResolutionMinDim, std::min(kResolutionMaxDim, rawW)));
+            resolution.height = static_cast<uint32_t>(std::max(kResolutionMinDim, std::min(kResolutionMaxDim, rawH)));
         }
 
         // Audio block.
@@ -80,17 +86,17 @@ bool EngineConfig::Load(const std::string& path)
             keys.interact = k.value("interact", keys.interact);
         }
 
-        std::cout << "[EngineConfig] Loaded: " << path
-                  << "  resolution=" << resolution.width << "x" << resolution.height
-                  << "  masterVol=" << audio.masterVolume << "\n";
+        // TEACHING NOTE — EngineConfig::Load() is intentionally silent.
+        // Diagnostics are surfaced via the bool return value so the caller can
+        // route them through the engine Logger, ensuring they appear in the
+        // Saved/Logs/*.log file rather than bypassing it via direct console I/O.
         return true;
     }
-    catch (const std::exception& e)
+    catch (const std::exception&)
     {
-        // TEACHING NOTE — Parse errors are user errors (malformed JSON).
-        // We warn but do NOT crash — the engine falls back to defaults.
-        std::cerr << "[EngineConfig] WARNING: Failed to parse " << path
-                  << ": " << e.what() << " — using defaults.\n";
+        // TEACHING NOTE — Parse errors are recoverable user-data problems.
+        // We keep EngineConfig free of direct console I/O; higher-level startup
+        // code can decide how to surface the failure through the active logger.
         return false;
     }
 #else
@@ -116,10 +122,7 @@ bool EngineConfig::Save(const std::string& path) const
 
     std::ofstream f(path);
     if (!f.is_open())
-    {
-        std::cerr << "[EngineConfig] ERROR: Cannot write to " << path << "\n";
         return false;
-    }
 
     // TEACHING NOTE — dump(4) formats the JSON with 4-space indentation,
     // making it easy for users to read and edit in any text editor.

@@ -44,6 +44,7 @@
  * ============================================================================
  */
 
+#include <cstdint>
 #include <string>
 
 namespace engine::core {
@@ -51,10 +52,23 @@ namespace engine::core {
 // ---------------------------------------------------------------------------
 // Resolution configuration
 // ---------------------------------------------------------------------------
+// TEACHING NOTE — uint32_t for pixel dimensions
+// Window APIs (Win32, D3D11 swap-chain) all use unsigned types for width and
+// height.  Storing them as uint32_t here eliminates the sign-to-unsigned
+// conversion at the call site and prevents a negative JSON value from silently
+// wrapping to a huge window dimension.  Load() additionally clamps values to
+// the range [kResolutionMinDim, kResolutionMaxDim] so no bad value can reach
+// the OS.
+//
+// The named constants are defined here so documentation and tests can refer to
+// the same values without duplicating them.
+static constexpr int kResolutionMinDim =    64;  ///< Minimum window dimension in pixels.
+static constexpr int kResolutionMaxDim = 16384;  ///< Maximum window dimension in pixels.
+
 struct ResolutionConfig
 {
-    int width  = 1280;  ///< Window width  in pixels (default 1280).
-    int height = 720;   ///< Window height in pixels (default 720).
+    uint32_t width  = 1280;  ///< Window width  in pixels (default 1280).
+    uint32_t height = 720;   ///< Window height in pixels (default 720).
 };
 
 // ---------------------------------------------------------------------------
@@ -102,6 +116,12 @@ struct EngineConfig
      * can start with defaults if no config file is present.  A missing config
      * is normal on a fresh install; a parse error indicates a user error that
      * should be reported but not crash the engine.
+     *
+     * TEACHING NOTE — Silent Load()
+     * EngineConfig::Load() does not write to stdout or stderr.  All success /
+     * failure diagnostics are returned via the bool result so the caller can
+     * route them through the engine Logger, ensuring they appear in the
+     * Saved/Logs/*.log file rather than bypassing it via direct console I/O.
      */
     bool Load(const std::string& path = "engine_config.json");
 
