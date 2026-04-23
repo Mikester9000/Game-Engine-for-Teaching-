@@ -634,6 +634,51 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M24 — Cook pipeline verification + authored_content acceptance test
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — M24 Cook Verification CI Gate
+      # =============================================
+      # These two steps close the M24 "cook pipeline completeness" gap:
+      #
+      #   Step 1: Run cook_assets.py
+      #     Converts all PNGs in Content/Textures/ to DDS RGBA8 .tex files,
+      #     processes WAV audio, and bakes animation data.  Requires Python 3.9+
+      #     and Pillow (installed via pip in the "Set up Python" step above).
+      #     A non-zero exit code means the cook script itself is broken.
+      #
+      #   Step 2: authored_content scene
+      #     A pure filesystem acceptance test (no GPU required):
+      #       Test 1 — At least 10 .tex files exist under Cooked/Textures/.
+      #       Test 2 — Every .tex file starts with the 4-byte DDS magic 'DDS '.
+      #       Test 3 — Every DDS_HEADER.dwSize field equals 124 (spec requirement).
+      #     If any .tex file lacks DDS magic the test fails with a clear message,
+      #     rather than silently using the 1×1 white fallback SRV at runtime.
+      #
+      # Why separate from the physics job?
+      #   cook_assets.py is a pure Python step; it runs in the engine-only job
+      #   (no Jolt SDK needed) and is checked before PAK packaging so the pak
+      #   archive always contains freshly cooked DDS textures.
+      # -----------------------------------------------------------------------
+      - name: Set up Python for cook_assets.py (M24)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Pillow for cook_assets.py (M24)
+        run: python -m pip install "Pillow>=11.1.0"
+        shell: cmd
+
+      - name: Run cook_assets.py (M24 — produce DDS RGBA8 cooked textures)
+        run: python samples\vertical_slice_project\cook_assets.py
+        shell: cmd
+
+      - name: Run authored_content acceptance test (M24 — DDS magic verification)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene authored_content
+        shell: cmd
+        env:
+          ENGINE_PROJECT_ROOT: samples\vertical_slice_project
+
+      # -----------------------------------------------------------------------
       # PAK packager acceptance test
       # -----------------------------------------------------------------------
       # TEACHING NOTE — PAK Packager CI Test

@@ -41,6 +41,7 @@ from __future__ import annotations
 import json
 import hashlib
 import shutil
+import struct
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -66,6 +67,12 @@ try:
     _HAS_AUDIO_ENGINE = True
 except ImportError:
     _HAS_AUDIO_ENGINE = False
+
+try:
+    from PIL import Image as _PILImage  # type: ignore
+    _HAS_PILLOW = True
+except ImportError:
+    _HAS_PILLOW = False
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -185,14 +192,17 @@ def stable_guid(source_rel: str) -> str:
     return _EXISTING_GUIDS.get(source_rel) or new_guid()
 
 
-def should_recook(source_rel: str, source_hash: str) -> bool:
+def should_recook(source_rel: str, source_hash: str, require_dds: bool = False) -> bool:
     """Return True when the source asset should be re-cooked.
 
     TEACHING NOTE — Incremental cook
     We use the existing registry to skip redundant work:
       1. If the source hash changed, re-cook.
       2. If the cooked file is missing, re-cook.
-      3. Otherwise, keep the previous cooked output and just refresh the
+      3. If *require_dds* is True and the cooked file lacks the DDS magic
+         bytes ('DDS '), re-cook.  This catches the case where a previous
+         run wrote a raw PNG copy instead of a proper DDS RGBA8 file.
+      4. Otherwise, keep the previous cooked output and just refresh the
          in-memory registry entry for this run.
     """
     if not source_hash:
@@ -209,7 +219,23 @@ def should_recook(source_rel: str, source_hash: str) -> bool:
     cooked_rel = existing.get("cooked", "")
     if not cooked_rel:
         return True
-    return not (SCRIPT_DIR / cooked_rel).exists()
+    cooked_path = SCRIPT_DIR / cooked_rel
+    if not cooked_path.exists():
+        return True
+    if require_dds:
+        # Re-cook if the file was previously saved as a raw PNG copy.
+        # TEACHING NOTE — We only need the DDS magic number, so read just
+        # the first 4 bytes instead of loading the entire cooked texture
+        # into memory.  This keeps incremental cook checks cheap even for
+        # large DDS assets.
+        try:
+            with cooked_path.open("rb") as cooked_file:
+                header = cooked_file.read(4)
+            if header != b"DDS ":
+                return True
+        except OSError:
+            return True
+    return False
 
 
 def ensure_dir(path: Path) -> None:
@@ -218,19 +244,166 @@ def ensure_dir(path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Cook steps (stubs)
+# DDS helper
+# ---------------------------------------------------------------------------
+
+
+def _png_to_dds_rgba8(src_path: Path) -> bytes:
+    """Decode a PNG/JPG and write an uncompressed DDS RGBA8 binary blob.
+
+    TEACHING NOTE — Why DDS Instead of Raw PNG?
+    ============================================
+    The D3D11 texture loader (d3d11_texture.cpp) expects a DDS byte stream
+    and detects it by the 4-byte magic 'DDS '.  PNG files and raw RGBA8
+    pixel bytes are *not* understood by the GPU-facing loader, so shipping
+    non-DDS cooked textures silently causes every authored slot to fall back
+    to the 1×1 white SRV.
+
+    DDS (DirectDraw Surface) is a container format that carries:
+      - A compact binary header (magic + DDS_HEADER = 128 bytes).
+      - The raw pixel data — no compression needed for the teaching build.
+
+    The format used here is the legacy uncompressed variant:
+      • DDPF_RGB | DDPF_ALPHAPIXELS flags in DDS_PIXELFORMAT.
+      • 32-bit pixel layout: R8 G8 B8 A8 (matching DXGI_FORMAT_R8G8B8A8_UNORM).
+      • Single mip level — no mip chain; fine for teaching purposes.
+
+    A shipping engine would compress to BC7 (GPU block-compressed) to halve
+    VRAM usage.  That step requires the ispc_texcomp library or DirectXTex
+    and is beyond the scope of this teaching cook script.
+
+    DDS_HEADER field breakdown (124 bytes total):
+      dwSize            = 124          (fixed by spec)
+      dwFlags           = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH |
+                          DDSD_PITCH | DDSD_PIXELFORMAT
+      dwHeight/Width    = image dimensions in pixels
+      dwPitchOrLinearSize = width * 4  (row stride in bytes for RGBA8)
+      dwDepth           = 0            (2D texture)
+      dwMipMapCount     = 1            (no mip chain)
+      dwReserved1[11]   = 0s           (unused)
+      DDS_PIXELFORMAT:
+        dwSize          = 32
+        dwFlags         = DDPF_RGB | DDPF_ALPHAPIXELS
+        dwFourCC        = 0            (0 → not block-compressed)
+        dwRGBBitCount   = 32
+        dwRBitMask      = 0x000000FF  (R in byte 0)
+        dwGBitMask      = 0x0000FF00  (G in byte 1)
+        dwBBitMask      = 0x00FF0000  (B in byte 2)
+        dwABitMask      = 0xFF000000  (A in byte 3)
+      dwCaps            = DDSCAPS_TEXTURE
+      dwCaps2/3/4       = 0
+      dwReserved2       = 0
+
+    Parameters
+    ----------
+    src_path : Path
+        Path to the source PNG or JPG image file.
+
+    Returns
+    -------
+    bytes
+        Complete DDS binary blob (magic + header + RGBA8 pixels).
+
+    Raises
+    ------
+    OSError, ValueError
+        Propagated from PIL if the source file cannot be opened or decoded.
+    """
+    try:
+        # TEACHING NOTE — Open the source image under a context manager so the
+        # file handle is released deterministically during large cook runs.
+        # `load()` forces PIL to fully decode the file, which validates the
+        # image contents without needing a second `open()` after `verify()`.
+        with _PILImage.open(src_path) as decoded_img:
+            decoded_img.load()
+            img = decoded_img.convert("RGBA")
+    except Exception as exc:
+        raise ValueError(
+            f"_png_to_dds_rgba8: cannot decode '{src_path}': {exc}"
+        ) from exc
+
+    width, height = img.size
+    rgba_bytes: bytes = img.tobytes()  # R,G,B,A,R,G,B,A,... row-major
+
+    # --- DDS_PIXELFORMAT (32 bytes) ---
+    DDPF_ALPHAPIXELS = 0x00000001
+    DDPF_RGB         = 0x00000040
+    pf = struct.pack(
+        "<IIIIIIII",
+        32,                            # dwSize (must equal 32)
+        DDPF_RGB | DDPF_ALPHAPIXELS,   # dwFlags
+        0,                             # dwFourCC  (0 for uncompressed)
+        32,                            # dwRGBBitCount
+        0x000000FF,                    # dwRBitMask  (R in byte 0 of pixel)
+        0x0000FF00,                    # dwGBitMask  (G in byte 1)
+        0x00FF0000,                    # dwBBitMask  (B in byte 2)
+        0xFF000000,                    # dwABitMask  (A in byte 3)
+    )  # 8 × 4 = 32 bytes ✓
+
+    # --- DDS_HEADER (124 bytes) ---
+    DDSD_CAPS        = 0x00000001
+    DDSD_HEIGHT      = 0x00000002
+    DDSD_WIDTH       = 0x00000004
+    DDSD_PITCH       = 0x00000008
+    DDSD_PIXELFORMAT = 0x00001000
+    DDSCAPS_TEXTURE  = 0x00001000
+    pitch = width * 4  # 4 bytes per RGBA8 pixel
+
+    hdr = struct.pack(
+        "<IIIIIII",
+        124,                                                          # dwSize
+        DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PITCH | DDSD_PIXELFORMAT,
+        height,                                                       # dwHeight
+        width,                                                        # dwWidth
+        pitch,                                                        # dwPitchOrLinearSize
+        0,                                                            # dwDepth
+        1,                                                            # dwMipMapCount
+    )  # 7 × 4 = 28 bytes
+    hdr += b"\x00" * 44          # dwReserved1[11] — 11 × 4 = 44 bytes
+    hdr += pf                    # DDS_PIXELFORMAT  — 32 bytes
+    hdr += struct.pack(
+        "<IIIII",
+        DDSCAPS_TEXTURE,         # dwCaps
+        0,                       # dwCaps2
+        0,                       # dwCaps3
+        0,                       # dwCaps4
+        0,                       # dwReserved2
+    )  # 5 × 4 = 20 bytes
+    # Total: 28 + 44 + 32 + 20 = 124 bytes ✓
+
+    return b"DDS " + hdr + rgba_bytes
+
+
+# ---------------------------------------------------------------------------
+# Cook steps
 # ---------------------------------------------------------------------------
 
 def cook_textures(registry: list[dict]) -> int:
-    """STUB: Copy PNG/JPG textures from Content/ to Cooked/Textures/.
+    """Cook PNG/JPG textures from Content/ to Cooked/Textures/ as DDS RGBA8.
 
-    TEACHING NOTE — Texture Cooking (Stub)
-    A real cook step would:
-      1. Decode the PNG with Pillow or stb_image.
-      2. Generate mip levels (halve dimensions until 1×1).
-      3. Compress to BC1/BC3/BC7 using ispc_texcomp or DirectXTex.
-      4. Write a custom .tex binary header + compressed mip data.
-    For now we just copy the file to Cooked/ to show the pipeline structure.
+    TEACHING NOTE — Texture Cooking (DDS RGBA8)
+    ============================================
+    When Pillow is available the cook step converts each source PNG/JPG into
+    an uncompressed DDS RGBA8 file that the D3D11 texture loader can parse.
+    The DDS format is detected by the 4-byte magic 'DDS ' at the start of
+    every file; the runtime loader (d3d11_texture.cpp::LoadFromMemory) checks
+    this magic before reading the header — so a raw PNG copy would always
+    fail to load and silently fall back to the 1×1 white SRV.
+
+    Output format: uncompressed DDS RGBA8 (DXGI_FORMAT_R8G8B8A8_UNORM),
+    stored with a .tex extension so the AssetRegistry path conventions are
+    preserved.  The D3D11Renderer resolves authored .tex paths via
+    TryResolveAuthoredTexturePath using path/extension conventions;
+    the actual DDS validation still happens later in the D3D11 texture loader
+    when it reads the file bytes and checks the 'DDS ' magic.
+
+    When Pillow is NOT installed the step falls back to a PNG copy so the
+    pipeline still runs end-to-end even without the imaging library.
+
+    A production cook step would also:
+      1. Generate a full mip chain (halve dimensions until 1×1).
+      2. Block-compress to BC7 using ispc_texcomp or DirectXTex.
+      3. Validate output size and GPU upload via d3dcompiler offline.
     """
     texture_src = CONTENT_DIR / "Textures"
     texture_dst = COOKED_DIR  / "Textures"
@@ -244,10 +417,21 @@ def cook_textures(registry: list[dict]) -> int:
         dst    = texture_dst / rel.with_suffix(".tex")  # rename extension
         dst.parent.mkdir(parents=True, exist_ok=True)
 
-        if should_recook(source_rel, source_hash):
-            # STUB: just copy; real cook would compress
-            shutil.copy2(src, dst)
-            action = "TEX"
+        if should_recook(source_rel, source_hash, require_dds=_HAS_PILLOW):
+            if _HAS_PILLOW:
+                # Convert PNG → DDS RGBA8 so d3d11_texture.cpp can load it.
+                try:
+                    dds_bytes = _png_to_dds_rgba8(src)
+                    dst.write_bytes(dds_bytes)
+                    action = "TEX-DDS"
+                except (OSError, ValueError) as exc:
+                    print(f"  [WARN] Could not convert {src.name} to DDS: {exc}. Falling back to copy.")
+                    shutil.copy2(src, dst)
+                    action = "TEX-COPY-ERR"
+            else:
+                # Fallback: raw copy (loader will fail to parse but pipeline works).
+                shutil.copy2(src, dst)
+                action = "TEX-COPY"
         else:
             action = "SKIP-TEX"
 
@@ -262,7 +446,7 @@ def cook_textures(registry: list[dict]) -> int:
             "tags":   ["texture"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -326,7 +510,7 @@ def cook_audio(registry: list[dict]) -> int:
                     AudioExporter(sample_rate=sr, bit_depth=16).export(normalised, dst, fmt="wav")
                     processed = True
                 except Exception as exc:
-                    print(f"  [WARN] audio_engine DSP failed for {src.name}: {exc} — falling back to copy")
+                    print(f"  [WARN] audio_engine DSP failed for {src.name}: {exc} -- falling back to copy")
 
             if not processed:
                 # Path B: simple file copy (stub / fallback)
@@ -346,7 +530,7 @@ def cook_audio(registry: list[dict]) -> int:
             "is3D":    False,
             "tags":    [],
         })
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     if clips:
         bank_id = stable_guid("Content/Audio")
@@ -420,7 +604,7 @@ def cook_scenes(registry: list[dict]) -> int:
             "tags":   ["scene", "map"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -468,7 +652,7 @@ def cook_animations(registry: list[dict]) -> int:
     # Path A: use the real animation_engine pipeline (installed package)
     # ------------------------------------------------------------------
     if _HAS_ANIM_ENGINE:
-        print("  [INFO] animation_engine package found — using AnimAssetPipeline")
+        print("  [INFO] animation_engine package found -- using AnimAssetPipeline")
         pipeline = AnimAssetPipeline(skip_existing=False)
         manifest = pipeline.cook_all(
             content_dir=str(anim_src),
@@ -564,7 +748,7 @@ def cook_animations(registry: list[dict]) -> int:
                 "tags":   tags,
             })
             count += 1
-            print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+            print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -628,7 +812,7 @@ def cook_materials(registry: list[dict]) -> int:
             "tags":   ["material", "pbr"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -682,9 +866,9 @@ def cook_levels(registry: list[dict]) -> int:
                 data = json.load(f)
             # Required: zoneName (or a sensible fallback)
             if "tileWidth" not in data or "tileHeight" not in data:
-                print(f"  [WARN] {src.name}: missing tileWidth/tileHeight — cooking anyway")
+                print(f"  [WARN] {src.name}: missing tileWidth/tileHeight -- cooking anyway")
         except Exception as exc:
-            print(f"  [WARN] {src.name}: JSON parse failed ({exc}) — skipping")
+            print(f"  [WARN] {src.name}: JSON parse failed ({exc}) -- skipping")
             continue
 
         if should_recook(source_rel, source_hash):
@@ -705,7 +889,7 @@ def cook_levels(registry: list[dict]) -> int:
             "tags":   ["level", "streaming-cell"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -760,7 +944,7 @@ def cook_physics(registry: list[dict]) -> int:
                     ce.bake_collision(src, dst)
                     action = "PHY"
                 except Exception as exc:
-                    print(f"  [WARN] {src.name}: bake_collision failed ({exc}) — skipping")
+                    print(f"  [WARN] {src.name}: bake_collision failed ({exc}) -- skipping")
                     continue
             else:
                 action = "SKIP-PHY"
@@ -783,7 +967,7 @@ def cook_physics(registry: list[dict]) -> int:
                 "tags":   ["collision", "physics"],
             })
             count += 1
-            print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+            print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -833,7 +1017,7 @@ def cook_fonts(registry: list[dict]) -> int:
                 ce.bake_font(src, dst)
                 action = "FNT"
             except Exception as exc:
-                print(f"  [WARN] {src.name}: bake_font failed ({exc}) — skipping")
+                print(f"  [WARN] {src.name}: bake_font failed ({exc}) -- skipping")
                 continue
         else:
             action = "SKIP-FNT"
@@ -853,7 +1037,7 @@ def cook_fonts(registry: list[dict]) -> int:
             "tags":   ["font", "ui"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -902,7 +1086,7 @@ def cook_roads(registry: list[dict]) -> int:
                 ce.bake_road(src, dst)
                 action = "ROAD"
             except Exception as exc:
-                print(f"  [WARN] {src.name}: bake_road failed ({exc}) — skipping")
+                print(f"  [WARN] {src.name}: bake_road failed ({exc}) -- skipping")
                 continue
         else:
             action = "SKIP-ROAD"
@@ -922,7 +1106,7 @@ def cook_roads(registry: list[dict]) -> int:
             "tags":   ["road", "vehicle", "navigation"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
