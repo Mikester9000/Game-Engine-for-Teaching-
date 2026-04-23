@@ -589,6 +589,47 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
+      # M26 — Save system acceptance test (PR1 plumbing stub, CPU-only)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — save_test CI Gate (M26 PR1 stub)
+      # This step is the CI hook added by PR1 ("hotspots/plumbing") so that the
+      # M26 PR can extend the save_test scene with full JSON round-trip,
+      # migration, and auto-save tests WITHOUT needing to touch this workflow
+      # file again.
+      #
+      # PR1 tests validate non-JSON save-schema invariants only:
+      #   Test 1 (slot_invariants): kNumSaveSlots==15, kAutoSaveSlot==15,
+      #     kTotalSlots==16, SlotExists(0)==false on a fresh temp directory.
+      #   Test 2 (delete_nonexistent): DeleteSlot(0) returns true for a
+      #     slot that does not exist (graceful no-op delete).
+      #   Test 3 (version_constant): kSaveFormatVersion=="1.0.0" — the
+      #     migration-version contract that M26 tests will depend on.
+      #
+      # No GPU, audio hardware, vcpkg, or nlohmann/json is required — all three
+      # tests exercise pure C++17 std::filesystem + compile-time constants.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M26 stub — save_test)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene save_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # M25 — Terrain test CI slot (PR1 plumbing stub)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — terrain_test CI Gate (M25 PR1 stub)
+      # This step is the CI hook added by PR1 ("hotspots/plumbing") so that the
+      # M25 PR can implement terrain rendering, heightmap loading, and collision
+      # integration tests in engine_sandbox WITHOUT needing to edit this
+      # workflow file again.
+      #
+      # Until M25 lands, terrain_test exits [PASS] immediately (stub).
+      # M25 will add test logic inside the terrain_test scene block in
+      # src/sandbox/main.cpp — no further CI changes will be required.
+      # -----------------------------------------------------------------------
+      - name: Run headless acceptance test (M25 stub — terrain_test)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
       # PAK packager acceptance test
       # -----------------------------------------------------------------------
       # TEACHING NOTE — PAK Packager CI Test

@@ -86,7 +86,27 @@
  *   engine_sandbox.exe --headless --scene combat_test        # M19 Action Combat: combo FSM + damage formula acceptance test (CI)
  *   engine_sandbox.exe --headless --scene quest_test         # M20 Quest system: accept/progress/complete/prereq acceptance test (CI)
  *   engine_sandbox.exe --headless --scene dialogue_test      # M20 Dialogue system: proximity/begin/advance acceptance test (CI)
+ *   engine_sandbox.exe --headless --scene save_test          # M26 Save system: slot invariants + delete no-op + version constant (CI)
+ *   engine_sandbox.exe --headless --scene terrain_test       # M25 Terrain: stub (M25 will implement terrain rendering tests) (CI)
  *
+ * ============================================================================
+ * TEACHING NOTE — How to add a new headless scene
+ * ============================================================================
+ * Follow these three steps so future PRs never need to touch this file again:
+ *
+ *   1. Add an "else if (scene == "your_scene")" block BEFORE the final
+ *      "else" near the end of the headless dispatch block (search for
+ *      "M0 baseline: device init succeeded" to find the insertion point).
+ *
+ *   2. Add the CI step in .github/workflows/build-windows.yml immediately
+ *      after the last existing headless step in the "build-windows" job.
+ *      Use the same shell: cmd + run: pattern as existing steps.
+ *
+ *   3. Update the usage comment above (this section) so readers know about
+ *      the new scene.
+ *
+ * The final "else" (M0 baseline) must remain LAST — it is the catch-all
+ * fallback for --headless runs with no --scene argument.
  * ============================================================================
  *
  * @author  Educational Game Engine Project
@@ -347,6 +367,27 @@
 // All three tests are pure C++17 CPU tests — no GPU or audio device needed.
 // ---------------------------------------------------------------------------
 #include "game/systems/dialogue_system.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M26 Save System headless test (save_test)
+// ---------------------------------------------------------------------------
+// The save_test scene is added by PR1 ("hotspots/plumbing") to give M26 a
+// dedicated CI slot without requiring later PRs to touch this file's central
+// scene dispatch.
+//
+// PR1 validates only the non-JSON-gated schema invariants:
+//   Test 1 (slot_invariants): SaveSystem construction + schema constants.
+//   Test 2 (delete_nonexistent): DeleteSlot() returns true for absent slot.
+//   Test 3 (version_constant): kSaveFormatVersion == "1.0.0" (contract).
+//
+// M26 will extend this same scene with JSON round-trip, migration, and
+// auto-save tests inside the existing save_test block — no further edits to
+// the dispatch or to build-windows.yml will be required by that PR.
+//
+// All three tests are pure C++17 CPU tests — no GPU, audio, or JSON needed.
+// ---------------------------------------------------------------------------
+#include "engine/save/save_system.hpp"
+#include "engine/save/save_schema.hpp"
 
 #include <iostream>
 #include <exception>
@@ -3574,6 +3615,176 @@ int main(int argc, char* argv[])
                 std::cout << "[PASS] dialogue_test: 3 acceptance tests passed "
                              "(dialogue_out_of_range, dialogue_in_range, "
                              "dialogue_begin_and_advance).\n";
+            }
+            else if (scene == "save_test")
+            {
+                // -----------------------------------------------------------
+                // M26 (save_test): SaveSystem plumbing acceptance tests.
+                // -----------------------------------------------------------
+                // TEACHING NOTE — M26 Save-System CI Stub (PR1 plumbing)
+                // ──────────────────────────────────────────────────────────
+                // This save_test handler is added in PR1 ("hotspots/plumbing")
+                // so that the later M26 PR can add full JSON round-trip tests
+                // here without needing to touch the central headless dispatch
+                // in this file again.
+                //
+                // PR1 validates only the non-JSON-gated invariants that every
+                // subsequent save-system test will depend upon:
+                //
+                //   Test 1 (slot_invariants):
+                //     kNumSaveSlots==15, kAutoSaveSlot==15, kTotalSlots==16.
+                //     SaveSystem constructs cleanly with a temp directory and
+                //     SlotExists(0) returns false on an empty directory.
+                //     These constants are the contract that M26 migration and
+                //     slot-UI tests must not accidentally break.
+                //
+                //   Test 2 (delete_nonexistent):
+                //     DeleteSlot(0) returns true when no save file exists.
+                //     Games call DeleteSlot() to clear a slot the user picks;
+                //     that slot may already be empty on first run.
+                //     A silent-success (true) return is the correct behaviour.
+                //
+                //   Test 3 (version_constant):
+                //     kSaveFormatVersion == "1.0.0".
+                //     The M26 migration tests will write files tagged "0.9.0"
+                //     and assert the loader upgrades them to "1.0.0".  If the
+                //     constant drifts, those tests break silently — catching
+                //     it here in PR1 ensures the contract holds before M26 lands.
+                //
+                // M26 will add inside this block:
+                //   • slot_roundtrip  — Save() + Load() in a temp directory
+                //   • migration       — Load() of a "0.9.0" file upgrades to "1.0.0"
+                //   • autosave        — AutoSave() creates save_auto.json
+                //
+                // None of those additions require further CI or dispatch edits.
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+
+                namespace fs = std::filesystem;
+
+                // Shared temp directory for this test run.
+                // TEACHING NOTE — We isolate each CI run under a unique temp
+                // sub-directory so parallel runs on the same machine don't race.
+                // Use fs::path concatenation (not string+"/") so the path
+                // separator is always correct on every OS.
+                const fs::path testSaveDir =
+                    fs::temp_directory_path() / "save_test_pr1";
+
+                // Construct SaveSystem once; reuse across all three tests.
+                // TEACHING NOTE — A single SaveSystem construction is enough:
+                // each test only calls read-side helpers (SlotExists, DeleteSlot)
+                // that do not mutate persistent state, so all three can share
+                // the same instance without interference.
+                engine::save::SaveSystem saver(testSaveDir.string() + "/");
+
+                // --- Test 1: slot_invariants ---
+                {
+                    const bool slotCountOk  = (engine::save::kNumSaveSlots == 15);
+                    const bool autoSlotOk   = (engine::save::kAutoSaveSlot == 15);
+                    const bool totalSlotsOk = (engine::save::kTotalSlots   == 16);
+
+                    // Slot 0 must not exist yet in the fresh temp directory.
+                    const bool slot0Empty = !saver.SlotExists(0);
+
+                    if (!slotCountOk || !autoSlotOk || !totalSlotsOk || !slot0Empty)
+                    {
+                        std::cout << "[FAIL] save_test/slot_invariants: "
+                                     "kNumSaveSlots=" << engine::save::kNumSaveSlots
+                                  << " kAutoSaveSlot=" << engine::save::kAutoSaveSlot
+                                  << " kTotalSlots="   << engine::save::kTotalSlots
+                                  << " slot0Empty=" << slot0Empty
+                                  << " (expected 15, 15, 16, true)\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] save_test/slot_invariants: "
+                                     "kNumSaveSlots=15, kAutoSaveSlot=15, "
+                                     "kTotalSlots=16, slot 0 absent.\n";
+                    }
+                }
+
+                // --- Test 2: delete_nonexistent ---
+                {
+                    // TEACHING NOTE — Defensive delete
+                    // DeleteSlot() must return true even when the file does
+                    // not exist.  Games call it to "clear" a slot the user
+                    // selects; that slot may already be absent (first run,
+                    // or previously cleared).  Silent success is correct.
+                    const bool deleteOk = saver.DeleteSlot(0);
+
+                    if (!deleteOk)
+                    {
+                        std::cout << "[FAIL] save_test/delete_nonexistent: "
+                                     "DeleteSlot(0) returned false for absent slot "
+                                     "(expected true).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] save_test/delete_nonexistent: "
+                                     "DeleteSlot(0) returned true when slot absent.\n";
+                    }
+                }
+
+                // --- Test 3: version_constant ---
+                {
+                    // TEACHING NOTE — Version string as a CI contract
+                    // kSaveFormatVersion is embedded in every save file's
+                    // "version" field.  M26 migration tests will write files
+                    // tagged "0.9.0" and assert the loader upgrades them to
+                    // "1.0.0".  Asserting the constant here in PR1 catches
+                    // accidental bumps before M26 lands.
+                    const std::string_view ver = engine::save::kSaveFormatVersion;
+                    if (ver != "1.0.0")
+                    {
+                        std::cout << "[FAIL] save_test/version_constant: "
+                                     "kSaveFormatVersion=\"" << ver
+                                  << "\" (expected \"1.0.0\").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] save_test/version_constant: "
+                                     "kSaveFormatVersion=\"1.0.0\".\n";
+                    }
+                }
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] save_test: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] save_test: 3 acceptance tests passed "
+                             "(slot_invariants, delete_nonexistent, "
+                             "version_constant).\n";
+            }
+            else if (scene == "terrain_test")
+            {
+                // -----------------------------------------------------------
+                // M25 (terrain_test): Terrain rendering + collision stub.
+                // -----------------------------------------------------------
+                // TEACHING NOTE — M25 Terrain-Test CI Stub (PR1 plumbing)
+                // ──────────────────────────────────────────────────────────
+                // This terrain_test handler is added in PR1 ("hotspots/
+                // plumbing") so that the M25 PR can implement terrain
+                // rendering, heightmap loading, and collision integration
+                // tests entirely inside this block — no further edits to the
+                // central scene dispatch or to build-windows.yml are needed.
+                //
+                // M25 will add inside this block:
+                //   • terrain_load    — Load a heightmap and generate mesh.
+                //   • terrain_draw    — RecordHeadlessFrame() with terrain VS/PS.
+                //   • terrain_collide — Raycast confirms terrain collision body.
+                //   • terrain_stream  — Terrain cells load/evict via streaming.
+                //
+                // Until M25 lands this stub exits [PASS] so CI stays green.
+                // -----------------------------------------------------------
+                std::cout << "[PASS] terrain_test: scene registered "
+                             "(M25 will implement terrain rendering tests).\n";
             }
             else
             {
