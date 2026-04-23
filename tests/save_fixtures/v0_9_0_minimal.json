@@ -1,0 +1,14 @@
+{
+  "version": "0.9.0",
+  "savedAt": "2025-01-01T00:00:00Z",
+  "gameTimeSecs": 0.0,
+  "locationName": "OldZone",
+  "entities": [
+    {
+      "components": {
+        "Health": { "hp": 99, "maxHp": 200, "mp": 10, "maxMp": 50 },
+        "Name":   { "name": "Gladiolus", "internalID": "npc_1", "title": "" }
+      }
+    }
+  ]
+}

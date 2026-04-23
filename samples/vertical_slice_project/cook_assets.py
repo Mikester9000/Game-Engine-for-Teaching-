@@ -359,7 +359,7 @@ def cook_audio(registry: list[dict]) -> int:
             "id":           bank_id,
             "type":         "audio_bank",
             "name":         "VerticalSliceBank",
-            "source":       "Content/Audio",
+            "source":       "Audio/",
             "cooked":       str(bank_path.relative_to(SCRIPT_DIR)),
             "hash":         bank_hash,
             "dependencies": [],
@@ -503,12 +503,13 @@ def cook_animations(registry: list[dict]) -> int:
         for src in sorted(anim_src.glob("**/*.json")):
             rel = src.relative_to(anim_src)     # relative to Animations/
             source_rel = "Animations/" + str(rel)
-            source_hash = sha256_file(src)
+            source_bytes = src.read_bytes()
+            source_hash = hashlib.sha256(source_bytes).hexdigest()
 
             # Detect asset type: skeleton files reference the skeleton schema
             # or use the "_skeleton" filename suffix — see _is_skeleton_file().
             try:
-                raw = json.loads(src.read_text(encoding="utf-8"))
+                raw = json.loads(source_bytes.decode("utf-8"))
             except json.JSONDecodeError as exc:
                 # TEACHING NOTE — Surface malformed content during stub cooking
                 # Silent fallback makes it hard for content creators to notice

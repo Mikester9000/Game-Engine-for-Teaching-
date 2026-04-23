@@ -1,10 +1,10 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-23T14:17:38Z",
+  "generatedAt": "2026-04-23T18:33:46Z",
   "assets": [
     {
-      "id": "b178571d-5f20-4b8a-9763-b2570c8e50a3",
+      "id": "ee9d6aea-5ea9-46ae-a6ac-e7cb2861fc41",
       "type": "texture",
       "name": "hero_albedo",
       "source": "Textures/character/hero_albedo.png",
@@ -16,7 +16,7 @@
       ]
     },
     {
-      "id": "b632200b-66b8-42b8-a43c-e176fbad3298",
+      "id": "0a60958e-cfca-41c6-8e81-6a1fa3ecd5f3",
       "type": "texture",
       "name": "hero_ao",
       "source": "Textures/character/hero_ao.png",
@@ -28,7 +28,7 @@
       ]
     },
     {
-      "id": "edb89b83-0406-4add-bc64-e6dddedf6883",
+      "id": "01bf79c5-af77-4028-95e8-e49d052d5e9b",
       "type": "texture",
       "name": "hero_mage_albedo",
       "source": "Textures/character/hero_mage_albedo.png",
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "id": "327d6b11-d3ae-4ed4-a55b-d88ed42f2b77",
+      "id": "cedc47b6-ec89-44da-99c3-3a136aa0341b",
       "type": "texture",
       "name": "hero_mage_ao",
       "source": "Textures/character/hero_mage_ao.png",
@@ -52,7 +52,7 @@
       ]
     },
     {
-      "id": "83831c4a-aeaf-4704-a54d-867c977c5e34",
+      "id": "4c06f821-c922-451f-9ead-a27137f7af5c",
       "type": "texture",
       "name": "hero_mage_metallic_roughness",
       "source": "Textures/character/hero_mage_metallic_roughness.png",
@@ -64,7 +64,7 @@
       ]
     },
     {
-      "id": "4f0c359e-08eb-4910-ad50-0864b573a0a6",
+      "id": "e9ea490a-9dbc-4c58-9e1b-22fc7a61fb9c",
       "type": "texture",
       "name": "hero_mage_normal",
       "source": "Textures/character/hero_mage_normal.png",
@@ -76,7 +76,7 @@
       ]
     },
     {
-      "id": "c4b855d5-4cf2-4f84-8adc-df05876555fe",
+      "id": "74db61fe-2804-4b32-bc03-1e7ff0809296",
       "type": "texture",
       "name": "hero_metallic_roughness",
       "source": "Textures/character/hero_metallic_roughness.png",
@@ -88,7 +88,7 @@
       ]
     },
     {
-      "id": "38cc8672-1bfe-4abf-9316-6a7dc34b466d",
+      "id": "236a08e1-d726-4fa9-9d4d-c18882f22f44",
       "type": "texture",
       "name": "hero_normal",
       "source": "Textures/character/hero_normal.png",
@@ -100,7 +100,7 @@
       ]
     },
     {
-      "id": "acddbe49-7d29-4ea0-82bc-fba198fa8c3c",
+      "id": "a9f5125a-7c2e-467d-94b8-96d26da3d1ed",
       "type": "texture",
       "name": "hero_rogue_albedo",
       "source": "Textures/character/hero_rogue_albedo.png",
@@ -112,7 +112,7 @@
       ]
     },
     {
-      "id": "b8d0626a-882e-4cac-aa26-2651828ee0cd",
+      "id": "29e1991f-24c4-4814-9a3f-4dc7586c66f5",
       "type": "texture",
       "name": "hero_rogue_ao",
       "source": "Textures/character/hero_rogue_ao.png",
@@ -124,7 +124,7 @@
       ]
     },
     {
-      "id": "72cfbc96-52cd-4c8f-bcc0-f12b58e17409",
+      "id": "bf72946c-af69-4a43-939b-eb39d35a9cac",
       "type": "texture",
       "name": "hero_rogue_metallic_roughness",
       "source": "Textures/character/hero_rogue_metallic_roughness.png",
@@ -136,7 +136,7 @@
       ]
     },
     {
-      "id": "af6b3f80-9a7a-462b-8516-9cf154519072",
+      "id": "10470be8-119e-4251-8794-bba85255ba0a",
       "type": "texture",
       "name": "hero_rogue_normal",
       "source": "Textures/character/hero_rogue_normal.png",
@@ -148,7 +148,7 @@
       ]
     },
     {
-      "id": "f38653ac-885a-4cf6-a155-47490b60e79f",
+      "id": "c09b0de0-5bf0-49b2-a657-02d57108f26c",
       "type": "texture",
       "name": "barrel_wood_albedo",
       "source": "Textures/props/barrel_wood_albedo.png",
@@ -160,7 +160,7 @@
       ]
     },
     {
-      "id": "f6f1164b-0b95-49a5-966c-0402fae0cacb",
+      "id": "ca1c3879-77d0-42d6-9be7-dc8692099b09",
       "type": "texture",
       "name": "barrel_wood_ao",
       "source": "Textures/props/barrel_wood_ao.png",
@@ -172,7 +172,7 @@
       ]
     },
     {
-      "id": "e22f3d70-91e7-4ec6-99d0-6e7acbb73fe6",
+      "id": "e0034d3e-2806-4798-9fb1-e0942df26af7",
       "type": "texture",
       "name": "barrel_wood_metallic_roughness",
       "source": "Textures/props/barrel_wood_metallic_roughness.png",
@@ -184,7 +184,7 @@
       ]
     },
     {
-      "id": "5ced8820-ee9c-4d41-a492-0728d7b29945",
+      "id": "f0072de1-f6fd-4689-86f3-a3527df47ab7",
       "type": "texture",
       "name": "barrel_wood_normal",
       "source": "Textures/props/barrel_wood_normal.png",
@@ -196,7 +196,7 @@
       ]
     },
     {
-      "id": "bd1b86f3-57b9-4bed-841e-7f14b760be57",
+      "id": "7d0ecc98-731a-4271-bd69-ea5cfff1eb53",
       "type": "texture",
       "name": "crate_metal_albedo",
       "source": "Textures/props/crate_metal_albedo.png",
@@ -208,7 +208,7 @@
       ]
     },
     {
-      "id": "e2704aac-4e16-43aa-8e71-302ee0f4884a",
+      "id": "404bb80c-9fee-478b-9944-4ddcbb4a3dc3",
       "type": "texture",
       "name": "crate_metal_ao",
       "source": "Textures/props/crate_metal_ao.png",
@@ -220,7 +220,7 @@
       ]
     },
     {
-      "id": "d2c3b7cb-077c-467a-99e0-ff835b38ce87",
+      "id": "28bbdec3-905c-450c-96c1-ef35a3046ad4",
       "type": "texture",
       "name": "crate_metal_metallic_roughness",
       "source": "Textures/props/crate_metal_metallic_roughness.png",
@@ -232,7 +232,7 @@
       ]
     },
     {
-      "id": "0a8969d5-f542-41b4-93c9-7055bc509c6f",
+      "id": "a9d5c882-0f47-47c6-9879-94318b6ec17f",
       "type": "texture",
       "name": "crate_metal_normal",
       "source": "Textures/props/crate_metal_normal.png",
@@ -244,7 +244,7 @@
       ]
     },
     {
-      "id": "e27f2e73-d989-4899-82c3-ab338c871dd6",
+      "id": "0a4d503a-f5bf-4208-a695-daff768b2e37",
       "type": "texture",
       "name": "stone_pillar_albedo",
       "source": "Textures/props/stone_pillar_albedo.png",
@@ -256,7 +256,7 @@
       ]
     },
     {
-      "id": "68c30440-bac5-4754-a6e0-d4c6d77c1d7f",
+      "id": "66934429-0991-4efb-b896-2ebadfc03c45",
       "type": "texture",
       "name": "stone_pillar_ao",
       "source": "Textures/props/stone_pillar_ao.png",
@@ -268,7 +268,7 @@
       ]
     },
     {
-      "id": "72dd3b0d-4ec5-4114-985b-ca1241333a97",
+      "id": "1bbc8da2-6bde-4dab-a5c9-4f2a244a7d9f",
       "type": "texture",
       "name": "stone_pillar_metallic_roughness",
       "source": "Textures/props/stone_pillar_metallic_roughness.png",
@@ -280,7 +280,7 @@
       ]
     },
     {
-      "id": "975f7421-96ad-457f-9e48-3710a4530e1f",
+      "id": "47be237b-9902-4b9d-8c6d-49f33583c265",
       "type": "texture",
       "name": "stone_pillar_normal",
       "source": "Textures/props/stone_pillar_normal.png",
@@ -292,7 +292,7 @@
       ]
     },
     {
-      "id": "21f4bb3a-1b71-474c-9c96-44fccf8f638f",
+      "id": "aaf00c36-b819-4aa1-b015-f6412936d687",
       "type": "texture",
       "name": "terrain_desert_albedo",
       "source": "Textures/terrain/terrain_desert_albedo.png",
@@ -304,7 +304,7 @@
       ]
     },
     {
-      "id": "bd8fa721-d0cd-48c9-b6b7-6b927b4c0b29",
+      "id": "2f24b143-3eaf-432b-b2a0-02af2a326f13",
       "type": "texture",
       "name": "terrain_desert_ao",
       "source": "Textures/terrain/terrain_desert_ao.png",
@@ -316,7 +316,7 @@
       ]
     },
     {
-      "id": "1456f068-aea1-40be-a3a0-a60b090fab5c",
+      "id": "1abb86cb-de1b-4a1e-910a-a0881735ae89",
       "type": "texture",
       "name": "terrain_desert_metallic_roughness",
       "source": "Textures/terrain/terrain_desert_metallic_roughness.png",
@@ -328,7 +328,7 @@
       ]
     },
     {
-      "id": "63e2b5ca-bbb2-4f3a-8173-39187b769301",
+      "id": "748618bb-93fb-47a6-9a01-77b2cb35c9ab",
       "type": "texture",
       "name": "terrain_desert_normal",
       "source": "Textures/terrain/terrain_desert_normal.png",
@@ -340,7 +340,7 @@
       ]
     },
     {
-      "id": "0ce94e98-b1db-46b4-b282-1061bd400804",
+      "id": "f6159c1e-6844-42d2-9211-0672815bdb18",
       "type": "texture",
       "name": "terrain_grass_albedo",
       "source": "Textures/terrain/terrain_grass_albedo.png",
@@ -352,7 +352,7 @@
       ]
     },
     {
-      "id": "74a1233b-3d76-4fa9-bee3-e02596a4ebe9",
+      "id": "254f8383-6386-4ef0-a446-c54d0a97fcab",
       "type": "texture",
       "name": "terrain_grass_ao",
       "source": "Textures/terrain/terrain_grass_ao.png",
@@ -364,7 +364,7 @@
       ]
     },
     {
-      "id": "52a1879d-9ea5-4ed7-8802-2eb78cc6df7d",
+      "id": "837d42a4-292e-4b52-b22d-d56d0fa4c11b",
       "type": "texture",
       "name": "terrain_grass_metallic_roughness",
       "source": "Textures/terrain/terrain_grass_metallic_roughness.png",
@@ -376,7 +376,7 @@
       ]
     },
     {
-      "id": "2feda761-6a5e-44d2-9d9a-14b0c1224ea6",
+      "id": "cb8ae640-eca9-4974-a720-e87b024e6747",
       "type": "texture",
       "name": "terrain_grass_normal",
       "source": "Textures/terrain/terrain_grass_normal.png",
@@ -388,7 +388,7 @@
       ]
     },
     {
-      "id": "689e0866-ddb7-4a5d-83a0-d5b67d9c9f70",
+      "id": "6f0e40ea-56f5-4471-b610-a8fabd6289c4",
       "type": "texture",
       "name": "terrain_rocky_albedo",
       "source": "Textures/terrain/terrain_rocky_albedo.png",
@@ -400,7 +400,7 @@
       ]
     },
     {
-      "id": "ea0a3f3c-1690-4222-b996-bbe2c64ffd26",
+      "id": "2582b566-4f0a-44c0-ae37-639181f39c12",
       "type": "texture",
       "name": "terrain_rocky_ao",
       "source": "Textures/terrain/terrain_rocky_ao.png",
@@ -412,7 +412,7 @@
       ]
     },
     {
-      "id": "38675c30-1fe7-4c49-8bf1-8acedaf9c302",
+      "id": "33146e58-794b-4819-af22-0f56adfb9ded",
       "type": "texture",
       "name": "terrain_rocky_metallic_roughness",
       "source": "Textures/terrain/terrain_rocky_metallic_roughness.png",
@@ -424,7 +424,7 @@
       ]
     },
     {
-      "id": "dd14bb5e-110e-43dd-93dd-2bbe3fb1550a",
+      "id": "0bf6fb16-a002-4704-8c94-cb21b096247a",
       "type": "texture",
       "name": "terrain_rocky_normal",
       "source": "Textures/terrain/terrain_rocky_normal.png",
@@ -436,7 +436,7 @@
       ]
     },
     {
-      "id": "756711c5-71e3-47f0-966b-c23387a651a2",
+      "id": "f0b34292-21a8-4b1c-a9be-8ffa178e3b7c",
       "type": "texture",
       "name": "terrain_snow_albedo",
       "source": "Textures/terrain/terrain_snow_albedo.png",
@@ -448,7 +448,7 @@
       ]
     },
     {
-      "id": "87d5f956-e8a7-473a-97f2-469e500b7557",
+      "id": "81013783-4de8-4903-a954-7221df4285b4",
       "type": "texture",
       "name": "terrain_snow_ao",
       "source": "Textures/terrain/terrain_snow_ao.png",
@@ -460,7 +460,7 @@
       ]
     },
     {
-      "id": "3addfdb5-996e-47d4-8143-1eebb7aa14ce",
+      "id": "e2adc22b-3eb8-4936-809d-b88679a65e68",
       "type": "texture",
       "name": "terrain_snow_metallic_roughness",
       "source": "Textures/terrain/terrain_snow_metallic_roughness.png",
@@ -472,7 +472,7 @@
       ]
     },
     {
-      "id": "dbcbd21a-c509-4460-a0db-b5a6244ebf75",
+      "id": "a0e3d490-90c6-41ab-9317-8ce84a71426f",
       "type": "texture",
       "name": "terrain_snow_normal",
       "source": "Textures/terrain/terrain_snow_normal.png",
@@ -484,19 +484,19 @@
       ]
     },
     {
-      "id": "a40b0cbe-1554-4727-96b7-126bc731e0d1",
+      "id": "c9d2a0ad-c9df-40ee-b87e-48a4396eacee",
       "type": "audio_bank",
       "name": "VerticalSliceBank",
-      "source": "Content/Audio",
+      "source": "Audio/",
       "cooked": "Cooked/Audio/VerticalSliceBank.bank.json",
-      "hash": "d58f5035cc35d361bbc1763fe5a2c150bc763573c475836bdd271cc73d815d4f",
+      "hash": "6e5dbd9c03c111268b5443baef55fc155d1c1a8aab6cac731bbc48090f5f4d84",
       "dependencies": [],
       "tags": [
         "audio_bank"
       ]
     },
     {
-      "id": "63d82695-f567-42f7-a8a3-110afe1e03d0",
+      "id": "0e2794fa-44ea-418d-b17e-2c2a798b57ef",
       "type": "scene",
       "name": "MainTown",
       "source": "Maps/MainTown.scene.json",
@@ -509,7 +509,7 @@
       ]
     },
     {
-      "id": "7579b467-ae24-435f-b800-0aed0ddbffec",
+      "id": "a4f647c0-564d-4c49-b0c0-0f1b3a4da3bc",
       "type": "anim_clip",
       "name": "enemy_goblin_attack",
       "source": "Animations/enemy_goblin_attack.json",
@@ -521,7 +521,7 @@
       ]
     },
     {
-      "id": "b104021f-2002-4b58-b8fc-7bd4247b9d15",
+      "id": "9b958a34-470f-462e-aee9-505cda685127",
       "type": "anim_clip",
       "name": "enemy_goblin_death",
       "source": "Animations/enemy_goblin_death.json",
@@ -533,7 +533,7 @@
       ]
     },
     {
-      "id": "8d58ff41-a832-43c9-b028-f0af5390bf99",
+      "id": "ac19b734-5bc9-4cb1-a031-6d56d2ffbc3d",
       "type": "anim_clip",
       "name": "enemy_goblin_hit",
       "source": "Animations/enemy_goblin_hit.json",
@@ -545,7 +545,7 @@
       ]
     },
     {
-      "id": "087506d8-77e9-4702-a754-80e16d04158c",
+      "id": "d588939f-efd0-4110-b5b6-d4f85e5583b2",
       "type": "anim_clip",
       "name": "enemy_goblin_idle",
       "source": "Animations/enemy_goblin_idle.json",
@@ -557,7 +557,7 @@
       ]
     },
     {
-      "id": "210e6f48-8b61-4d6b-bd1a-51ef38f00d2d",
+      "id": "d0a7a446-55a1-4f54-8a58-18d2405414a1",
       "type": "skeleton",
       "name": "enemy_goblin_skeleton",
       "source": "Animations/enemy_goblin_skeleton.json",
@@ -569,7 +569,7 @@
       ]
     },
     {
-      "id": "ec3106fc-7eda-42a2-9814-bdba2424feb8",
+      "id": "fbb20d52-f12b-4de2-b0f7-5e281da58716",
       "type": "anim_clip",
       "name": "enemy_goblin_walk",
       "source": "Animations/enemy_goblin_walk.json",
@@ -581,7 +581,7 @@
       ]
     },
     {
-      "id": "a36a4baf-a086-4236-b9ed-759f7b7b8b7e",
+      "id": "21fb8256-7350-4643-9f65-d065df518e09",
       "type": "anim_clip",
       "name": "hero_attack",
       "source": "Animations/hero_attack.json",
@@ -593,7 +593,7 @@
       ]
     },
     {
-      "id": "e5325fb7-1554-473e-beb6-bb5daf6e9160",
+      "id": "3b0e9c34-4568-4b06-8713-68e93c8b1dd1",
       "type": "anim_clip",
       "name": "hero_block",
       "source": "Animations/hero_block.json",
@@ -605,7 +605,7 @@
       ]
     },
     {
-      "id": "3e312adb-b36b-4e45-b8e0-d12ec9eefbfc",
+      "id": "4ae04dcc-aa61-4437-ab34-8e191dc610d4",
       "type": "anim_clip",
       "name": "hero_cast",
       "source": "Animations/hero_cast.json",
@@ -617,7 +617,7 @@
       ]
     },
     {
-      "id": "5c23b8d1-8bf2-43bb-8522-4f1975e7a50a",
+      "id": "3c52eb19-4da3-4ed4-8cbd-ceb6768f6475",
       "type": "anim_clip",
       "name": "hero_death",
       "source": "Animations/hero_death.json",
@@ -629,7 +629,7 @@
       ]
     },
     {
-      "id": "dc94eff3-5a52-44c2-8ee8-a94b8457ce77",
+      "id": "46350c29-d324-4e8b-98d9-0e845b0aae7e",
       "type": "anim_clip",
       "name": "hero_dodge",
       "source": "Animations/hero_dodge.json",
@@ -641,7 +641,7 @@
       ]
     },
     {
-      "id": "84fd36e7-acda-48e4-aa22-1677dbebc0dd",
+      "id": "ed45cc56-b23d-476f-8f7f-82178d7b4316",
       "type": "anim_clip",
       "name": "hero_hit_react",
       "source": "Animations/hero_hit_react.json",
@@ -653,7 +653,7 @@
       ]
     },
     {
-      "id": "a165702a-6d55-42c3-bf41-dd4c43cf875f",
+      "id": "97fc1f2e-e861-456e-88b7-32b973c3fffd",
       "type": "anim_clip",
       "name": "hero_idle",
       "source": "Animations/hero_idle.json",
@@ -665,7 +665,7 @@
       ]
     },
     {
-      "id": "851e6c84-2687-4312-bec4-5457f9f7c1bf",
+      "id": "32b717e4-51ec-4e5d-9650-44b08969f379",
       "type": "anim_clip",
       "name": "hero_jump",
       "source": "Animations/hero_jump.json",
@@ -677,7 +677,7 @@
       ]
     },
     {
-      "id": "44874acf-20a2-4c73-92bf-759377370194",
+      "id": "bce4ca79-855e-429a-88d1-9596bce41ff8",
       "type": "anim_clip",
       "name": "hero_run",
       "source": "Animations/hero_run.json",
@@ -689,7 +689,7 @@
       ]
     },
     {
-      "id": "b8b1e75b-fe60-4415-bfea-59c2ba4c4109",
+      "id": "73e4e253-f92c-4211-8525-737f56af1f19",
       "type": "skeleton",
       "name": "hero_skeleton",
       "source": "Animations/hero_skeleton.json",
@@ -701,7 +701,7 @@
       ]
     },
     {
-      "id": "19759f1c-d776-46e2-b571-05245d23e4cc",
+      "id": "be8cfe21-ebee-437c-9b35-4f838524ec39",
       "type": "anim_clip",
       "name": "hero_strafe_left",
       "source": "Animations/hero_strafe_left.json",
@@ -713,7 +713,7 @@
       ]
     },
     {
-      "id": "d41fcfee-e628-4e0b-b868-39cf51ce91b8",
+      "id": "a3ffc932-0627-4397-b29c-45509815e9b1",
       "type": "anim_clip",
       "name": "hero_strafe_right",
       "source": "Animations/hero_strafe_right.json",
@@ -725,19 +725,19 @@
       ]
     },
     {
-      "id": "a7053a19-52fb-4dcb-a69d-b7b757f320f2",
+      "id": "7e30a135-0928-4fd2-bc1f-bbd111fc8139",
       "type": "anim_clip",
       "name": "hero_walk",
       "source": "Animations/hero_walk.json",
       "cooked": "Cooked/Anim/hero_walk.animc",
-      "hash": "0619a2dc01a5d6f985e8e2b0b5cdf9a3169d6b4280fa744de28ab077978401cd",
+      "hash": "1cc395f0865edfb8bb614d59dec0a6f5f292761fe2c4080f4639cec5330f7332",
       "dependencies": [],
       "tags": [
         "animation"
       ]
     },
     {
-      "id": "ba884bc0-4405-4477-b4a2-412f6905a53c",
+      "id": "5ba7fdbd-c7fb-4158-9165-7860a2dc6bad",
       "type": "material",
       "name": "default_armor",
       "source": "Materials/default_armor.material.json",
@@ -750,7 +750,7 @@
       ]
     },
     {
-      "id": "5db40c3b-a192-4a4c-a1aa-728775cd12fa",
+      "id": "06e31012-6d78-4f69-96d7-3668f6f41631",
       "type": "level",
       "name": "cell_0_0",
       "source": "Levels/cell_0_0.cell.json",
@@ -763,7 +763,7 @@
       ]
     },
     {
-      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011",
+      "id": "03a17474-c2d5-4c07-b4b5-1fcf3442fc18",
       "type": "level",
       "name": "cell_0_1",
       "source": "Levels/cell_0_1.cell.json",
@@ -776,7 +776,7 @@
       ]
     },
     {
-      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022",
+      "id": "d339dd5f-3bc2-4f74-9c52-14269cdfcbb2",
       "type": "level",
       "name": "cell_1_0",
       "source": "Levels/cell_1_0.cell.json",
@@ -789,7 +789,7 @@
       ]
     },
     {
-      "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033",
+      "id": "58c2c16c-f4e1-4800-add0-88c9ac66ffb0",
       "type": "level",
       "name": "cell_1_1",
       "source": "Levels/cell_1_1.cell.json",

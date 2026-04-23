@@ -1,7 +1,7 @@
 {
   "$schema": "../../../shared/schemas/anim_clip.schema.json",
   "version": "1.0.0",
-  "id": "33333333-cccc-4d4e-af5g-000000000003",
+  "id": "33333333-cccc-4d4e-af5f-000000000003",
   "name": "Walk",
   "skeletonId": "11111111-aaaa-4b3c-8d2e-000000000001",
   "durationSeconds": 1.2,

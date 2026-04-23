@@ -26,3 +26,4 @@ tools/**/*.egg-info/
 tags
 .tags
 TAGS
+build_check/
