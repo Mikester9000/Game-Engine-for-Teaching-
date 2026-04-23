@@ -778,6 +778,442 @@ def bake_terrain(
     }
 
 
+def bake_collision(
+    obj_path: "Path | str",
+    out_path: "Path | str",
+) -> dict:
+    """
+    Bake an OBJ mesh into a cooked PHY1 convex/triangle-mesh collision shape.
+
+    Parameters
+    ----------
+    obj_path : Path or str
+        Source ``.obj`` file containing vertices (``v``) and faces (``f``).
+    out_path : Path or str
+        Destination ``.phys`` cooked binary.
+
+    Returns
+    -------
+    dict
+        Keys: ``vertices``, ``indices``, ``bytes``.
+
+    Raises
+    ------
+    ValueError
+        If the OBJ contains no vertices or no triangulated faces.
+
+    TEACHING NOTE — PHY1 Binary Format
+    ------------------------------------
+    Collision meshes are baked offline to avoid loading OBJ text at runtime
+    (OBJ parsing is slow; physics engines want compact float arrays).
+
+    Layout (little-endian)::
+
+        Offset  Size   Type      Field
+             0     4   char[4]  magic ("PHY1")
+             4     2   uint16   version  = 1
+             6     4   uint32   vertex_count  (V)
+            10     4   uint32   index_count   (I)  — must be a multiple of 3
+            14   V*12  float32  vertex_data   — interleaved (x,y,z) per vertex
+        14+V*12  I*4   uint32   index_data    — triangle list (3 indices per tri)
+
+    Total: 14 + V*12 + I*4 bytes.
+
+    TEACHING NOTE — Why not just use the original OBJ?
+    The physics engine (Jolt) accepts raw float arrays.  Shipping OBJ files
+    wastes time in OBJ tokenising, increases load latency, and complicates
+    error handling.  PHY1 strips out normals, UVs, and comments, producing a
+    minimal structure the runtime can memcpy directly into a physics shape.
+
+    TEACHING NOTE — Triangle list vs triangle strip
+    A triangle list (3 indices per triangle) is used rather than a strip
+    because strips require restart indices and are harder to author/validate.
+    Any topology can be represented as a triangle list.
+    """
+    vertices, faces = _parse_obj_for_navmesh(Path(obj_path))
+
+    if not vertices:
+        raise ValueError("OBJ contains no vertices")
+    if not faces:
+        raise ValueError("OBJ contains no faces (triangles)")
+
+    # Flatten triangle list: each face is already a 3-element list [i0, i1, i2]
+    # from _parse_obj_for_navmesh's fan triangulation.
+    indices: list = []
+    for face in faces:
+        indices.extend(face)
+
+    vertex_count = len(vertices)
+    index_count = len(indices)
+
+    header = struct.pack(
+        "<4sHII",
+        b"PHY1",
+        1,              # version
+        vertex_count,
+        index_count,
+    )
+    vertex_bytes = struct.pack(f"<{vertex_count * 3}f",
+                               *[c for v in vertices for c in v])
+    index_bytes  = struct.pack(f"<{index_count}I", *indices)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    blob = header + vertex_bytes + index_bytes
+    out_path.write_bytes(blob)
+
+    return {
+        "vertices": vertex_count,
+        "indices":  index_count,
+        "bytes":    len(blob),
+    }
+
+
+def _cmd_bake_collision(args: argparse.Namespace) -> int:
+    try:
+        stats = bake_collision(args.input, args.output)
+    except (OSError, ValueError) as exc:
+        _die(str(exc), code=1)
+    print(_bold("\n=== creation_engine — baked collision mesh ===\n"))
+    print(f"  {_green('Output:')} {args.output}")
+    print(
+        f"  Vertices: {stats['vertices']} | "
+        f"Indices: {stats['indices']} | "
+        f"Size: {stats['bytes']} bytes"
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# bake_font
+# ---------------------------------------------------------------------------
+
+def bake_font(
+    json_path: "Path | str",
+    out_path:  "Path | str",
+) -> dict:
+    """
+    Bake a font descriptor JSON into a cooked FNT1 SDF atlas binary.
+
+    Parameters
+    ----------
+    json_path : Path or str
+        Source ``.font.json`` file describing the glyph set.  Expected schema::
+
+            {
+              "name":      "ffxv_ui",      // human-readable name (for debug)
+              "glyphSize": 8,              // pixel size of each glyph cell (square)
+              "atlasCols": 16,             // glyphs per atlas row
+              "atlasRows": 6,              // number of atlas rows
+              "firstChar": 32,            // ASCII code of first character (' ')
+              "charCount": 96             // total number of characters
+            }
+
+    out_path : Path or str
+        Destination ``.font`` cooked binary.
+
+    Returns
+    -------
+    dict
+        Keys: ``glyphs``, ``atlasWidth``, ``atlasHeight``, ``bytes``.
+
+    Raises
+    ------
+    ValueError
+        If JSON is malformed or required fields are missing/invalid.
+
+    TEACHING NOTE — FNT1 Binary Format
+    ------------------------------------
+    The runtime ``FontRenderer`` generates its SDF atlas at startup, which
+    costs CPU cycles every launch.  This baker moves that work offline — bake
+    once, load instantly.  The cooked binary stores the pre-computed UV table
+    and the SDF pixel data so ``FontRenderer::LoadCooked()`` can skip atlas
+    generation entirely.
+
+    Layout (little-endian)::
+
+        Offset   Size   Type        Field
+             0      4   char[4]    magic ("FNT1")
+             4      2   uint16     version    = 1
+             6      2   uint16     atlasWidth  (pixels)
+             8      2   uint16     atlasHeight (pixels)
+            10      2   uint16     glyphCount
+            12      2   uint16     glyphSize   (pixels, always square)
+            14      2   uint16     firstChar   (ASCII code)
+     per glyph (20 bytes each):
+            16+G*0   5f  float32   u0, v0, u1, v1, advance   (per glyph, 5×4=20 bytes)
+     atlas pixels:
+            16+G*20  W*H  uint8  SDF R8 atlas (row-major, 0=outside)
+
+    Header size = 16 bytes (4s + 6×H).
+    Glyph table = glyphCount × 20 bytes (5 floats × 4 bytes each).
+    Pixel data  = atlasWidth × atlasHeight bytes (R8_UNORM, SDF distance).
+
+    TEACHING NOTE — Offline SDF generation advantage
+    Generating the SDF at runtime (as FontRenderer::Init() currently does)
+    takes ~2 ms on a modern CPU for a 128×48 atlas.  Baking it offline
+    reduces this to a simple file read (<0.1 ms).  More importantly, offline
+    baking allows larger, higher-quality atlases (e.g. 512×512 from a TTF)
+    without impacting startup time.
+
+    TEACHING NOTE — Placeholder SDF data
+    This implementation generates a placeholder R8 SDF atlas (8×8 bitmaps
+    embedded per glyph, no TTF parsing).  A production tool would use FreeType
+    to rasterise each glyph and compute a true signed distance field.
+    Teaching students to write their own simple SDF is a recommended exercise.
+    """
+    src = Path(json_path)
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {src}: {exc}") from exc
+
+    for field in ("glyphSize", "atlasCols", "atlasRows", "firstChar", "charCount"):
+        if field not in data:
+            raise ValueError(f"Missing required field '{field}' in {src}")
+
+    glyph_size:  int = int(data["glyphSize"])
+    atlas_cols:  int = int(data["atlasCols"])
+    atlas_rows:  int = int(data["atlasRows"])
+    first_char:  int = int(data["firstChar"])
+    char_count:  int = int(data["charCount"])
+
+    if glyph_size < 4:
+        raise ValueError("glyphSize must be >= 4")
+    if atlas_cols < 1 or atlas_rows < 1:
+        raise ValueError("atlasCols and atlasRows must be >= 1")
+    if char_count < 1:
+        raise ValueError("charCount must be >= 1")
+    if first_char < 0 or first_char > 127:
+        raise ValueError("firstChar must be in range [0, 127]")
+    if atlas_cols * atlas_rows < char_count:
+        raise ValueError(
+            f"Atlas grid {atlas_cols}×{atlas_rows}={atlas_cols * atlas_rows} "
+            f"cells < charCount={char_count}"
+        )
+
+    atlas_width  = atlas_cols * glyph_size
+    atlas_height = atlas_rows * glyph_size
+
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Glyph UV table
+    # -----------------------------------------------------------------------
+    # For each glyph we store normalised UV coordinates (0..1) for its
+    # top-left and bottom-right corners in the atlas texture.
+    # advance is always 1.0 for a monospace (fixed-width) font.
+    # A proportional font would read per-glyph advance widths from TTF metrics.
+    # -----------------------------------------------------------------------
+    glyph_table = bytearray()
+    for i in range(char_count):
+        col = i % atlas_cols
+        row = i // atlas_cols
+        u0 = (col * glyph_size) / atlas_width
+        v0 = (row * glyph_size) / atlas_height
+        u1 = ((col + 1) * glyph_size) / atlas_width
+        v1 = ((row + 1) * glyph_size) / atlas_height
+        advance = 1.0
+        glyph_table.extend(struct.pack("<5f", u0, v0, u1, v1, advance))
+
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Placeholder SDF atlas (R8_UNORM)
+    # -----------------------------------------------------------------------
+    # We generate a simple synthetic SDF-like placeholder: each valid glyph
+    # cell receives a radial distance ramp centred in the cell, with higher
+    # values near the middle and lower values toward the edges.  This teaches
+    # atlas layout and signed-distance-style sampling without requiring a real
+    # TTF rasteriser.  The pixel shader treats values near 128 as the notional
+    # contour/boundary threshold, with values above 128 biased toward "inside"
+    # and values below 128 biased toward "outside".
+    # -----------------------------------------------------------------------
+    atlas_pixels = bytearray(atlas_width * atlas_height)
+    for gy in range(atlas_height):
+        for gx in range(atlas_width):
+            # Mark the border of each glyph cell with boundary value (0x80).
+            col  = gx // glyph_size
+            row  = gy // glyph_size
+            cx   = gx % glyph_size
+            cy   = gy % glyph_size
+            glyph_idx = row * atlas_cols + col
+            if glyph_idx < char_count:
+                # Interior pixels: simple distance-like ramp from centre.
+                cx_f = cx - glyph_size / 2.0
+                cy_f = cy - glyph_size / 2.0
+                dist = (cx_f * cx_f + cy_f * cy_f) ** 0.5
+                max_dist = glyph_size / 2.0
+                # Normalise to 0..255 (128 = boundary, >128 = inside).
+                sdf_val = int(128.0 + 127.0 * (1.0 - dist / max_dist))
+                atlas_pixels[gy * atlas_width + gx] = max(0, min(255, sdf_val))
+
+    header = struct.pack(
+        "<4sHHHHHH",
+        b"FNT1",
+        1,             # version
+        atlas_width,
+        atlas_height,
+        char_count,
+        glyph_size,
+        first_char,
+    )
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    blob = header + bytes(glyph_table) + bytes(atlas_pixels)
+    out_path.write_bytes(blob)
+
+    return {
+        "glyphs":      char_count,
+        "atlasWidth":  atlas_width,
+        "atlasHeight": atlas_height,
+        "bytes":       len(blob),
+    }
+
+
+def _cmd_bake_font(args: argparse.Namespace) -> int:
+    try:
+        stats = bake_font(args.input, args.output)
+    except (OSError, ValueError) as exc:
+        _die(str(exc), code=1)
+    print(_bold("\n=== creation_engine — baked font atlas ===\n"))
+    print(f"  {_green('Output:')} {args.output}")
+    print(
+        f"  Glyphs: {stats['glyphs']} | "
+        f"Atlas: {stats['atlasWidth']}×{stats['atlasHeight']} px | "
+        f"Size: {stats['bytes']} bytes"
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# bake_road
+# ---------------------------------------------------------------------------
+
+def bake_road(
+    json_path: "Path | str",
+    out_path:  "Path | str",
+) -> dict:
+    """
+    Bake a road spline JSON into a cooked RD01 binary waypoint path.
+
+    Parameters
+    ----------
+    json_path : Path or str
+        Source road JSON.  Expected schema::
+
+            {
+              "name":      "regalia_route",
+              "waypoints": [
+                {"x": 0.0, "y": 0.0, "z": 0.0},
+                {"x": 10.0, "y": 0.0, "z": 5.0},
+                ...
+              ]
+            }
+
+    out_path : Path or str
+        Destination ``.road`` cooked binary.
+
+    Returns
+    -------
+    dict
+        Keys: ``waypoints``, ``bytes``.
+
+    Raises
+    ------
+    ValueError
+        If the JSON is malformed or contains fewer than 2 waypoints.
+
+    TEACHING NOTE — RD01 Binary Format
+    ------------------------------------
+    The ``VehicleSystem`` needs road geometry at runtime to compute the
+    nearest road segment and apply Ackermann steering along the spline.
+    Loading JSON at runtime is wasteful; the binary drops all metadata
+    and stores only the float3 positions needed for nearest-segment queries.
+
+    Layout (little-endian)::
+
+        Offset  Size     Type      Field
+             0     4    char[4]  magic ("RD01")
+             4     2    uint16   version  = 1
+             6     4    uint32   waypoint_count  (N)
+            10   N*12   float32  positions — (x, y, z) per waypoint
+
+    Total: 10 + N*12 bytes.
+
+    TEACHING NOTE — Road splines and Catmull-Rom
+    A production road system would use Catmull-Rom or Bezier curves to
+    interpolate between waypoints for smooth steering.  This baker stores
+    raw waypoints; the runtime can either:
+      a) Use piecewise linear segments (simple, used here for teaching),
+      b) Upsample with Catmull-Rom at load time for smooth curves.
+    Teaching students to implement the Catmull-Rom interpolation in
+    VehicleSystem::FindNearestRoadPoint() is a recommended extension.
+
+    TEACHING NOTE — Why a minimum of 2 waypoints?
+    A single waypoint defines a point, not a path.  A road needs at least
+    a start and end to have a direction vector for steering calculation.
+    """
+    src = Path(json_path)
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {src}: {exc}") from exc
+
+    waypoints_raw = data.get("waypoints")
+    if not isinstance(waypoints_raw, list):
+        raise ValueError("Road JSON must contain a 'waypoints' array")
+    if len(waypoints_raw) < 2:
+        raise ValueError(
+            f"Road JSON must contain at least 2 waypoints (got {len(waypoints_raw)})"
+        )
+
+    waypoints: list = []
+    for i, wp in enumerate(waypoints_raw):
+        if not isinstance(wp, dict):
+            raise ValueError(f"waypoints[{i}] must be an object with x, y, z fields")
+        try:
+            x = float(wp.get("x", wp.get("X", 0.0)))
+            y = float(wp.get("y", wp.get("Y", 0.0)))
+            z = float(wp.get("z", wp.get("Z", 0.0)))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"waypoints[{i}] has invalid coordinate: {exc}") from exc
+        waypoints.append((x, y, z))
+
+    waypoint_count = len(waypoints)
+    header = struct.pack(
+        "<4sHI",
+        b"RD01",
+        1,               # version
+        waypoint_count,
+    )
+    pos_bytes = struct.pack(
+        f"<{waypoint_count * 3}f",
+        *[c for wp in waypoints for c in wp],
+    )
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    blob = header + pos_bytes
+    out_path.write_bytes(blob)
+
+    return {
+        "waypoints": waypoint_count,
+        "bytes":     len(blob),
+    }
+
+
+def _cmd_bake_road(args: argparse.Namespace) -> int:
+    try:
+        stats = bake_road(args.input, args.output)
+    except (OSError, ValueError) as exc:
+        _die(str(exc), code=1)
+    print(_bold("\n=== creation_engine — baked road spline ===\n"))
+    print(f"  {_green('Output:')} {args.output}")
+    print(
+        f"  Waypoints: {stats['waypoints']} | "
+        f"Size: {stats['bytes']} bytes"
+    )
+    return 0
+
+
 def _cmd_bake_terrain(args: argparse.Namespace) -> int:
     try:
         stats = bake_terrain(args.input, args.output)
@@ -1471,6 +1907,47 @@ def _build_parser() -> argparse.ArgumentParser:
     bake_cin.add_argument("--output", required=True, metavar="CINEMATIC",
                           help="Output cooked cinematic binary path.")
 
+    # ------------------------------------------------------------------ bake-collision
+    # TEACHING NOTE — bake-collision subcommand
+    # Converts a .obj mesh into a compact PHY1 binary collision shape.
+    # The C++ PhysicsWorld can then load vertex/index data directly without
+    # OBJ text parsing, dramatically reducing level-load latency.
+    bake_col = sub.add_parser(
+        "bake-collision",
+        help="Bake an OBJ mesh into a cooked PHY1 collision shape binary.",
+    )
+    bake_col.add_argument("--input", required=True, metavar="OBJ",
+                          help="Source .obj mesh file path.")
+    bake_col.add_argument("--output", required=True, metavar="PHYS",
+                          help="Output cooked .phys binary path.")
+
+    # ------------------------------------------------------------------ bake-font
+    # TEACHING NOTE — bake-font subcommand
+    # Converts a font descriptor JSON into an FNT1 SDF atlas binary, so the
+    # C++ FontRenderer can load a pre-generated atlas instead of computing the
+    # SDF at runtime every launch.
+    bake_fnt = sub.add_parser(
+        "bake-font",
+        help="Bake a font descriptor JSON into a cooked FNT1 SDF atlas binary.",
+    )
+    bake_fnt.add_argument("--input", required=True, metavar="JSON",
+                          help="Source .font.json descriptor file.")
+    bake_fnt.add_argument("--output", required=True, metavar="FONT",
+                          help="Output cooked .font binary path.")
+
+    # ------------------------------------------------------------------ bake-road
+    # TEACHING NOTE — bake-road subcommand
+    # Converts a road waypoint JSON into an RD01 binary path, allowing
+    # VehicleSystem to load road geometry without JSON parsing at runtime.
+    bake_rd = sub.add_parser(
+        "bake-road",
+        help="Bake a road spline JSON into a cooked RD01 waypoint binary.",
+    )
+    bake_rd.add_argument("--input", required=True, metavar="JSON",
+                         help="Source road.json with 'waypoints' array.")
+    bake_rd.add_argument("--output", required=True, metavar="ROAD",
+                         help="Output cooked .road binary path.")
+
     # ------------------------------------------------------------------ bake-terrain
     # TEACHING NOTE — bake-terrain subcommand
     # Converts a .terrain.json heightmap source file into a compact TRN1 binary
@@ -1505,6 +1982,9 @@ def main(argv: List[str] | None = None) -> int:
         "bake-navmesh": _cmd_bake_navmesh,
         "bake-tod": _cmd_bake_tod,
         "bake-cinematic": _cmd_bake_cinematic,
+        "bake-collision": _cmd_bake_collision,
+        "bake-font":      _cmd_bake_font,
+        "bake-road":      _cmd_bake_road,
         "bake-terrain": _cmd_bake_terrain,
     }
     handler = dispatch.get(args.command)

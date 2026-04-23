@@ -5,6 +5,9 @@
     { "id": "5db40c3b-a192-4a4c-a1aa-728775cd12fa", "cookedPath": "Cooked/Levels/cell_0_0.level" },
     { "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011", "cookedPath": "Cooked/Levels/cell_0_1.level" },
     { "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022", "cookedPath": "Cooked/Levels/cell_1_0.level" },
-    { "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033", "cookedPath": "Cooked/Levels/cell_1_1.level" }
+    { "id": "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033", "cookedPath": "Cooked/Levels/cell_1_1.level" },
+    { "id": "3c0ec859-dc1a-4713-98cb-97e869aeb5db", "cookedPath": "Cooked/Physics/arena_plane.phys" },
+    { "id": "d916f13e-798b-45db-ad97-db4bcd40b927", "cookedPath": "Cooked/UI/Fonts/ffxv_ui.font" },
+    { "id": "35e84573-d23c-48b8-a9d7-3f6745cbc916", "cookedPath": "Cooked/Roads/regalia_route.road" }
   ]
 }

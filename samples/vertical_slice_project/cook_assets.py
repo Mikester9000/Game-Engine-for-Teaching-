@@ -78,6 +78,19 @@ PROJECT_FILE = SCRIPT_DIR / "Project.json"
 REGISTRY_FILE = SCRIPT_DIR / "AssetRegistry.json"
 
 # ---------------------------------------------------------------------------
+# TEACHING NOTE — Importing creation_engine from the tools directory
+# ---------------------------------------------------------------------------
+# The creation_engine.py baker functions (bake_collision, bake_font,
+# bake_road) live in tools/.  We add the repo root to sys.path so they
+# can be imported without installation.  This mirrors how the CI workflow
+# runs the bakers: from the repo root with python tools/creation_engine.py.
+# ---------------------------------------------------------------------------
+_REPO_ROOT = SCRIPT_DIR.parent.parent
+_TOOLS_DIR = _REPO_ROOT / "tools"
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
+
+# ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
 
@@ -699,6 +712,221 @@ def cook_levels(registry: list[dict]) -> int:
 
 
 
+def cook_physics(registry: list[dict]) -> int:
+    """Cook OBJ collision meshes (.obj → .phys) from Content/AI/ and Content/Physics/.
+
+    TEACHING NOTE — M27: Collision Mesh Cooking (PHY1 Baker)
+    ==========================================================
+    A "collision mesh" asset is a baked representation of a level's static
+    geometry used by the physics engine (Jolt) for raycasting and rigid-body
+    simulation.  The cook step:
+      1. Reads OBJ files from Content/AI/ (arena geometry) and Content/Physics/.
+      2. Calls bake_collision() to produce a compact PHY1 binary.
+      3. Registers the cooked .phys file in AssetRegistry.json.
+
+    TEACHING NOTE — Why not ship raw OBJ to the runtime?
+    OBJ is a text format designed for 3D DCC tools (Blender, Maya).  Parsing
+    text at runtime is slow and the format includes data the physics engine
+    does not need (normals, UVs, comments, material refs).  PHY1 is a flat
+    array of float32 vertices + uint32 indices — a single memcpy away from
+    Jolt's TriangleMesh shape constructor.
+    """
+    try:
+        import creation_engine as ce
+        _HAS_CE = True
+    except ImportError:
+        _HAS_CE = False
+
+    # Search for .obj files in both AI/ and Physics/ content directories.
+    ai_dir      = CONTENT_DIR / "AI"
+    physics_dir = CONTENT_DIR / "Physics"
+    phys_dst    = COOKED_DIR  / "Physics"
+    ensure_dir(phys_dst)
+
+    count = 0
+    for src_dir in [ai_dir, physics_dir]:
+        if not src_dir.exists():
+            continue
+        for src in sorted(src_dir.glob("**/*.obj")):
+            rel = src.relative_to(CONTENT_DIR)
+            source_rel  = str(rel)
+            source_hash = sha256_file(src)
+            cooked_name = src.stem + ".phys"
+            dst = phys_dst / cooked_name
+
+            if should_recook(source_rel, source_hash) and _HAS_CE:
+                try:
+                    import creation_engine as ce
+                    ce.bake_collision(src, dst)
+                    action = "PHY"
+                except Exception as exc:
+                    print(f"  [WARN] {src.name}: bake_collision failed ({exc}) — skipping")
+                    continue
+            else:
+                action = "SKIP-PHY"
+                if not dst.exists():
+                    # Generate stub binary so the registry entry is valid.
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    if _HAS_CE:
+                        import creation_engine as ce
+                        ce.bake_collision(src, dst)
+                    action = "PHY"
+
+            registry.append({
+                "id":     stable_guid(source_rel),
+                "type":   "collision",
+                "name":   src.stem,
+                "source": source_rel,
+                "cooked": str(dst.relative_to(SCRIPT_DIR)),
+                "hash":   source_hash,
+                "dependencies": [],
+                "tags":   ["collision", "physics"],
+            })
+            count += 1
+            print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+
+    return count
+
+
+def cook_fonts(registry: list[dict]) -> int:
+    """Cook font descriptor JSON files (.font.json → .font) from Content/UI/Fonts/.
+
+    TEACHING NOTE — M27: Font Atlas Cooking (FNT1 Baker)
+    ======================================================
+    The runtime FontRenderer generates its SDF atlas at startup by rasterising
+    an embedded 8×8 bitmap.  The cook step bakes the atlas offline so the
+    runtime can load a pre-computed binary instead, reducing startup cost.
+
+    The .font.json descriptor specifies glyph dimensions and ASCII char range.
+    bake_font() generates:
+      • UV table:  per-glyph u0/v0/u1/v1/advance (5 floats each)
+      • SDF atlas: W×H R8_UNORM pixels (signed distance field)
+
+    TEACHING NOTE — Why teach offline SDF generation?
+    Signed Distance Fields are the standard technique for resolution-independent
+    GPU font rendering (used in FFXV HUD, Unity TextMeshPro, Valve's Dota 2 HUD).
+    Generating the SDF offline demonstrates the core principle without the
+    complexity of FreeType/HarfBuzz integration.  Students can extend the baker
+    to accept real TTF input as a self-study exercise.
+    """
+    try:
+        import creation_engine as ce
+        _HAS_CE = True
+    except ImportError:
+        _HAS_CE = False
+
+    fonts_src = CONTENT_DIR / "UI" / "Fonts"
+    fonts_dst = COOKED_DIR  / "UI" / "Fonts"
+    ensure_dir(fonts_dst)
+
+    count = 0
+    for src in sorted(fonts_src.glob("**/*.font.json")):
+        rel = src.relative_to(CONTENT_DIR)
+        source_rel  = str(rel)
+        source_hash = sha256_file(src)
+        cooked_name = src.name[: -len(".font.json")] + ".font"
+        dst = fonts_dst / cooked_name
+
+        if should_recook(source_rel, source_hash) and _HAS_CE:
+            try:
+                import creation_engine as ce
+                ce.bake_font(src, dst)
+                action = "FNT"
+            except Exception as exc:
+                print(f"  [WARN] {src.name}: bake_font failed ({exc}) — skipping")
+                continue
+        else:
+            action = "SKIP-FNT"
+            if not dst.exists() and _HAS_CE:
+                import creation_engine as ce
+                ce.bake_font(src, dst)
+                action = "FNT"
+
+        registry.append({
+            "id":     stable_guid(source_rel),
+            "type":   "font",
+            "name":   src.name[: -len(".font.json")],
+            "source": source_rel,
+            "cooked": str(dst.relative_to(SCRIPT_DIR)),
+            "hash":   source_hash,
+            "dependencies": [],
+            "tags":   ["font", "ui"],
+        })
+        count += 1
+        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+
+    return count
+
+
+def cook_roads(registry: list[dict]) -> int:
+    """Cook road spline JSON files (.road.json → .road) from Content/Roads/.
+
+    TEACHING NOTE — M27: Road Spline Cooking (RD01 Baker)
+    =======================================================
+    The VehicleSystem needs road geometry at runtime to:
+      • Find the nearest road segment for automatic lane-keeping.
+      • Apply Ackermann steering corrections along the spline.
+      • Constrain the Regalia's movement to road boundaries.
+
+    The .road.json format specifies a series of waypoints (x, y, z) in world
+    space.  bake_road() serialises these to a compact RD01 binary (10-byte
+    header + N×12 bytes), dropping the JSON overhead.
+
+    TEACHING NOTE — Road waypoints vs Bezier curves
+    A production road system would upsample waypoints into a Bezier or
+    Catmull-Rom spline for smooth camera and steering transitions.  For
+    teaching we use piecewise linear segments, which are trivial to implement
+    and still demonstrate the key concept: runtime nearest-segment queries.
+    """
+    try:
+        import creation_engine as ce
+        _HAS_CE = True
+    except ImportError:
+        _HAS_CE = False
+
+    roads_src = CONTENT_DIR / "Roads"
+    roads_dst = COOKED_DIR  / "Roads"
+    ensure_dir(roads_dst)
+
+    count = 0
+    for src in sorted(roads_src.glob("**/*.road.json")):
+        rel = src.relative_to(CONTENT_DIR)
+        source_rel  = str(rel)
+        source_hash = sha256_file(src)
+        cooked_name = src.name[: -len(".road.json")] + ".road"
+        dst = roads_dst / cooked_name
+
+        if should_recook(source_rel, source_hash) and _HAS_CE:
+            try:
+                import creation_engine as ce
+                ce.bake_road(src, dst)
+                action = "ROAD"
+            except Exception as exc:
+                print(f"  [WARN] {src.name}: bake_road failed ({exc}) — skipping")
+                continue
+        else:
+            action = "SKIP-ROAD"
+            if not dst.exists() and _HAS_CE:
+                import creation_engine as ce
+                ce.bake_road(src, dst)
+                action = "ROAD"
+
+        registry.append({
+            "id":     stable_guid(source_rel),
+            "type":   "road",
+            "name":   src.name[: -len(".road.json")],
+            "source": source_rel,
+            "cooked": str(dst.relative_to(SCRIPT_DIR)),
+            "hash":   source_hash,
+            "dependencies": [],
+            "tags":   ["road", "vehicle", "navigation"],
+        })
+        count += 1
+        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+
+    return count
+
+
 def _try_relative_to(path: Path, base: Path) -> str:
     """Return path relative to base as a string, or the original string if not relative.
 
@@ -790,6 +1018,24 @@ def main() -> int:
     total += n
     if n == 0:
         print("  (no .cell.json files found in Content/Levels/)")
+
+    print("\n--- Physics Collision Meshes ---")
+    n = cook_physics(registry)
+    total += n
+    if n == 0:
+        print("  (no .obj files found in Content/AI/ or Content/Physics/)")
+
+    print("\n--- Font Atlases ---")
+    n = cook_fonts(registry)
+    total += n
+    if n == 0:
+        print("  (no .font.json files found in Content/UI/Fonts/)")
+
+    print("\n--- Road Splines ---")
+    n = cook_roads(registry)
+    total += n
+    if n == 0:
+        print("  (no .road.json files found in Content/Roads/)")
 
     print("\n--- Registry ---")
     update_registry(registry)

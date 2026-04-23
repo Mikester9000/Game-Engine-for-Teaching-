@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../../shared/schemas/road.schema.json",
+  "name": "regalia_route",
+  "version": "1.0.0",
+  "description": "Main road route for the Regalia vehicle — follows the highland terrain from the camp site east through the desert pass to the city gate.",
+  "waypoints": [
+    { "x":   0.0, "y": 0.0, "z":   0.0 },
+    { "x":  80.0, "y": 1.5, "z":  20.0 },
+    { "x": 160.0, "y": 3.0, "z":  15.0 },
+    { "x": 240.0, "y": 4.5, "z":  30.0 },
+    { "x": 320.0, "y": 3.0, "z":  50.0 },
+    { "x": 400.0, "y": 1.5, "z":  60.0 },
+    { "x": 480.0, "y": 0.5, "z":  45.0 },
+    { "x": 560.0, "y": 0.0, "z":  20.0 },
+    { "x": 640.0, "y": 0.0, "z":   0.0 },
+    { "x": 720.0, "y": 0.5, "z": -20.0 },
+    { "x": 800.0, "y": 1.0, "z": -10.0 },
+    { "x": 880.0, "y": 0.0, "z":   0.0 }
+  ]
+}

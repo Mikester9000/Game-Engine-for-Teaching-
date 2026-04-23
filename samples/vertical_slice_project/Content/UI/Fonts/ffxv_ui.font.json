@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../../../shared/schemas/font.schema.json",
+  "name": "ffxv_ui",
+  "version": "1.0.0",
+  "description": "UI font atlas descriptor for the FFXV-style HUD. Matches the FontRenderer's built-in 8x8 monospace bitmap layout (96 printable ASCII chars, 16 per row, 6 rows).",
+  "glyphSize":  8,
+  "atlasCols":  16,
+  "atlasRows":  6,
+  "firstChar":  32,
+  "charCount":  96
+}

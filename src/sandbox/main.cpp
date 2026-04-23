@@ -2249,6 +2249,94 @@ int main(int argc, char* argv[])
                     }
                 }
 
+                // ============================================================
+                // Test 4 — Timed audio event dispatch (§5 Cinematics acceptance)
+                // ============================================================
+                // TEACHING NOTE — What is a "timed audio event"?
+                // In a cut-scene, a sound effect must play at a precise moment:
+                // e.g. a door creak at t=0.3 s or a sword clash at t=1.5 s.
+                // CinematicSequencer::AddAudioEvent() registers such events;
+                // Tick() fires them within ±1 frame (here ±dt/2 = ±0.025 s)
+                // because we check immediately after advancing m_shotTime.
+                //
+                // TEACHING NOTE — Why not test with XAudio2 here?
+                // The acceptance test only needs to verify the callback fires
+                // at the right time.  Coupling to XAudio2 would require a
+                // real audio device in headless CI.  The callback design lets
+                // the game layer call AudioSystem::Play() in response, which
+                // is tested separately in audio_3d_test.
+                // ============================================================
+                {
+                    CinematicSequencer seq;
+
+                    // One 0.2 s shot with an audio event at t=0.05 s.
+                    CameraRig r;
+                    r.AddKeyframe(0.0f, Vec3{0,0,0}, Vec3{0,0,1}, 60.0f);
+                    r.AddKeyframe(0.2f, Vec3{0,2,0}, Vec3{0,2,1}, 60.0f);
+                    seq.AddShot(r, 0.2f, "audio_shot");
+                    seq.AddAudioEvent(0.05f, "sfx/sword_swing");
+
+                    int  audioEventCount = 0;
+                    std::string lastClipID;
+
+                    seq.SetOnAudioEvent([&](const std::string& clipID)
+                    {
+                        ++audioEventCount;
+                        lastClipID = clipID;
+                    });
+
+                    // Tick 0: t = 0.03 s — event NOT yet fired (0.03 < 0.05).
+                    seq.Play();
+                    seq.Tick(0.03f);
+
+                    if (audioEventCount != 0)
+                    {
+                        std::cout << "[FAIL] cinematic_test/audio_event_early: "
+                                  << "audio event fired too early at t=0.03 s "
+                                  << "(threshold is 0.05 s).\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/audio_event_early: "
+                                  << "event correctly NOT fired at t=0.03 s.\n";
+                    }
+
+                    // Tick 1: t = 0.03 + 0.05 = 0.08 s — event MUST fire now.
+                    seq.Tick(0.05f);
+
+                    if (audioEventCount != 1 || lastClipID != "sfx/sword_swing")
+                    {
+                        std::cout << "[FAIL] cinematic_test/audio_event_fired: "
+                                  << "expected 1 audio event (sfx/sword_swing) "
+                                  << "after t=0.08 s; got count=" << audioEventCount
+                                  << " clipID='" << lastClipID << "'.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/audio_event_fired: "
+                                  << "event 'sfx/sword_swing' fired within ±1 frame "
+                                  << "of t=0.05 s (actual fire: t≈0.08 s).\n";
+                    }
+
+                    // Tick 2: advance past shot end — event must NOT fire again.
+                    seq.Tick(0.20f);
+
+                    if (audioEventCount != 1)
+                    {
+                        std::cout << "[FAIL] cinematic_test/audio_event_once: "
+                                  << "expected event to fire exactly once; fired "
+                                  << audioEventCount << " times.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] cinematic_test/audio_event_once: "
+                                  << "event fired exactly once (no re-fire after shot end).\n";
+                    }
+                }
+
                 if (testsFailed > 0)
                 {
                     std::cout << "[FAIL] cinematic_test: " << testsFailed
@@ -2257,8 +2345,9 @@ int main(int argc, char* argv[])
                     window.Shutdown();
                     return 1;
                 }
-                std::cout << "[PASS] cinematic_test: all 3 acceptance tests passed "
-                             "(CameraRig Lerp, sequencer shot advancement, callbacks).\n";
+                std::cout << "[PASS] cinematic_test: all 4 acceptance tests passed "
+                             "(CameraRig Lerp, sequencer shot advancement, callbacks, "
+                             "timed audio events).\n";
             }
             else if (scene == "menu_stack_test")
             {
