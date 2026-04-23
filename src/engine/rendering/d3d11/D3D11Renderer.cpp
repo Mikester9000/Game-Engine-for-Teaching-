@@ -1452,8 +1452,6 @@ static bool LoadSkinnedMeshScene(
     D3D11Renderer::SkinnedMeshScene& scene)
 {
     namespace fs = std::filesystem;
-    AuthoredMaterialParams authoredMat;
-    const bool hasAuthoredMaterial = TryLoadAuthoredMaterial(authoredMat);
 
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Fallback HLSL for the skinned mesh vertex shader.
@@ -3914,6 +3912,8 @@ static bool LoadPBRIBLScene(ID3D11Device*              device,
                              D3D11Renderer::PBRIBLScene& scene)
 {
     namespace fs = std::filesystem;
+    AuthoredMaterialParams authoredMat;
+    const bool hasAuthoredMaterial = TryLoadAuthoredMaterial(authoredMat);
 
     // -----------------------------------------------------------------------
     // Step 1 — Compile shaders.
