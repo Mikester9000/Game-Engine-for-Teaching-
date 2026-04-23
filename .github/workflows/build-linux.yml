@@ -172,6 +172,57 @@ jobs:
           cd tools/quest_baker
           python -m pytest tests/ -q --tb=short
 
-      - name: Run creation_engine baker tests (M21)
+      - name: Run creation_engine baker tests (M21 + M27)
         run: |
           python -m pytest tools/tests/test_creation_engine_bakers.py -q --tb=short
+
+      # TEACHING NOTE — M27 baker smoke tests
+      # These steps exercise the three new bakers end-to-end with the sample
+      # assets committed in samples/vertical_slice_project/Content/.  They
+      # complement the pytest contract tests by running the CLI interface directly,
+      # catching any argument-parser or file-path regressions.
+      - name: Smoke-test bake-collision (M27)
+        run: |
+          python tools/creation_engine.py bake-collision \
+            --input  samples/vertical_slice_project/Content/AI/arena_plane.obj \
+            --output /tmp/arena_plane.phys
+          test -f /tmp/arena_plane.phys
+          python3 -c "
+          import struct, sys
+          blob = open('/tmp/arena_plane.phys','rb').read()
+          magic, ver, vc, ic = struct.unpack('<4sHII', blob[:14])
+          assert magic == b'PHY1', f'Bad magic: {magic}'
+          assert ver == 1
+          assert vc > 0 and ic > 0 and ic % 3 == 0
+          print(f'[OK] PHY1: {vc} verts, {ic} indices, {len(blob)} bytes')
+          "
+
+      - name: Smoke-test bake-font (M27)
+        run: |
+          python tools/creation_engine.py bake-font \
+            --input  samples/vertical_slice_project/Content/UI/Fonts/ffxv_ui.font.json \
+            --output /tmp/ffxv_ui.font
+          test -f /tmp/ffxv_ui.font
+          python3 -c "
+          import struct
+          blob = open('/tmp/ffxv_ui.font','rb').read()
+          magic, ver, aw, ah, gc, gs, fc = struct.unpack('<4sHHHHHH', blob[:16])
+          assert magic == b'FNT1', f'Bad magic: {magic}'
+          assert ver == 1 and aw == 128 and ah == 48 and gc == 96
+          print(f'[OK] FNT1: {gc} glyphs, {aw}x{ah} atlas, {len(blob)} bytes')
+          "
+
+      - name: Smoke-test bake-road (M27)
+        run: |
+          python tools/creation_engine.py bake-road \
+            --input  samples/vertical_slice_project/Content/Roads/regalia_route.road.json \
+            --output /tmp/regalia_route.road
+          test -f /tmp/regalia_route.road
+          python3 -c "
+          import struct
+          blob = open('/tmp/regalia_route.road','rb').read()
+          magic, ver, wc = struct.unpack('<4sHI', blob[:10])
+          assert magic == b'RD01', f'Bad magic: {magic}'
+          assert ver == 1 and wc == 12
+          print(f'[OK] RD01: {wc} waypoints, {len(blob)} bytes')
+          "

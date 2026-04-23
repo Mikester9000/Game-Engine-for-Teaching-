@@ -1,7 +1,7 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-23T19:42:18Z",
+  "generatedAt": "2026-04-23T20:01:25Z",
   "assets": [
     {
       "id": "b3e26c6f-6eb8-48eb-bc81-a610ab1ce2c6",
@@ -484,12 +484,12 @@
       ]
     },
     {
-      "id": "35e8392d-7971-4d91-a0fe-7a69bda5a165",
+      "id": "21f9dfe3-9f61-48c9-bc5c-054eca569431",
       "type": "audio_bank",
       "name": "VerticalSliceBank",
       "source": "Audio/",
       "cooked": "Cooked/Audio/VerticalSliceBank.bank.json",
-      "hash": "bdb747dedb33b121a24a07df27b2413df7192ed3a4e586888e6eb79b652a4913",
+      "hash": "c7d4ae897d491d7cc6a4595c815ec29738014a5a8e488a9a8f225050b6e4cdc9",
       "dependencies": [],
       "tags": [
         "audio_bank"
@@ -799,6 +799,46 @@
       "tags": [
         "level",
         "streaming-cell"
+      ]
+    },
+    {
+      "id": "3c0ec859-dc1a-4713-98cb-97e869aeb5db",
+      "type": "collision",
+      "name": "arena_plane",
+      "source": "AI/arena_plane.obj",
+      "cooked": "Cooked/Physics/arena_plane.phys",
+      "hash": "0dbeacd57e02b6e0f2d92b8b37b6a4f8808b921a2ac8b8b3a49f85d53de23dd1",
+      "dependencies": [],
+      "tags": [
+        "collision",
+        "physics"
+      ]
+    },
+    {
+      "id": "d916f13e-798b-45db-ad97-db4bcd40b927",
+      "type": "font",
+      "name": "ffxv_ui",
+      "source": "UI/Fonts/ffxv_ui.font.json",
+      "cooked": "Cooked/UI/Fonts/ffxv_ui.font",
+      "hash": "1a0bbd3f89c1ffb6223aff416941d1d3970e824b31fd6185bca15e6179272701",
+      "dependencies": [],
+      "tags": [
+        "font",
+        "ui"
+      ]
+    },
+    {
+      "id": "35e84573-d23c-48b8-a9d7-3f6745cbc916",
+      "type": "road",
+      "name": "regalia_route",
+      "source": "Roads/regalia_route.road.json",
+      "cooked": "Cooked/Roads/regalia_route.road",
+      "hash": "1984e0361edfb4f85bc911196e7547939633f21409d6da99f96672794b890f94",
+      "dependencies": [],
+      "tags": [
+        "road",
+        "vehicle",
+        "navigation"
       ]
     }
   ]

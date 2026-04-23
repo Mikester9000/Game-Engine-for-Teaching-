@@ -333,6 +333,9 @@ jobs:
       #     sequence; IsComplete()==true.
       #   Test 3a — OnShotChanged callback: fires twice with indices 0 and 1.
       #   Test 3b — OnComplete callback: fires exactly once after all shots.
+      #   Test 4a — AddAudioEvent early: event NOT fired before declared time.
+      #   Test 4b — AddAudioEvent fired: event fires within ±1 frame (±dt/2).
+      #   Test 4c — AddAudioEvent once: event does not re-fire after shot ends.
       #
       # No D3D11 renderer needed — all tests are pure C++17 CPU tests.
       # -----------------------------------------------------------------------

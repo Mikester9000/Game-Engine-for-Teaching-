@@ -940,10 +940,10 @@ def bake_font(
             10      2   uint16     glyphCount
             12      2   uint16     glyphSize   (pixels, always square)
             14      2   uint16     firstChar   (ASCII code)
-     per glyph (28 bytes each):
-            14+G*28  5f  float32   u0, v0, u1, v1, advance   (per glyph)
+     per glyph (20 bytes each):
+            16+G*0   5f  float32   u0, v0, u1, v1, advance   (per glyph, 5×4=20 bytes)
      atlas pixels:
-            14+G*28+G*20  W*H  uint8  SDF R8 atlas (row-major, 0=outside)
+            16+G*20  W*H  uint8  SDF R8 atlas (row-major, 0=outside)
 
     Header size = 16 bytes (4s + 6×H).
     Glyph table = glyphCount × 20 bytes (5 floats × 4 bytes each).

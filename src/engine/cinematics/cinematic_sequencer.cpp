@@ -89,8 +89,7 @@ void CinematicSequencer::AddShot(CameraRig rig, float duration, std::string labe
         LOG_WARN("CinematicSequencer::AddShot — shot duration <= 0; clamped to 0.001 s.");
         duration = 0.001f;
     }
-    ShotEntry entry(std::move(rig), duration, std::move(label));
-    m_shots.push_back(std::move(entry));
+    m_shots.emplace_back(std::move(rig), duration, std::move(label));
 }
 
 void CinematicSequencer::AddAudioEvent(float t, std::string clipID)
@@ -117,10 +116,7 @@ void CinematicSequencer::AddAudioEvent(float t, std::string clipID)
         LOG_WARN("CinematicSequencer::AddAudioEvent — event time clamped to shot duration.");
     }
 
-    ShotEntry::AudioEventEntry ev;
-    ev.time   = clampedT;
-    ev.clipID = std::move(clipID);
-    shot.audioEvents.push_back(std::move(ev));
+    shot.audioEvents.push_back({clampedT, std::move(clipID)});
     shot.eventFired.push_back(false);  // parallel fired-flag array stays in sync
 }
 
