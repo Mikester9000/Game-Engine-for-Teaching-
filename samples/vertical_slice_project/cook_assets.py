@@ -41,6 +41,7 @@ from __future__ import annotations
 import json
 import hashlib
 import shutil
+import struct
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -241,8 +242,6 @@ def ensure_dir(path: Path) -> None:
 # DDS helper
 # ---------------------------------------------------------------------------
 
-import struct as _struct  # imported here to keep top-level imports minimal
-
 
 def _png_to_dds_rgba8(src_path: Path) -> bytes:
     """Decode a PNG/JPG and write an uncompressed DDS RGBA8 binary blob.
@@ -299,15 +298,29 @@ def _png_to_dds_rgba8(src_path: Path) -> bytes:
     -------
     bytes
         Complete DDS binary blob (magic + header + RGBA8 pixels).
+
+    Raises
+    ------
+    OSError, ValueError
+        Propagated from PIL if the source file cannot be opened or decoded.
     """
-    img = _PILImage.open(src_path).convert("RGBA")
+    try:
+        img = _PILImage.open(src_path)
+        # Validate that PIL recognised the format before converting.
+        img.verify()
+        img = _PILImage.open(src_path).convert("RGBA")
+    except Exception as exc:
+        raise ValueError(
+            f"_png_to_dds_rgba8: cannot decode '{src_path}': {exc}"
+        ) from exc
+
     width, height = img.size
     rgba_bytes: bytes = img.tobytes()  # R,G,B,A,R,G,B,A,... row-major
 
     # --- DDS_PIXELFORMAT (32 bytes) ---
     DDPF_ALPHAPIXELS = 0x00000001
     DDPF_RGB         = 0x00000040
-    pf = _struct.pack(
+    pf = struct.pack(
         "<IIIIIIII",
         32,                            # dwSize (must equal 32)
         DDPF_RGB | DDPF_ALPHAPIXELS,   # dwFlags
@@ -328,7 +341,7 @@ def _png_to_dds_rgba8(src_path: Path) -> bytes:
     DDSCAPS_TEXTURE  = 0x00001000
     pitch = width * 4  # 4 bytes per RGBA8 pixel
 
-    hdr = _struct.pack(
+    hdr = struct.pack(
         "<IIIIIII",
         124,                                                          # dwSize
         DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PITCH | DDSD_PIXELFORMAT,
@@ -340,7 +353,7 @@ def _png_to_dds_rgba8(src_path: Path) -> bytes:
     )  # 7 × 4 = 28 bytes
     hdr += b"\x00" * 44          # dwReserved1[11] — 11 × 4 = 44 bytes
     hdr += pf                    # DDS_PIXELFORMAT  — 32 bytes
-    hdr += _struct.pack(
+    hdr += struct.pack(
         "<IIIII",
         DDSCAPS_TEXTURE,         # dwCaps
         0,                       # dwCaps2
@@ -398,9 +411,14 @@ def cook_textures(registry: list[dict]) -> int:
         if should_recook(source_rel, source_hash, require_dds=_HAS_PILLOW):
             if _HAS_PILLOW:
                 # Convert PNG → DDS RGBA8 so d3d11_texture.cpp can load it.
-                dds_bytes = _png_to_dds_rgba8(src)
-                dst.write_bytes(dds_bytes)
-                action = "TEX-DDS"
+                try:
+                    dds_bytes = _png_to_dds_rgba8(src)
+                    dst.write_bytes(dds_bytes)
+                    action = "TEX-DDS"
+                except (OSError, ValueError) as exc:
+                    print(f"  [WARN] Could not convert {src.name} to DDS: {exc}. Falling back to copy.")
+                    shutil.copy2(src, dst)
+                    action = "TEX-COPY-ERR"
             else:
                 # Fallback: raw copy (loader will fail to parse but pipeline works).
                 shutil.copy2(src, dst)

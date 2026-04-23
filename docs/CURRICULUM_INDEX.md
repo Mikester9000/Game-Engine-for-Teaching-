@@ -26676,7 +26676,7 @@ a simple Python script makes it:
 
 ### Optional Tool Integration
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L50) (line 50)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L51) (line 51)
 
 ---------------------------------------------------------------------------
 We try to import the Python authoring tools that live in tools/.  If they
@@ -26693,7 +26693,7 @@ _HAS_ANIM_ENGINE = False
 
 ### Importing creation_engine from the tools directory
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L87) (line 87)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L88) (line 88)
 
 ---------------------------------------------------------------------------
 The creation_engine.py baker functions (bake_collision, bake_font,
@@ -26708,7 +26708,7 @@ sys.path.insert(0, str(_TOOLS_DIR))
 
 ### Hashing
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L106) (line 106)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L107) (line 107)
 
 We store a hash of each source asset in the registry.  On the next cook
 run we compare the current hash to the stored one.  If they match, the
@@ -26722,7 +26722,7 @@ return h.hexdigest()
 
 ### Stable GUIDs across cook runs
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L137) (line 137)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L138) (line 138)
 
 ──────────────────────────────────────────────
 A GUID is *stable* if it never changes once assigned — even when the cook
@@ -26732,7 +26732,7 @@ golden-file contract test all hardcode the GUID of specific assets.
 
 ### Explicit reset for re-entrant safety
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L155) (line 155)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L156) (line 156)
 
 This function currently runs once from main(), but we clear caches first
 so future callers (tests/tools that may invoke multiple cook passes in one
@@ -26754,7 +26754,7 @@ pass  # If the file is malformed, ignore and generate fresh GUIDs.
 
 ### Incremental cook / GUID stability
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L178) (line 178)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L179) (line 179)
 
 ──────────────────────────────────────────────────
 Use this instead of new_guid() whenever you register an asset entry that
@@ -26763,7 +26763,7 @@ the registry does not yet contain an entry for the asset (first cook run).
 
 ### Incremental cook
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L197) (line 197)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L198) (line 198)
 
 We use the existing registry to skip redundant work:
 1. If the source hash changed, re-cook.
@@ -26778,7 +26778,7 @@ if not source_hash:
 
 ### Defensive fallback
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L208) (line 208)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L209) (line 209)
 
 A missing hash means we cannot verify content identity safely.
 Re-cook to avoid reusing potentially stale cooked outputs.
@@ -26786,15 +26786,15 @@ return True
 
 ### Why DDS Instead of Raw PNG?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L250) (line 250)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L249) (line 249)
 
 ### Texture Cooking (DDS RGBA8)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L363) (line 363)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L376) (line 376)
 
 ### Audio Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L430) (line 430)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L448) (line 448)
 
 When the  tools/audio_authoring  package is installed, this function uses
 the  audio_engine.dsp  module to normalise each WAV file (target LUFS,
@@ -26803,7 +26803,7 @@ true-peak ceiling) before writing to Cooked/Audio/.  It also writes a
 
 ### Why normalise at cook time?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L439) (line 439)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L457) (line 457)
 
 Normalising audio during the cook step (not at runtime) means:
 1. The runtime doesn't waste CPU cycles on DSP during gameplay.
@@ -26817,7 +26817,7 @@ ensure_dir(audio_dst)
 
 ### Hash for aggregate assets
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L521) (line 521)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L539) (line 539)
 
 An audio bank is assembled from multiple WAV source files, so there
 is no single source file to hash.  We hash the cooked bank JSON
@@ -26827,7 +26827,7 @@ bank_hash = sha256_file(bank_path)
 
 ### Scene Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L545) (line 545)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L563) (line 563)
 
 For simple JSON scenes, cooking is mostly a copy + validation step.
 A real cook might:
@@ -26841,7 +26841,7 @@ ensure_dir(maps_dst)
 
 ### Type detection heuristic
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L588) (line 588)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L606) (line 606)
 
 The ``AnimAssetPipeline`` (anim_engine Path A) identifies skeletons by
 checking whether the ``$schema`` field contains the word ``"skeleton"``
@@ -26851,7 +26851,7 @@ the same ``type`` and cooked file extension as the real pipeline would.
 
 ### Animation Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L609) (line 609)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L627) (line 627)
 
 When the  tools/anim_authoring  package is installed, this function uses
 the  AnimAssetPipeline  class from  animation_engine.integration  to
@@ -26860,7 +26860,7 @@ the cooked .skelc / .animc files.
 
 ### Type detection in stub mode
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L669) (line 669)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L687) (line 687)
 
 The AnimAssetPipeline (Path A) distinguishes skeletons from clips
 via the "$schema" field.  We replicate that logic here so that stub
@@ -26873,7 +26873,7 @@ source_hash = hashlib.sha256(source_bytes).hexdigest()
 
 ### Surface malformed content during stub cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L684) (line 684)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L702) (line 702)
 
 Silent fallback makes it hard for content creators to notice
 that a file is invalid JSON and may be misclassified.  We log
@@ -26888,7 +26888,7 @@ is_skeleton = _is_skeleton_file(raw, src)
 
 ### M23 groundwork: authored material ingestion
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L732) (line 732)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L750) (line 750)
 
 For M23 we start by treating authored materials as first-class cooked assets.
 Designers author *.material.json files in Content/Materials/.  The cook step
@@ -26902,7 +26902,7 @@ ensure_dir(materials_dst)
 
 ### Parse-check before cook output
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L752) (line 752)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L770) (line 770)
 
 We fail fast on malformed material JSON so bad content never reaches
 Cooked/ where the runtime would otherwise fail much later.
@@ -26924,11 +26924,11 @@ continue
 
 ### M7.2: Level / Streaming Cell Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L796) (line 796)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L814) (line 814)
 
 ### Why .level instead of keeping .cell.json?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L814) (line 814)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L832) (line 832)
 
 Renaming to .level makes it explicit that this is a COOKED, runtime-ready
 file — not a raw source file.  The extension signals the content pipeline
@@ -26940,7 +26940,7 @@ ensure_dir(levels_dst)
 
 ### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L828) (line 828)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L846) (line 846)
 
 Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
 leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -26951,11 +26951,11 @@ dst.parent.mkdir(parents=True, exist_ok=True)
 
 ### M27: Collision Mesh Cooking (PHY1 Baker)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L875) (line 875)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L893) (line 893)
 
 ### Why not ship raw OBJ to the runtime?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L884) (line 884)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L902) (line 902)
 
 OBJ is a text format designed for 3D DCC tools (Blender, Maya).  Parsing
 text at runtime is slow and the format includes data the physics engine
@@ -26971,11 +26971,11 @@ _HAS_CE = False
 
 ### M27: Font Atlas Cooking (FNT1 Baker)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L951) (line 951)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L969) (line 969)
 
 ### Why teach offline SDF generation?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L962) (line 962)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L980) (line 980)
 
 Signed Distance Fields are the standard technique for resolution-independent
 GPU font rendering (used in FFXV HUD, Unity TextMeshPro, Valve's Dota 2 HUD).
@@ -26991,11 +26991,11 @@ _HAS_CE = False
 
 ### M27: Road Spline Cooking (RD01 Baker)
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1021) (line 1021)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1039) (line 1039)
 
 ### Road waypoints vs Bezier curves
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1032) (line 1032)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1050) (line 1050)
 
 A production road system would upsample waypoints into a Bezier or
 Catmull-Rom spline for smooth camera and steering transitions.  For
@@ -27010,7 +27010,7 @@ _HAS_CE = False
 
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1090) (line 1090)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1108) (line 1108)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -27023,7 +27023,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1104) (line 1104)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L1122) (line 1122)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
