@@ -594,6 +594,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             # and renders screen-space text quads using sdf_text.vs/ps.hlsl.
             # Gated on ENGINE_ENABLE_D3D11 because it uses D3D11 COM types.
             src/engine/ui/font_renderer.cpp
+            # TEACHING NOTE — M25: TerrainRenderer (heightmap-driven grid mesh).
+            # terrain_renderer.cpp generates a W×H vertex/index grid from float
+            # height samples, compiles terrain.vs/ps.hlsl at runtime via
+            # D3DCompileFromFile, and renders the grid each frame.  Gated on
+            # ENGINE_ENABLE_D3D11 because it uses D3D11 COM types directly.
+            src/engine/rendering/d3d11/terrain_renderer.cpp
         )
     endif()
 
@@ -656,6 +662,13 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             # and fuel drain.  It requires PhysicsWorld for the downward raycasts
             # and chassis box body, so it is compiled only when Jolt is present.
             src/engine/vehicle/vehicle_system.cpp
+            # TEACHING NOTE — M25 Terrain Collision
+            # terrain_collision.cpp creates a JPH::HeightFieldShape from a
+            # float height array and registers it as a static physics body.
+            # It depends on PhysicsWorld (physics_world.cpp) and uses the
+            # internal physics_impl.hpp to access Jolt's BodyInterface — so it
+            # must be compiled alongside the other Jolt-dependent sources.
+            src/engine/physics/terrain_collision.cpp
         )
     endif()
     # hit_volume.cpp has no Jolt dependency — always include it.
@@ -1058,6 +1071,16 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
             "${CMAKE_SOURCE_DIR}/shaders/bloom_bright.ps.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/bloom_blur.ps.hlsl"
             "${CMAKE_SOURCE_DIR}/shaders/bloom_composite.ps.hlsl"
+
+            # TEACHING NOTE — M25: Terrain heightmap shaders.
+            # terrain.vs.hlsl transforms the CPU-generated heightmap grid vertices
+            #   (pos, normal, uv) through world→view→clip matrices and passes
+            #   world-space pos + normal to the pixel shader.
+            # terrain.ps.hlsl applies Lambert diffuse + ambient with height-based
+            #   colour blending (grass at low Y, rock at high Y) + Reinhard tonemap.
+            # Both use a shared TerrainCB constant buffer bound to b0 in both stages.
+            "${CMAKE_SOURCE_DIR}/shaders/terrain.vs.hlsl"
+            "${CMAKE_SOURCE_DIR}/shaders/terrain.ps.hlsl"
         )
 
         add_custom_command(TARGET engine_sandbox POST_BUILD
