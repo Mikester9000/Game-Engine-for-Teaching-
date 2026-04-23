@@ -429,7 +429,7 @@ def _is_skeleton_file(raw: dict, src: Path) -> bool:
     Returns:
         ``True`` for skeleton assets, ``False`` for animation clips.
     """
-    schema_ref = raw.get("$schema", "")
+    schema_ref = str(raw.get("$schema", "")).lower()
     return "skeleton" in schema_ref or src.stem.endswith("_skeleton")
 
 

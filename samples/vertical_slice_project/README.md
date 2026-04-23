@@ -42,7 +42,7 @@ vertical_slice_project/
 | Animations (JSON) | 2 skeletons + 18 clips | ~120 KB |
 | **Total source** | **95+ files** | **~12.32 MB (0.012 GiB)** |
 
-All source assets are well under the stricter 0.5 GiB target.
+All source assets are well below the 0.5 GiB target.
 
 ## How to cook
 
@@ -84,6 +84,8 @@ Expected output (M24 — full content):
 
 ============================================================
  Cook complete: 97 assets processed.
+ (\"assets processed\" includes all per-file cook steps; registry entries are
+ consolidated to 66 runtime assets after packaging.)
 ============================================================
 ```
 
