@@ -412,6 +412,27 @@ def cook_scenes(registry: list[dict]) -> int:
     return count
 
 
+def _is_skeleton_file(raw: dict, src: Path) -> bool:
+    """Return True when *src* is an animation skeleton rather than a clip.
+
+    TEACHING NOTE — Type detection heuristic
+    The ``AnimAssetPipeline`` (anim_engine Path A) identifies skeletons by
+    checking whether the ``$schema`` field contains the word ``"skeleton"``
+    *or* whether the file stem ends with ``"_skeleton"``.  We replicate that
+    exact heuristic here so stub mode (Path B) produces registry entries with
+    the same ``type`` and cooked file extension as the real pipeline would.
+
+    Args:
+        raw: Parsed JSON dict from the source file.
+        src: Path to the source JSON file (used for filename-suffix check).
+
+    Returns:
+        ``True`` for skeleton assets, ``False`` for animation clips.
+    """
+    schema_ref = raw.get("$schema", "")
+    return "skeleton" in schema_ref or src.stem.endswith("_skeleton")
+
+
 def cook_animations(registry: list[dict]) -> int:
     """Cook animation JSON files to Cooked/Anim/ using anim_engine when available.
 
@@ -485,13 +506,12 @@ def cook_animations(registry: list[dict]) -> int:
             source_hash = sha256_file(src)
 
             # Detect asset type: skeleton files reference the skeleton schema
-            # or use the "_skeleton" filename suffix.
+            # or use the "_skeleton" filename suffix — see _is_skeleton_file().
             try:
                 raw = json.loads(src.read_text(encoding="utf-8"))
-                schema_ref: str = raw.get("$schema", "")
             except Exception:
-                schema_ref = ""
-            is_skeleton = "skeleton" in schema_ref or src.stem.endswith("_skeleton")
+                raw = {}
+            is_skeleton = _is_skeleton_file(raw, src)
 
             if is_skeleton:
                 asset_type = "skeleton"
