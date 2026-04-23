@@ -444,7 +444,9 @@
 #include <iostream>
 #include <exception>
 #include <cstring>      // std::strcmp
+#include <cstdlib>      // std::getenv — ENGINE_PROJECT_ROOT env var lookup
 #include <cmath>        // std::sin — used for the animated clear colour
+#include <algorithm>    // std::sort — authored_content .tex file ordering
 #include <string>
 #include <filesystem>   // std::filesystem::path (C++17)
 #include <chrono>       // high_resolution_clock (testworld dt measurement)

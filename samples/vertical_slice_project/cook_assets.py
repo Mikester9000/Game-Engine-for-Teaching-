@@ -224,8 +224,13 @@ def should_recook(source_rel: str, source_hash: str, require_dds: bool = False) 
         return True
     if require_dds:
         # Re-cook if the file was previously saved as a raw PNG copy.
+        # TEACHING NOTE — We only need the DDS magic number, so read just
+        # the first 4 bytes instead of loading the entire cooked texture
+        # into memory.  This keeps incremental cook checks cheap even for
+        # large DDS assets.
         try:
-            header = cooked_path.read_bytes()[:4]
+            with cooked_path.open("rb") as cooked_file:
+                header = cooked_file.read(4)
             if header != b"DDS ":
                 return True
         except OSError:
@@ -248,11 +253,11 @@ def _png_to_dds_rgba8(src_path: Path) -> bytes:
 
     TEACHING NOTE — Why DDS Instead of Raw PNG?
     ============================================
-    The D3D11 texture loader (d3d11_texture.cpp) expects either a DDS file
-    (detected by the 4-byte magic 'DDS ') or a raw RGBA8 stream.  PNG files
-    are *not* understood by the GPU-facing loader, so shipping PNG files as
-    cooked textures silently causes every authored slot to fall back to the
-    1×1 white SRV.
+    The D3D11 texture loader (d3d11_texture.cpp) expects a DDS byte stream
+    and detects it by the 4-byte magic 'DDS '.  PNG files and raw RGBA8
+    pixel bytes are *not* understood by the GPU-facing loader, so shipping
+    non-DDS cooked textures silently causes every authored slot to fall back
+    to the 1×1 white SRV.
 
     DDS (DirectDraw Surface) is a container format that carries:
       - A compact binary header (magic + DDS_HEADER = 128 bytes).
@@ -305,10 +310,13 @@ def _png_to_dds_rgba8(src_path: Path) -> bytes:
         Propagated from PIL if the source file cannot be opened or decoded.
     """
     try:
-        img = _PILImage.open(src_path)
-        # Validate that PIL recognised the format before converting.
-        img.verify()
-        img = _PILImage.open(src_path).convert("RGBA")
+        # TEACHING NOTE — Open the source image under a context manager so the
+        # file handle is released deterministically during large cook runs.
+        # `load()` forces PIL to fully decode the file, which validates the
+        # image contents without needing a second `open()` after `verify()`.
+        with _PILImage.open(src_path) as decoded_img:
+            decoded_img.load()
+            img = decoded_img.convert("RGBA")
     except Exception as exc:
         raise ValueError(
             f"_png_to_dds_rgba8: cannot decode '{src_path}': {exc}"
@@ -384,9 +392,10 @@ def cook_textures(registry: list[dict]) -> int:
 
     Output format: uncompressed DDS RGBA8 (DXGI_FORMAT_R8G8B8A8_UNORM),
     stored with a .tex extension so the AssetRegistry path conventions are
-    preserved.  The D3D11Renderer resolves .tex paths via
-    TryResolveAuthoredTexturePath which checks the actual file content (DDS
-    magic) rather than the extension.
+    preserved.  The D3D11Renderer resolves authored .tex paths via
+    TryResolveAuthoredTexturePath using path/extension conventions;
+    the actual DDS validation still happens later in the D3D11 texture loader
+    when it reads the file bytes and checks the 'DDS ' magic.
 
     When Pillow is NOT installed the step falls back to a PNG copy so the
     pipeline still runs end-to-end even without the imaging library.
