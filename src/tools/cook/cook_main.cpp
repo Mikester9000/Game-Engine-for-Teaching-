@@ -419,6 +419,40 @@ int main(int argc, char* argv[])
             continue;
         }
 
+        // TEACHING NOTE — Aggregate assets (e.g. audio banks)
+        // Some registry entries represent a cooked artifact produced from a
+        // source DIRECTORY rather than a single file (for example an audio
+        // bank built from Content/Audio/ into one .bank.json file). In that
+        // case we don't copy the directory; we verify the cooked artifact
+        // already exists and index it in assetdb.json.
+        if (fs::is_directory(srcPath))
+        {
+            if (!fs::exists(dstPath))
+            {
+                std::cerr << "[cook] ERROR: Aggregate asset output missing: "
+                          << dstPath.string() << "\n";
+                ++errors;
+                continue;
+            }
+
+            if (verbose)
+            {
+                std::cout << "  [" << entry.type << "] "
+                          << srcPath.filename().string()
+                          << "  →  "
+                          << fs::relative(dstPath, projectPath).string()
+                          << "  (prebuilt aggregate)\n";
+            }
+
+            std::string relCooked = fs::relative(dstPath, projectPath).string();
+            for (char& ch : relCooked)
+                if (ch == '\\') ch = '/';
+
+            dbEntries.push_back({ entry.id, relCooked });
+            ++cooked;
+            continue;
+        }
+
         // Copy file (overwrite if already exists).
         fs::copy_file(srcPath, dstPath, fs::copy_options::overwrite_existing, ec);
         if (ec)
