@@ -1,0 +1,221 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "a85b1c93-c515-48c4-947d-a9381a8cb26e",
+  "name": "Death",
+  "skeletonId": "11111111-aaaa-4b3c-8d2e-000000000001",
+  "durationSeconds": 1.6,
+  "fps": 30.0,
+  "loopable": false,
+  "rootMotion": false,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.4,
+          "translation": [
+            0,
+            0,
+            -0.15
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            0,
+            0,
+            -0.35
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.6,
+          "translation": [
+            0,
+            0,
+            -0.35
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 1,
+      "boneName": "pelvis",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0.98,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.8,
+          "translation": [
+            0,
+            0.5,
+            -0.08
+          ],
+          "rotation": [
+            0.45,
+            0,
+            0,
+            0.89
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.6,
+          "translation": [
+            0,
+            0.2,
+            -0.12
+          ],
+          "rotation": [
+            0.7,
+            0,
+            0,
+            0.714
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 3,
+      "boneName": "spine_02",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0.12,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.8,
+          "translation": [
+            0,
+            0.03,
+            -0.07
+          ],
+          "rotation": [
+            0.55,
+            0,
+            0,
+            0.83
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.6,
+          "translation": [
+            0,
+            0.0,
+            -0.08
+          ],
+          "rotation": [
+            0.7,
+            0,
+            0,
+            0.714
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

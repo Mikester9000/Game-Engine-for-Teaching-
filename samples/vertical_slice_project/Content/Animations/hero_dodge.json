@@ -1,0 +1,284 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "94cf2d0d-1feb-422c-89c0-a54347fc7efa",
+  "name": "Dodge",
+  "skeletonId": "11111111-aaaa-4b3c-8d2e-000000000001",
+  "durationSeconds": 0.65,
+  "fps": 30.0,
+  "loopable": false,
+  "rootMotion": true,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.15,
+          "translation": [
+            0,
+            0,
+            -0.2
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.35,
+          "translation": [
+            0,
+            0,
+            -1.1
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.65,
+          "translation": [
+            0,
+            0,
+            -1.3
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 1,
+      "boneName": "pelvis",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0.98,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.25,
+          "translation": [
+            0,
+            0.86,
+            -0.05
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.65,
+          "translation": [
+            0,
+            0.98,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 8,
+      "boneName": "L_upper_arm",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.25,
+          "translation": [
+            0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.48,
+            0,
+            0.1,
+            0.87
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.65,
+          "translation": [
+            0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 12,
+      "boneName": "R_upper_arm",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            -0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.25,
+          "translation": [
+            -0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.48,
+            0,
+            -0.1,
+            0.87
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.65,
+          "translation": [
+            -0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

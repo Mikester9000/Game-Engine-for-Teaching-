@@ -1,0 +1,202 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "6c31448a-7f20-4031-ac02-df003a79a4fb",
+  "name": "StrafeLeft",
+  "skeletonId": "11111111-aaaa-4b3c-8d2e-000000000001",
+  "durationSeconds": 1.0,
+  "fps": 30.0,
+  "loopable": true,
+  "rootMotion": true,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.5,
+          "translation": [
+            -0.45,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.0,
+          "translation": [
+            -0.9,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 15,
+      "boneName": "L_upper_leg",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            0.15,
+            0,
+            0,
+            0.989
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.5,
+          "translation": [
+            0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            -0.12,
+            0,
+            0,
+            0.993
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.0,
+          "translation": [
+            0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            0.15,
+            0,
+            0,
+            0.989
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 18,
+      "boneName": "R_upper_leg",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            -0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            -0.15,
+            0,
+            0,
+            0.989
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.5,
+          "translation": [
+            -0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            0.12,
+            0,
+            0,
+            0.993
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.0,
+          "translation": [
+            -0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            -0.15,
+            0,
+            0,
+            0.989
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-23T14:04:20Z",
+  "generatedAt": "2026-04-23T14:10:09Z",
   "assets": [
     {
       "id": "b178571d-5f20-4b8a-9763-b2570c8e50a3",
@@ -28,6 +28,54 @@
       ]
     },
     {
+      "id": "edb89b83-0406-4add-bc64-e6dddedf6883",
+      "type": "texture",
+      "name": "hero_mage_albedo",
+      "source": "Textures/character/hero_mage_albedo.png",
+      "cooked": "Cooked/Textures/character/hero_mage_albedo.tex",
+      "hash": "08b5b017f5b75d330dce4d335baf0eb91b3f1b82b018db8ef324081e6bb591d3",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "327d6b11-d3ae-4ed4-a55b-d88ed42f2b77",
+      "type": "texture",
+      "name": "hero_mage_ao",
+      "source": "Textures/character/hero_mage_ao.png",
+      "cooked": "Cooked/Textures/character/hero_mage_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "83831c4a-aeaf-4704-a54d-867c977c5e34",
+      "type": "texture",
+      "name": "hero_mage_metallic_roughness",
+      "source": "Textures/character/hero_mage_metallic_roughness.png",
+      "cooked": "Cooked/Textures/character/hero_mage_metallic_roughness.tex",
+      "hash": "cbaee5829b9752bda5a5790a4e23769d5f30122bc856baec108982664970dbef",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "4f0c359e-08eb-4910-ad50-0864b573a0a6",
+      "type": "texture",
+      "name": "hero_mage_normal",
+      "source": "Textures/character/hero_mage_normal.png",
+      "cooked": "Cooked/Textures/character/hero_mage_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
       "id": "c4b855d5-4cf2-4f84-8adc-df05876555fe",
       "type": "texture",
       "name": "hero_metallic_roughness",
@@ -46,6 +94,246 @@
       "source": "Textures/character/hero_normal.png",
       "cooked": "Cooked/Textures/character/hero_normal.tex",
       "hash": "88ac473e8d268eda6924415ea2e3f3abcb60baa0ca3c1005da6508016286d0bc",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "acddbe49-7d29-4ea0-82bc-fba198fa8c3c",
+      "type": "texture",
+      "name": "hero_rogue_albedo",
+      "source": "Textures/character/hero_rogue_albedo.png",
+      "cooked": "Cooked/Textures/character/hero_rogue_albedo.tex",
+      "hash": "c6fe86ce1d5345b8fcf1af8a5fd79c978e13a10c947945fe5683c19e6e8291a4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "b8d0626a-882e-4cac-aa26-2651828ee0cd",
+      "type": "texture",
+      "name": "hero_rogue_ao",
+      "source": "Textures/character/hero_rogue_ao.png",
+      "cooked": "Cooked/Textures/character/hero_rogue_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "72cfbc96-52cd-4c8f-bcc0-f12b58e17409",
+      "type": "texture",
+      "name": "hero_rogue_metallic_roughness",
+      "source": "Textures/character/hero_rogue_metallic_roughness.png",
+      "cooked": "Cooked/Textures/character/hero_rogue_metallic_roughness.tex",
+      "hash": "a8dbccd5f2d16bda13c766f67af50aeea672088a72763fc35377eb8a6522d3ca",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "af6b3f80-9a7a-462b-8516-9cf154519072",
+      "type": "texture",
+      "name": "hero_rogue_normal",
+      "source": "Textures/character/hero_rogue_normal.png",
+      "cooked": "Cooked/Textures/character/hero_rogue_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "f38653ac-885a-4cf6-a155-47490b60e79f",
+      "type": "texture",
+      "name": "barrel_wood_albedo",
+      "source": "Textures/props/barrel_wood_albedo.png",
+      "cooked": "Cooked/Textures/props/barrel_wood_albedo.tex",
+      "hash": "b0c249fcfc1c1ebfe995c834a2f2c3ccdfc1ddf94757fcb78cb94d63a773a9df",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "f6f1164b-0b95-49a5-966c-0402fae0cacb",
+      "type": "texture",
+      "name": "barrel_wood_ao",
+      "source": "Textures/props/barrel_wood_ao.png",
+      "cooked": "Cooked/Textures/props/barrel_wood_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "e22f3d70-91e7-4ec6-99d0-6e7acbb73fe6",
+      "type": "texture",
+      "name": "barrel_wood_metallic_roughness",
+      "source": "Textures/props/barrel_wood_metallic_roughness.png",
+      "cooked": "Cooked/Textures/props/barrel_wood_metallic_roughness.tex",
+      "hash": "ea7be95594393fcdbaed7812f128e751642901818d7296ad74cd56b257c4cbe9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "5ced8820-ee9c-4d41-a492-0728d7b29945",
+      "type": "texture",
+      "name": "barrel_wood_normal",
+      "source": "Textures/props/barrel_wood_normal.png",
+      "cooked": "Cooked/Textures/props/barrel_wood_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "bd1b86f3-57b9-4bed-841e-7f14b760be57",
+      "type": "texture",
+      "name": "crate_metal_albedo",
+      "source": "Textures/props/crate_metal_albedo.png",
+      "cooked": "Cooked/Textures/props/crate_metal_albedo.tex",
+      "hash": "f2d451c3c85520c71736598bbf4148fc2039e1446d35be5302f647b552bce862",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "e2704aac-4e16-43aa-8e71-302ee0f4884a",
+      "type": "texture",
+      "name": "crate_metal_ao",
+      "source": "Textures/props/crate_metal_ao.png",
+      "cooked": "Cooked/Textures/props/crate_metal_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "d2c3b7cb-077c-467a-99e0-ff835b38ce87",
+      "type": "texture",
+      "name": "crate_metal_metallic_roughness",
+      "source": "Textures/props/crate_metal_metallic_roughness.png",
+      "cooked": "Cooked/Textures/props/crate_metal_metallic_roughness.tex",
+      "hash": "d07dac7f7841cc1830b2c00d7d56e09a94fed7bc9b881ae6fadd9f217d1ab6d5",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "0a8969d5-f542-41b4-93c9-7055bc509c6f",
+      "type": "texture",
+      "name": "crate_metal_normal",
+      "source": "Textures/props/crate_metal_normal.png",
+      "cooked": "Cooked/Textures/props/crate_metal_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "e27f2e73-d989-4899-82c3-ab338c871dd6",
+      "type": "texture",
+      "name": "stone_pillar_albedo",
+      "source": "Textures/props/stone_pillar_albedo.png",
+      "cooked": "Cooked/Textures/props/stone_pillar_albedo.tex",
+      "hash": "a2d2140b02b3c365468e2d01771cac1cae32dc1b37dfda4d44c0331e813de12b",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "68c30440-bac5-4754-a6e0-d4c6d77c1d7f",
+      "type": "texture",
+      "name": "stone_pillar_ao",
+      "source": "Textures/props/stone_pillar_ao.png",
+      "cooked": "Cooked/Textures/props/stone_pillar_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "72dd3b0d-4ec5-4114-985b-ca1241333a97",
+      "type": "texture",
+      "name": "stone_pillar_metallic_roughness",
+      "source": "Textures/props/stone_pillar_metallic_roughness.png",
+      "cooked": "Cooked/Textures/props/stone_pillar_metallic_roughness.tex",
+      "hash": "925c03a2c9f2772dbff55e906439bc57a8cec3411ebf9e4e8dab431aefe7e506",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "975f7421-96ad-457f-9e48-3710a4530e1f",
+      "type": "texture",
+      "name": "stone_pillar_normal",
+      "source": "Textures/props/stone_pillar_normal.png",
+      "cooked": "Cooked/Textures/props/stone_pillar_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "21f4bb3a-1b71-474c-9c96-44fccf8f638f",
+      "type": "texture",
+      "name": "terrain_desert_albedo",
+      "source": "Textures/terrain/terrain_desert_albedo.png",
+      "cooked": "Cooked/Textures/terrain/terrain_desert_albedo.tex",
+      "hash": "b8b677dc208bc9c2860786fe42104afb9a12ee847fb0d3537f4525f23459b333",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "bd8fa721-d0cd-48c9-b6b7-6b927b4c0b29",
+      "type": "texture",
+      "name": "terrain_desert_ao",
+      "source": "Textures/terrain/terrain_desert_ao.png",
+      "cooked": "Cooked/Textures/terrain/terrain_desert_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "1456f068-aea1-40be-a3a0-a60b090fab5c",
+      "type": "texture",
+      "name": "terrain_desert_metallic_roughness",
+      "source": "Textures/terrain/terrain_desert_metallic_roughness.png",
+      "cooked": "Cooked/Textures/terrain/terrain_desert_metallic_roughness.tex",
+      "hash": "5c73e2e2484611b4f421cb8f46fb20bcfe5c1deffbd5a11512ee70b9f006e183",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "63e2b5ca-bbb2-4f3a-8173-39187b769301",
+      "type": "texture",
+      "name": "terrain_desert_normal",
+      "source": "Textures/terrain/terrain_desert_normal.png",
+      "cooked": "Cooked/Textures/terrain/terrain_desert_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
       "dependencies": [],
       "tags": [
         "texture"
@@ -100,12 +388,108 @@
       ]
     },
     {
+      "id": "689e0866-ddb7-4a5d-83a0-d5b67d9c9f70",
+      "type": "texture",
+      "name": "terrain_rocky_albedo",
+      "source": "Textures/terrain/terrain_rocky_albedo.png",
+      "cooked": "Cooked/Textures/terrain/terrain_rocky_albedo.tex",
+      "hash": "fa3ad9d46b9112c8d7c6d34c02f39cfe6485a99a1fa4a682d8caa19fe89d80da",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "ea0a3f3c-1690-4222-b996-bbe2c64ffd26",
+      "type": "texture",
+      "name": "terrain_rocky_ao",
+      "source": "Textures/terrain/terrain_rocky_ao.png",
+      "cooked": "Cooked/Textures/terrain/terrain_rocky_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "38675c30-1fe7-4c49-8bf1-8acedaf9c302",
+      "type": "texture",
+      "name": "terrain_rocky_metallic_roughness",
+      "source": "Textures/terrain/terrain_rocky_metallic_roughness.png",
+      "cooked": "Cooked/Textures/terrain/terrain_rocky_metallic_roughness.tex",
+      "hash": "c3c862580c98d53de325dbe534d475fe42e0fe36a8d91475574a55989d18a90e",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "dd14bb5e-110e-43dd-93dd-2bbe3fb1550a",
+      "type": "texture",
+      "name": "terrain_rocky_normal",
+      "source": "Textures/terrain/terrain_rocky_normal.png",
+      "cooked": "Cooked/Textures/terrain/terrain_rocky_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "756711c5-71e3-47f0-966b-c23387a651a2",
+      "type": "texture",
+      "name": "terrain_snow_albedo",
+      "source": "Textures/terrain/terrain_snow_albedo.png",
+      "cooked": "Cooked/Textures/terrain/terrain_snow_albedo.tex",
+      "hash": "4c85a772174828d4fd7106dd44c73183064d8a014c33a6803341e89e82be8472",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "87d5f956-e8a7-473a-97f2-469e500b7557",
+      "type": "texture",
+      "name": "terrain_snow_ao",
+      "source": "Textures/terrain/terrain_snow_ao.png",
+      "cooked": "Cooked/Textures/terrain/terrain_snow_ao.tex",
+      "hash": "82d06c06826c0c2ebba879c23bcd39aa13abd77a19f73446c034ddd29a39eda4",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "3addfdb5-996e-47d4-8143-1eebb7aa14ce",
+      "type": "texture",
+      "name": "terrain_snow_metallic_roughness",
+      "source": "Textures/terrain/terrain_snow_metallic_roughness.png",
+      "cooked": "Cooked/Textures/terrain/terrain_snow_metallic_roughness.tex",
+      "hash": "b80be5b1a7fc05912ee0903bbe5d7db5a0e26a7cf4f2acb94885f1efdf6a0a9e",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
+      "id": "dbcbd21a-c509-4460-a0db-b5a6244ebf75",
+      "type": "texture",
+      "name": "terrain_snow_normal",
+      "source": "Textures/terrain/terrain_snow_normal.png",
+      "cooked": "Cooked/Textures/terrain/terrain_snow_normal.tex",
+      "hash": "28c90580b1d047845c7205d63f402d5d50e802c909f4161df87737235659a9d9",
+      "dependencies": [],
+      "tags": [
+        "texture"
+      ]
+    },
+    {
       "id": "a40b0cbe-1554-4727-96b7-126bc731e0d1",
       "type": "audio_bank",
       "name": "VerticalSliceBank",
       "source": "Content/Audio",
       "cooked": "Cooked/Audio/VerticalSliceBank.bank.json",
-      "hash": "3919497efeaea64d09f1acbebb568597893867e13d61b7403ca137737d80a7fc",
+      "hash": "9f0c686fc0a69b08a3cd003a7ca7fa37a1e2b689733c14b57bbf8c274b8e6d66",
       "dependencies": [],
       "tags": [
         "audio_bank"
@@ -125,6 +509,78 @@
       ]
     },
     {
+      "id": "7579b467-ae24-435f-b800-0aed0ddbffec",
+      "type": "anim_clip",
+      "name": "enemy_goblin_attack",
+      "source": "Animations/enemy_goblin_attack.json",
+      "cooked": "Cooked/Anim/enemy_goblin_attack.animc",
+      "hash": "79efefaac2c1aba0b74a1b050a3b5f59c953d644cfaa2325fb40416d0b36d0ed",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "b104021f-2002-4b58-b8fc-7bd4247b9d15",
+      "type": "anim_clip",
+      "name": "enemy_goblin_death",
+      "source": "Animations/enemy_goblin_death.json",
+      "cooked": "Cooked/Anim/enemy_goblin_death.animc",
+      "hash": "90d044520de4bc73b3c4431be8eeb336c402e3c0a2bcc9fec4906b10503439aa",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "8d58ff41-a832-43c9-b028-f0af5390bf99",
+      "type": "anim_clip",
+      "name": "enemy_goblin_hit",
+      "source": "Animations/enemy_goblin_hit.json",
+      "cooked": "Cooked/Anim/enemy_goblin_hit.animc",
+      "hash": "fd7d79cd3f1cca85d5e868962337783901be73441f4eea8846bb94d1cadca435",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "087506d8-77e9-4702-a754-80e16d04158c",
+      "type": "anim_clip",
+      "name": "enemy_goblin_idle",
+      "source": "Animations/enemy_goblin_idle.json",
+      "cooked": "Cooked/Anim/enemy_goblin_idle.animc",
+      "hash": "aaebbfdbf114b5c01569dab32581fe22b9de4a4bd29739af226bb154204f73eb",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "210e6f48-8b61-4d6b-bd1a-51ef38f00d2d",
+      "type": "skeleton",
+      "name": "enemy_goblin_skeleton",
+      "source": "Animations/enemy_goblin_skeleton.json",
+      "cooked": "Cooked/Anim/enemy_goblin_skeleton.skelc",
+      "hash": "0daa6f4b342b08b6838a6f72de19c865f6dd92d08fa630e7a995ac155420a01b",
+      "dependencies": [],
+      "tags": [
+        "skeleton"
+      ]
+    },
+    {
+      "id": "ec3106fc-7eda-42a2-9814-bdba2424feb8",
+      "type": "anim_clip",
+      "name": "enemy_goblin_walk",
+      "source": "Animations/enemy_goblin_walk.json",
+      "cooked": "Cooked/Anim/enemy_goblin_walk.animc",
+      "hash": "3b0d29ce2087f75d306a0971de6b10f4113fb21eaadf0a7c9fd1f8080562f57c",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
       "id": "a36a4baf-a086-4236-b9ed-759f7b7b8b7e",
       "type": "anim_clip",
       "name": "hero_attack",
@@ -137,12 +593,84 @@
       ]
     },
     {
+      "id": "e5325fb7-1554-473e-beb6-bb5daf6e9160",
+      "type": "anim_clip",
+      "name": "hero_block",
+      "source": "Animations/hero_block.json",
+      "cooked": "Cooked/Anim/hero_block.animc",
+      "hash": "dad783f1de8fe756a4caf067d7d113883ad936cc3f7872287a3b447c8dd01828",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "3e312adb-b36b-4e45-b8e0-d12ec9eefbfc",
+      "type": "anim_clip",
+      "name": "hero_cast",
+      "source": "Animations/hero_cast.json",
+      "cooked": "Cooked/Anim/hero_cast.animc",
+      "hash": "db0ec2348ffee50b640deae476cc828f7bd159a2a72bd64d1775ebf8019998d0",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "5c23b8d1-8bf2-43bb-8522-4f1975e7a50a",
+      "type": "anim_clip",
+      "name": "hero_death",
+      "source": "Animations/hero_death.json",
+      "cooked": "Cooked/Anim/hero_death.animc",
+      "hash": "14aee944152486c03b5e0c81f2f6ecb255c80fd679ff96056b5e5c0a37ce6750",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "dc94eff3-5a52-44c2-8ee8-a94b8457ce77",
+      "type": "anim_clip",
+      "name": "hero_dodge",
+      "source": "Animations/hero_dodge.json",
+      "cooked": "Cooked/Anim/hero_dodge.animc",
+      "hash": "10eeb8a87b4bd7b5d0028ee8404cb574091b39577c1800fc0cd2a1bc8c60762b",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "84fd36e7-acda-48e4-aa22-1677dbebc0dd",
+      "type": "anim_clip",
+      "name": "hero_hit_react",
+      "source": "Animations/hero_hit_react.json",
+      "cooked": "Cooked/Anim/hero_hit_react.animc",
+      "hash": "1832492f452dd35ba36941b0ea541d885b218f86687a6a79a75b7ac9a88f6112",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
       "id": "a165702a-6d55-42c3-bf41-dd4c43cf875f",
       "type": "anim_clip",
       "name": "hero_idle",
       "source": "Animations/hero_idle.json",
       "cooked": "Cooked/Anim/hero_idle.animc",
       "hash": "dc4bf671cd2fc6bbda865d0d570402f5eaf14eed4d669949db96899ae2316dec",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "851e6c84-2687-4312-bec4-5457f9f7c1bf",
+      "type": "anim_clip",
+      "name": "hero_jump",
+      "source": "Animations/hero_jump.json",
+      "cooked": "Cooked/Anim/hero_jump.animc",
+      "hash": "4ee8a3c51f7485796148bd386000ea7f0351692ad349d78d48b4912b941bebb0",
       "dependencies": [],
       "tags": [
         "animation"
@@ -170,6 +698,30 @@
       "dependencies": [],
       "tags": [
         "skeleton"
+      ]
+    },
+    {
+      "id": "19759f1c-d776-46e2-b571-05245d23e4cc",
+      "type": "anim_clip",
+      "name": "hero_strafe_left",
+      "source": "Animations/hero_strafe_left.json",
+      "cooked": "Cooked/Anim/hero_strafe_left.animc",
+      "hash": "3b22ee6f0f237694d039541e2e3537c370d1fa0925102c48870d3d303d45f974",
+      "dependencies": [],
+      "tags": [
+        "animation"
+      ]
+    },
+    {
+      "id": "d41fcfee-e628-4e0b-b868-39cf51ce91b8",
+      "type": "anim_clip",
+      "name": "hero_strafe_right",
+      "source": "Animations/hero_strafe_right.json",
+      "cooked": "Cooked/Anim/hero_strafe_right.animc",
+      "hash": "89fe4bd7d81d3b9c73636cbddf6c979eae8c4d3cfbbe64f194ff3c9e52bc1df8",
+      "dependencies": [],
+      "tags": [
+        "animation"
       ]
     },
     {

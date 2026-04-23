@@ -1,0 +1,139 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "82edaa7a-8b58-4eae-86a8-72bf07ac6a0a",
+  "name": "GoblinIdle",
+  "skeletonId": "b5bb58f8-8e51-475a-9585-41fd02104e5b",
+  "durationSeconds": 1.8,
+  "fps": 30.0,
+  "loopable": true,
+  "rootMotion": false,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            0,
+            0.02,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.8,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 4,
+      "boneName": "head",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0.15,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            0,
+            0.15,
+            0
+          ],
+          "rotation": [
+            0,
+            0.08,
+            0,
+            0.997
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.8,
+          "translation": [
+            0,
+            0.15,
+            0
+          ],
+          "rotation": [
+            0,
+            -0.08,
+            0,
+            0.997
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -13,19 +13,19 @@ vertical_slice_project/
 ├── Content/              ← Raw source assets (version-controlled)
 │   ├── AI/               ← Sample OBJ geometry for nav-mesh baking (M21)
 │   ├── environment/      ← Sample time-of-day curve JSON (M21)
-│   ├── Textures/         ← PBR PNG textures (character + terrain sets)  ← M24
-│   │   ├── character/    ← hero_albedo/normal/metallic_roughness/ao.png
-│   │   └── terrain/      ← terrain_grass_albedo/normal/metallic_roughness/ao.png
-│   ├── Audio/            ← WAV audio clips (music, SFX, ambient)        ← M24
-│   │   ├── music/        ← battle_theme_loop.wav, exploration_loop.wav
-│   │   ├── sfx/          ← footstep_stone/grass, ui_click, sword_swing, magic_cast
-│   │   └── ambient/      ← wind_ambient.wav
-│   ├── Animations/       ← Skeleton + animation clip JSON               ← M24
-│   │   ├── hero_skeleton.json   ← 21-bone humanoid rig
-│   │   ├── hero_idle.json       ← 2s looping idle (breathing + head sway)
-│   │   ├── hero_walk.json       ← 1.2s looping walk cycle (root-motion)
-│   │   ├── hero_run.json        ← 0.7s looping run cycle (root-motion)
-│   │   └── hero_attack.json     ← 0.8s sword slash (hit_frame event)
+│   ├── Textures/         ← PBR PNG textures (character + props + terrain)  ← M24
+│   │   ├── character/    ← hero, hero_rogue, hero_mage PBR sets (4 maps each)
+│   │   ├── props/        ← crate_metal, barrel_wood, stone_pillar PBR sets
+│   │   └── terrain/      ← grass, desert, rocky, snow PBR sets
+│   ├── Audio/            ← WAV audio clips (music, SFX, ambient)            ← M24
+│   │   ├── music/        ← battle/exploration/town/dungeon/boss/menu loops + fanfare
+│   │   ├── sfx/          ← footsteps, UI, combat hits, items, traversal, world events
+│   │   └── ambient/      ← wind, rain, forest day/night, cave, town, market beds
+│   ├── Animations/       ← Skeleton + animation clip JSON                   ← M24
+│   │   ├── hero_skeleton.json         ← 21-bone humanoid rig
+│   │   ├── hero_* clips               ← idle/walk/run/attack + jump/dodge/cast/etc.
+│   │   ├── enemy_goblin_skeleton.json ← enemy rig for combat encounters
+│   │   └── enemy_goblin_* clips       ← idle/walk/attack/hit/death
 │   ├── Maps/             ← Scene JSON files (MainTown, etc.)
 │   ├── Materials/        ← PBR material descriptors
 │   └── Levels/           ← Streaming cell descriptors
@@ -37,12 +37,12 @@ vertical_slice_project/
 
 | Category | Files | Total size |
 |----------|-------|-----------|
-| Textures (source PNG) | 8 × 512×512 | ~332 KB |
-| Audio (WAV) | 8 clips | ~1.3 MB |
-| Animations (JSON) | 1 skeleton + 4 clips | ~52 KB |
-| **Total source** | **21 new files** | **< 2 MB** |
+| Textures (source PNG) | 40 PBR maps | ~3.5 MB |
+| Audio (WAV) | 32 clips | ~9.0 MB |
+| Animations (JSON) | 2 skeletons + 18 clips | ~120 KB |
+| **Total source** | **95+ files** | **~12.32 MB (0.012 GiB)** |
 
-All source assets are well under the 3 GiB repository budget.
+All source assets are well under the stricter 0.5 GiB target.
 
 ## How to cook
 
@@ -64,12 +64,12 @@ Expected output (M24 — full content):
 --- Textures ---
   [TEX] character/hero_albedo.png → Cooked/Textures/character/hero_albedo.tex
   [TEX] character/hero_ao.png → ...
-  ... (8 textures total)
+  ... (40 texture maps total)
 
 --- Audio ---
   [AUD] ambient/wind_ambient.wav → Cooked/Audio/ambient/wind_ambient.wav
   [AUD] music/battle_theme_loop.wav → ...
-  ... (8 WAV clips total, packed into VerticalSliceBank)
+  ... (32 WAV clips total, packed into VerticalSliceBank)
 
 --- Scenes / Maps ---
   [MAP] MainTown.scene.json → Cooked/Maps/MainTown.scene.json
@@ -77,13 +77,13 @@ Expected output (M24 — full content):
 --- Animations ---
   [SKL] hero_skeleton.json → Cooked/Anim/hero_skeleton.skelc
   [ANI] hero_idle.json → Cooked/Anim/hero_idle.animc
-  ... (4 clips + 1 skeleton)
+  ... (18 clips + 2 skeletons)
 
 --- Registry ---
-  Registry written: AssetRegistry.json  (20 assets)
+  Registry written: AssetRegistry.json  (66 assets)
 
 ============================================================
- Cook complete: 27 assets processed.
+ Cook complete: 97 assets processed.
 ============================================================
 ```
 
@@ -93,12 +93,13 @@ The `Content/` directories ship with real assets ready to use:
 
 | Directory | What's inside |
 |-----------|--------------|
-| `Content/Textures/character/` | 4-map PBR set for the hero: albedo, normal, metallic-roughness, AO (512×512 PNG) |
-| `Content/Textures/terrain/` | 4-map PBR set for grass terrain: albedo, normal, metallic-roughness, AO (512×512 PNG) |
-| `Content/Audio/music/` | `battle_theme_loop.wav` — driving 140 BPM battle music; `exploration_loop.wav` — calm 90 BPM exploration music |
-| `Content/Audio/sfx/` | `footstep_stone.wav`, `footstep_grass.wav`, `ui_click.wav`, `sword_swing.wav`, `magic_cast.wav` |
-| `Content/Audio/ambient/` | `wind_ambient.wav` — 4-second loopable wind atmosphere |
-| `Content/Animations/` | `hero_skeleton.json` (21-bone humanoid rig) + `hero_idle/walk/run/attack.json` clips |
+| `Content/Textures/character/` | 3 character PBR sets (`hero`, `hero_rogue`, `hero_mage`) with albedo/normal/metallic-roughness/AO maps |
+| `Content/Textures/props/` | 3 prop PBR sets (`crate_metal`, `barrel_wood`, `stone_pillar`) |
+| `Content/Textures/terrain/` | 4 terrain PBR sets (`grass`, `desert`, `rocky`, `snow`) |
+| `Content/Audio/music/` | 7 tracks: battle, exploration, town, dungeon, boss, menu loops + victory fanfare |
+| `Content/Audio/sfx/` | 19 event clips: footsteps, UI, weapon impacts, enemy, item, movement, and interact sounds |
+| `Content/Audio/ambient/` | 7 ambience beds: wind, rain, forest day/night, cave, town crowd, market |
+| `Content/Animations/` | 2 skeletons + 18 clips (hero locomotion/combat/utility and goblin enemy combat set) |
 
 ## How to add more assets
 
