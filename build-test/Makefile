@@ -117,6 +117,19 @@ depend:
 .PHONY : depend
 
 #=============================================================================
+# Target rules for targets named lua55_static
+
+# Build rule for target.
+lua55_static: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 lua55_static
+.PHONY : lua55_static
+
+# fast build rule for target.
+lua55_static/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/build
+.PHONY : lua55_static/fast
+
+#=============================================================================
 # Target rules for targets named game
 
 # Build rule for target.
@@ -129,12 +142,952 @@ game/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/build
 .PHONY : game/fast
 
+#=============================================================================
+# Target rules for targets named cook
+
+# Build rule for target.
+cook: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cook
+.PHONY : cook
+
+# fast build rule for target.
+cook/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cook.dir/build.make CMakeFiles/cook.dir/build
+.PHONY : cook/fast
+
+#=============================================================================
+# Target rules for targets named pak
+
+# Build rule for target.
+pak: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pak
+.PHONY : pak
+
+# fast build rule for target.
+pak/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pak.dir/build.make CMakeFiles/pak.dir/build
+.PHONY : pak/fast
+
+Lua/lua-5.5.0/src/lapi.o: Lua/lua-5.5.0/src/lapi.c.o
+.PHONY : Lua/lua-5.5.0/src/lapi.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lapi.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lapi.c.o
+.PHONY : Lua/lua-5.5.0/src/lapi.c.o
+
+Lua/lua-5.5.0/src/lapi.i: Lua/lua-5.5.0/src/lapi.c.i
+.PHONY : Lua/lua-5.5.0/src/lapi.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lapi.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lapi.c.i
+.PHONY : Lua/lua-5.5.0/src/lapi.c.i
+
+Lua/lua-5.5.0/src/lapi.s: Lua/lua-5.5.0/src/lapi.c.s
+.PHONY : Lua/lua-5.5.0/src/lapi.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lapi.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lapi.c.s
+.PHONY : Lua/lua-5.5.0/src/lapi.c.s
+
+Lua/lua-5.5.0/src/lauxlib.o: Lua/lua-5.5.0/src/lauxlib.c.o
+.PHONY : Lua/lua-5.5.0/src/lauxlib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lauxlib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lauxlib.c.o
+.PHONY : Lua/lua-5.5.0/src/lauxlib.c.o
+
+Lua/lua-5.5.0/src/lauxlib.i: Lua/lua-5.5.0/src/lauxlib.c.i
+.PHONY : Lua/lua-5.5.0/src/lauxlib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lauxlib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lauxlib.c.i
+.PHONY : Lua/lua-5.5.0/src/lauxlib.c.i
+
+Lua/lua-5.5.0/src/lauxlib.s: Lua/lua-5.5.0/src/lauxlib.c.s
+.PHONY : Lua/lua-5.5.0/src/lauxlib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lauxlib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lauxlib.c.s
+.PHONY : Lua/lua-5.5.0/src/lauxlib.c.s
+
+Lua/lua-5.5.0/src/lbaselib.o: Lua/lua-5.5.0/src/lbaselib.c.o
+.PHONY : Lua/lua-5.5.0/src/lbaselib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lbaselib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lbaselib.c.o
+.PHONY : Lua/lua-5.5.0/src/lbaselib.c.o
+
+Lua/lua-5.5.0/src/lbaselib.i: Lua/lua-5.5.0/src/lbaselib.c.i
+.PHONY : Lua/lua-5.5.0/src/lbaselib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lbaselib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lbaselib.c.i
+.PHONY : Lua/lua-5.5.0/src/lbaselib.c.i
+
+Lua/lua-5.5.0/src/lbaselib.s: Lua/lua-5.5.0/src/lbaselib.c.s
+.PHONY : Lua/lua-5.5.0/src/lbaselib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lbaselib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lbaselib.c.s
+.PHONY : Lua/lua-5.5.0/src/lbaselib.c.s
+
+Lua/lua-5.5.0/src/lcode.o: Lua/lua-5.5.0/src/lcode.c.o
+.PHONY : Lua/lua-5.5.0/src/lcode.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lcode.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lcode.c.o
+.PHONY : Lua/lua-5.5.0/src/lcode.c.o
+
+Lua/lua-5.5.0/src/lcode.i: Lua/lua-5.5.0/src/lcode.c.i
+.PHONY : Lua/lua-5.5.0/src/lcode.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lcode.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lcode.c.i
+.PHONY : Lua/lua-5.5.0/src/lcode.c.i
+
+Lua/lua-5.5.0/src/lcode.s: Lua/lua-5.5.0/src/lcode.c.s
+.PHONY : Lua/lua-5.5.0/src/lcode.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lcode.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lcode.c.s
+.PHONY : Lua/lua-5.5.0/src/lcode.c.s
+
+Lua/lua-5.5.0/src/lcorolib.o: Lua/lua-5.5.0/src/lcorolib.c.o
+.PHONY : Lua/lua-5.5.0/src/lcorolib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lcorolib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lcorolib.c.o
+.PHONY : Lua/lua-5.5.0/src/lcorolib.c.o
+
+Lua/lua-5.5.0/src/lcorolib.i: Lua/lua-5.5.0/src/lcorolib.c.i
+.PHONY : Lua/lua-5.5.0/src/lcorolib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lcorolib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lcorolib.c.i
+.PHONY : Lua/lua-5.5.0/src/lcorolib.c.i
+
+Lua/lua-5.5.0/src/lcorolib.s: Lua/lua-5.5.0/src/lcorolib.c.s
+.PHONY : Lua/lua-5.5.0/src/lcorolib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lcorolib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lcorolib.c.s
+.PHONY : Lua/lua-5.5.0/src/lcorolib.c.s
+
+Lua/lua-5.5.0/src/lctype.o: Lua/lua-5.5.0/src/lctype.c.o
+.PHONY : Lua/lua-5.5.0/src/lctype.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lctype.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lctype.c.o
+.PHONY : Lua/lua-5.5.0/src/lctype.c.o
+
+Lua/lua-5.5.0/src/lctype.i: Lua/lua-5.5.0/src/lctype.c.i
+.PHONY : Lua/lua-5.5.0/src/lctype.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lctype.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lctype.c.i
+.PHONY : Lua/lua-5.5.0/src/lctype.c.i
+
+Lua/lua-5.5.0/src/lctype.s: Lua/lua-5.5.0/src/lctype.c.s
+.PHONY : Lua/lua-5.5.0/src/lctype.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lctype.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lctype.c.s
+.PHONY : Lua/lua-5.5.0/src/lctype.c.s
+
+Lua/lua-5.5.0/src/ldblib.o: Lua/lua-5.5.0/src/ldblib.c.o
+.PHONY : Lua/lua-5.5.0/src/ldblib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/ldblib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldblib.c.o
+.PHONY : Lua/lua-5.5.0/src/ldblib.c.o
+
+Lua/lua-5.5.0/src/ldblib.i: Lua/lua-5.5.0/src/ldblib.c.i
+.PHONY : Lua/lua-5.5.0/src/ldblib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/ldblib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldblib.c.i
+.PHONY : Lua/lua-5.5.0/src/ldblib.c.i
+
+Lua/lua-5.5.0/src/ldblib.s: Lua/lua-5.5.0/src/ldblib.c.s
+.PHONY : Lua/lua-5.5.0/src/ldblib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/ldblib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldblib.c.s
+.PHONY : Lua/lua-5.5.0/src/ldblib.c.s
+
+Lua/lua-5.5.0/src/ldebug.o: Lua/lua-5.5.0/src/ldebug.c.o
+.PHONY : Lua/lua-5.5.0/src/ldebug.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/ldebug.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldebug.c.o
+.PHONY : Lua/lua-5.5.0/src/ldebug.c.o
+
+Lua/lua-5.5.0/src/ldebug.i: Lua/lua-5.5.0/src/ldebug.c.i
+.PHONY : Lua/lua-5.5.0/src/ldebug.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/ldebug.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldebug.c.i
+.PHONY : Lua/lua-5.5.0/src/ldebug.c.i
+
+Lua/lua-5.5.0/src/ldebug.s: Lua/lua-5.5.0/src/ldebug.c.s
+.PHONY : Lua/lua-5.5.0/src/ldebug.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/ldebug.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldebug.c.s
+.PHONY : Lua/lua-5.5.0/src/ldebug.c.s
+
+Lua/lua-5.5.0/src/ldo.o: Lua/lua-5.5.0/src/ldo.c.o
+.PHONY : Lua/lua-5.5.0/src/ldo.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/ldo.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldo.c.o
+.PHONY : Lua/lua-5.5.0/src/ldo.c.o
+
+Lua/lua-5.5.0/src/ldo.i: Lua/lua-5.5.0/src/ldo.c.i
+.PHONY : Lua/lua-5.5.0/src/ldo.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/ldo.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldo.c.i
+.PHONY : Lua/lua-5.5.0/src/ldo.c.i
+
+Lua/lua-5.5.0/src/ldo.s: Lua/lua-5.5.0/src/ldo.c.s
+.PHONY : Lua/lua-5.5.0/src/ldo.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/ldo.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldo.c.s
+.PHONY : Lua/lua-5.5.0/src/ldo.c.s
+
+Lua/lua-5.5.0/src/ldump.o: Lua/lua-5.5.0/src/ldump.c.o
+.PHONY : Lua/lua-5.5.0/src/ldump.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/ldump.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldump.c.o
+.PHONY : Lua/lua-5.5.0/src/ldump.c.o
+
+Lua/lua-5.5.0/src/ldump.i: Lua/lua-5.5.0/src/ldump.c.i
+.PHONY : Lua/lua-5.5.0/src/ldump.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/ldump.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldump.c.i
+.PHONY : Lua/lua-5.5.0/src/ldump.c.i
+
+Lua/lua-5.5.0/src/ldump.s: Lua/lua-5.5.0/src/ldump.c.s
+.PHONY : Lua/lua-5.5.0/src/ldump.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/ldump.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ldump.c.s
+.PHONY : Lua/lua-5.5.0/src/ldump.c.s
+
+Lua/lua-5.5.0/src/lfunc.o: Lua/lua-5.5.0/src/lfunc.c.o
+.PHONY : Lua/lua-5.5.0/src/lfunc.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lfunc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lfunc.c.o
+.PHONY : Lua/lua-5.5.0/src/lfunc.c.o
+
+Lua/lua-5.5.0/src/lfunc.i: Lua/lua-5.5.0/src/lfunc.c.i
+.PHONY : Lua/lua-5.5.0/src/lfunc.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lfunc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lfunc.c.i
+.PHONY : Lua/lua-5.5.0/src/lfunc.c.i
+
+Lua/lua-5.5.0/src/lfunc.s: Lua/lua-5.5.0/src/lfunc.c.s
+.PHONY : Lua/lua-5.5.0/src/lfunc.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lfunc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lfunc.c.s
+.PHONY : Lua/lua-5.5.0/src/lfunc.c.s
+
+Lua/lua-5.5.0/src/lgc.o: Lua/lua-5.5.0/src/lgc.c.o
+.PHONY : Lua/lua-5.5.0/src/lgc.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lgc.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lgc.c.o
+.PHONY : Lua/lua-5.5.0/src/lgc.c.o
+
+Lua/lua-5.5.0/src/lgc.i: Lua/lua-5.5.0/src/lgc.c.i
+.PHONY : Lua/lua-5.5.0/src/lgc.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lgc.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lgc.c.i
+.PHONY : Lua/lua-5.5.0/src/lgc.c.i
+
+Lua/lua-5.5.0/src/lgc.s: Lua/lua-5.5.0/src/lgc.c.s
+.PHONY : Lua/lua-5.5.0/src/lgc.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lgc.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lgc.c.s
+.PHONY : Lua/lua-5.5.0/src/lgc.c.s
+
+Lua/lua-5.5.0/src/linit.o: Lua/lua-5.5.0/src/linit.c.o
+.PHONY : Lua/lua-5.5.0/src/linit.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/linit.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/linit.c.o
+.PHONY : Lua/lua-5.5.0/src/linit.c.o
+
+Lua/lua-5.5.0/src/linit.i: Lua/lua-5.5.0/src/linit.c.i
+.PHONY : Lua/lua-5.5.0/src/linit.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/linit.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/linit.c.i
+.PHONY : Lua/lua-5.5.0/src/linit.c.i
+
+Lua/lua-5.5.0/src/linit.s: Lua/lua-5.5.0/src/linit.c.s
+.PHONY : Lua/lua-5.5.0/src/linit.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/linit.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/linit.c.s
+.PHONY : Lua/lua-5.5.0/src/linit.c.s
+
+Lua/lua-5.5.0/src/liolib.o: Lua/lua-5.5.0/src/liolib.c.o
+.PHONY : Lua/lua-5.5.0/src/liolib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/liolib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/liolib.c.o
+.PHONY : Lua/lua-5.5.0/src/liolib.c.o
+
+Lua/lua-5.5.0/src/liolib.i: Lua/lua-5.5.0/src/liolib.c.i
+.PHONY : Lua/lua-5.5.0/src/liolib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/liolib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/liolib.c.i
+.PHONY : Lua/lua-5.5.0/src/liolib.c.i
+
+Lua/lua-5.5.0/src/liolib.s: Lua/lua-5.5.0/src/liolib.c.s
+.PHONY : Lua/lua-5.5.0/src/liolib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/liolib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/liolib.c.s
+.PHONY : Lua/lua-5.5.0/src/liolib.c.s
+
+Lua/lua-5.5.0/src/llex.o: Lua/lua-5.5.0/src/llex.c.o
+.PHONY : Lua/lua-5.5.0/src/llex.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/llex.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/llex.c.o
+.PHONY : Lua/lua-5.5.0/src/llex.c.o
+
+Lua/lua-5.5.0/src/llex.i: Lua/lua-5.5.0/src/llex.c.i
+.PHONY : Lua/lua-5.5.0/src/llex.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/llex.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/llex.c.i
+.PHONY : Lua/lua-5.5.0/src/llex.c.i
+
+Lua/lua-5.5.0/src/llex.s: Lua/lua-5.5.0/src/llex.c.s
+.PHONY : Lua/lua-5.5.0/src/llex.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/llex.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/llex.c.s
+.PHONY : Lua/lua-5.5.0/src/llex.c.s
+
+Lua/lua-5.5.0/src/lmathlib.o: Lua/lua-5.5.0/src/lmathlib.c.o
+.PHONY : Lua/lua-5.5.0/src/lmathlib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lmathlib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lmathlib.c.o
+.PHONY : Lua/lua-5.5.0/src/lmathlib.c.o
+
+Lua/lua-5.5.0/src/lmathlib.i: Lua/lua-5.5.0/src/lmathlib.c.i
+.PHONY : Lua/lua-5.5.0/src/lmathlib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lmathlib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lmathlib.c.i
+.PHONY : Lua/lua-5.5.0/src/lmathlib.c.i
+
+Lua/lua-5.5.0/src/lmathlib.s: Lua/lua-5.5.0/src/lmathlib.c.s
+.PHONY : Lua/lua-5.5.0/src/lmathlib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lmathlib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lmathlib.c.s
+.PHONY : Lua/lua-5.5.0/src/lmathlib.c.s
+
+Lua/lua-5.5.0/src/lmem.o: Lua/lua-5.5.0/src/lmem.c.o
+.PHONY : Lua/lua-5.5.0/src/lmem.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lmem.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lmem.c.o
+.PHONY : Lua/lua-5.5.0/src/lmem.c.o
+
+Lua/lua-5.5.0/src/lmem.i: Lua/lua-5.5.0/src/lmem.c.i
+.PHONY : Lua/lua-5.5.0/src/lmem.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lmem.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lmem.c.i
+.PHONY : Lua/lua-5.5.0/src/lmem.c.i
+
+Lua/lua-5.5.0/src/lmem.s: Lua/lua-5.5.0/src/lmem.c.s
+.PHONY : Lua/lua-5.5.0/src/lmem.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lmem.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lmem.c.s
+.PHONY : Lua/lua-5.5.0/src/lmem.c.s
+
+Lua/lua-5.5.0/src/loadlib.o: Lua/lua-5.5.0/src/loadlib.c.o
+.PHONY : Lua/lua-5.5.0/src/loadlib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/loadlib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/loadlib.c.o
+.PHONY : Lua/lua-5.5.0/src/loadlib.c.o
+
+Lua/lua-5.5.0/src/loadlib.i: Lua/lua-5.5.0/src/loadlib.c.i
+.PHONY : Lua/lua-5.5.0/src/loadlib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/loadlib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/loadlib.c.i
+.PHONY : Lua/lua-5.5.0/src/loadlib.c.i
+
+Lua/lua-5.5.0/src/loadlib.s: Lua/lua-5.5.0/src/loadlib.c.s
+.PHONY : Lua/lua-5.5.0/src/loadlib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/loadlib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/loadlib.c.s
+.PHONY : Lua/lua-5.5.0/src/loadlib.c.s
+
+Lua/lua-5.5.0/src/lobject.o: Lua/lua-5.5.0/src/lobject.c.o
+.PHONY : Lua/lua-5.5.0/src/lobject.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lobject.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lobject.c.o
+.PHONY : Lua/lua-5.5.0/src/lobject.c.o
+
+Lua/lua-5.5.0/src/lobject.i: Lua/lua-5.5.0/src/lobject.c.i
+.PHONY : Lua/lua-5.5.0/src/lobject.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lobject.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lobject.c.i
+.PHONY : Lua/lua-5.5.0/src/lobject.c.i
+
+Lua/lua-5.5.0/src/lobject.s: Lua/lua-5.5.0/src/lobject.c.s
+.PHONY : Lua/lua-5.5.0/src/lobject.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lobject.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lobject.c.s
+.PHONY : Lua/lua-5.5.0/src/lobject.c.s
+
+Lua/lua-5.5.0/src/lopcodes.o: Lua/lua-5.5.0/src/lopcodes.c.o
+.PHONY : Lua/lua-5.5.0/src/lopcodes.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lopcodes.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lopcodes.c.o
+.PHONY : Lua/lua-5.5.0/src/lopcodes.c.o
+
+Lua/lua-5.5.0/src/lopcodes.i: Lua/lua-5.5.0/src/lopcodes.c.i
+.PHONY : Lua/lua-5.5.0/src/lopcodes.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lopcodes.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lopcodes.c.i
+.PHONY : Lua/lua-5.5.0/src/lopcodes.c.i
+
+Lua/lua-5.5.0/src/lopcodes.s: Lua/lua-5.5.0/src/lopcodes.c.s
+.PHONY : Lua/lua-5.5.0/src/lopcodes.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lopcodes.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lopcodes.c.s
+.PHONY : Lua/lua-5.5.0/src/lopcodes.c.s
+
+Lua/lua-5.5.0/src/loslib.o: Lua/lua-5.5.0/src/loslib.c.o
+.PHONY : Lua/lua-5.5.0/src/loslib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/loslib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/loslib.c.o
+.PHONY : Lua/lua-5.5.0/src/loslib.c.o
+
+Lua/lua-5.5.0/src/loslib.i: Lua/lua-5.5.0/src/loslib.c.i
+.PHONY : Lua/lua-5.5.0/src/loslib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/loslib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/loslib.c.i
+.PHONY : Lua/lua-5.5.0/src/loslib.c.i
+
+Lua/lua-5.5.0/src/loslib.s: Lua/lua-5.5.0/src/loslib.c.s
+.PHONY : Lua/lua-5.5.0/src/loslib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/loslib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/loslib.c.s
+.PHONY : Lua/lua-5.5.0/src/loslib.c.s
+
+Lua/lua-5.5.0/src/lparser.o: Lua/lua-5.5.0/src/lparser.c.o
+.PHONY : Lua/lua-5.5.0/src/lparser.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lparser.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lparser.c.o
+.PHONY : Lua/lua-5.5.0/src/lparser.c.o
+
+Lua/lua-5.5.0/src/lparser.i: Lua/lua-5.5.0/src/lparser.c.i
+.PHONY : Lua/lua-5.5.0/src/lparser.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lparser.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lparser.c.i
+.PHONY : Lua/lua-5.5.0/src/lparser.c.i
+
+Lua/lua-5.5.0/src/lparser.s: Lua/lua-5.5.0/src/lparser.c.s
+.PHONY : Lua/lua-5.5.0/src/lparser.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lparser.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lparser.c.s
+.PHONY : Lua/lua-5.5.0/src/lparser.c.s
+
+Lua/lua-5.5.0/src/lstate.o: Lua/lua-5.5.0/src/lstate.c.o
+.PHONY : Lua/lua-5.5.0/src/lstate.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lstate.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstate.c.o
+.PHONY : Lua/lua-5.5.0/src/lstate.c.o
+
+Lua/lua-5.5.0/src/lstate.i: Lua/lua-5.5.0/src/lstate.c.i
+.PHONY : Lua/lua-5.5.0/src/lstate.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lstate.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstate.c.i
+.PHONY : Lua/lua-5.5.0/src/lstate.c.i
+
+Lua/lua-5.5.0/src/lstate.s: Lua/lua-5.5.0/src/lstate.c.s
+.PHONY : Lua/lua-5.5.0/src/lstate.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lstate.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstate.c.s
+.PHONY : Lua/lua-5.5.0/src/lstate.c.s
+
+Lua/lua-5.5.0/src/lstring.o: Lua/lua-5.5.0/src/lstring.c.o
+.PHONY : Lua/lua-5.5.0/src/lstring.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lstring.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstring.c.o
+.PHONY : Lua/lua-5.5.0/src/lstring.c.o
+
+Lua/lua-5.5.0/src/lstring.i: Lua/lua-5.5.0/src/lstring.c.i
+.PHONY : Lua/lua-5.5.0/src/lstring.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lstring.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstring.c.i
+.PHONY : Lua/lua-5.5.0/src/lstring.c.i
+
+Lua/lua-5.5.0/src/lstring.s: Lua/lua-5.5.0/src/lstring.c.s
+.PHONY : Lua/lua-5.5.0/src/lstring.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lstring.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstring.c.s
+.PHONY : Lua/lua-5.5.0/src/lstring.c.s
+
+Lua/lua-5.5.0/src/lstrlib.o: Lua/lua-5.5.0/src/lstrlib.c.o
+.PHONY : Lua/lua-5.5.0/src/lstrlib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lstrlib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstrlib.c.o
+.PHONY : Lua/lua-5.5.0/src/lstrlib.c.o
+
+Lua/lua-5.5.0/src/lstrlib.i: Lua/lua-5.5.0/src/lstrlib.c.i
+.PHONY : Lua/lua-5.5.0/src/lstrlib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lstrlib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstrlib.c.i
+.PHONY : Lua/lua-5.5.0/src/lstrlib.c.i
+
+Lua/lua-5.5.0/src/lstrlib.s: Lua/lua-5.5.0/src/lstrlib.c.s
+.PHONY : Lua/lua-5.5.0/src/lstrlib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lstrlib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lstrlib.c.s
+.PHONY : Lua/lua-5.5.0/src/lstrlib.c.s
+
+Lua/lua-5.5.0/src/ltable.o: Lua/lua-5.5.0/src/ltable.c.o
+.PHONY : Lua/lua-5.5.0/src/ltable.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/ltable.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltable.c.o
+.PHONY : Lua/lua-5.5.0/src/ltable.c.o
+
+Lua/lua-5.5.0/src/ltable.i: Lua/lua-5.5.0/src/ltable.c.i
+.PHONY : Lua/lua-5.5.0/src/ltable.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/ltable.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltable.c.i
+.PHONY : Lua/lua-5.5.0/src/ltable.c.i
+
+Lua/lua-5.5.0/src/ltable.s: Lua/lua-5.5.0/src/ltable.c.s
+.PHONY : Lua/lua-5.5.0/src/ltable.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/ltable.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltable.c.s
+.PHONY : Lua/lua-5.5.0/src/ltable.c.s
+
+Lua/lua-5.5.0/src/ltablib.o: Lua/lua-5.5.0/src/ltablib.c.o
+.PHONY : Lua/lua-5.5.0/src/ltablib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/ltablib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltablib.c.o
+.PHONY : Lua/lua-5.5.0/src/ltablib.c.o
+
+Lua/lua-5.5.0/src/ltablib.i: Lua/lua-5.5.0/src/ltablib.c.i
+.PHONY : Lua/lua-5.5.0/src/ltablib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/ltablib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltablib.c.i
+.PHONY : Lua/lua-5.5.0/src/ltablib.c.i
+
+Lua/lua-5.5.0/src/ltablib.s: Lua/lua-5.5.0/src/ltablib.c.s
+.PHONY : Lua/lua-5.5.0/src/ltablib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/ltablib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltablib.c.s
+.PHONY : Lua/lua-5.5.0/src/ltablib.c.s
+
+Lua/lua-5.5.0/src/ltm.o: Lua/lua-5.5.0/src/ltm.c.o
+.PHONY : Lua/lua-5.5.0/src/ltm.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/ltm.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltm.c.o
+.PHONY : Lua/lua-5.5.0/src/ltm.c.o
+
+Lua/lua-5.5.0/src/ltm.i: Lua/lua-5.5.0/src/ltm.c.i
+.PHONY : Lua/lua-5.5.0/src/ltm.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/ltm.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltm.c.i
+.PHONY : Lua/lua-5.5.0/src/ltm.c.i
+
+Lua/lua-5.5.0/src/ltm.s: Lua/lua-5.5.0/src/ltm.c.s
+.PHONY : Lua/lua-5.5.0/src/ltm.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/ltm.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/ltm.c.s
+.PHONY : Lua/lua-5.5.0/src/ltm.c.s
+
+Lua/lua-5.5.0/src/lundump.o: Lua/lua-5.5.0/src/lundump.c.o
+.PHONY : Lua/lua-5.5.0/src/lundump.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lundump.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lundump.c.o
+.PHONY : Lua/lua-5.5.0/src/lundump.c.o
+
+Lua/lua-5.5.0/src/lundump.i: Lua/lua-5.5.0/src/lundump.c.i
+.PHONY : Lua/lua-5.5.0/src/lundump.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lundump.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lundump.c.i
+.PHONY : Lua/lua-5.5.0/src/lundump.c.i
+
+Lua/lua-5.5.0/src/lundump.s: Lua/lua-5.5.0/src/lundump.c.s
+.PHONY : Lua/lua-5.5.0/src/lundump.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lundump.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lundump.c.s
+.PHONY : Lua/lua-5.5.0/src/lundump.c.s
+
+Lua/lua-5.5.0/src/lutf8lib.o: Lua/lua-5.5.0/src/lutf8lib.c.o
+.PHONY : Lua/lua-5.5.0/src/lutf8lib.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lutf8lib.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lutf8lib.c.o
+.PHONY : Lua/lua-5.5.0/src/lutf8lib.c.o
+
+Lua/lua-5.5.0/src/lutf8lib.i: Lua/lua-5.5.0/src/lutf8lib.c.i
+.PHONY : Lua/lua-5.5.0/src/lutf8lib.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lutf8lib.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lutf8lib.c.i
+.PHONY : Lua/lua-5.5.0/src/lutf8lib.c.i
+
+Lua/lua-5.5.0/src/lutf8lib.s: Lua/lua-5.5.0/src/lutf8lib.c.s
+.PHONY : Lua/lua-5.5.0/src/lutf8lib.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lutf8lib.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lutf8lib.c.s
+.PHONY : Lua/lua-5.5.0/src/lutf8lib.c.s
+
+Lua/lua-5.5.0/src/lvm.o: Lua/lua-5.5.0/src/lvm.c.o
+.PHONY : Lua/lua-5.5.0/src/lvm.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lvm.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lvm.c.o
+.PHONY : Lua/lua-5.5.0/src/lvm.c.o
+
+Lua/lua-5.5.0/src/lvm.i: Lua/lua-5.5.0/src/lvm.c.i
+.PHONY : Lua/lua-5.5.0/src/lvm.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lvm.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lvm.c.i
+.PHONY : Lua/lua-5.5.0/src/lvm.c.i
+
+Lua/lua-5.5.0/src/lvm.s: Lua/lua-5.5.0/src/lvm.c.s
+.PHONY : Lua/lua-5.5.0/src/lvm.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lvm.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lvm.c.s
+.PHONY : Lua/lua-5.5.0/src/lvm.c.s
+
+Lua/lua-5.5.0/src/lzio.o: Lua/lua-5.5.0/src/lzio.c.o
+.PHONY : Lua/lua-5.5.0/src/lzio.o
+
+# target to build an object file
+Lua/lua-5.5.0/src/lzio.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lzio.c.o
+.PHONY : Lua/lua-5.5.0/src/lzio.c.o
+
+Lua/lua-5.5.0/src/lzio.i: Lua/lua-5.5.0/src/lzio.c.i
+.PHONY : Lua/lua-5.5.0/src/lzio.i
+
+# target to preprocess a source file
+Lua/lua-5.5.0/src/lzio.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lzio.c.i
+.PHONY : Lua/lua-5.5.0/src/lzio.c.i
+
+Lua/lua-5.5.0/src/lzio.s: Lua/lua-5.5.0/src/lzio.c.s
+.PHONY : Lua/lua-5.5.0/src/lzio.s
+
+# target to generate assembly for a file
+Lua/lua-5.5.0/src/lzio.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lua55_static.dir/build.make CMakeFiles/lua55_static.dir/Lua/lua-5.5.0/src/lzio.c.s
+.PHONY : Lua/lua-5.5.0/src/lzio.c.s
+
+src/engine/ai/behaviour_tree.o: src/engine/ai/behaviour_tree.cpp.o
+.PHONY : src/engine/ai/behaviour_tree.o
+
+# target to build an object file
+src/engine/ai/behaviour_tree.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o
+.PHONY : src/engine/ai/behaviour_tree.cpp.o
+
+src/engine/ai/behaviour_tree.i: src/engine/ai/behaviour_tree.cpp.i
+.PHONY : src/engine/ai/behaviour_tree.i
+
+# target to preprocess a source file
+src/engine/ai/behaviour_tree.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.i
+.PHONY : src/engine/ai/behaviour_tree.cpp.i
+
+src/engine/ai/behaviour_tree.s: src/engine/ai/behaviour_tree.cpp.s
+.PHONY : src/engine/ai/behaviour_tree.s
+
+# target to generate assembly for a file
+src/engine/ai/behaviour_tree.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.s
+.PHONY : src/engine/ai/behaviour_tree.cpp.s
+
+src/engine/ai/formation_system.o: src/engine/ai/formation_system.cpp.o
+.PHONY : src/engine/ai/formation_system.o
+
+# target to build an object file
+src/engine/ai/formation_system.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o
+.PHONY : src/engine/ai/formation_system.cpp.o
+
+src/engine/ai/formation_system.i: src/engine/ai/formation_system.cpp.i
+.PHONY : src/engine/ai/formation_system.i
+
+# target to preprocess a source file
+src/engine/ai/formation_system.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.i
+.PHONY : src/engine/ai/formation_system.cpp.i
+
+src/engine/ai/formation_system.s: src/engine/ai/formation_system.cpp.s
+.PHONY : src/engine/ai/formation_system.s
+
+# target to generate assembly for a file
+src/engine/ai/formation_system.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.s
+.PHONY : src/engine/ai/formation_system.cpp.s
+
+src/engine/ai/nav_mesh.o: src/engine/ai/nav_mesh.cpp.o
+.PHONY : src/engine/ai/nav_mesh.o
+
+# target to build an object file
+src/engine/ai/nav_mesh.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o
+.PHONY : src/engine/ai/nav_mesh.cpp.o
+
+src/engine/ai/nav_mesh.i: src/engine/ai/nav_mesh.cpp.i
+.PHONY : src/engine/ai/nav_mesh.i
+
+# target to preprocess a source file
+src/engine/ai/nav_mesh.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.i
+.PHONY : src/engine/ai/nav_mesh.cpp.i
+
+src/engine/ai/nav_mesh.s: src/engine/ai/nav_mesh.cpp.s
+.PHONY : src/engine/ai/nav_mesh.s
+
+# target to generate assembly for a file
+src/engine/ai/nav_mesh.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.s
+.PHONY : src/engine/ai/nav_mesh.cpp.s
+
+src/engine/assets/asset_db.o: src/engine/assets/asset_db.cpp.o
+.PHONY : src/engine/assets/asset_db.o
+
+# target to build an object file
+src/engine/assets/asset_db.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o
+.PHONY : src/engine/assets/asset_db.cpp.o
+
+src/engine/assets/asset_db.i: src/engine/assets/asset_db.cpp.i
+.PHONY : src/engine/assets/asset_db.i
+
+# target to preprocess a source file
+src/engine/assets/asset_db.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.i
+.PHONY : src/engine/assets/asset_db.cpp.i
+
+src/engine/assets/asset_db.s: src/engine/assets/asset_db.cpp.s
+.PHONY : src/engine/assets/asset_db.s
+
+# target to generate assembly for a file
+src/engine/assets/asset_db.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.s
+.PHONY : src/engine/assets/asset_db.cpp.s
+
+src/engine/assets/asset_loader.o: src/engine/assets/asset_loader.cpp.o
+.PHONY : src/engine/assets/asset_loader.o
+
+# target to build an object file
+src/engine/assets/asset_loader.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o
+.PHONY : src/engine/assets/asset_loader.cpp.o
+
+src/engine/assets/asset_loader.i: src/engine/assets/asset_loader.cpp.i
+.PHONY : src/engine/assets/asset_loader.i
+
+# target to preprocess a source file
+src/engine/assets/asset_loader.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.i
+.PHONY : src/engine/assets/asset_loader.cpp.i
+
+src/engine/assets/asset_loader.s: src/engine/assets/asset_loader.cpp.s
+.PHONY : src/engine/assets/asset_loader.s
+
+# target to generate assembly for a file
+src/engine/assets/asset_loader.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.s
+.PHONY : src/engine/assets/asset_loader.cpp.s
+
+src/engine/combat/combo_system.o: src/engine/combat/combo_system.cpp.o
+.PHONY : src/engine/combat/combo_system.o
+
+# target to build an object file
+src/engine/combat/combo_system.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o
+.PHONY : src/engine/combat/combo_system.cpp.o
+
+src/engine/combat/combo_system.i: src/engine/combat/combo_system.cpp.i
+.PHONY : src/engine/combat/combo_system.i
+
+# target to preprocess a source file
+src/engine/combat/combo_system.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.i
+.PHONY : src/engine/combat/combo_system.cpp.i
+
+src/engine/combat/combo_system.s: src/engine/combat/combo_system.cpp.s
+.PHONY : src/engine/combat/combo_system.s
+
+# target to generate assembly for a file
+src/engine/combat/combo_system.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.s
+.PHONY : src/engine/combat/combo_system.cpp.s
+
 src/engine/core/Logger.o: src/engine/core/Logger.cpp.o
 .PHONY : src/engine/core/Logger.o
 
 # target to build an object file
 src/engine/core/Logger.cpp.o:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/core/Logger.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cook.dir/build.make CMakeFiles/cook.dir/src/engine/core/Logger.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pak.dir/build.make CMakeFiles/pak.dir/src/engine/core/Logger.cpp.o
 .PHONY : src/engine/core/Logger.cpp.o
 
 src/engine/core/Logger.i: src/engine/core/Logger.cpp.i
@@ -143,6 +1096,8 @@ src/engine/core/Logger.i: src/engine/core/Logger.cpp.i
 # target to preprocess a source file
 src/engine/core/Logger.cpp.i:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/core/Logger.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cook.dir/build.make CMakeFiles/cook.dir/src/engine/core/Logger.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pak.dir/build.make CMakeFiles/pak.dir/src/engine/core/Logger.cpp.i
 .PHONY : src/engine/core/Logger.cpp.i
 
 src/engine/core/Logger.s: src/engine/core/Logger.cpp.s
@@ -151,6 +1106,8 @@ src/engine/core/Logger.s: src/engine/core/Logger.cpp.s
 # target to generate assembly for a file
 src/engine/core/Logger.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/engine/core/Logger.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cook.dir/build.make CMakeFiles/cook.dir/src/engine/core/Logger.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pak.dir/build.make CMakeFiles/pak.dir/src/engine/core/Logger.cpp.s
 .PHONY : src/engine/core/Logger.cpp.s
 
 src/engine/input/InputSystem.o: src/engine/input/InputSystem.cpp.o
@@ -537,6 +1494,54 @@ src/main.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/tools/cook/cook_main.o: src/tools/cook/cook_main.cpp.o
+.PHONY : src/tools/cook/cook_main.o
+
+# target to build an object file
+src/tools/cook/cook_main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cook.dir/build.make CMakeFiles/cook.dir/src/tools/cook/cook_main.cpp.o
+.PHONY : src/tools/cook/cook_main.cpp.o
+
+src/tools/cook/cook_main.i: src/tools/cook/cook_main.cpp.i
+.PHONY : src/tools/cook/cook_main.i
+
+# target to preprocess a source file
+src/tools/cook/cook_main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cook.dir/build.make CMakeFiles/cook.dir/src/tools/cook/cook_main.cpp.i
+.PHONY : src/tools/cook/cook_main.cpp.i
+
+src/tools/cook/cook_main.s: src/tools/cook/cook_main.cpp.s
+.PHONY : src/tools/cook/cook_main.s
+
+# target to generate assembly for a file
+src/tools/cook/cook_main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cook.dir/build.make CMakeFiles/cook.dir/src/tools/cook/cook_main.cpp.s
+.PHONY : src/tools/cook/cook_main.cpp.s
+
+src/tools/pak/pak_main.o: src/tools/pak/pak_main.cpp.o
+.PHONY : src/tools/pak/pak_main.o
+
+# target to build an object file
+src/tools/pak/pak_main.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pak.dir/build.make CMakeFiles/pak.dir/src/tools/pak/pak_main.cpp.o
+.PHONY : src/tools/pak/pak_main.cpp.o
+
+src/tools/pak/pak_main.i: src/tools/pak/pak_main.cpp.i
+.PHONY : src/tools/pak/pak_main.i
+
+# target to preprocess a source file
+src/tools/pak/pak_main.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pak.dir/build.make CMakeFiles/pak.dir/src/tools/pak/pak_main.cpp.i
+.PHONY : src/tools/pak/pak_main.cpp.i
+
+src/tools/pak/pak_main.s: src/tools/pak/pak_main.cpp.s
+.PHONY : src/tools/pak/pak_main.s
+
+# target to generate assembly for a file
+src/tools/pak/pak_main.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pak.dir/build.make CMakeFiles/pak.dir/src/tools/pak/pak_main.cpp.s
+.PHONY : src/tools/pak/pak_main.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -545,7 +1550,124 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... cook"
 	@echo "... game"
+	@echo "... lua55_static"
+	@echo "... pak"
+	@echo "... Lua/lua-5.5.0/src/lapi.o"
+	@echo "... Lua/lua-5.5.0/src/lapi.i"
+	@echo "... Lua/lua-5.5.0/src/lapi.s"
+	@echo "... Lua/lua-5.5.0/src/lauxlib.o"
+	@echo "... Lua/lua-5.5.0/src/lauxlib.i"
+	@echo "... Lua/lua-5.5.0/src/lauxlib.s"
+	@echo "... Lua/lua-5.5.0/src/lbaselib.o"
+	@echo "... Lua/lua-5.5.0/src/lbaselib.i"
+	@echo "... Lua/lua-5.5.0/src/lbaselib.s"
+	@echo "... Lua/lua-5.5.0/src/lcode.o"
+	@echo "... Lua/lua-5.5.0/src/lcode.i"
+	@echo "... Lua/lua-5.5.0/src/lcode.s"
+	@echo "... Lua/lua-5.5.0/src/lcorolib.o"
+	@echo "... Lua/lua-5.5.0/src/lcorolib.i"
+	@echo "... Lua/lua-5.5.0/src/lcorolib.s"
+	@echo "... Lua/lua-5.5.0/src/lctype.o"
+	@echo "... Lua/lua-5.5.0/src/lctype.i"
+	@echo "... Lua/lua-5.5.0/src/lctype.s"
+	@echo "... Lua/lua-5.5.0/src/ldblib.o"
+	@echo "... Lua/lua-5.5.0/src/ldblib.i"
+	@echo "... Lua/lua-5.5.0/src/ldblib.s"
+	@echo "... Lua/lua-5.5.0/src/ldebug.o"
+	@echo "... Lua/lua-5.5.0/src/ldebug.i"
+	@echo "... Lua/lua-5.5.0/src/ldebug.s"
+	@echo "... Lua/lua-5.5.0/src/ldo.o"
+	@echo "... Lua/lua-5.5.0/src/ldo.i"
+	@echo "... Lua/lua-5.5.0/src/ldo.s"
+	@echo "... Lua/lua-5.5.0/src/ldump.o"
+	@echo "... Lua/lua-5.5.0/src/ldump.i"
+	@echo "... Lua/lua-5.5.0/src/ldump.s"
+	@echo "... Lua/lua-5.5.0/src/lfunc.o"
+	@echo "... Lua/lua-5.5.0/src/lfunc.i"
+	@echo "... Lua/lua-5.5.0/src/lfunc.s"
+	@echo "... Lua/lua-5.5.0/src/lgc.o"
+	@echo "... Lua/lua-5.5.0/src/lgc.i"
+	@echo "... Lua/lua-5.5.0/src/lgc.s"
+	@echo "... Lua/lua-5.5.0/src/linit.o"
+	@echo "... Lua/lua-5.5.0/src/linit.i"
+	@echo "... Lua/lua-5.5.0/src/linit.s"
+	@echo "... Lua/lua-5.5.0/src/liolib.o"
+	@echo "... Lua/lua-5.5.0/src/liolib.i"
+	@echo "... Lua/lua-5.5.0/src/liolib.s"
+	@echo "... Lua/lua-5.5.0/src/llex.o"
+	@echo "... Lua/lua-5.5.0/src/llex.i"
+	@echo "... Lua/lua-5.5.0/src/llex.s"
+	@echo "... Lua/lua-5.5.0/src/lmathlib.o"
+	@echo "... Lua/lua-5.5.0/src/lmathlib.i"
+	@echo "... Lua/lua-5.5.0/src/lmathlib.s"
+	@echo "... Lua/lua-5.5.0/src/lmem.o"
+	@echo "... Lua/lua-5.5.0/src/lmem.i"
+	@echo "... Lua/lua-5.5.0/src/lmem.s"
+	@echo "... Lua/lua-5.5.0/src/loadlib.o"
+	@echo "... Lua/lua-5.5.0/src/loadlib.i"
+	@echo "... Lua/lua-5.5.0/src/loadlib.s"
+	@echo "... Lua/lua-5.5.0/src/lobject.o"
+	@echo "... Lua/lua-5.5.0/src/lobject.i"
+	@echo "... Lua/lua-5.5.0/src/lobject.s"
+	@echo "... Lua/lua-5.5.0/src/lopcodes.o"
+	@echo "... Lua/lua-5.5.0/src/lopcodes.i"
+	@echo "... Lua/lua-5.5.0/src/lopcodes.s"
+	@echo "... Lua/lua-5.5.0/src/loslib.o"
+	@echo "... Lua/lua-5.5.0/src/loslib.i"
+	@echo "... Lua/lua-5.5.0/src/loslib.s"
+	@echo "... Lua/lua-5.5.0/src/lparser.o"
+	@echo "... Lua/lua-5.5.0/src/lparser.i"
+	@echo "... Lua/lua-5.5.0/src/lparser.s"
+	@echo "... Lua/lua-5.5.0/src/lstate.o"
+	@echo "... Lua/lua-5.5.0/src/lstate.i"
+	@echo "... Lua/lua-5.5.0/src/lstate.s"
+	@echo "... Lua/lua-5.5.0/src/lstring.o"
+	@echo "... Lua/lua-5.5.0/src/lstring.i"
+	@echo "... Lua/lua-5.5.0/src/lstring.s"
+	@echo "... Lua/lua-5.5.0/src/lstrlib.o"
+	@echo "... Lua/lua-5.5.0/src/lstrlib.i"
+	@echo "... Lua/lua-5.5.0/src/lstrlib.s"
+	@echo "... Lua/lua-5.5.0/src/ltable.o"
+	@echo "... Lua/lua-5.5.0/src/ltable.i"
+	@echo "... Lua/lua-5.5.0/src/ltable.s"
+	@echo "... Lua/lua-5.5.0/src/ltablib.o"
+	@echo "... Lua/lua-5.5.0/src/ltablib.i"
+	@echo "... Lua/lua-5.5.0/src/ltablib.s"
+	@echo "... Lua/lua-5.5.0/src/ltm.o"
+	@echo "... Lua/lua-5.5.0/src/ltm.i"
+	@echo "... Lua/lua-5.5.0/src/ltm.s"
+	@echo "... Lua/lua-5.5.0/src/lundump.o"
+	@echo "... Lua/lua-5.5.0/src/lundump.i"
+	@echo "... Lua/lua-5.5.0/src/lundump.s"
+	@echo "... Lua/lua-5.5.0/src/lutf8lib.o"
+	@echo "... Lua/lua-5.5.0/src/lutf8lib.i"
+	@echo "... Lua/lua-5.5.0/src/lutf8lib.s"
+	@echo "... Lua/lua-5.5.0/src/lvm.o"
+	@echo "... Lua/lua-5.5.0/src/lvm.i"
+	@echo "... Lua/lua-5.5.0/src/lvm.s"
+	@echo "... Lua/lua-5.5.0/src/lzio.o"
+	@echo "... Lua/lua-5.5.0/src/lzio.i"
+	@echo "... Lua/lua-5.5.0/src/lzio.s"
+	@echo "... src/engine/ai/behaviour_tree.o"
+	@echo "... src/engine/ai/behaviour_tree.i"
+	@echo "... src/engine/ai/behaviour_tree.s"
+	@echo "... src/engine/ai/formation_system.o"
+	@echo "... src/engine/ai/formation_system.i"
+	@echo "... src/engine/ai/formation_system.s"
+	@echo "... src/engine/ai/nav_mesh.o"
+	@echo "... src/engine/ai/nav_mesh.i"
+	@echo "... src/engine/ai/nav_mesh.s"
+	@echo "... src/engine/assets/asset_db.o"
+	@echo "... src/engine/assets/asset_db.i"
+	@echo "... src/engine/assets/asset_db.s"
+	@echo "... src/engine/assets/asset_loader.o"
+	@echo "... src/engine/assets/asset_loader.i"
+	@echo "... src/engine/assets/asset_loader.s"
+	@echo "... src/engine/combat/combo_system.o"
+	@echo "... src/engine/combat/combo_system.i"
+	@echo "... src/engine/combat/combo_system.s"
 	@echo "... src/engine/core/Logger.o"
 	@echo "... src/engine/core/Logger.i"
 	@echo "... src/engine/core/Logger.s"
@@ -597,6 +1719,12 @@ help:
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/tools/cook/cook_main.o"
+	@echo "... src/tools/cook/cook_main.i"
+	@echo "... src/tools/cook/cook_main.s"
+	@echo "... src/tools/pak/pak_main.o"
+	@echo "... src/tools/pak/pak_main.i"
+	@echo "... src/tools/pak/pak_main.s"
 .PHONY : help
 
 

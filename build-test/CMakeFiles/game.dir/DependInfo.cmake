@@ -8,6 +8,12 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
+  "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/behaviour_tree.cpp" "CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o.d"
+  "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/formation_system.cpp" "CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o.d"
+  "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/nav_mesh.cpp" "CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o.d"
+  "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_db.cpp" "CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o.d"
+  "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_loader.cpp" "CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o.d"
+  "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/combat/combo_system.cpp" "CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o.d"
   "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/core/Logger.cpp" "CMakeFiles/game.dir/src/engine/core/Logger.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/core/Logger.cpp.o.d"
   "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/input/InputSystem.cpp" "CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o.d"
   "/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/rendering/Renderer.cpp" "CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o" "gcc" "CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o.d"

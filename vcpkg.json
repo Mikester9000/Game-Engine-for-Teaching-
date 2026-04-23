@@ -3,6 +3,7 @@
   "name": "educational-game-engine",
   "version-string": "1.0.0",
   "description": "Game Engine for Teaching — FFXV-style action RPG monorepo",
+  "builtin-baseline": "b322364f06308bdd24823f9d8f03fe0cc86fd46f",
 
   "dependencies": [
     "nlohmann-json",

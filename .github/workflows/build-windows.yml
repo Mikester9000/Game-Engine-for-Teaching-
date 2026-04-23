@@ -692,6 +692,37 @@ jobs:
         run: .\build\windows-ninja-debug-engine-only\pak.exe --input samples\vertical_slice_project\Cooked\ --output samples\vertical_slice_project\Cooked\test_output.pak
         shell: cmd
 
+      # -----------------------------------------------------------------------
+      # CI-3: PAK round-trip test — extract + validate-project
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — PAK Round-Trip Validation (CI-3)
+      # Packing is only useful if extracting works too.  This step:
+      #   1. Extracts the PAK archive to a temp directory.
+      #   2. Runs engine_sandbox --validate-project on the extracted content.
+      # If pak.exe --extract is broken or the extracted AssetDB is corrupted,
+      # this gate catches it before the bug reaches a release build.
+      # -----------------------------------------------------------------------
+      - name: Extract PAK archive (CI-3)
+        run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # CI-1: Run Python tool tests on Windows
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Windows Python Tests (CI-1)
+      # The Python tool tests (tools/tests/, tests/) normally run only in the
+      # Linux job.  Running them on Windows catches Windows-specific regressions
+      # such as path separator bugs (backslash vs forward slash) in cook_assets.py
+      # or struct.pack byte-order assumptions in the baker tools.
+      # -----------------------------------------------------------------------
+      - name: Install Python dev dependencies (CI-1)
+        run: python -m pip install -r requirements-dev.txt --quiet
+        shell: cmd
+
+      - name: Run Python tool tests on Windows (CI-1)
+        run: python -m pytest tools/tests/ tests/ -q --tb=short
+        shell: cmd
+
   # --------------------------------------------------------------------------
   # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
   # --------------------------------------------------------------------------

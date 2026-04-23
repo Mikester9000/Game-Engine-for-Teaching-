@@ -10,6 +10,40 @@
 
 ---
 
+## Prerequisites (Windows)
+
+| Tool | Version | Notes |
+|------|---------|-------|
+| Visual Studio 2022 | 17.x | Desktop C++ workload |
+| Python | 3.9+ | For authoring tools and tests |
+| Windows SDK | 19041+ | Ships with VS 2022 |
+| Git | Any | Must be on PATH |
+
+---
+
+## Quick Start (Windows — 5 minutes)
+
+```powershell
+# Clone the repo:
+git clone https://github.com/Mikester9000/Game-Engine-for-Teaching-.git
+cd Game-Engine-for-Teaching-
+
+# One-command bootstrap (installs vcpkg, builds engine, cooks assets, smoke test):
+.\scripts\bootstrap.ps1
+
+# Run a 3D scene:
+.\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dynamic_sky
+.\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_ibl
+
+# Print build version:
+.\build\windows-ninja-debug-engine-only\engine_sandbox.exe --version
+```
+
+See **[`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md)** for a detailed walkthrough.
+See **[`CONTRIBUTING.md`](CONTRIBUTING.md)** for build options and PR guidelines.
+
+---
+
 ## What You Will Learn
 
 | Topic | Where to look |

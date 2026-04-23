@@ -114,10 +114,38 @@ CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/scripting/LuaEngine.cpp -o CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.s
 
+CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_db.cpp
+CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o -MF CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o.d -o CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_db.cpp
+
+CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_db.cpp > CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.i
+
+CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_db.cpp -o CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.s
+
+CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_loader.cpp
+CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o -MF CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o.d -o CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_loader.cpp
+
+CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_loader.cpp > CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.i
+
+CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/assets/asset_loader.cpp -o CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.s
+
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/rendering/Renderer.cpp
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o -MF CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o.d -o CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/rendering/Renderer.cpp
 
 CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.i: cmake_force
@@ -131,7 +159,7 @@ CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.s: cmake_force
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/input/InputSystem.cpp
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o -MF CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o.d -o CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/input/InputSystem.cpp
 
 CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.i: cmake_force
@@ -145,7 +173,7 @@ CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/world/TileMap.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/world/TileMap.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/TileMap.cpp
 CMakeFiles/game.dir/src/game/world/TileMap.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/game.dir/src/game/world/TileMap.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/game.dir/src/game/world/TileMap.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/world/TileMap.cpp.o -MF CMakeFiles/game.dir/src/game/world/TileMap.cpp.o.d -o CMakeFiles/game.dir/src/game/world/TileMap.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/TileMap.cpp
 
 CMakeFiles/game.dir/src/game/world/TileMap.cpp.i: cmake_force
@@ -159,7 +187,7 @@ CMakeFiles/game.dir/src/game/world/TileMap.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/world/Zone.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/world/Zone.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/Zone.cpp
 CMakeFiles/game.dir/src/game/world/Zone.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/game.dir/src/game/world/Zone.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/game.dir/src/game/world/Zone.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/world/Zone.cpp.o -MF CMakeFiles/game.dir/src/game/world/Zone.cpp.o.d -o CMakeFiles/game.dir/src/game/world/Zone.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/Zone.cpp
 
 CMakeFiles/game.dir/src/game/world/Zone.cpp.i: cmake_force
@@ -173,7 +201,7 @@ CMakeFiles/game.dir/src/game/world/Zone.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/WorldMap.cpp
 CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o -MF CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o.d -o CMakeFiles/game.dir/src/game/world/WorldMap.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/world/WorldMap.cpp
 
 CMakeFiles/game.dir/src/game/world/WorldMap.cpp.i: cmake_force
@@ -187,7 +215,7 @@ CMakeFiles/game.dir/src/game/world/WorldMap.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/CombatSystem.cpp
 CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/CombatSystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.i: cmake_force
@@ -201,7 +229,7 @@ CMakeFiles/game.dir/src/game/systems/CombatSystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/InventorySystem.cpp
 CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building CXX object CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/InventorySystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.i: cmake_force
@@ -215,7 +243,7 @@ CMakeFiles/game.dir/src/game/systems/InventorySystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/QuestSystem.cpp
 CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building CXX object CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/QuestSystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.i: cmake_force
@@ -229,7 +257,7 @@ CMakeFiles/game.dir/src/game/systems/QuestSystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/MagicSystem.cpp
 CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Building CXX object CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/MagicSystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.i: cmake_force
@@ -243,7 +271,7 @@ CMakeFiles/game.dir/src/game/systems/MagicSystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/ShopSystem.cpp
 CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/ShopSystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.i: cmake_force
@@ -257,7 +285,7 @@ CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/CampSystem.cpp
 CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/CampSystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.i: cmake_force
@@ -271,7 +299,7 @@ CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/WeatherSystem.cpp
 CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/WeatherSystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.i: cmake_force
@@ -285,7 +313,7 @@ CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.s: cmake_force
 CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/AISystem.cpp
 CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o -MF CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o.d -o CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/AISystem.cpp
 
 CMakeFiles/game.dir/src/game/systems/AISystem.cpp.i: cmake_force
@@ -296,10 +324,66 @@ CMakeFiles/game.dir/src/game/systems/AISystem.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/game/systems/AISystem.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/systems/AISystem.cpp -o CMakeFiles/game.dir/src/game/systems/AISystem.cpp.s
 
+CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/behaviour_tree.cpp
+CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o -MF CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o.d -o CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/behaviour_tree.cpp
+
+CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/behaviour_tree.cpp > CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.i
+
+CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/behaviour_tree.cpp -o CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.s
+
+CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/formation_system.cpp
+CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Building CXX object CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o -MF CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o.d -o CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/formation_system.cpp
+
+CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/formation_system.cpp > CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.i
+
+CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/formation_system.cpp -o CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.s
+
+CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/nav_mesh.cpp
+CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_21) "Building CXX object CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o -MF CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o.d -o CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/nav_mesh.cpp
+
+CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/nav_mesh.cpp > CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.i
+
+CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/ai/nav_mesh.cpp -o CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.s
+
+CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o: CMakeFiles/game.dir/flags.make
+CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/combat/combo_system.cpp
+CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_22) "Building CXX object CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o -MF CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o.d -o CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/combat/combo_system.cpp
+
+CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/combat/combo_system.cpp > CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.i
+
+CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/engine/combat/combo_system.cpp -o CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.s
+
 CMakeFiles/game.dir/src/game/Game.cpp.o: CMakeFiles/game.dir/flags.make
 CMakeFiles/game.dir/src/game/Game.cpp.o: /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/Game.cpp
 CMakeFiles/game.dir/src/game/Game.cpp.o: CMakeFiles/game.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/game.dir/src/game/Game.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_23) "Building CXX object CMakeFiles/game.dir/src/game/Game.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/game.dir/src/game/Game.cpp.o -MF CMakeFiles/game.dir/src/game/Game.cpp.o.d -o CMakeFiles/game.dir/src/game/Game.cpp.o -c /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/src/game/Game.cpp
 
 CMakeFiles/game.dir/src/game/Game.cpp.i: cmake_force
@@ -315,6 +399,8 @@ game_OBJECTS = \
 "CMakeFiles/game.dir/src/main.cpp.o" \
 "CMakeFiles/game.dir/src/engine/core/Logger.cpp.o" \
 "CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o" \
+"CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o" \
+"CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o" \
 "CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o" \
 "CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o" \
 "CMakeFiles/game.dir/src/game/world/TileMap.cpp.o" \
@@ -328,6 +414,10 @@ game_OBJECTS = \
 "CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o" \
 "CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o" \
 "CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o" \
+"CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o" \
+"CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o" \
+"CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o" \
+"CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o" \
 "CMakeFiles/game.dir/src/game/Game.cpp.o"
 
 # External object files for target game
@@ -336,6 +426,8 @@ game_EXTERNAL_OBJECTS =
 game: CMakeFiles/game.dir/src/main.cpp.o
 game: CMakeFiles/game.dir/src/engine/core/Logger.cpp.o
 game: CMakeFiles/game.dir/src/engine/scripting/LuaEngine.cpp.o
+game: CMakeFiles/game.dir/src/engine/assets/asset_db.cpp.o
+game: CMakeFiles/game.dir/src/engine/assets/asset_loader.cpp.o
 game: CMakeFiles/game.dir/src/engine/rendering/Renderer.cpp.o
 game: CMakeFiles/game.dir/src/engine/input/InputSystem.cpp.o
 game: CMakeFiles/game.dir/src/game/world/TileMap.cpp.o
@@ -349,13 +441,18 @@ game: CMakeFiles/game.dir/src/game/systems/ShopSystem.cpp.o
 game: CMakeFiles/game.dir/src/game/systems/CampSystem.cpp.o
 game: CMakeFiles/game.dir/src/game/systems/WeatherSystem.cpp.o
 game: CMakeFiles/game.dir/src/game/systems/AISystem.cpp.o
+game: CMakeFiles/game.dir/src/engine/ai/behaviour_tree.cpp.o
+game: CMakeFiles/game.dir/src/engine/ai/formation_system.cpp.o
+game: CMakeFiles/game.dir/src/engine/ai/nav_mesh.cpp.o
+game: CMakeFiles/game.dir/src/engine/combat/combo_system.cpp.o
 game: CMakeFiles/game.dir/src/game/Game.cpp.o
 game: CMakeFiles/game.dir/build.make
 game: CMakeFiles/game.dir/compiler_depend.ts
 game: /usr/lib/x86_64-linux-gnu/libcurses.so
 game: /usr/lib/x86_64-linux-gnu/libform.so
+game: liblua55_static.a
 game: CMakeFiles/game.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Linking CXX executable game"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/CMakeFiles --progress-num=$(CMAKE_PROGRESS_24) "Linking CXX executable game"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/game.dir/link.txt --verbose=$(VERBOSE)
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold "Copying Lua scripts to build directory."
 	/usr/local/bin/cmake -E copy_directory /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/scripts /home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build-test/scripts

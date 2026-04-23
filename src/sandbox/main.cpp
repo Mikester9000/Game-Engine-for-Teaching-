@@ -122,6 +122,8 @@
 #include "engine/rendering/RendererFactory.hpp"
 #include "engine/assets/asset_db.hpp"
 #include "engine/assets/asset_loader.hpp"
+#include "engine/core/engine_config.hpp"
+#include "engine/core/Logger.hpp"
 #include "sandbox/test_world.hpp"
 
 // ---------------------------------------------------------------------------
@@ -450,6 +452,58 @@
 #include <string>
 #include <filesystem>   // std::filesystem::path (C++17)
 #include <chrono>       // high_resolution_clock (testworld dt measurement)
+#include <ctime>        // std::time, std::tm — log timestamp generation
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — LC-2: Minidump writer (SetUnhandledExceptionFilter)
+// ---------------------------------------------------------------------------
+// When engine_sandbox crashes without a try/catch handler the OS terminates
+// the process with no useful artefact.  This handler intercepts the
+// unhandled exception signal and writes a .dmp file to Saved/Crashes/.
+//
+// A .dmp file can be opened in Visual Studio or WinDbg and shows the exact
+// call stack, register state, and local variables at the time of the crash —
+// even for a crash you cannot reproduce locally.
+//
+// How it works:
+//   1. SetUnhandledExceptionFilter registers our callback *before* the OS
+//      default behaviour (showing "Application has stopped working").
+//   2. MiniDumpWriteDump writes the process memory snapshot to a file.
+//   3. We return EXCEPTION_EXECUTE_HANDLER — the process terminates after
+//      the handler returns.
+//
+// Requirements: dbghelp.lib (ships with the Windows SDK).
+// ---------------------------------------------------------------------------
+#ifdef _WIN32
+#include <windows.h>
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
+
+static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* ep)
+{
+    // Create the crash dump directory.
+    CreateDirectoryA("Saved",         nullptr);
+    CreateDirectoryA("Saved/Crashes", nullptr);
+
+    HANDLE f = CreateFileA("Saved/Crashes/crash.dmp",
+        GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL, nullptr);
+
+    if (f != INVALID_HANDLE_VALUE)
+    {
+        MINIDUMP_EXCEPTION_INFORMATION mei{};
+        mei.ThreadId          = GetCurrentThreadId();
+        mei.ExceptionPointers = ep;
+        mei.ClientPointers    = FALSE;
+
+        MiniDumpWriteDump(
+            GetCurrentProcess(), GetCurrentProcessId(),
+            f, MiniDumpNormal, &mei, nullptr, nullptr);
+        CloseHandle(f);
+    }
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+#endif // _WIN32
 
 // ---------------------------------------------------------------------------
 // TEACHING NOTE — Shader Directory Resolution
@@ -475,8 +529,33 @@ static std::string GetShaderDir(const char* argv0)
 // ---------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
+    // -----------------------------------------------------------------------
+    // Install the unhandled exception handler FIRST so any crash (even during
+    // static initialisation helpers later in main) produces a .dmp file.
+    // -----------------------------------------------------------------------
+#ifdef _WIN32
+    SetUnhandledExceptionFilter(CrashHandler);
+#endif
+
     try
     {
+        // -------------------------------------------------------------------
+        // TEACHING NOTE — AP-4: --version flag
+        // -------------------------------------------------------------------
+        // Print the short git SHA baked in at compile time and exit.
+        // ENGINE_VERSION_SHA is defined in CMakeLists.txt via:
+        //   target_compile_definitions(engine_sandbox PRIVATE
+        //       "ENGINE_VERSION_SHA=\"${ENGINE_GIT_SHA}\"")
+        // -------------------------------------------------------------------
+#ifndef ENGINE_VERSION_SHA
+#  define ENGINE_VERSION_SHA "unknown"
+#endif
+        if (argc >= 2 && std::strcmp(argv[1], "--version") == 0)
+        {
+            std::cout << "engine_sandbox " ENGINE_VERSION_SHA "\n";
+            return 0;
+        }
+
         // -------------------------------------------------------------------
         // Step 0 — Parse command-line arguments.
         // -------------------------------------------------------------------
@@ -525,6 +604,52 @@ int main(int argc, char* argv[])
                 // -----------------------------------------------------------
                 rendererArg = argv[++i];
             }
+        }
+
+        // -------------------------------------------------------------------
+        // AP-4: Print build SHA so every run is traceable.
+        // -------------------------------------------------------------------
+        std::cout << "[engine_sandbox] Build: " ENGINE_VERSION_SHA "\n";
+
+        // -------------------------------------------------------------------
+        // LC-1: Initialise file-based logger.
+        // -------------------------------------------------------------------
+        // TEACHING NOTE — Timestamped Log Files
+        // Each run writes its log to a unique timestamped file so logs from
+        // multiple sessions do not overwrite each other.  This is essential
+        // for post-mortem debugging: the log file from yesterday's crash
+        // still exists alongside today's log.
+        //
+        // Log directory: $ENGINE_SAVE_DIR/Logs/  (default: Saved/Logs/)
+        // File name:     engine_YYYYMMDD_HHMMSS.log
+        //
+        // The directory is created automatically if it does not exist so
+        // a fresh install does not require manual setup.
+        // -------------------------------------------------------------------
+        {
+            namespace fs = std::filesystem;
+
+            const char* saveEnv = std::getenv("ENGINE_SAVE_DIR");
+            const std::string saveDir = saveEnv ? saveEnv : "Saved";
+            const fs::path logDir = fs::path(saveDir) / "Logs";
+
+            // Create Saved/ and Saved/Logs/ if they do not exist.
+            std::error_code ec;
+            fs::create_directories(logDir, ec);
+
+            // Build a timestamp string: YYYYMMDD_HHMMSS
+            std::time_t now = std::time(nullptr);
+            std::tm     tm  = {};
+#ifdef _WIN32
+            localtime_s(&tm, &now);
+#else
+            localtime_r(&now, &tm);
+#endif
+            char tsBuf[32] = {};
+            std::strftime(tsBuf, sizeof(tsBuf), "%Y%m%d_%H%M%S", &tm);
+
+            const std::string logPath = (logDir / ("engine_" + std::string(tsBuf) + ".log")).string();
+            Logger::Instance().Init(logPath, LogLevel::DEBUG, /*echoConsole=*/true);
         }
 
         // -------------------------------------------------------------------
@@ -592,6 +717,17 @@ int main(int argc, char* argv[])
         const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
         // -------------------------------------------------------------------
+        // LC-3: Load engine configuration from engine_config.json.
+        // -------------------------------------------------------------------
+        // TEACHING NOTE — Configuration Loading
+        // We load config before creating the window so the resolved resolution
+        // is available to Win32Window::Init().  A missing config file is fine;
+        // the EngineConfig struct keeps its default field values.
+        // -------------------------------------------------------------------
+        engine::core::EngineConfig engConfig;
+        engConfig.Load("engine_config.json");
+
+        // -------------------------------------------------------------------
         // Step 2 — Create and initialise the Win32 window.
         // -------------------------------------------------------------------
         engine::platform::Win32Window window;
@@ -602,14 +738,16 @@ int main(int argc, char* argv[])
                 ? L"Engine Sandbox \u2014 Vulkan"
                 : L"Engine Sandbox \u2014 D3D11";
 
-        if (!window.Init(title, 1280, 720, headless))
+        if (!window.Init(title, engConfig.resolution.width, engConfig.resolution.height, headless))
         {
             std::cerr << "[engine_sandbox] Failed to create window.\n";
             return 1;
         }
 
         if (!headless)
-            std::cout << "[engine_sandbox] Window created: 1280x720\n";
+            std::cout << "[engine_sandbox] Window created: "
+                      << engConfig.resolution.width << "x"
+                      << engConfig.resolution.height << "\n";
 
         // -------------------------------------------------------------------
         // Step 3 — Create and initialise the renderer via the factory.
