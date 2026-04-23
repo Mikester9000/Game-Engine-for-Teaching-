@@ -446,7 +446,7 @@ def cook_textures(registry: list[dict]) -> int:
             "tags":   ["texture"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -510,7 +510,7 @@ def cook_audio(registry: list[dict]) -> int:
                     AudioExporter(sample_rate=sr, bit_depth=16).export(normalised, dst, fmt="wav")
                     processed = True
                 except Exception as exc:
-                    print(f"  [WARN] audio_engine DSP failed for {src.name}: {exc} — falling back to copy")
+                    print(f"  [WARN] audio_engine DSP failed for {src.name}: {exc} -- falling back to copy")
 
             if not processed:
                 # Path B: simple file copy (stub / fallback)
@@ -530,7 +530,7 @@ def cook_audio(registry: list[dict]) -> int:
             "is3D":    False,
             "tags":    [],
         })
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     if clips:
         bank_id = stable_guid("Content/Audio")
@@ -604,7 +604,7 @@ def cook_scenes(registry: list[dict]) -> int:
             "tags":   ["scene", "map"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -652,7 +652,7 @@ def cook_animations(registry: list[dict]) -> int:
     # Path A: use the real animation_engine pipeline (installed package)
     # ------------------------------------------------------------------
     if _HAS_ANIM_ENGINE:
-        print("  [INFO] animation_engine package found — using AnimAssetPipeline")
+        print("  [INFO] animation_engine package found -- using AnimAssetPipeline")
         pipeline = AnimAssetPipeline(skip_existing=False)
         manifest = pipeline.cook_all(
             content_dir=str(anim_src),
@@ -748,7 +748,7 @@ def cook_animations(registry: list[dict]) -> int:
                 "tags":   tags,
             })
             count += 1
-            print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+            print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -812,7 +812,7 @@ def cook_materials(registry: list[dict]) -> int:
             "tags":   ["material", "pbr"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -866,9 +866,9 @@ def cook_levels(registry: list[dict]) -> int:
                 data = json.load(f)
             # Required: zoneName (or a sensible fallback)
             if "tileWidth" not in data or "tileHeight" not in data:
-                print(f"  [WARN] {src.name}: missing tileWidth/tileHeight — cooking anyway")
+                print(f"  [WARN] {src.name}: missing tileWidth/tileHeight -- cooking anyway")
         except Exception as exc:
-            print(f"  [WARN] {src.name}: JSON parse failed ({exc}) — skipping")
+            print(f"  [WARN] {src.name}: JSON parse failed ({exc}) -- skipping")
             continue
 
         if should_recook(source_rel, source_hash):
@@ -889,7 +889,7 @@ def cook_levels(registry: list[dict]) -> int:
             "tags":   ["level", "streaming-cell"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -944,7 +944,7 @@ def cook_physics(registry: list[dict]) -> int:
                     ce.bake_collision(src, dst)
                     action = "PHY"
                 except Exception as exc:
-                    print(f"  [WARN] {src.name}: bake_collision failed ({exc}) — skipping")
+                    print(f"  [WARN] {src.name}: bake_collision failed ({exc}) -- skipping")
                     continue
             else:
                 action = "SKIP-PHY"
@@ -967,7 +967,7 @@ def cook_physics(registry: list[dict]) -> int:
                 "tags":   ["collision", "physics"],
             })
             count += 1
-            print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+            print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -1017,7 +1017,7 @@ def cook_fonts(registry: list[dict]) -> int:
                 ce.bake_font(src, dst)
                 action = "FNT"
             except Exception as exc:
-                print(f"  [WARN] {src.name}: bake_font failed ({exc}) — skipping")
+                print(f"  [WARN] {src.name}: bake_font failed ({exc}) -- skipping")
                 continue
         else:
             action = "SKIP-FNT"
@@ -1037,7 +1037,7 @@ def cook_fonts(registry: list[dict]) -> int:
             "tags":   ["font", "ui"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
@@ -1086,7 +1086,7 @@ def cook_roads(registry: list[dict]) -> int:
                 ce.bake_road(src, dst)
                 action = "ROAD"
             except Exception as exc:
-                print(f"  [WARN] {src.name}: bake_road failed ({exc}) — skipping")
+                print(f"  [WARN] {src.name}: bake_road failed ({exc}) -- skipping")
                 continue
         else:
             action = "SKIP-ROAD"
@@ -1106,7 +1106,7 @@ def cook_roads(registry: list[dict]) -> int:
             "tags":   ["road", "vehicle", "navigation"],
         })
         count += 1
-        print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
+        print(f"  [{action}] {rel} -> {dst.relative_to(SCRIPT_DIR)}")
 
     return count
 
