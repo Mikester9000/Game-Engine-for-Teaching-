@@ -9,7 +9,9 @@
 > these subsystems are built, and `docs/COPILOT_CONTINUATION.md` for coding
 > standards and CI rules.
 >
-> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
+> **Status note (2026-04-23):** Reconciled with `docs/ASSESSMENT_2026-04-23.md`.
+> M25 (terrain/world geometry) and M26 (save-system CI) are complete.
+> M24 content assets are populated; cook verification is the next pending step.
 
 ---
 
@@ -305,7 +307,7 @@ FF15's open world needs accurate terrain collision for characters and vehicles.
 | | `src/engine/physics/raycast.hpp/.cpp` — `CastRay`, `CastRayDown`, `CastSphere`; `ShapeCastHit` ✅ |
 | | `src/engine/physics/hit_volume.hpp/.cpp` — `HitVolumeManager`; AABB Attack/Hurt volumes ✅ |
 | | `ColliderComponent` (component 23) — `shapeType` (Box/Sphere/Capsule), `halfExtents`, `radius`, `isTrigger` ✅ |
-| **Tool component(s)** | `tools/creation_engine.py` — collision mesh baker (`.obj` → cooked convex/mesh shapes) — 🔨 stub |
+| **Tool component(s)** | `tools/creation_engine.py` — collision mesh baker (`.obj` → cooked convex/mesh shapes) — ⬜ not started (M27) |
 | **Data formats** | Source: `physics/<id>.phys.json`; Cooked: `cooked/physics/<id>.phys` |
 | **Acceptance tests** | `--headless --scene physics_test` — Test 1: `drop_sphere` (gravity=9.8 m/s²); Test 2: `step_ledge` (0.25 m step-up); Test 3: `raycast` ✅ |
 | | CI: `build-windows-physics` job (classic-mode vcpkg Jolt, `--scene physics_test`) ✅ |
@@ -341,7 +343,7 @@ log, dialogue box, and shop.  FF15 uses a clean minimal HUD that scales to 4K.
 
 ## 12. Save System
 
-**Status:** ✅ Complete (M8.8)
+**Status:** ✅ Complete (M8.8 + M26)
 
 **Purpose:** Serialise the entire ECS world state (player, party, quests,
 inventory, zone) to disk and restore it.  FF15 supports 15 save slots plus
@@ -353,13 +355,34 @@ auto-save at camp.
 | | `src/engine/save/save_schema.hpp` — versioned save format with migration support |
 | **Tool component(s)** | `tools/validate-assets.py` extended with `--save` mode; save schema validator |
 | **Data formats** | `saves/slot_<N>.sav.json` (human-readable debug) or `.sav` (binary, release) |
-| **Acceptance tests** | Create world state; save; load; assert component data bit-identical |
-| | Corrupt a field; load; assert migration or graceful error, not crash |
-| | Auto-save triggers after `CampSystem::Rest`; assert file updated |
+| **Acceptance tests** | `--headless --scene save_test` (M26): round-trip (save/load HP match), migration (v0 fixture loads without crash), auto-save (CampSystem::Rest writes slot 15) ✅ |
+| | `build-windows-save-test` CI job: installs nlohmann-json via classic vcpkg and runs all 3 sub-tests ✅ |
+| | `tests/save_fixtures/` — v0.9.0 migration fixture; exercised by `tests/save_fixtures/test_save_fixtures.py` ✅ |
 
 ---
 
-## 13. Build / Release Pipeline
+## 13. Terrain / World Geometry
+
+**Status:** ✅ Complete (M25, PR #76)
+
+**Purpose:** Render heightmap-based terrain for streamed open-world cells and
+provide physics collision for characters and vehicles traversing the landscape.
+FF15's Duscae region is a seamless 4 km² terrain with cliff edges, slopes,
+and road-carved valleys.
+
+| Field | Detail |
+|---|---|
+| **Runtime component(s)** | `src/engine/rendering/d3d11/terrain_renderer.hpp/.cpp` — two-phase init (CPU: `LoadFromSamples`/`LoadCooked`; GPU: `CreateDeviceResources`); vertex grid generation from heightmap; D3D11 draw call ✅ |
+| | `src/engine/physics/terrain_collision.hpp/.cpp` — `BakeTerrainCollider`: `JPH::HeightFieldShape` from float height array; registers with `PhysicsWorld` ✅ |
+| | `shaders/terrain.vs.hlsl` + `shaders/terrain.ps.hlsl` — SM 4.0 vertex displacement + simple diffuse lit pass ✅ |
+| **Tool component(s)** | `tools/creation_engine.py` — `bake-terrain` subcommand: `.terrain.json` → cooked TRN1 binary (14-byte header + float32 heights, row-major) ✅ |
+| **Data formats** | Source: `Content/Terrain/*.terrain.json`; Cooked: TRN1 binary `.terrain` (magic `TRN1`, version 1, width/height/cellSize + float32 heights) ✅ |
+| | Sample: `samples/vertical_slice_project/Content/Terrain/highland.terrain.json` — 128×128 grid, cellSize 8.0 m (cooked to 65,550 bytes) ✅ |
+| **Acceptance tests** | `--headless --scene terrain_test`: Test 1 (GPU init on WARP), Test 2 (heightmap displacement: vertex Y > 0), Test 3 (physics drop: sphere lands on terrain, not Y=0) ✅ |
+
+---
+
+## 14. Build / Release Pipeline
 
 **Status:** ✅ Complete (validate-assets CI ✅, cook.exe ✅, contract CI ✅, headless validation ✅, pak.exe ✅)
 
@@ -384,14 +407,14 @@ teaching slice but must follow the same pipeline shape.
 
 ## Subsystem Completion Matrix
 
-> **Last verified: 2026-04-22 — deep reconciliation pass after Post-M10 completions.**
+> **Last verified: 2026-04-23 — post-PR #76 (M25) and PR #77 (M24) reconciliation.**
 > Each cell reflects the actual implementation state verified against source files.
 > The project is complete when every cell shows ✅.
 
 > **D3D11 Visuals Quality Bar note:** D3D11 depth buffer, IBL, directional shadow maps,
-> and bloom are implemented and CI-covered (`pbr_ibl`, `shadow_test`, `bloom_test`).
-> Remaining gaps to reach an early-beta slice are now content-population and world-geometry
-> focused (terrain/world geometry and populated sample content).
+> bloom, and terrain rendering are implemented and CI-covered.
+> Remaining gaps are tool-column completions (collision/font/road bakers) and
+> the cook-pipeline texture-format fix needed for authored content to load end-to-end.
 
 | # | Subsystem | Runtime | Tool | Tests | Notes |
 |---|---|---|---|---|---|
@@ -399,15 +422,17 @@ teaching slice but must follow the same pipeline shape.
 | 2 | Party AI | ✅ | ⬜ | ✅ | FSM + A* + BT (`BtTree`/`BtSequence`/`BtSelector`) + FormationSystem (LINE/V_SHAPE/CIRCLE) + NavMesh A* (Post-M10); nav-mesh baker tool ⬜ |
 | 3 | Action combat | ✅ | ✅ | ✅ | CombatSystem + ComboSystem + combat_config + `combat_test` CI ✅; deeper hit-volume coupling remains future quality work |
 | 4 | Quests & objectives | ✅ | ✅ | ✅ | QuestSystem + DialogueSystem + `tools/quest_baker` + `quest_test`/`dialogue_test` CI ✅ |
-| 5 | Cinematics | ✅ | ✅ | ✅ | `CameraRig` + `CinematicSequencer` + `bake-cinematic` + `CinematicEditorPanel` + `cinematic_test` CI ✅ |
+| 5 | Cinematics | ✅ | ✅ | 🔨 | `CameraRig` + `CinematicSequencer` + `bake-cinematic` + `CinematicEditorPanel` + `cinematic_test` CI ✅; timed audio event sub-test ⬜ |
 | 6 | Vehicles | ✅ | ⬜ | ✅ | `VehicleSystem` + `WheelState`×4 + vehicle chase camera + `vehicle_test` CI ✅ (Post-M10); road spline baker tool ⬜ |
 | 7 | Weather & time-of-day | ✅ | ✅ | ✅ | SkyRenderer + WeatherFx + D3D11 sky pipeline + `dynamic_sky` CI ✅; `bake-tod` tool stub + tests ✅ |
 | 8 | Audio pipeline | ✅ | ✅ | ✅ | Python tool + 32 tests ✅; XAudio2 backend + AudioSystem + music FSM ✅ (M3); X3DAudio 3D positional audio ✅ (M18 — distance rolloff, listener position, `audio_3d_test` CI) |
 | 9 | Animation pipeline | ✅ | ✅ | ✅ | Python tool + 11 tests ✅; C++ skeleton/clip/blend/IK/GPU skinning (M4/M4b) ✅ |
 | 10 | Physics | ✅ | ⬜ | ✅ | Jolt `PhysicsWorld`, `CharacterController`, `Raycast`, `HitVolumeManager`, `RigidBodyComponent`+`ColliderComponent` ✅; collision mesh baker ⬜ not started |
 | 11 | UI | ✅ | ⬜ | ✅ | D3D11 ImGui HUD ✅ (M8.5); `MenuStack` + 6-test CI ✅ (Post-M10); `FontRenderer` SDF text + `font_test` CI ✅ (Post-M10); font atlas baker tool ⬜ |
-| 12 | Save system | ✅ | ✅ | ✅ | `SaveSystem`: 15 slots + auto-save + `"version"` migration field; JSON ECS snapshot ✅ (M8.8) |
+| 12 | Save system | ✅ | ✅ | ✅ | `SaveSystem`: 15 slots + auto-save + `"version"` migration field; JSON ECS snapshot ✅ (M8.8); `save_test` CI ✅ (M26) |
 | 13 | Build / release pipeline | ✅ | ✅ | ✅ | Python tools + `cook.exe` + contract CI + `validate-project` + `m8_streaming` CI + `pak.exe` PAK1 ✅ |
+| 14 | Terrain / world geometry | ✅ | ✅ | ✅ | `TerrainRenderer` (TRN1, two-phase init) + `BakeTerrainCollider` (Jolt HeightFieldShape) + `bake-terrain` tool + `terrain_test` CI ✅ (M25, PR #76) |
+| 14 | Terrain / world geometry | ✅ | ✅ | ✅ | `TerrainRenderer` (TRN1 binary, two-phase init) + `BakeTerrainCollider` (Jolt HeightFieldShape) + `bake-terrain` tool + `terrain_test` CI ✅ (M25, PR #76) |
 
 ✅ complete · 🔨 in progress / partial · ⬜ not yet started
 
@@ -415,19 +440,25 @@ teaching slice but must follow the same pipeline shape.
 
 ## D3D11 Early-Beta Gaps — Remaining Items
 
-The D3D11 visual quality-bar features are implemented. The remaining early-beta blockers are
-content and runtime ingestion gaps.
+The D3D11 visual quality-bar features are implemented. The remaining early-beta gaps are
+tool-column completions and cook-pipeline correctness.
 
 | Feature | Status | Prerequisite | Milestone |
 |---------|--------|-------------|-----------|
-| Runtime mesh/material loading from cooked assets | ✅ | AssetDB + AssetLoader | M23 (new, complete) |
-| Populated sample textures/audio/animations in `vertical_slice_project` | ⬜ | runtime ingestion path | M24 (new) |
-| Terrain/world geometry rendering + collision path for streamed cells | ⬜ | mesh/content ingestion | M25 (new) |
-| Dedicated save-system headless acceptance suite (`save_test`) | ⬜ | SaveSystem runtime | M26 (new) |
+| Runtime mesh/material loading from cooked assets | ✅ | AssetDB + AssetLoader | M23 (complete) |
+| Populated sample textures/audio/animations in `vertical_slice_project` | 🔨 Assets present; cook pending | runtime ingestion path | M24 (in progress) |
+| PNG→loadable texture format in cook pipeline | ⬜ | M24 cook step | M28 (new) |
+| Authored content hard-failure CI scene (`--scene authored_content`) | ⬜ | cook format fix | M28 (new) |
+| Terrain/world geometry rendering + collision | ✅ | mesh/content ingestion | M25 (complete, PR #76) |
+| Dedicated save-system headless acceptance suite (`save_test`) | ✅ | SaveSystem runtime | M26 (complete) |
+| Collision mesh baker (`bake-collision`) | ⬜ | — | M27 (new) |
+| Font atlas baker (`bake-font`) | ⬜ | — | M27 (new) |
+| Road spline baker (`bake-road`) | ⬜ | — | M27 (new) |
+| Cinematic timed audio event (±1-frame CI test) | ⬜ | `CinematicSequencer` audio hook | M29 (new) |
 | D3D11 depth/IBL/shadow/bloom | ✅ | — | M16/M17 |
 | X3DAudio positional audio | ✅ | — | M18 |
 | Combo/combat config/combat CI | ✅ | — | M19 |
 | Quest/dialogue bakers + CI | ✅ | — | M20 |
 | Navmesh/ToD baker stubs + tests | ✅ | — | M21 |
 | Cut-scene baker + cinematic editor panel | ✅ | — | M22 |
-| Vulkan catch-up (textures, descriptors, PBR, skinning, sky, HUD) | ⬜ | D3D11 complete | M14 |
+| Vulkan catch-up (textures, descriptors, PBR, skinning, sky, HUD) | ⬜ | D3D11 complete | M14 (deferred) |

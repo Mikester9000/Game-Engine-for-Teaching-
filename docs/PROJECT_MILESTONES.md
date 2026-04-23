@@ -9,7 +9,9 @@
 > rules, and `docs/FF15_REQUIREMENTS_BLUEPRINT.md` for the full subsystem
 > checklist.
 >
-> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
+> **Status note (2026-04-23):** Reconciled with `docs/ASSESSMENT_2026-04-23.md`.
+> M25 (terrain) and M26 (save-system CI) are **complete** as of PRs #76 and #77.
+> M24 content assets are populated; cook verification is the next pending step.
 
 ---
 
@@ -630,7 +632,7 @@ cmake --build --preset windows-debug-engine-only
 
 ## Milestone M24 — Vertical Slice Content Population
 
-**Status:** ⬜ Not started
+**Status:** 🔨 Assets populated (PR #77); cook verification pending
 
 ### Goals
 - Replace `.gitkeep` placeholders in `samples/vertical_slice_project/Content/Textures`,
@@ -674,7 +676,7 @@ python ..\..\tools\validate-assets.py AssetRegistry.json
 
 ## Milestone M25 — Terrain / World Geometry Path
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete (PR #76)
 
 ### Goals
 - Add terrain/heightmap rendering support so streamed open-world cells are visually
@@ -718,7 +720,7 @@ cmake --build --preset windows-debug-engine-only
 
 ## Milestone M26 — Save-System CI Hardening
 
-**Status:** ⬜ Not started
+**Status:** ✅ Complete
 
 ### Goals
 - Add a dedicated `--scene save_test` headless acceptance suite that exercises the
@@ -760,7 +762,7 @@ cmake --build --preset windows-debug-engine-only
 
 ## Future Milestones (Post-M15)
 
-> **Last verified: 2026-04-22**
+> **Last verified: 2026-04-23**
 
 | ID | Name | Key deliverable | Status |
 |---|---|---|---|
@@ -772,16 +774,16 @@ cmake --build --preset windows-debug-engine-only
 | M21 | Tool Stubs: Nav-mesh + ToD LUT | `bake-navmesh` + `bake-tod` commands with pytest coverage | ✅ Complete (stub tooling milestone) |
 | M22 | Cinematic Baker + Editor Panel | `bake-cinematic`; `CinematicEditorPanel.hpp/.cpp` | ✅ Complete |
 | M23 | D3D11 Authored Content Ingestion | Runtime mesh/material loading + authored texture-slot binding in D3D11 scene path | ✅ Complete |
-| M24 | Vertical Slice Content Population | Real assets in `Content/Textures`, `Content/Audio`, `Content/Animations`; cook+load verified | ⬜ Not started |
-| M25 | Terrain / World Geometry Path | Terrain/heightmap rendering + collision for streamed cells; `terrain_test` CI | ⬜ Not started |
-| M26 | Save-System CI Hardening | `--scene save_test` acceptance suite (round-trip, migration, auto-save) | ⬜ Not started |
+| M24 | Vertical Slice Content Population | Real assets in `Content/Textures`, `Content/Audio`, `Content/Animations`; cook+load verified | 🔨 Assets populated (PR #77); cook verification pending |
+| M25 | Terrain / World Geometry Path | Terrain/heightmap rendering + collision for streamed cells; `terrain_test` CI | ✅ Complete (PR #76) |
+| M26 | Save-System CI Hardening | `--scene save_test` acceptance suite (round-trip, migration, auto-save) | ✅ Complete |
 | M14 | Vulkan Catch-up | All DEFERRED Vulkan items (textures, descriptors, PBR, skinning, sky, HUD) — see M14 section; no separate M23 | ⬜ Deferred |
 
 ---
 
 ## Milestone Progress Summary
 
-> **Last verified: 2026-04-22** — deep reconciliation pass.
+> **Last verified: 2026-04-23** — post-PR #76 (M25) and PR #77 (M24) reconciliation.
 
 | Milestone | Name | Status |
 |---|---|---|
@@ -810,6 +812,6 @@ cmake --build --preset windows-debug-engine-only
 | M21 | Nav-mesh baker + ToD LUT baker | ✅ Complete (stub tooling milestone) |
 | M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
 | M23 | D3D11 Authored Content Ingestion | ✅ Complete |
-| M24 | Vertical Slice Content Population | ⬜ Not started |
-| M25 | Terrain / World Geometry Path | ⬜ Not started |
-| M26 | Save-System CI Hardening | ⬜ Not started |
+| M24 | Vertical Slice Content Population | 🔨 Assets populated (PR #77); cook verification pending |
+| M25 | Terrain / World Geometry Path | ✅ Complete (PR #76) |
+| M26 | Save-System CI Hardening | ✅ Complete |

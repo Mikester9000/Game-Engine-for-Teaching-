@@ -4,7 +4,9 @@
 > action RPG toolchain — with every subsystem documented for learning.
 > "Prefer simple-but-real over fancy-but-incomplete."
 >
-> **Status note (2026-04-22):** Reconciled with `docs/ASSESSMENT_2026-04-22.md`.
+> **Status note (2026-04-23):** Reconciled with `docs/ASSESSMENT_2026-04-23.md`.
+> M25 (terrain) and M26 (save-system CI) are complete. M24 content assets are populated;
+> cook verification is the next pending step.
 
 ---
 
@@ -203,9 +205,12 @@ The following items are needed to satisfy the "Project Completion Definition" in
 | Milestone | Feature | Key deliverables |
 |-----------|---------|-----------------|
 | **M23 (new)** | D3D11 authored content ingestion | ✅ Complete — runtime authored mesh/material ingestion in D3D11 path, with authored texture-slot binding + robust fallback maps |
-| **M24 (new)** | Sample content population | Populate `samples/vertical_slice_project` with real texture/audio/animation assets (not only `.gitkeep` placeholders) |
-| **M25 (new)** | Terrain + world geometry | Terrain/heightmap rendering path and collision integration for streamed cells |
-| **M26 (new)** | Save/load dedicated CI | Add `--scene save_test` acceptance tests for 15-slot save, migration, and auto-save flow |
+| **M24 (new)** | Sample content population | 🔨 Assets populated (PR #77); remaining: run `cook_assets.py`, fix PNG→loadable texture format, commit `Cooked/` |
+| **M25 (new)** | Terrain + world geometry | ✅ Complete (PR #76) — `TerrainRenderer` + `BakeTerrainCollider` + `terrain_test` CI |
+| **M26 (new)** | Save/load dedicated CI | ✅ Complete — `--scene save_test` + `build-windows-save-test` CI job + migration fixtures |
+| **M27 (new)** | Cook-pipeline tool bakers | ⬜ Not started — collision mesh baker (`bake-collision`), font atlas baker (`bake-font`), road spline baker (`bake-road`) |
+| **M28 (new)** | Authored content CI scene + texture format | ⬜ Not started — `--scene authored_content` hard-failure test; PNG→RGBA8/DDS texture cook step |
+| **M29 (new)** | Cinematic timed audio event | ⬜ Not started — 4th `cinematic_test` sub-test: audio event fires within ±1 frame |
 | **M14** | Vulkan catch-up | All DEFERRED Vulkan items: textures, descriptors, depth buffer, PBR, skinning, sky, HUD (no separate M23) |
 
 ---
@@ -396,7 +401,7 @@ Implemented via `shared/schemas/cinematic.schema.json`, `tools/creation_engine.p
 
 ## Milestone Progress Summary
 
-> **Last verified: 2026-04-22** — deep reconciliation pass.
+> **Last verified: 2026-04-23** — post-PR #76 (M25) and PR #77 (M24) reconciliation.
 
 | Milestone | Name | Status |
 |-----------|------|--------|
@@ -424,6 +429,13 @@ Implemented via `shared/schemas/cinematic.schema.json`, `tools/creation_engine.p
 | M20 | Quest / dialogue tools + tests | ✅ Complete |
 | M21 | Nav-mesh baker + ToD LUT baker | ✅ Complete (stub tooling milestone) |
 | M22 | Cut-scene baker + cinematic editor panel | ✅ Complete |
+| M23 | D3D11 authored content ingestion | ✅ Complete |
+| M24 | Vertical slice content population | 🔨 Assets populated; cook verification pending |
+| M25 | Terrain / world geometry path | ✅ Complete (PR #76) |
+| M26 | Save-system CI hardening | ✅ Complete |
+| M27 | Cook-pipeline tool bakers (collision/font/road) | ⬜ Not started |
+| M28 | Authored content CI scene + texture format fix | ⬜ Not started |
+| M29 | Cinematic timed audio event | ⬜ Not started |
 
 ---
 
