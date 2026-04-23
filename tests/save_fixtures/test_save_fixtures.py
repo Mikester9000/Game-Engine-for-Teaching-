@@ -112,24 +112,28 @@ def test_fixture_is_valid_json(fixture_path: Path) -> None:
     ids=[p.name for p in _all_fixture_paths()],
 )
 def test_fixture_has_required_top_level_fields(fixture_path: Path) -> None:
-    """Each fixture must have the fields SaveSystem::Load() depends on.
+    """Each fixture must satisfy the minimal save-fixture contract.
 
-    TEACHING NOTE — Required vs optional fields
-    ---------------------------------------------
-    SaveSystem::Load() calls ``root.contains("entities")`` before accessing
-    the entity array, and returns false (with LOG_ERROR) when it is absent.
+    TEACHING NOTE — Loader-required vs fixture-suite-required fields
+    ---------------------------------------------------------------
+    SaveSystem::Load() hard-requires only the ``entities`` array:
+    it calls ``root.contains("entities")`` before accessing it and returns
+    false (with LOG_ERROR) when it is absent.
+
     The ``version`` field is read via ``root.value("version", "0.0.0")``, so
-    it technically has a default — but every fixture must explicitly set it
-    so the migration-contract test below can assert an old version.
-    The ``savedAt`` and ``gameTimeSecs`` fields are informational; the loader
-    does not crash without them, but they make fixtures human-readable.
+    the runtime loader can default it, but this fixture suite still requires
+    it explicitly so the migration-contract test below can assert that each
+    fixture represents an older on-disk version.
+
+    Metadata such as ``savedAt``, ``gameTimeSecs``, and ``locationName`` is
+    optional for ``Load()`` and is not enforced here.
     """
     with fixture_path.open(encoding="utf-8") as fh:
         data = json.load(fh)
 
-    for field in ("version", "savedAt", "gameTimeSecs", "locationName", "entities"):
+    for field in ("version", "entities"):
         assert field in data, (
-            f"{fixture_path.name}: missing required field '{field}'"
+            f"{fixture_path.name}: missing fixture-contract field '{field}'"
         )
 
     assert isinstance(data["entities"], list), (
@@ -143,30 +147,44 @@ def test_fixture_has_required_top_level_fields(fixture_path: Path) -> None:
     ids=[p.name for p in _all_fixture_paths()],
 )
 def test_fixture_version_is_older_than_current(fixture_path: Path) -> None:
-    """Every fixture must carry a version string older than the current format.
+    """Every fixture must carry a SemVer version string strictly older than the current format.
 
-    TEACHING NOTE — Why fixtures must NOT be at "1.0.0"
+    TEACHING NOTE — Why fixtures must be strictly OLDER than "1.0.0"
     -------------------------------------------------------
     The whole point of a migration fixture is to exercise the migration
-    ladder in SaveSystem::Load().  If a fixture's version equals the current
-    kSaveFormatVersion, the loader skips the migration branch entirely, and
-    the migration subtest of save_test becomes a no-op.
+    ladder in SaveSystem::Load().  If a fixture's version equals or exceeds
+    the current kSaveFormatVersion, the loader skips (or is not guaranteed to
+    exercise) the migration branch, making the migration subtest a no-op.
 
-    This test ensures that no one accidentally updates a fixture to the
-    current version (e.g. after a format bump) without also bumping
-    kSaveFormatVersion and creating a new older-version fixture.
+    We perform a tuple-based SemVer comparison so that a fixture tagged
+    "2.0.0" or a non-semver string is rejected rather than silently passing.
     """
     with fixture_path.open(encoding="utf-8") as fh:
         data = json.load(fh)
 
     stored = data.get("version", "")
-    assert stored != CURRENT_VERSION, (
-        f"{fixture_path.name}: version is '{stored}' which equals the current "
-        f"production version '{CURRENT_VERSION}'.  Migration fixtures must use "
-        f"an older version string so the SaveSystem migration path is exercised."
-    )
     assert stored, (
         f"{fixture_path.name}: 'version' field must not be empty"
+    )
+
+    def _semver(v: str) -> tuple[int, ...]:
+        parts = v.split(".")
+        if len(parts) != 3:
+            raise ValueError(f"'{v}' is not a valid SemVer string (expected MAJOR.MINOR.PATCH)")
+        return tuple(int(p) for p in parts)
+
+    try:
+        stored_tuple = _semver(stored)
+        current_tuple = _semver(CURRENT_VERSION)
+    except (ValueError, TypeError) as exc:
+        raise AssertionError(
+            f"{fixture_path.name}: version '{stored}' is not a valid SemVer string — {exc}"
+        ) from exc
+
+    assert stored_tuple < current_tuple, (
+        f"{fixture_path.name}: version '{stored}' must be strictly less than the "
+        f"current production version '{CURRENT_VERSION}' ({stored_tuple} >= {current_tuple}). "
+        f"Migration fixtures must use an older version so the SaveSystem migration path is exercised."
     )
 
 
@@ -232,7 +250,7 @@ def test_v0_fixture_version_is_0_9_0() -> None:
 
 
 def test_v0_fixture_has_player_entity() -> None:
-    """The v0.9.0 fixture must contain exactly one entity with Name + Health.
+    """The v0.9.0 fixture must contain at least one entity with Name + Health.
 
     TEACHING NOTE — Representative fixture content
     ------------------------------------------------
@@ -262,9 +280,9 @@ def test_v0_fixture_player_hp_is_positive() -> None:
     """
     data = _load_fixture(V0_FIXTURE)
     health = data["entities"][0]["components"]["Health"]
-    hp     = health.get("hp", 0)
+    hp = health.get("hp", 0)
     max_hp = health.get("maxHp", 0)
-    assert hp > 0,     f"{V0_FIXTURE}: player hp must be > 0 (got {hp})"
+    assert hp > 0, f"{V0_FIXTURE}: player hp must be > 0 (got {hp})"
     assert max_hp > 0, f"{V0_FIXTURE}: player maxHp must be > 0 (got {max_hp})"
     assert hp <= max_hp, (
         f"{V0_FIXTURE}: hp ({hp}) must not exceed maxHp ({max_hp})"
