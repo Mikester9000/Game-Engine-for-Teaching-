@@ -8122,7 +8122,7 @@ const auto insertIt = std::lower_bound(
 shot.audioEvents.begin(),
 shot.audioEvents.end(),
 clampedT,
-[](const AudioEventEntry& ev, float time) { return ev.time < time; });
+[](const auto& ev, float time) { return ev.time < time; });
 
 ### Resetting audio event fired flags on Play()
 

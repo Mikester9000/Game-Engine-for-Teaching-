@@ -130,7 +130,7 @@ void CinematicSequencer::AddAudioEvent(float t, std::string clipID)
         shot.audioEvents.begin(),
         shot.audioEvents.end(),
         clampedT,
-        [](const AudioEventEntry& ev, float time) { return ev.time < time; });
+        [](const auto& ev, float time) { return ev.time < time; });
 
     const auto insertIndex = static_cast<std::ptrdiff_t>(
         insertIt - shot.audioEvents.begin());
