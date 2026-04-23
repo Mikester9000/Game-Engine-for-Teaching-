@@ -1,13 +1,24 @@
 # tests/save_fixtures/
 
 This directory holds **older-version save file fixtures** used by the M26
-save-system CI hardening tests (`--headless --scene save_test`).
+save-system CI hardening tests.
 
-The C++ acceptance tests (in `src/sandbox/main.cpp`, the `save_test` scene
-block) copy one of these files into a temporary directory and call
-`SaveSystem::Load()` to verify that the migration path handles the version
-mismatch gracefully — no crash, a `LOG_WARN` migration message, and the
-correct player data restored.
+Fixtures serve two roles:
+
+1. **Python pytest** (`test_save_fixtures.py`) — pure-Python structural
+   validation that runs on Linux CI without a C++ build.
+2. **C++ headless acceptance scene** (`--headless --scene save_test`) — the
+   `save_test` scene in `src/sandbox/main.cpp` loads or embeds these fixtures
+   to verify that `SaveSystem::Load()` handles version mismatches gracefully.
+
+---
+
+## Files
+
+| File | Version | Used by | Purpose |
+|------|---------|---------|---------|
+| `v0_9_0_player.save.json` | 0.9.0 | Python pytest | Full player state (Health, Transform, Quest, Currency); validates migration contract and field structure. |
+| `v0_9_0_minimal.json` | 0.9.0 | C++ save_test (Test 2) | Minimal entity with Health+Name; canonical golden reference for the inline `kFixtureJSON` raw-string literal in `main.cpp`. |
 
 ---
 
@@ -56,11 +67,39 @@ as if the player had never rotated or resized their character.
 
 ---
 
+## Fixture: `v0_9_0_minimal.json`
+
+**Represents:** the minimum valid save payload that `SaveSystem::Load()`
+accepts from a 0.9.0 file — one entity with `Health` + `Name` components.
+
+### Keeping C++ inline string in sync
+
+The `save_test` scene (Test 2) embeds this fixture as a C++ raw string
+literal (`kFixtureJSON`) via `std::ofstream`.  This file is the **canonical
+golden reference** — both must stay in sync manually.
+
+If you update the JSON here, also update `kFixtureJSON` in
+`src/sandbox/main.cpp`, and vice versa.  Verify with:
+
+```bash
+python3 - << 'EOF' | diff - tests/save_fixtures/v0_9_0_minimal.json
+import re
+src = open('src/sandbox/main.cpp').read()
+m = re.search(r'R"JSON\((.*?)\)JSON"', src, re.DOTALL)
+if m:
+    print(m.group(1), end='')
+EOF
+```
+
+A zero-exit (no output) means they are in sync.
+
+---
+
 ## Adding new fixtures
 
 1. Name the file `v<MAJOR>_<MINOR>_<PATCH>_<description>.save.json`.
 2. Set `"version"` to the **old** version string the fixture represents.
-3. Add a row to the table above explaining what changed.
+3. Add a row to the Files table above explaining what changed.
 4. Add a test case to `test_save_fixtures.py` for the new fixture.
-5. Reference the fixture in the `save_test` block inside
-   `src/sandbox/main.cpp` under the `migration` subtest comment.
+5. If the fixture is also used by a C++ acceptance sub-test, reference it in
+   the `TEACHING NOTE` block of the relevant test in `src/sandbox/main.cpp`.
