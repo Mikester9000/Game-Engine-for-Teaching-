@@ -348,13 +348,20 @@ def cook_audio(registry: list[dict]) -> int:
         bank_path = audio_dst / "VerticalSliceBank.bank.json"
         bank_path.write_text(json.dumps(bank, indent=2), encoding="utf-8")
 
+        # TEACHING NOTE — Hash for aggregate assets
+        # An audio bank is assembled from multiple WAV source files, so there
+        # is no single source file to hash.  We hash the cooked bank JSON
+        # (written just above) so any change to the clip list or clip metadata
+        # is captured and will trigger a re-cook on the next pass.
+        bank_hash = sha256_file(bank_path)
+
         registry.append({
             "id":           bank_id,
             "type":         "audio_bank",
             "name":         "VerticalSliceBank",
-            "source":       "Content/Audio",
+            "source":       "Audio/",
             "cooked":       str(bank_path.relative_to(SCRIPT_DIR)),
-            "hash":         "",
+            "hash":         bank_hash,
             "dependencies": [],
             "tags":         ["audio_bank"],
         })
@@ -403,6 +410,27 @@ def cook_scenes(registry: list[dict]) -> int:
         print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")
 
     return count
+
+
+def _is_skeleton_file(raw: dict, src: Path) -> bool:
+    """Return True when *src* is an animation skeleton rather than a clip.
+
+    TEACHING NOTE — Type detection heuristic
+    The ``AnimAssetPipeline`` (anim_engine Path A) identifies skeletons by
+    checking whether the ``$schema`` field contains the word ``"skeleton"``
+    *or* whether the file stem ends with ``"_skeleton"``.  We replicate that
+    exact heuristic here so stub mode (Path B) produces registry entries with
+    the same ``type`` and cooked file extension as the real pipeline would.
+
+    Args:
+        raw: Parsed JSON dict from the source file.
+        src: Path to the source JSON file (used for filename-suffix check).
+
+    Returns:
+        ``True`` for skeleton assets, ``False`` for animation clips.
+    """
+    schema_ref = str(raw.get("$schema", "")).lower()
+    return "skeleton" in schema_ref or src.stem.lower().endswith("_skeleton")
 
 
 def cook_animations(registry: list[dict]) -> int:
@@ -466,29 +494,61 @@ def cook_animations(registry: list[dict]) -> int:
             count += 1
     else:
         # ------------------------------------------------------------------
-        # Path B: stub — copy JSON → .animc
+        # Path B: stub — copy JSON → .skelc / .animc
         # ------------------------------------------------------------------
+        # TEACHING NOTE — Type detection in stub mode
+        # The AnimAssetPipeline (Path A) distinguishes skeletons from clips
+        # via the "$schema" field.  We replicate that logic here so that stub
+        # mode produces the same registry entry types and cooked extensions.
         for src in sorted(anim_src.glob("**/*.json")):
             rel = src.relative_to(anim_src)     # relative to Animations/
             source_rel = "Animations/" + str(rel)
-            source_hash = sha256_file(src)
-            dst = anim_dst / rel.with_suffix(".animc")
+            source_bytes = src.read_bytes()
+            source_hash = hashlib.sha256(source_bytes).hexdigest()
+
+            # Detect asset type: skeleton files reference the skeleton schema
+            # or use the "_skeleton" filename suffix — see _is_skeleton_file().
+            try:
+                raw = json.loads(source_bytes.decode("utf-8"))
+            except json.JSONDecodeError as exc:
+                # TEACHING NOTE — Surface malformed content during stub cooking
+                # Silent fallback makes it hard for content creators to notice
+                # that a file is invalid JSON and may be misclassified.  We log
+                # a warning and continue with an empty object so the cook pass
+                # remains resilient while still reporting the issue.
+                print(
+                    f"  [WARN] {src.name}: invalid animation JSON at "
+                    f"line {exc.lineno}, column {exc.colno} ({exc.msg})"
+                )
+                raw = {}
+            is_skeleton = _is_skeleton_file(raw, src)
+
+            if is_skeleton:
+                asset_type = "skeleton"
+                cooked_suffix = ".skelc"
+                tags = ["skeleton"]
+            else:
+                asset_type = "anim_clip"
+                cooked_suffix = ".animc"
+                tags = ["animation"]
+
+            dst = anim_dst / rel.with_suffix(cooked_suffix)
             dst.parent.mkdir(parents=True, exist_ok=True)
             if should_recook(source_rel, source_hash):
                 shutil.copy2(src, dst)  # STUB: copy; real cook converts to binary
-                action = "ANI"
+                action = "SKL" if is_skeleton else "ANI"
             else:
-                action = "SKIP-ANI"
+                action = "SKIP-SKL" if is_skeleton else "SKIP-ANI"
 
             registry.append({
                 "id":     stable_guid(source_rel),
-                "type":   "anim_clip",
+                "type":   asset_type,
                 "name":   src.stem,
                 "source": source_rel,
                 "cooked": str(dst.relative_to(SCRIPT_DIR)),
                 "hash":   source_hash,
                 "dependencies": [],
-                "tags":   ["animation"],
+                "tags":   tags,
             })
             count += 1
             print(f"  [{action}] {rel} → {dst.relative_to(SCRIPT_DIR)}")

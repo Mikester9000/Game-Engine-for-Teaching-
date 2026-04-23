@@ -1,0 +1,139 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "6d4dbb13-e681-49fc-bee3-e0c6aa10350a",
+  "name": "GoblinDeath",
+  "skeletonId": "b5bb58f8-8e51-475a-9585-41fd02104e5b",
+  "durationSeconds": 1.2,
+  "fps": 30.0,
+  "loopable": false,
+  "rootMotion": false,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.5,
+          "translation": [
+            0,
+            0,
+            -0.12
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.2,
+          "translation": [
+            0,
+            0,
+            -0.12
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 1,
+      "boneName": "pelvis",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0.9,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.7,
+          "translation": [
+            0,
+            0.3,
+            -0.05
+          ],
+          "rotation": [
+            0.55,
+            0,
+            0,
+            0.835
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.2,
+          "translation": [
+            0,
+            0.08,
+            -0.08
+          ],
+          "rotation": [
+            0.73,
+            0,
+            0,
+            0.683
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

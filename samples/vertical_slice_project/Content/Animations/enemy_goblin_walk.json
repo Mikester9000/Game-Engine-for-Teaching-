@@ -1,0 +1,202 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "d793a402-2d49-4288-bc01-daca656678ae",
+  "name": "GoblinWalk",
+  "skeletonId": "b5bb58f8-8e51-475a-9585-41fd02104e5b",
+  "durationSeconds": 1.1,
+  "fps": 30.0,
+  "loopable": true,
+  "rootMotion": true,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.55,
+          "translation": [
+            0,
+            0,
+            0.5
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.1,
+          "translation": [
+            0,
+            0,
+            1.0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 7,
+      "boneName": "L_leg",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0.1,
+            -0.05,
+            0
+          ],
+          "rotation": [
+            0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.55,
+          "translation": [
+            0.1,
+            -0.05,
+            0
+          ],
+          "rotation": [
+            -0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.1,
+          "translation": [
+            0.1,
+            -0.05,
+            0
+          ],
+          "rotation": [
+            0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 8,
+      "boneName": "R_leg",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            -0.1,
+            -0.05,
+            0
+          ],
+          "rotation": [
+            -0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.55,
+          "translation": [
+            -0.1,
+            -0.05,
+            0
+          ],
+          "rotation": [
+            0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 1.1,
+          "translation": [
+            -0.1,
+            -0.05,
+            0
+          ],
+          "rotation": [
+            -0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

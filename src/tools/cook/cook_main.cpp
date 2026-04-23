@@ -76,6 +76,8 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <cctype>
 #include <cstring>  // std::strcmp
 
 // ============================================================================
@@ -133,6 +135,30 @@ static std::string json_escape(const std::string& s)
         }
     }
     return out;
+}
+
+// ---------------------------------------------------------------------------
+// normalize_path_separators
+// ---------------------------------------------------------------------------
+// Convert Windows separators to forward slashes for portable JSON output.
+// ---------------------------------------------------------------------------
+static std::string normalize_path_separators(std::string path)
+{
+    for (char& ch : path)
+        if (ch == '\\') ch = '/';
+    return path;
+}
+
+// ---------------------------------------------------------------------------
+// to_lower_ascii
+// ---------------------------------------------------------------------------
+// Lowercase helper for simple case-insensitive extension comparisons.
+// ---------------------------------------------------------------------------
+static std::string to_lower_ascii(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +445,98 @@ int main(int argc, char* argv[])
             continue;
         }
 
+        // TEACHING NOTE — Aggregate assets (e.g. audio banks)
+        // Some registry entries represent a cooked artifact produced from a
+        // source DIRECTORY rather than a single file (for example an audio
+        // bank built from Content/Audio/ into one .bank.json file). In that
+        // case we don't copy the directory; we verify the cooked artifact
+        // already exists and index it in assetdb.json.
+        if (fs::is_directory(srcPath))
+        {
+            // TEACHING NOTE — Stub aggregate build for audio_bank
+            // CI invokes cook.exe directly in a fresh checkout where cooked
+            // aggregate outputs might not already exist. For audio banks we
+            // emit a minimal .bank.json from discovered source clips so the
+            // runtime has a concrete cooked artifact path to load/index.
+            if (entry.type == "audio_bank" && !fs::exists(dstPath))
+            {
+                std::vector<fs::path> clipPaths;
+                for (const auto& dirEnt : fs::recursive_directory_iterator(srcPath))
+                {
+                    if (!dirEnt.is_regular_file())
+                        continue;
+
+                    std::string ext = to_lower_ascii(dirEnt.path().extension().string());
+                    if (ext == ".wav" || ext == ".ogg" || ext == ".mp3")
+                        clipPaths.push_back(dirEnt.path());
+                }
+                std::sort(clipPaths.begin(), clipPaths.end());
+
+                std::ofstream bankOut(dstPath);
+                if (!bankOut.is_open())
+                {
+                    std::cerr << "[cook] ERROR: Cannot write aggregate audio bank: "
+                              << dstPath.string() << "\n";
+                    ++errors;
+                    continue;
+                }
+
+                std::string bankName = dstPath.stem().string();
+                const std::string bankSuffix = ".bank";
+                if (bankName.size() > bankSuffix.size() &&
+                    bankName.compare(bankName.size() - bankSuffix.size(),
+                                     bankSuffix.size(), bankSuffix) == 0)
+                {
+                    bankName.erase(bankName.size() - bankSuffix.size());
+                }
+
+                bankOut << "{\n";
+                bankOut << "  \"version\": \"1.0.0\",\n";
+                bankOut << "  \"bankId\": \"" << json_escape(entry.id) << "\",\n";
+                bankOut << "  \"bankName\": \"" << json_escape(bankName) << "\",\n";
+                bankOut << "  \"clips\": [\n";
+
+                for (std::size_t i = 0; i < clipPaths.size(); ++i)
+                {
+                    std::string clipSource =
+                        normalize_path_separators(fs::relative(clipPaths[i], projectPath).string());
+
+                    bankOut << "    { \"id\": \"" << json_escape(clipSource)
+                            << "\", \"name\": \"" << json_escape(clipPaths[i].stem().string())
+                            << "\", \"source\": \"" << json_escape(clipSource) << "\" }";
+                    if (i + 1 < clipPaths.size()) bankOut << ",";
+                    bankOut << "\n";
+                }
+
+                bankOut << "  ]\n";
+                bankOut << "}\n";
+            }
+
+            if (!fs::exists(dstPath))
+            {
+                std::cerr << "[cook] ERROR: Aggregate asset output missing: "
+                          << dstPath.string() << "\n";
+                ++errors;
+                continue;
+            }
+
+            if (verbose)
+            {
+                std::cout << "  [" << entry.type << "] "
+                          << srcPath.filename().string()
+                          << "  →  "
+                          << fs::relative(dstPath, projectPath).string()
+                          << "  (prebuilt aggregate)\n";
+            }
+
+            std::string relCooked =
+                normalize_path_separators(fs::relative(dstPath, projectPath).string());
+
+            dbEntries.push_back({ entry.id, relCooked });
+            ++cooked;
+            continue;
+        }
+
         // Copy file (overwrite if already exists).
         fs::copy_file(srcPath, dstPath, fs::copy_options::overwrite_existing, ec);
         if (ec)
@@ -441,10 +559,8 @@ int main(int argc, char* argv[])
 
         // Compute relative cooked path for assetdb.json.
         // Use forward slashes for portability (engine on Linux/Windows).
-        std::string relCooked = fs::relative(dstPath, projectPath).string();
-        // Normalise path separators to forward slash.
-        for (char& ch : relCooked)
-            if (ch == '\\') ch = '/';
+        std::string relCooked =
+            normalize_path_separators(fs::relative(dstPath, projectPath).string());
 
         dbEntries.push_back({ entry.id, relCooked });
         ++cooked;

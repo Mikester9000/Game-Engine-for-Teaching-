@@ -1,0 +1,366 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "254c661e-8e7e-4e3c-b75e-1c502eb8c48f",
+  "name": "Jump",
+  "skeletonId": "11111111-aaaa-4b3c-8d2e-000000000001",
+  "durationSeconds": 0.9,
+  "fps": 30.0,
+  "loopable": false,
+  "rootMotion": true,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.2,
+          "translation": [
+            0,
+            0.22,
+            0.18
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.45,
+          "translation": [
+            0,
+            0.34,
+            0.36
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.7,
+          "translation": [
+            0,
+            0.1,
+            0.52
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            0,
+            0,
+            0.58
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 15,
+      "boneName": "L_upper_leg",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.35,
+          "translation": [
+            0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            -0.24,
+            0,
+            0,
+            0.971
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 18,
+      "boneName": "R_upper_leg",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            -0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            0.22,
+            0,
+            0,
+            0.975
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.35,
+          "translation": [
+            -0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            -0.24,
+            0,
+            0,
+            0.971
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            -0.1,
+            -0.04,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 8,
+      "boneName": "L_upper_arm",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            -0.2,
+            0,
+            0,
+            0.98
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.35,
+          "translation": [
+            0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.35,
+            0,
+            0,
+            0.936
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 12,
+      "boneName": "R_upper_arm",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            -0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            -0.2,
+            0,
+            0,
+            0.98
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.35,
+          "translation": [
+            -0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0.35,
+            0,
+            0,
+            0.936
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.9,
+          "translation": [
+            -0.22,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ]
+}

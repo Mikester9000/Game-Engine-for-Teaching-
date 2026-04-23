@@ -1,0 +1,230 @@
+{
+  "$schema": "../../../shared/schemas/anim_clip.schema.json",
+  "version": "1.0.0",
+  "id": "55e49764-df0f-4925-b33d-47c65c4e408e",
+  "name": "GoblinAttack",
+  "skeletonId": "b5bb58f8-8e51-475a-9585-41fd02104e5b",
+  "durationSeconds": 0.75,
+  "fps": 30.0,
+  "loopable": false,
+  "rootMotion": false,
+  "channels": [
+    {
+      "boneIndex": 0,
+      "boneName": "root",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.3,
+          "translation": [
+            0,
+            0,
+            0.2
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.75,
+          "translation": [
+            0,
+            0,
+            0.1
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 6,
+      "boneName": "R_arm",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            -0.18,
+            0.12,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.25,
+          "translation": [
+            -0.18,
+            0.12,
+            0
+          ],
+          "rotation": [
+            0.6,
+            0,
+            0,
+            0.8
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.45,
+          "translation": [
+            -0.18,
+            0.12,
+            0
+          ],
+          "rotation": [
+            -0.3,
+            0,
+            0,
+            0.954
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.75,
+          "translation": [
+            -0.18,
+            0.12,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    },
+    {
+      "boneIndex": 2,
+      "boneName": "spine",
+      "keyframes": [
+        {
+          "time": 0.0,
+          "translation": [
+            0,
+            0.18,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.35,
+          "translation": [
+            0,
+            0.15,
+            -0.03
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "time": 0.75,
+          "translation": [
+            0,
+            0.18,
+            0
+          ],
+          "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "scale": [
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "time": 0.43,
+      "name": "hit_frame",
+      "payload": {
+        "damage": 0.8
+      }
+    }
+  ]
+}

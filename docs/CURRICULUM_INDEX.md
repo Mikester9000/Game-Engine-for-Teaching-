@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1835 across 55 subsystems.
+**Total lessons:** 1841 across 55 subsystems.
 
 ---
 
@@ -42,7 +42,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [game/systems](#gamesystems) (99 lessons)
 - [game/world](#gameworld) (90 lessons)
 - [requirements-dev.txt](#requirements-dev.txt) (1 lesson)
-- [samples/vertical_slice_project](#samplesvertical_slice_project) (21 lessons)
+- [samples/vertical_slice_project](#samplesvertical_slice_project) (25 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
 - [sandbox/main.cpp](#sandboxmain.cpp) (108 lessons)
@@ -61,7 +61,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/audio_authoring](#toolsaudio_authoring) (28 lessons)
 - [tools/audio_engine.py](#toolsaudio_engine.py) (6 lessons)
 - [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
-- [tools/cook](#toolscook) (12 lessons)
+- [tools/cook](#toolscook) (14 lessons)
 - [tools/creation_engine.py](#toolscreation_engine.py) (14 lessons)
 - [tools/pak](#toolspak) (14 lessons)
 - [tools/quest_baker](#toolsquest_baker) (14 lessons)
@@ -26600,9 +26600,19 @@ audio_src  = CONTENT_DIR / "Audio"
 audio_dst  = COOKED_DIR  / "Audio"
 ensure_dir(audio_dst)
 
+### Hash for aggregate assets
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L351) (line 351)
+
+An audio bank is assembled from multiple WAV source files, so there
+is no single source file to hash.  We hash the cooked bank JSON
+(written just above) so any change to the clip list or clip metadata
+is captured and will trigger a re-cook on the next pass.
+bank_hash = sha256_file(bank_path)
+
 ### Scene Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L368) (line 368)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L375) (line 375)
 
 For simple JSON scenes, cooking is mostly a copy + validation step.
 A real cook might:
@@ -26614,18 +26624,56 @@ maps_src = CONTENT_DIR / "Maps"
 maps_dst = COOKED_DIR  / "Maps"
 ensure_dir(maps_dst)
 
+### Type detection heuristic
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L418) (line 418)
+
+The ``AnimAssetPipeline`` (anim_engine Path A) identifies skeletons by
+checking whether the ``$schema`` field contains the word ``"skeleton"``
+or* whether the file stem ends with ``"_skeleton"``.  We replicate that
+exact heuristic here so stub mode (Path B) produces registry entries with
+the same ``type`` and cooked file extension as the real pipeline would.
+
 ### Animation Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L411) (line 411)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L439) (line 439)
 
 When the  tools/anim_authoring  package is installed, this function uses
 the  AnimAssetPipeline  class from  animation_engine.integration  to
 deserialise skeletons and clips, apply key-frame reduction and then write
 the cooked .skelc / .animc files.
 
+### Type detection in stub mode
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L499) (line 499)
+
+The AnimAssetPipeline (Path A) distinguishes skeletons from clips
+via the "$schema" field.  We replicate that logic here so that stub
+mode produces the same registry entry types and cooked extensions.
+for src in sorted(anim_src.glob("**/*.json")):
+rel = src.relative_to(anim_src)     # relative to Animations/
+source_rel = "Animations/" + str(rel)
+source_bytes = src.read_bytes()
+source_hash = hashlib.sha256(source_bytes).hexdigest()
+
+### Surface malformed content during stub cooking
+
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L514) (line 514)
+
+Silent fallback makes it hard for content creators to notice
+that a file is invalid JSON and may be misclassified.  We log
+a warning and continue with an empty object so the cook pass
+remains resilient while still reporting the issue.
+print(
+f"  [WARN] {src.name}: invalid animation JSON at "
+f"line {exc.lineno}, column {exc.colno} ({exc.msg})"
+)
+raw = {}
+is_skeleton = _is_skeleton_file(raw, src)
+
 ### M23 groundwork: authored material ingestion
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L502) (line 502)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L562) (line 562)
 
 For M23 we start by treating authored materials as first-class cooked assets.
 Designers author *.material.json files in Content/Materials/.  The cook step
@@ -26639,7 +26687,7 @@ ensure_dir(materials_dst)
 
 ### Parse-check before cook output
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L522) (line 522)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L582) (line 582)
 
 We fail fast on malformed material JSON so bad content never reaches
 Cooked/ where the runtime would otherwise fail much later.
@@ -26661,11 +26709,11 @@ continue
 
 ### M7.2: Level / Streaming Cell Cooking
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L566) (line 566)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L626) (line 626)
 
 ### Why .level instead of keeping .cell.json?
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L584) (line 584)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L644) (line 644)
 
 Renaming to .level makes it explicit that this is a COOKED, runtime-ready
 file — not a raw source file.  The extension signals the content pipeline
@@ -26677,7 +26725,7 @@ ensure_dir(levels_dst)
 
 ### Strip double extension: "cell_0_0.cell.json" → "cell_0_0.level"
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L598) (line 598)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L658) (line 658)
 
 Path.with_suffix() only removes the last suffix (e.g. ".json" → ".level"),
 leaving ".cell" behind.  We strip the full ".cell.json" suffix explicitly.
@@ -26688,7 +26736,7 @@ dst.parent.mkdir(parents=True, exist_ok=True)
 
 ### Python 3.9 compatibility
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L645) (line 645)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L705) (line 705)
 
 Path.is_relative_to() was added in Python 3.9.  We use a try/except
 approach so the code also runs on Python 3.8 (the minimum for some CI
@@ -26701,7 +26749,7 @@ return str(path)
 
 ### Asset Registry
 
-**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L659) (line 659)
+**Source:** [`samples/vertical_slice_project/cook_assets.py`](samples/vertical_slice_project/cook_assets.py#L719) (line 719)
 
 The registry is the single source of truth for all cooked assets.
 It maps stable GUIDs → file paths + hashes.  The engine reads it at
@@ -30384,7 +30432,7 @@ C++ Standard: C++17
 
 ### Using std::filesystem (C++17)
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L82) (line 82)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L84) (line 84)
 
 ============================================================================
 std::filesystem provides cross-platform directory and path manipulation.
@@ -30400,7 +30448,7 @@ namespace fs = std::filesystem;
 
 ### Minimal JSON helpers for cook output
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L96) (line 96)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L98) (line 98)
 
 ============================================================================
 For M2 we hand-write the JSON output rather than using a JSON library.
@@ -30415,7 +30463,7 @@ namespace
 
 ### JSON string escaping rules:
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L112) (line 112)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L114) (line 114)
 
 \  → \\      (backslash)
   "  → \"      (double quote)
@@ -30444,7 +30492,7 @@ return out;
 
 ### Simple JSON parsing with braces tracking
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L180) (line 180)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L206) (line 206)
 
 The registry contains an array of objects.  We extract each object using
 brace-depth tracking (same technique used in AssetDB::Load), then pull out
@@ -30463,7 +30511,7 @@ return {};
 
 ### Main function structure for a tool
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L245) (line 245)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L271) (line 271)
 
 ============================================================================
 A well-structured command-line tool main() does:
@@ -30483,7 +30531,7 @@ bool        verbose = false;
 
 ### Incremental cooking (future enhancement)
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L341) (line 341)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L367) (line 367)
 
 A real cooker checks the hash of the source file against the stored
 hash in the registry.  If they match, the asset is up-to-date and the
@@ -30497,7 +30545,7 @@ int  errors  = 0;
 
 ### Source path resolution strategy
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L359) (line 359)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L385) (line 385)
 
 AssetRegistry.json stores the source path in two possible conventions:
   1. Relative to the project root (e.g., "Content/Maps/file.json")
@@ -30509,7 +30557,7 @@ fs::path srcPath;
 
 ### Derived cooked path
 
-**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L404) (line 404)
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L430) (line 430)
 
 When no cooked path is specified, we place the asset under
 Cooked/<AssetType>/<filename>.  This mirrors Unreal Engine's
@@ -30517,9 +30565,37 @@ cooked content layout where each asset type has its own folder.
 dstPath = cookedDir / entry.type / srcPath.filename();
 }
 
-### Why a separate assetdb.json and not just use the registry?
+### Aggregate assets (e.g. audio banks)
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L448) (line 448)
+
+Some registry entries represent a cooked artifact produced from a
+source DIRECTORY rather than a single file (for example an audio
+bank built from Content/Audio/ into one .bank.json file). In that
+case we don't copy the directory; we verify the cooked artifact
+already exists and index it in assetdb.json.
+if (fs::is_directory(srcPath))
+{
+
+### Stub aggregate build for audio_bank
 
 **Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L456) (line 456)
+
+CI invokes cook.exe directly in a fresh checkout where cooked
+aggregate outputs might not already exist. For audio banks we
+emit a minimal .bank.json from discovered source clips so the
+runtime has a concrete cooked artifact path to load/index.
+if (entry.type == "audio_bank" && !fs::exists(dstPath))
+{
+std::vector<fs::path> clipPaths;
+for (const auto& dirEnt : fs::recursive_directory_iterator(srcPath))
+{
+if (!dirEnt.is_regular_file())
+continue;
+
+### Why a separate assetdb.json and not just use the registry?
+
+**Source:** [`src/tools/cook/cook_main.cpp`](src/tools/cook/cook_main.cpp#L572) (line 572)
 
 AssetRegistry.json can be very large in a real project (hundreds of
 fields per asset).  assetdb.json is a stripped-down runtime index:

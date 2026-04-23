@@ -13,13 +13,36 @@ vertical_slice_project/
 ├── Content/              ← Raw source assets (version-controlled)
 │   ├── AI/               ← Sample OBJ geometry for nav-mesh baking (M21)
 │   ├── environment/      ← Sample time-of-day curve JSON (M21)
-│   ├── Textures/         ← PNG placeholder textures
-│   ├── Audio/            ← WAV placeholder audio
-│   ├── Maps/             ← Scene JSON files (MainTown, Dungeon, etc.)
-│   └── Animations/       ← Source animation JSON
+│   ├── Textures/         ← PBR PNG textures (character + props + terrain)  ← M24
+│   │   ├── character/    ← hero, hero_rogue, hero_mage PBR sets (4 maps each)
+│   │   ├── props/        ← crate_metal, barrel_wood, stone_pillar PBR sets
+│   │   └── terrain/      ← grass, desert, rocky, snow PBR sets
+│   ├── Audio/            ← WAV audio clips (music, SFX, ambient)            ← M24
+│   │   ├── music/        ← battle/exploration/town/dungeon/boss/menu loops + fanfare
+│   │   ├── sfx/          ← footsteps, UI, combat hits, items, traversal, world events
+│   │   └── ambient/      ← wind, rain, forest day/night, cave, town, market beds
+│   ├── Animations/       ← Skeleton + animation clip JSON                   ← M24
+│   │   ├── hero_skeleton.json         ← 21-bone humanoid rig
+│   │   ├── hero_* clips               ← idle/walk/run/attack + jump/dodge/cast/etc.
+│   │   ├── enemy_goblin_skeleton.json ← enemy rig for combat encounters
+│   │   └── enemy_goblin_* clips       ← idle/walk/attack/hit/death
+│   ├── Maps/             ← Scene JSON files (MainTown, etc.)
+│   ├── Materials/        ← PBR material descriptors
+│   └── Levels/           ← Streaming cell descriptors
 ├── Cooked/               ← Generated at cook time (gitignored)
 └── Saved/Logs/           ← Engine log output (gitignored)
 ```
+
+### Asset budget (M24)
+
+| Category | Files | Total size |
+|----------|-------|-----------|
+| Textures (source PNG) | 40 PBR maps | ~3.5 MB |
+| Audio (WAV) | 32 clips | ~9.0 MB |
+| Animations (JSON) | 2 skeletons + 17 clips | ~120 KB |
+| **Total source** | **95+ files** | **~12.32 MB (0.012 GiB)** |
+
+All source assets are well below the 0.5 GiB target.
 
 ## How to cook
 
@@ -29,7 +52,7 @@ cd samples\vertical_slice_project
 python cook_assets.py
 ```
 
-Expected output:
+Expected output (M24 — full content):
 ```
 ============================================================
  Vertical Slice Asset Cook
@@ -39,30 +62,52 @@ Expected output:
  Cooked  : .../Cooked
 
 --- Textures ---
-  (no textures found in Content/Textures/)
+  [TEX] character/hero_albedo.png → Cooked/Textures/character/hero_albedo.tex
+  [TEX] character/hero_ao.png → ...
+  ... (40 texture maps total)
 
 --- Audio ---
-  (no WAV files found in Content/Audio/)
+  [AUD] ambient/wind_ambient.wav → Cooked/Audio/ambient/wind_ambient.wav
+  [AUD] music/battle_theme_loop.wav → ...
+  ... (32 WAV clips total, packed into VerticalSliceBank)
 
 --- Scenes / Maps ---
-  [MAP] Maps/MainTown.scene.json → Cooked/Maps/MainTown.scene.json
+  [MAP] MainTown.scene.json → Cooked/Maps/MainTown.scene.json
 
 --- Animations ---
-  (no JSON files found in Content/Animations/)
+  [SKL] hero_skeleton.json → Cooked/Anim/hero_skeleton.skelc
+  [ANI] hero_idle.json → Cooked/Anim/hero_idle.animc
+  ... (17 clips + 2 skeletons)
 
 --- Registry ---
-  Registry written: AssetRegistry.json  (1 assets)
+  Registry written: AssetRegistry.json  (66 assets)
 
 ============================================================
- Cook complete: 1 assets processed.
+ Cook complete: 97 assets processed.
+ (\"assets processed\" includes all per-file cook steps; registry entries are
+ consolidated to 66 runtime assets after packaging.)
 ============================================================
 ```
 
-## How to add real assets
+## Content included (M24)
+
+The `Content/` directories ship with real assets ready to use:
+
+| Directory | What's inside |
+|-----------|--------------|
+| `Content/Textures/character/` | 3 character PBR sets (`hero`, `hero_rogue`, `hero_mage`) with albedo/normal/metallic-roughness/AO maps |
+| `Content/Textures/props/` | 3 prop PBR sets (`crate_metal`, `barrel_wood`, `stone_pillar`) |
+| `Content/Textures/terrain/` | 4 terrain PBR sets (`grass`, `desert`, `rocky`, `snow`) |
+| `Content/Audio/music/` | 7 tracks: battle, exploration, town, dungeon, boss, menu loops + victory fanfare |
+| `Content/Audio/sfx/` | 19 event clips: footsteps, UI, weapon impacts, enemy, item, movement, and interact sounds |
+| `Content/Audio/ambient/` | 7 ambience beds: wind, rain, forest day/night, cave, town crowd, market |
+| `Content/Animations/` | 2 skeletons + 17 clips (hero locomotion/combat/utility and goblin enemy combat set) |
+
+## How to add more assets
 
 1. **Textures**: Drop PNG/JPG files into `Content/Textures/`. Run cook. The
-   cook step copies them to `Cooked/Textures/*.tex` (stub for now; Milestone
-   2 adds real texture compression).
+   cook step copies them to `Cooked/Textures/*.tex` (stub for now; a future
+   milestone adds real BC7 compression via DirectXTex).
 
 2. **Audio**: Drop WAV files into `Content/Audio/`. Run cook. They are
    packaged into `Cooked/Audio/VerticalSliceBank.bank.json`.
@@ -71,8 +116,9 @@ Expected output:
    scene in the scene editor, and save to `Content/Maps/*.scene.json`. The
    cook step copies scenes to `Cooked/Maps/`.
 
-4. **Animations**: Use `tools/anim_authoring/` to export animation clips as
-   JSON to `Content/Animations/`. Run cook. They appear in `Cooked/Anim/`.
+4. **Animations**: Follow the existing skeleton/clip JSON schema in
+   `Content/Animations/` or use `tools/anim_authoring/` to export clips.
+   Run cook — clips appear in `Cooked/Anim/`.
 
 5. **Nav-mesh (M21)**: Bake OBJ geometry to a cooked nav-mesh:
    ```bash
