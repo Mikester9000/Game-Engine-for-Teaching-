@@ -3700,15 +3700,15 @@ int main(int argc, char* argv[])
                 // CI job, which installs nlohmann-json via vcpkg, will
                 // exercise the full suite.
                 // -----------------------------------------------------------
-                std::cout << "[SKIP] save_test 1/3: slot_roundtrip "
-                             "(ENGINE_ENABLE_JSON not set — "
-                             "nlohmann/json required).\n";
-                std::cout << "[SKIP] save_test 2/3: migration "
-                             "(ENGINE_ENABLE_JSON not set — "
-                             "nlohmann/json required).\n";
-                std::cout << "[SKIP] save_test 3/3: autosave "
-                             "(ENGINE_ENABLE_JSON not set — "
-                             "nlohmann/json required).\n";
+                std::cout << "[SKIP] save_test 1/3 (slot_roundtrip): "
+                             "ENGINE_ENABLE_JSON not set — "
+                             "nlohmann/json required.\n";
+                std::cout << "[SKIP] save_test 2/3 (migration): "
+                             "ENGINE_ENABLE_JSON not set — "
+                             "nlohmann/json required.\n";
+                std::cout << "[SKIP] save_test 3/3 (autosave): "
+                             "ENGINE_ENABLE_JSON not set — "
+                             "nlohmann/json required.\n";
                 std::cout << "[PASS] save_test: all tests skipped "
                              "(nlohmann/json not available in this build).\n";
 #else

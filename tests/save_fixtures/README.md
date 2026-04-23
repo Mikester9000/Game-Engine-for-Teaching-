@@ -11,16 +11,29 @@ acceptance scene (`--headless --scene save_test`, M26).
 
 ## How fixtures are used
 
-The `save_test` scene in `src/sandbox/main.cpp` (Test 2) writes this exact
-payload inline via a raw C++ string literal (`kFixtureJSON`) using
-`std::ofstream`.  The file here is the **canonical golden copy** — both the
-inline string and this file must stay in sync.
+The `save_test` scene in `src/sandbox/main.cpp` (Test 2) writes an inline
+copy of the `v0_9_0_minimal.json` payload via a raw C++ string literal
+(`kFixtureJSON`) using `std::ofstream`.  The file here is the **canonical
+golden reference** — both the inline string and this file must stay in sync.
 
-If a future migration step changes the expected output from loading a
-`"0.9.0"` save, update:
-1. The `kFixtureJSON` constant in the `save_test` block (Test 2) in
-   `src/sandbox/main.cpp`.
-2. This golden file.
+### Keeping them in sync (manual process)
+
+There is currently no automated check between the inline string and this
+golden file; sync is enforced by convention:
+
+1. If you update the `v0_9_0_minimal.json` fixture, also update the
+   `kFixtureJSON` raw string literal inside the `save_test` block
+   (Test 2) in `src/sandbox/main.cpp`.
+2. If you update the `kFixtureJSON` inline string, also update this file.
+3. A quick `diff` between the golden file and the inline string is the
+   manual verification step.  Run it before merging any fixture change:
+
+   ```bash
+   # Compare inline constant (extracted from main.cpp) against the golden file.
+   grep -A 20 'kFixtureJSON\[\]' src/sandbox/main.cpp | diff - tests/save_fixtures/v0_9_0_minimal.json
+   ```
+
+   A zero-exit diff confirms they are identical.
 
 ## Adding a new fixture
 
