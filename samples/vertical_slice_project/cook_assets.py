@@ -430,7 +430,7 @@ def _is_skeleton_file(raw: dict, src: Path) -> bool:
         ``True`` for skeleton assets, ``False`` for animation clips.
     """
     schema_ref = str(raw.get("$schema", "")).lower()
-    return "skeleton" in schema_ref or src.stem.endswith("_skeleton")
+    return "skeleton" in schema_ref or src.stem.lower().endswith("_skeleton")
 
 
 def cook_animations(registry: list[dict]) -> int:
@@ -509,7 +509,16 @@ def cook_animations(registry: list[dict]) -> int:
             # or use the "_skeleton" filename suffix — see _is_skeleton_file().
             try:
                 raw = json.loads(src.read_text(encoding="utf-8"))
-            except Exception:
+            except json.JSONDecodeError as exc:
+                # TEACHING NOTE — Surface malformed content during stub cooking
+                # Silent fallback makes it hard for content creators to notice
+                # that a file is invalid JSON and may be misclassified.  We log
+                # a warning and continue with an empty object so the cook pass
+                # remains resilient while still reporting the issue.
+                print(
+                    f"  [WARN] {src.name}: invalid animation JSON at "
+                    f"line {exc.lineno}, column {exc.colno} ({exc.msg})"
+                )
                 raw = {}
             is_skeleton = _is_skeleton_file(raw, src)
 

@@ -39,7 +39,7 @@ vertical_slice_project/
 |----------|-------|-----------|
 | Textures (source PNG) | 40 PBR maps | ~3.5 MB |
 | Audio (WAV) | 32 clips | ~9.0 MB |
-| Animations (JSON) | 2 skeletons + 18 clips | ~120 KB |
+| Animations (JSON) | 2 skeletons + 17 clips | ~120 KB |
 | **Total source** | **95+ files** | **~12.32 MB (0.012 GiB)** |
 
 All source assets are well below the 0.5 GiB target.
@@ -77,7 +77,7 @@ Expected output (M24 — full content):
 --- Animations ---
   [SKL] hero_skeleton.json → Cooked/Anim/hero_skeleton.skelc
   [ANI] hero_idle.json → Cooked/Anim/hero_idle.animc
-  ... (18 clips + 2 skeletons)
+  ... (17 clips + 2 skeletons)
 
 --- Registry ---
   Registry written: AssetRegistry.json  (66 assets)
@@ -101,7 +101,7 @@ The `Content/` directories ship with real assets ready to use:
 | `Content/Audio/music/` | 7 tracks: battle, exploration, town, dungeon, boss, menu loops + victory fanfare |
 | `Content/Audio/sfx/` | 19 event clips: footsteps, UI, weapon impacts, enemy, item, movement, and interact sounds |
 | `Content/Audio/ambient/` | 7 ambience beds: wind, rain, forest day/night, cave, town crowd, market |
-| `Content/Animations/` | 2 skeletons + 18 clips (hero locomotion/combat/utility and goblin enemy combat set) |
+| `Content/Animations/` | 2 skeletons + 17 clips (hero locomotion/combat/utility and goblin enemy combat set) |
 
 ## How to add more assets
 
