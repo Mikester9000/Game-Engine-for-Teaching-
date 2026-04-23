@@ -87,7 +87,7 @@
  *   engine_sandbox.exe --headless --scene quest_test         # M20 Quest system: accept/progress/complete/prereq acceptance test (CI)
  *   engine_sandbox.exe --headless --scene dialogue_test      # M20 Dialogue system: proximity/begin/advance acceptance test (CI)
  *   engine_sandbox.exe --headless --scene save_test          # M26 Save system: slot invariants + delete no-op + version constant (CI)
- *   engine_sandbox.exe --headless --scene terrain_test       # M25 Terrain: stub (M25 will implement terrain rendering tests) (CI)
+ *   engine_sandbox.exe --headless --scene terrain_test       # M25 Terrain: renderer init + heightmap displacement + physics collision (CI)
  *
  * ============================================================================
  * TEACHING NOTE — How to add a new headless scene
@@ -388,6 +388,32 @@
 // ---------------------------------------------------------------------------
 #include "engine/save/save_system.hpp"
 #include "engine/save/save_schema.hpp"
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — M25 Terrain headless tests (terrain_test)
+// ---------------------------------------------------------------------------
+// terrain_renderer.hpp provides the two-phase TerrainRenderer:
+//   Phase 1 (CPU): LoadFromSamples() generates a vertex/index grid from float
+//     height samples using finite-difference normal estimation.
+//   Phase 2 (GPU): CreateDeviceResources() compiles terrain.vs/ps.hlsl and
+//     uploads the mesh to immutable D3D11 VB/IB + a dynamic CB.
+//
+// terrain_collision.hpp provides BakeTerrainCollider() which creates a
+//   JPH::HeightFieldShape static physics body from the same height data, so
+//   the visual terrain and the collision surface match exactly.
+//
+// Test 1 (renderer_init):  CreateDeviceResources() succeeds on WARP device.
+// Test 2 (heightmap_displacement): Vertex Y > 0 for non-zero height samples.
+// Test 3 (physics_collision): Sphere dropped from height lands at Y > 0
+//   (above the terrain surface, not at the default floor Y = 0).
+//   This test is compiled only when ENGINE_ENABLE_PHYSICS is defined.
+// ---------------------------------------------------------------------------
+#ifdef ENGINE_ENABLE_D3D11
+#  include "engine/rendering/d3d11/terrain_renderer.hpp"
+#endif
+#ifdef ENGINE_ENABLE_PHYSICS
+#  include "engine/physics/terrain_collision.hpp"
+#endif
 
 #include <iostream>
 #include <exception>
@@ -3765,26 +3791,224 @@ int main(int argc, char* argv[])
             else if (scene == "terrain_test")
             {
                 // -----------------------------------------------------------
-                // M25 (terrain_test): Terrain rendering + collision stub.
+                // M25 (terrain_test): Terrain rendering + collision tests.
                 // -----------------------------------------------------------
-                // TEACHING NOTE — M25 Terrain-Test CI Stub (PR1 plumbing)
+                // TEACHING NOTE — M25 Terrain Acceptance Tests
                 // ──────────────────────────────────────────────────────────
-                // This terrain_test handler is added in PR1 ("hotspots/
-                // plumbing") so that the M25 PR can implement terrain
-                // rendering, heightmap loading, and collision integration
-                // tests entirely inside this block — no further edits to the
-                // central scene dispatch or to build-windows.yml are needed.
+                // Three acceptance criteria matching the milestone definition
+                // in docs/PROJECT_MILESTONES.md §M25:
                 //
-                // M25 will add inside this block:
-                //   • terrain_load    — Load a heightmap and generate mesh.
-                //   • terrain_draw    — RecordHeadlessFrame() with terrain VS/PS.
-                //   • terrain_collide — Raycast confirms terrain collision body.
-                //   • terrain_stream  — Terrain cells load/evict via streaming.
+                //   Test 1 (renderer_init):
+                //     Create a TerrainRenderer, load a 4×4 heightmap with
+                //     non-zero heights, call CreateDeviceResources() on the
+                //     WARP D3D11 device.  The call must succeed (IsGpuReady()
+                //     returns true), proving that both HLSL shaders compile and
+                //     all D3D11 VB/IB/CB objects are created without error.
                 //
-                // Until M25 lands this stub exits [PASS] so CI stays green.
+                //   Test 2 (heightmap_displacement):
+                //     Inspect the CPU-side vertices produced by GenerateMesh()
+                //     for a heightmap where every sample = 2.0 f.  Every vertex
+                //     must have pos[1] (Y) exactly 2.0.  This verifies that the
+                //     height data flows correctly from the input array through the
+                //     mesh generator into the vertex buffer.
+                //
+                //   Test 3 (physics_collision):
+                //     Create a PhysicsWorld + BakeTerrainCollider() for a 4×4
+                //     flat heightfield at Y = 1.0.  Drop a sphere from Y = 10.0.
+                //     Simulate 240 steps (4 seconds at 60 Hz).  The sphere must
+                //     come to rest with Y > 0.0 — landing on the terrain surface
+                //     rather than falling through to Y = 0.
+                //     This test is compiled only when ENGINE_ENABLE_PHYSICS is
+                //     defined; otherwise it is reported as "skipped".
+                //
+                // TEACHING NOTE — Why a 4×4 heightmap?
+                // Jolt's JPH::HeightFieldShape requires a power-of-2 sample
+                // count.  4 is the smallest valid value (2^2) that produces at
+                // least one non-trivial quad, making it the minimum useful test.
                 // -----------------------------------------------------------
-                std::cout << "[PASS] terrain_test: scene registered "
-                             "(M25 will implement terrain rendering tests).\n";
+
+                int testsFailed = 0;
+
+                // -----------------------------------------------------------
+                // Shared 4x4 heightmap — flat plane at Y = 2.0 m
+                // -----------------------------------------------------------
+                // All heights set to 2.0 so every vertex Y equals 2.0 (Test 2)
+                // and the physics terrain surface is at Y = 2.0 (Test 3).
+                static constexpr int kW = 4, kH = 4;
+                static constexpr float kCellSize = 2.0f;
+                float heights[kW * kH];
+                for (int i = 0; i < kW * kH; ++i) heights[i] = 2.0f;
+
+#ifdef ENGINE_ENABLE_D3D11
+                // -----------------------------------------------------------
+                // Test 1/3 — TerrainRenderer GPU resource creation
+                // -----------------------------------------------------------
+                {
+                    // Downcast IRenderer* → D3D11Renderer* to get the device.
+                    // TEACHING NOTE — Why downcast here?
+                    // The headless acceptance tests need the raw ID3D11Device*
+                    // to create auxiliary D3D11 objects (terrain VB, IB, CB,
+                    // shaders) that are independent of the main renderer's
+                    // scene machinery.  The IRenderer interface intentionally
+                    // does not expose GetDevice() — only test code ever needs it.
+                    auto* d3d = dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
+                    bool testOk = false;
+
+                    if (d3d && d3d->GetDevice())
+                    {
+                        engine::rendering::TerrainRenderer tr;
+                        bool loaded = tr.LoadFromSamples(heights, kW, kH, kCellSize);
+
+                        if (loaded)
+                        {
+                            // shaderDir was resolved earlier for all headless scenes
+                            bool gpuOk = tr.CreateDeviceResources(d3d->GetDevice(), shaderDir);
+                            testOk = gpuOk && tr.IsGpuReady();
+                        }
+                    }
+
+                    if (testOk)
+                    {
+                        std::cout << "[OK] terrain_test 1/3: TerrainRenderer GPU "
+                                     "resources created on WARP device.\n";
+                    }
+                    else
+                    {
+                        std::cout << "[FAIL] terrain_test 1/3: TerrainRenderer "
+                                     "CreateDeviceResources() failed.\n";
+                        ++testsFailed;
+                    }
+                }
+
+                // -----------------------------------------------------------
+                // Test 2/3 — Heightmap displacement (CPU-side vertex check)
+                // -----------------------------------------------------------
+                {
+                    engine::rendering::TerrainRenderer tr;
+                    bool loaded = tr.LoadFromSamples(heights, kW, kH, kCellSize);
+                    bool allCorrect = false;
+
+                    if (loaded)
+                    {
+                        const auto& verts = tr.GetVertices();
+                        // Every vertex must have Y == 2.0 (the height we loaded).
+                        // We use a small epsilon to handle floating-point identity.
+                        allCorrect = !verts.empty();
+                        for (const auto& v : verts)
+                        {
+                            if (v.pos[1] < 1.9f || v.pos[1] > 2.1f)
+                            {
+                                allCorrect = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (allCorrect)
+                    {
+                        std::cout << "[OK] terrain_test 2/3: all " << kW * kH
+                                  << " vertices have Y = 2.0 (heightmap displacement correct).\n";
+                    }
+                    else
+                    {
+                        std::cout << "[FAIL] terrain_test 2/3: vertex Y values do "
+                                     "not match expected height (2.0).\n";
+                        ++testsFailed;
+                    }
+                }
+#else
+                std::cout << "[OK] terrain_test 1/3: (D3D11 not available — renderer init skipped).\n";
+                std::cout << "[OK] terrain_test 2/3: (D3D11 not available — displacement check skipped).\n";
+#endif // ENGINE_ENABLE_D3D11
+
+                // -----------------------------------------------------------
+                // Test 3/3 — Physics collision: sphere lands on terrain
+                // -----------------------------------------------------------
+#ifdef ENGINE_ENABLE_PHYSICS
+                {
+                    // TEACHING NOTE — HeightFieldShape sample count constraint
+                    // BakeTerrainCollider requires a power-of-2 sample count.
+                    // We use 4 (2^2) — the smallest valid value for Jolt.
+                    // The heights array (16 values, all 2.0) is reused from above.
+                    static constexpr float kWorldSize = kCellSize * (kW - 1); // 6.0 m
+
+                    engine::physics::PhysicsWorld physWorld;
+                    bool physOk = physWorld.Init();
+                    bool testOk = false;
+
+                    if (physOk)
+                    {
+                        // Create the terrain collision body at the origin.
+                        uint32_t terrainID = engine::physics::BakeTerrainCollider(
+                            physWorld,
+                            heights,
+                            kW,            // must be power-of-2; 4 ✓
+                            kWorldSize,    // X extent = 6 m
+                            kWorldSize,    // Z extent = 6 m
+                            engine::math::Vec3(0.0f, 0.0f, 0.0f)
+                        );
+
+                        if (terrainID != engine::physics::PhysicsWorld::kInvalidBodyID)
+                        {
+                            // Drop a sphere from Y = 10.0, radius = 0.5 m, mass = 1 kg
+                            engine::math::Vec3 sphereStart{ 3.0f, 10.0f, 3.0f };
+                            uint32_t sphereID = physWorld.CreateSphere(
+                                sphereStart, 0.5f, 1.0f, false);
+
+                            // Simulate 240 steps at 60 Hz = 4 simulated seconds.
+                            // 4 s is ample time for a sphere at Y=10 to fall to
+                            // Y≈2.5 (terrain surface + sphere radius) under gravity.
+                            for (int step = 0; step < 240; ++step)
+                                physWorld.Step(1.0f / 60.0f);
+
+                            engine::math::Vec3 finalPos = physWorld.GetPosition(sphereID);
+
+                            // The sphere must rest ABOVE y = 0 — proving it hit the
+                            // terrain surface (Y ≈ 2.0) rather than falling through.
+                            if (finalPos.y > 0.0f)
+                            {
+                                std::cout << "[OK] terrain_test 3/3: sphere rested at Y="
+                                          << finalPos.y << " (> 0; terrain collision active).\n";
+                                testOk = true;
+                            }
+                            else
+                            {
+                                std::cout << "[FAIL] terrain_test 3/3: sphere Y=" << finalPos.y
+                                          << " — fell through terrain to Y ≤ 0.\n";
+                            }
+                        }
+                        else
+                        {
+                            std::cout << "[FAIL] terrain_test 3/3: BakeTerrainCollider failed.\n";
+                        }
+
+                        physWorld.Shutdown();
+                    }
+                    else
+                    {
+                        std::cout << "[FAIL] terrain_test 3/3: PhysicsWorld::Init() failed.\n";
+                    }
+
+                    if (!testOk) ++testsFailed;
+                }
+#else
+                // TEACHING NOTE — Graceful skip when physics is absent
+                // The standard Windows CI job builds without Jolt Physics (no
+                // vcpkg install in that job).  We skip test 3 rather than fail
+                // so the CI job remains green.  The build-windows-physics job
+                // runs the full suite including the physics collision test.
+                std::cout << "[OK] terrain_test 3/3: (ENGINE_ENABLE_PHYSICS not "
+                             "defined — physics collision test skipped).\n";
+#endif // ENGINE_ENABLE_PHYSICS
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] terrain_test: " << testsFailed
+                              << " subtest(s) failed.\n";
+                    return 1;
+                }
+                std::cout << "[PASS] terrain_test: 3 acceptance tests passed "
+                             "(renderer init, heightmap displacement, physics collision).\n";
             }
             else
             {

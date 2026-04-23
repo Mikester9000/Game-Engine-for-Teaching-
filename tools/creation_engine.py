@@ -656,6 +656,143 @@ def bake_cinematic(
     }
 
 
+def bake_terrain(
+    json_path: "Path | str",
+    out_path: "Path | str",
+) -> dict:
+    """
+    Bake a JSON heightmap description into a cooked TRN1 binary terrain asset.
+
+    Parameters
+    ----------
+    json_path : Path or str
+        Path to a ``.terrain.json`` source file.  Expected schema::
+
+            {
+              "width":    4,
+              "height":   4,
+              "cellSize": 2.0,
+              "heights":  [...]
+            }
+
+    out_path : Path or str
+        Destination ``.terrain`` binary.
+
+    Returns
+    -------
+    dict
+        Keys: ``width``, ``height``, ``cellSize``, ``bytes``.
+
+    Raises
+    ------
+    ValueError
+        If JSON is malformed, dimensions invalid, or heights array wrong length.
+
+    TEACHING NOTE — TRN1 Binary Format
+    ------------------------------------
+    The cooked terrain format is intentionally minimal so the C++ runtime
+    (terrain_renderer.cpp :: LoadCooked) can parse it with a single memcpy
+    per field — no JSON library, no external dependency.
+
+    Layout (little-endian)::
+
+        Offset  Size  Type      Field
+             0     4  char[4]  magic ("TRN1")
+             4     2  uint16   version  = 1
+             6     2  uint16   width
+             8     2  uint16   height
+            10     4  float32  cellSize
+            14  W*H*4  float32  heights (row-major, row=Z col=X)
+
+    Total: 14 + W*H*4 bytes.
+
+    TEACHING NOTE — Why binary, not JSON?
+    Binary reduces load time and file size. For a 512x512 terrain patch the
+    difference is ~1 MB binary vs ~4 MB JSON. The C++ LoadCooked() parser
+    is ~30 lines versus a full JSON tokeniser.
+
+    TEACHING NOTE — Row-major height order
+    Row 0 is the Z=0 row (columns are X samples). This matches the C++
+    GenerateMesh() convention in terrain_renderer.cpp.
+    """
+    src = Path(json_path)
+    try:
+        data = json.loads(src.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in {src}: {exc}") from exc
+
+    for field in ("width", "height", "cellSize", "heights"):
+        if field not in data:
+            raise ValueError(f"Missing required field '{field}' in {src}")
+
+    width: int = int(data["width"])
+    height: int = int(data["height"])
+    cell_size: float = float(data["cellSize"])
+
+    if width < 2 or height < 2:
+        raise ValueError(
+            f"width and height must be >= 2 (got {width}x{height})"
+        )
+    if cell_size <= 0.0:
+        raise ValueError(f"cellSize must be > 0 (got {cell_size})")
+
+    raw_heights = data["heights"]
+    expected = width * height
+    if len(raw_heights) != expected:
+        raise ValueError(
+            f"heights array length {len(raw_heights)} != width*height={expected}"
+        )
+
+    heights_floats = [float(v) for v in raw_heights]
+
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — struct.pack binary serialisation
+    # -----------------------------------------------------------------------
+    # "<" selects little-endian (x86 / Windows ABI).
+    #   4s → 4 raw bytes (magic)
+    #   H  → uint16_t (2 bytes)
+    #   f  → float32  (4 bytes)
+    #
+    # Header is 14 bytes; heights are appended as a flat array of floats.
+    # -----------------------------------------------------------------------
+    header = struct.pack(
+        "<4sHHHf",
+        b"TRN1",
+        1,          # version
+        width,
+        height,
+        cell_size,
+    )
+    heights_bytes = struct.pack(f"<{expected}f", *heights_floats)
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(header + heights_bytes)
+
+    total_bytes = len(header) + len(heights_bytes)
+    return {
+        "width": width,
+        "height": height,
+        "cellSize": cell_size,
+        "bytes": total_bytes,
+    }
+
+
+def _cmd_bake_terrain(args: argparse.Namespace) -> int:
+    try:
+        stats = bake_terrain(args.input, args.output)
+    except (OSError, ValueError) as exc:
+        _die(str(exc), code=1)
+    print(_bold("\n=== creation_engine — baked terrain ===\n"))
+    print(f"  {_green('Output:')} {args.output}")
+    print(
+        f"  Grid: {stats['width']}x{stats['height']} samples | "
+        f"CellSize: {stats['cellSize']} m | "
+        f"Size: {stats['bytes']} bytes"
+    )
+    return 0
+
+
 def _parse_obj_for_navmesh(obj_path: Path) -> tuple[List[tuple[float, float, float]], List[List[int]]]:
     """Parse minimal OBJ data needed for baking (v/f records)."""
     vertices: List[tuple[float, float, float]] = []
@@ -1334,6 +1471,21 @@ def _build_parser() -> argparse.ArgumentParser:
     bake_cin.add_argument("--output", required=True, metavar="CINEMATIC",
                           help="Output cooked cinematic binary path.")
 
+    # ------------------------------------------------------------------ bake-terrain
+    # TEACHING NOTE — bake-terrain subcommand
+    # Converts a .terrain.json heightmap source file into a compact TRN1 binary
+    # that the C++ terrain_renderer.cpp can load with LoadCooked().
+    # The baker validates the JSON schema (width, height, cellSize, heights),
+    # confirms that heights.length == width * height, and writes the binary.
+    bake_trn = sub.add_parser(
+        "bake-terrain",
+        help="Bake a heightmap JSON source file into a cooked TRN1 binary terrain asset.",
+    )
+    bake_trn.add_argument("--input", required=True, metavar="JSON",
+                          help="Source .terrain.json heightmap file.")
+    bake_trn.add_argument("--output", required=True, metavar="TERRAIN",
+                          help="Output cooked .terrain binary path.")
+
     return parser
 
 
@@ -1353,6 +1505,7 @@ def main(argv: List[str] | None = None) -> int:
         "bake-navmesh": _cmd_bake_navmesh,
         "bake-tod": _cmd_bake_tod,
         "bake-cinematic": _cmd_bake_cinematic,
+        "bake-terrain": _cmd_bake_terrain,
     }
     handler = dispatch.get(args.command)
     if handler is None:

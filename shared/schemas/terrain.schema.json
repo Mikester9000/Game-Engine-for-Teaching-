@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://game-engine-for-teaching/schemas/terrain.schema.json",
+  "title": "Terrain heightmap source asset (M25)",
+  "description": "TEACHING NOTE — Terrain heightmap schema.\nThis schema describes a height-sample grid used to author terrain patches for the vertical slice project.\nThe baker (tools/creation_engine.py bake-terrain) converts this JSON into a compact TRN1 binary that the C++ TerrainRenderer loads with LoadCooked().\n\nDesign:\n  • A terrain patch is a W×H grid of floating-point height samples.\n  • The world position of sample [row][col] is:\n      x = col * cellSize + originX\n      y = heights[row * width + col]  (the stored value, in metres)\n      z = row * cellSize + originZ\n  • Adjacent patches are tiled by offsetting origin by (width-1)*cellSize.\n  • Minimum valid grid: width=2, height=2 (one quad, two triangles).\n  • Physics integration: the C++ BakeTerrainCollider() function accepts width/height\n    that are powers of 2 (Jolt HeightFieldShape requirement).  Authors should prefer\n    power-of-2 dimensions (4, 8, 16, 32, 64) for terrains that will have physics.",
+  "type": "object",
+  "required": ["version", "name", "width", "height", "cellSize", "heights"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema URI — points to this schema file."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "SemVer string for the terrain asset format.  Breaking changes bump major version.",
+      "examples": ["1.0.0"]
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name of the terrain patch shown in the editor."
+    },
+    "description": {
+      "type": "string",
+      "description": "Optional editorial notes about this terrain patch."
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 4096,
+      "description": "Number of height samples along the X axis.  Must be >= 2. For physics integration, prefer powers of 2 (4, 8, 16, 32, …)."
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 4096,
+      "description": "Number of height samples along the Z axis.  Must be >= 2. For physics integration, prefer powers of 2."
+    },
+    "cellSize": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "World-space distance (in metres) between adjacent height samples. A 16×16 grid with cellSize=4.0 covers a 60×60 m patch (15 cells × 4 m per cell)."
+    },
+    "heights": {
+      "type": "array",
+      "items": {
+        "type": "number",
+        "description": "Height value in metres (Y coordinate in world space).  Negative values are allowed for underwater terrain."
+      },
+      "description": "Row-major flat array of height samples. Length must equal width × height. Row 0 corresponds to Z=0 (south edge); the last row is the north edge."
+    }
+  }
+}

@@ -6,14 +6,15 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1752 across 54 subsystems.
+**Total lessons:** 1826 across 55 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (70 lessons)
-- [ci/workflows](#ciworkflows) (58 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (73 lessons)
+- [build_check/scripts](#build_checkscripts) (14 lessons)
+- [ci/workflows](#ciworkflows) (61 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (104 lessons)
@@ -27,9 +28,9 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/ecs](#engineecs) (41 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
-- [engine/physics](#enginephysics) (54 lessons)
+- [engine/physics](#enginephysics) (64 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (351 lessons)
+- [engine/rendering](#enginerendering) (371 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -45,7 +46,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (21 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (87 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (100 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -61,10 +62,10 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [tools/audio_engine.py](#toolsaudio_engine.py) (6 lessons)
 - [tools/audit_teaching_notes.py](#toolsaudit_teaching_notes.py) (10 lessons)
 - [tools/cook](#toolscook) (12 lessons)
-- [tools/creation_engine.py](#toolscreation_engine.py) (9 lessons)
+- [tools/creation_engine.py](#toolscreation_engine.py) (14 lessons)
 - [tools/pak](#toolspak) (14 lessons)
 - [tools/quest_baker](#toolsquest_baker) (14 lessons)
-- [tools/tests](#toolstests) (4 lessons)
+- [tools/tests](#toolstests) (10 lessons)
 - [tools/validate-assets.py](#toolsvalidate-assets.py) (3 lessons)
 
 ---
@@ -572,12 +573,22 @@ an embedded 8×8 bitmap font, uploads it as an R8_UNORM D3D11 texture,
 and renders screen-space text quads using sdf_text.vs/ps.hlsl.
 Gated on ENGINE_ENABLE_D3D11 because it uses D3D11 COM types.
 src/engine/ui/font_renderer.cpp
+
+### M25: TerrainRenderer (heightmap-driven grid mesh).
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L597) (line 597)
+
+terrain_renderer.cpp generates a W×H vertex/index grid from float
+height samples, compiles terrain.vs/ps.hlsl at runtime via
+D3DCompileFromFile, and renders the grid each frame.  Gated on
+ENGINE_ENABLE_D3D11 because it uses D3D11 COM types directly.
+src/engine/rendering/d3d11/terrain_renderer.cpp
 )
 endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L615) (line 615)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L621) (line 621)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -590,13 +601,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L628) (line 628)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L634) (line 634)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L630) (line 630)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L636) (line 636)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -623,13 +634,24 @@ src/engine/physics/raycast.cpp
 
 ### M11 Vehicle Physics (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L653) (line 653)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L659) (line 659)
 
 vehicle_system.cpp implements the VehicleSystem: four wheel-ray
 suspension raycasts, spring-damper force model, Ackermann steering,
 and fuel drain.  It requires PhysicsWorld for the downward raycasts
 and chassis box body, so it is compiled only when Jolt is present.
 src/engine/vehicle/vehicle_system.cpp
+
+### M25 Terrain Collision
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L665) (line 665)
+
+terrain_collision.cpp creates a JPH::HeightFieldShape from a
+float height array and registers it as a static physics body.
+It depends on PhysicsWorld (physics_world.cpp) and uses the
+internal physics_impl.hpp to access Jolt's BodyInterface — so it
+must be compiled alongside the other Jolt-dependent sources.
+src/engine/physics/terrain_collision.cpp
 )
 endif()
 hit_volume.cpp has no Jolt dependency — always include it.
@@ -639,7 +661,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional JSON sources
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L669) (line 669)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L682) (line 682)
 
 scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
 The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
@@ -653,7 +675,7 @@ src/engine/scene/scene_serialiser.cpp
 
 ### M7 World Streaming Source Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L683) (line 683)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L696) (line 696)
 
 ─────────────────────────────────────────────────────
 The three world-streaming modules are pure C++17 with no platform or
@@ -675,7 +697,7 @@ src/engine/world/world_streaming.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L705) (line 705)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -688,7 +710,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L731) (line 731)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -711,7 +733,7 @@ src/game/world/Zone.cpp
 
 ### M7.1: GameStreamingManager wires Zone lifecycle into
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L737) (line 737)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L750) (line 750)
 
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
@@ -719,7 +741,7 @@ src/game/world/GameStreamingManager.cpp
 
 ### M8 Gameplay Integration: new systems.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L741) (line 741)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L754) (line 754)
 
 game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
 input_mapper.cpp reads Win32 key state → ECS components.
@@ -738,7 +760,7 @@ src/engine/save/save_system.cpp
 
 ### M19 Action Combat: ComboSystem FSM.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L756) (line 756)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L769) (line 769)
 
 combo_system.cpp is pure C++17 with no platform or rendering
 dependencies.  It compiles on Linux (terminal game) and Windows alike.
@@ -748,7 +770,7 @@ src/engine/combat/combo_system.cpp
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L782) (line 782)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L795) (line 795)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -760,7 +782,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L791) (line 791)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L804) (line 804)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -769,7 +791,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L801) (line 801)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L814) (line 814)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -781,7 +803,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L810) (line 810)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L823) (line 823)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -791,7 +813,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L820) (line 820)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L833) (line 833)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -800,7 +822,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L826) (line 826)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L839) (line 839)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -809,7 +831,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L831) (line 831)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L844) (line 844)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -820,7 +842,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L847) (line 847)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L860) (line 860)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -831,7 +853,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L855) (line 855)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L868) (line 868)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -841,7 +863,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L867) (line 867)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L880) (line 880)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -875,7 +897,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L899) (line 899)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L912) (line 912)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -890,7 +912,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L914) (line 914)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L927) (line 927)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -905,7 +927,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L956) (line 956)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L969) (line 969)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -928,7 +950,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L977) (line 977)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L990) (line 990)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -949,7 +971,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L994) (line 994)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1007) (line 1007)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -959,7 +981,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1000) (line 1000)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1013) (line 1013)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -971,7 +993,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1008) (line 1008)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1021) (line 1021)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -983,7 +1005,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Post-M10: SDF text rendering HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1016) (line 1016)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1029) (line 1029)
 
 sdf_text.vs.hlsl transforms screen-space pixel quads to NDC.
 sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
@@ -993,7 +1015,7 @@ sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
 
 ### M16: PBR + Image-Based Lighting (IBL) shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1022) (line 1022)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1035) (line 1035)
 
 pbr_ibl.vs.hlsl is structurally identical to pbr_mesh.vs.hlsl —
   it outputs worldPos, worldNrm, and UV to the pixel shader.
@@ -1010,7 +1032,7 @@ pbr_ibl.ps.hlsl adds the full split-sum IBL ambient:
 
 ### M17: Directional shadow map shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1036) (line 1036)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1049) (line 1049)
 
 shadow.vs.hlsl       — depth-only VS for the shadow pass (one matrix
   multiply, no PS output).  Identity world is baked into lightViewProj.
@@ -1024,7 +1046,7 @@ shadow_lit.ps.hlsl   — lit-pass PS: 3×3 PCF shadow lookup via
 
 ### M17: HDR bloom post-processing shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1047) (line 1047)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1060) (line 1060)
 
 All three passes reuse sky.vs.hlsl as the full-screen triangle VS
 (SV_VertexID → full-screen quad trick — no vertex buffer needed).
@@ -1039,11 +1061,24 @@ bloom_composite.ps.hlsl — adds bloom × g_bloomStrength to the scene,
 "${CMAKE_SOURCE_DIR}/shaders/bloom_bright.ps.hlsl"
 "${CMAKE_SOURCE_DIR}/shaders/bloom_blur.ps.hlsl"
 "${CMAKE_SOURCE_DIR}/shaders/bloom_composite.ps.hlsl"
+
+### M25: Terrain heightmap shaders.
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1075) (line 1075)
+
+terrain.vs.hlsl transforms the CPU-generated heightmap grid vertices
+  (pos, normal, uv) through world→view→clip matrices and passes
+  world-space pos + normal to the pixel shader.
+terrain.ps.hlsl applies Lambert diffuse + ambient with height-based
+  colour blending (grass at low Y, rock at high Y) + Reinhard tonemap.
+Both use a shared TerrainCB constant buffer bound to b0 in both stages.
+"${CMAKE_SOURCE_DIR}/shaders/terrain.vs.hlsl"
+"${CMAKE_SOURCE_DIR}/shaders/terrain.ps.hlsl"
 )
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1078) (line 1078)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1101) (line 1101)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -1065,7 +1100,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1097) (line 1097)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1120) (line 1120)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -1076,7 +1111,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1105) (line 1105)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1128) (line 1128)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -1086,7 +1121,7 @@ endif()
 
 ### PAK1 Packager Tool
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1119) (line 1119)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1142) (line 1142)
 
 ─────────────────────────────────────────────────────────────────────────────
 The pak tool bundles an input directory into a binary .pak archive
@@ -1111,7 +1146,7 @@ src/engine/core/Logger.cpp
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1145) (line 1145)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1168) (line 1168)
 
 Same reasoning as cook.exe: stdout/stderr must be visible in a terminal.
 if(MSVC)
@@ -1120,7 +1155,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1174) (line 1174)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1197) (line 1197)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -1129,7 +1164,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1181) (line 1181)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1204) (line 1204)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1142,6 +1177,129 @@ add_subdirectory(editor)
 else()
 message(STATUS "BUILD_EDITOR=OFF: skipping editor/ (pass -DBUILD_EDITOR=ON to include)")
 endif()
+
+---
+
+## build_check/scripts
+
+### Why Architecture Enforcement Matters
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L6) (line 6)
+
+### Forbidden-Include Table
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L55) (line 55)
+
+----------------------------------------
+Each entry in LAYER_RULES maps a *source layer* (a glob-like path prefix
+relative to ``src/``) to the set of *forbidden* path substrings that must
+NOT appear in its ``#include`` directives.
+
+The table is taken directly from COPILOT_CONTINUATION.md § 3.3:
+
+  Layer              May depend on       Must NOT depend on
+  engine/core/       (nothing else)      everything below
+  engine/ecs/        core/               game/, tools
+  engine/rendering/  core/, ecs/         game/
+  engine/audio/      core/, ecs/         game/, rendering/
+  engine/animation/  core/, ecs/         game/
+  engine/physics/    core/, ecs/         game/
+  game/systems/      engine/             tools/, editor/
+  game/world/        engine/, systems/   tools/, editor/
+  tools/             engine/core/        game/
+
+Implementation note: we match on the *normalised* include path string
+(forward slashes, relative to the repo root ``src/`` directory).
+
+### Teaching Exceptions to the 500-Line Rule
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L96) (line 96)
+
+----------------------------------------------------------
+These files intentionally exceed 500 lines because their size is
+*pedagogically justified*: the ECS is studied as a whole, and splitting
+it would obscure the relationships between components.  Every exception
+must be listed here with a rationale comment.
+
+Files listed here are exempt from the line-count violation check but are
+still subject to all other checks (layer boundaries, TEACHING NOTEs).
+
+### Suppressing Known Pre-existing Violations
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L191) (line 191)
+
+----------------------------------------------------------
+A freshly introduced lint rule will almost always find violations in existing
+code.  The correct workflow is:
+
+  1. List all *pre-existing* violations here with a clear rationale and a
+     TODO comment noting the refactor needed to remove them.
+  2. New violations that are NOT in this list immediately fail CI.
+  3. Work through the list over time, removing entries as the refactors land.
+
+Key: (repo-relative file path, forbidden include substring)
+Value: human-readable rationale for allowing the exception.
+
+### Why 500 Lines?
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L292) (line 292)
+
+### Include-Based Layer Checking
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L334) (line 334)
+
+### Documentation as a First-Class Requirement
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L414) (line 414)
+
+### skip_dirs excludes build artefacts and third-party sources.
+
+**Source:** [`build_check/scripts/check_architecture.py`](build_check/scripts/check_architecture.py#L451) (line 451)
+
+"Lua" is excluded because Lua/lua-5.5.0/ contains vendored third-party
+source that intentionally has no TEACHING NOTE blocks and may be large.
+Scanning it would produce false-positive warnings.
+skip_dirs = {"build", "build-test", ".git", "__pycache__", "node_modules", "Lua"}
+result: list[Path] = []
+for path in sorted(repo_root.rglob("*")):
+if any(part in skip_dirs for part in path.parts):
+continue
+if path.suffix in (".cpp", ".hpp", ".h", ".c"):
+result.append(path)
+return result
+
+### Script-Defined Abilities
+
+**Source:** [`build_check/scripts/enemies.lua`](build_check/scripts/enemies.lua#L6) (line 6)
+
+### Automated Documentation Extraction
+
+**Source:** [`build_check/scripts/extract_teaching_notes.py`](build_check/scripts/extract_teaching_notes.py#L6) (line 6)
+
+### Deterministic Line Endings
+
+**Source:** [`build_check/scripts/extract_teaching_notes.py`](build_check/scripts/extract_teaching_notes.py#L435) (line 435)
+
+-------------------------------------------
+Explicitly write LF (\n) line endings regardless of the host platform.
+Without this, Python's default text mode on Windows translates every \n
+to \r\n (CRLF), causing ``git diff --exit-code`` to detect a spurious
+difference whenever the index is regenerated on a Windows CI runner or
+developer machine.  We open in binary mode and encode ourselves to
+guarantee byte-identical output across Linux, macOS, and Windows.
+output_path.write_bytes(markdown.encode("utf-8"))
+
+### Why Lua for Scripting?
+
+**Source:** [`build_check/scripts/main.lua`](build_check/scripts/main.lua#L6) (line 6)
+
+### Tables as Modules
+
+**Source:** [`build_check/scripts/main.lua`](build_check/scripts/main.lua#L25) (line 25)
+
+### Data-Driven Quests with Lua
+
+**Source:** [`build_check/scripts/quests.lua`](build_check/scripts/quests.lua#L6) (line 6)
 
 ---
 
@@ -1848,9 +2006,56 @@ No GPU, audio hardware, or vcpkg packages are required.
 run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dialogue_test
 shell: cmd
 
-### PAK Packager CI Test
+### save_test CI Gate (M26 PR1 stub)
 
 **Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L594) (line 594)
+
+This step is the CI hook added by PR1 ("hotspots/plumbing") so that the
+M26 PR can extend the save_test scene with full JSON round-trip,
+migration, and auto-save tests WITHOUT needing to touch this workflow
+file again.
+
+PR1 tests validate non-JSON save-schema invariants only:
+  Test 1 (slot_invariants): kNumSaveSlots==15, kAutoSaveSlot==15,
+    kTotalSlots==16, SlotExists(0)==false on a fresh temp directory.
+  Test 2 (delete_nonexistent): DeleteSlot(0) returns true for a
+    slot that does not exist (graceful no-op delete).
+  Test 3 (version_constant): kSaveFormatVersion=="1.0.0" — the
+    migration-version contract that M26 tests will depend on.
+
+No GPU, audio hardware, vcpkg, or nlohmann/json is required — all three
+tests exercise pure C++17 std::filesystem + compile-time constants.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M26 stub — save_test)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene save_test
+shell: cmd
+
+### terrain_test CI Gate (M25 implementation)
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L618) (line 618)
+
+Runs the three M25 acceptance subtests defined in src/sandbox/main.cpp:
+
+  Test 1 (renderer_init):
+    TerrainRenderer::CreateDeviceResources() succeeds on WARP D3D11 device.
+    Verifies: terrain.vs/ps.hlsl compile, VB/IB/CB created without error.
+
+  Test 2 (heightmap_displacement):
+    CPU-side vertices for a flat 4×4 heightmap (all Y=2.0) must have
+    pos[1]==2.0.  Verifies the GenerateMesh() height-sample path.
+
+  Test 3 (physics_collision):
+    Available only in the physics build job (ENGINE_ENABLE_PHYSICS).
+    In this job (engine-only build, no Jolt) the test is gracefully skipped.
+    The build-windows-physics job runs the full physics collision subtest.
+-----------------------------------------------------------------------
+- name: Run headless acceptance test (M25 — terrain_test)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
+shell: cmd
+
+### PAK Packager CI Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L641) (line 641)
 
 This step validates pak.exe by packing the vertical_slice_project Cooked/
 directory into a PAK1 archive.  A non-zero exit code (file-not-found,
@@ -1864,7 +2069,7 @@ shell: cmd
 
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L608) (line 608)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L655) (line 655)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -1890,7 +2095,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L647) (line 647)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L694) (line 694)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -1916,7 +2121,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L681) (line 681)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L728) (line 728)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -1937,7 +2142,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L705) (line 705)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L752) (line 752)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -1950,7 +2155,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L718) (line 718)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L765) (line 765)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -1963,9 +2168,23 @@ entity, ticks VehicleSystem for 120 frames, and validates:
 run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
 shell: cmd
 
+### terrain_test in the physics job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L780) (line 780)
+
+The engine-only job (no Jolt) skips test 3 (physics_collision) gracefully.
+This physics job has ENGINE_ENABLE_PHYSICS=ON, so all three subtests run:
+  Test 1 — renderer_init: TerrainRenderer GPU resources created on WARP.
+  Test 2 — heightmap_displacement: vertex Y equals the loaded height.
+  Test 3 — physics_collision: BakeTerrainCollider + sphere drop validation.
+-----------------------------------------------------------------------
+- name: Run terrain acceptance tests (M25 — full suite with physics)
+run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene terrain_test
+shell: cmd
+
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L733) (line 733)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L794) (line 794)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -1996,7 +2215,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L761) (line 761)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L822) (line 822)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -2005,7 +2224,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L783) (line 783)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L844) (line 844)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -2033,7 +2252,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L818) (line 818)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L879) (line 879)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -2042,7 +2261,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L832) (line 832)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L893) (line 893)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -2064,7 +2283,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L857) (line 857)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L918) (line 918)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -2078,7 +2297,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L881) (line 881)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L942) (line 942)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -2096,7 +2315,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L906) (line 906)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L967) (line 967)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -2107,7 +2326,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L917) (line 917)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L978) (line 978)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -2122,7 +2341,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L939) (line 939)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1000) (line 1000)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -11674,6 +11893,212 @@ In a shipping game you would also support:
   MeshShape    — concave mesh for complex terrain (static only).
   HeightField  — optimised terrain shape (height map grid).
 
+### JPH::HeightFieldShape
+
+**Source:** [`src/engine/physics/terrain_collision.cpp`](src/engine/physics/terrain_collision.cpp#L6) (line 6)
+
+============================================================================
+Jolt's HeightFieldShape is the correct collision primitive for terrain:
+  • Stores height samples in a compact format (8-bit precision by default).
+  • Supports all Jolt query types: raycast, shape-cast, contact generation.
+  • Internally uses a bounding-volume hierarchy (AABB tree) to quickly
+    reject triangles during queries — O(log N) rather than O(N).
+
+Key constructor parameters:
+  mHeightSamples  — flat float array, row-major, row=Z col=X
+  mSampleCount    — must be a power of 2 (Jolt requirement)
+  mOffset         — world-space translation applied BEFORE scale
+  mScale          — (stepX, heightScale, stepZ) scale per cell
+
+After calling settings.Create() we get a JPH::ShapeRefC (reference-counted
+pointer).  We embed it in a static BodyCreationSettings and hand it to
+BodyInterface::CreateAndAddBody() — the same interface used for boxes and
+spheres in physics_world.cpp.
+
+============================================================================
+
+### Why Power-of-2 Sample Count?
+
+**Source:** [`src/engine/physics/terrain_collision.cpp`](src/engine/physics/terrain_collision.cpp#L26) (line 26)
+
+============================================================================
+Jolt internally divides the height field into a quadtree.  Each level of
+the quadtree groups 2×2 child blocks into a parent AABB.  A power-of-2
+sample count guarantees that every level divides evenly, producing a
+complete, balanced quadtree.  With an odd sample count, the last block
+would be incomplete, requiring special-case logic that Jolt avoids.
+
+Valid values: 2, 4, 8, 16, 32, 64, 128, 256, …
+
+============================================================================
+
+### Validation
+
+**Source:** [`src/engine/physics/terrain_collision.cpp`](src/engine/physics/terrain_collision.cpp#L74) (line 74)
+
+-----------------------------------------------------------------------
+Guard against the most common mistakes:
+  1. Null height array (would cause a segfault inside Jolt).
+  2. Sample count that is not a power of 2 (Jolt asserts this internally
+     in debug builds; in release builds it would produce wrong geometry).
+-----------------------------------------------------------------------
+if (!heights)
+{
+LOG_ERROR("[BakeTerrainCollider] heights array is null");
+return PhysicsWorld::kInvalidBodyID;
+}
+if (!IsPow2(sampleCount))
+{
+LOG_ERROR("[BakeTerrainCollider] sampleCount must be a power of 2 (got %d)", sampleCount);
+return PhysicsWorld::kInvalidBodyID;
+}
+if (worldSizeX <= 0.0f || worldSizeZ <= 0.0f)
+{
+LOG_ERROR("[BakeTerrainCollider] worldSizeX and worldSizeZ must be > 0");
+return PhysicsWorld::kInvalidBodyID;
+}
+
+### HeightFieldShapeSettings Configuration
+
+**Source:** [`src/engine/physics/terrain_collision.cpp`](src/engine/physics/terrain_collision.cpp#L105) (line 105)
+
+-----------------------------------------------------------------------
+mOffset — position of the (0, 0) grid corner in world space.
+  We pass origin.y = 0 because height is encoded in mHeightSamples; the
+  world Y of a sample is: origin.y + mScale.y * height[i].
+  Setting mScale.y = 1.0 means height values are in metres directly.
+
+mScale — per-sample world stride:
+  .x = worldSizeX / (sampleCount - 1)  [metres between adjacent X samples]
+  .y = 1.0                              [height in metres (no scaling)]
+  .z = worldSizeZ / (sampleCount - 1)  [metres between adjacent Z samples]
+
+mHeightSamples — a JPH::Array<float> populated from the caller's array.
+  JPH::Array is Jolt's std::vector substitute; it uses the same layout.
+
+mSampleCount — the N in an N×N height grid.
+  Jolt always assumes a square grid; this is mSampleCount × mSampleCount.
+-----------------------------------------------------------------------
+float stepX = worldSizeX / static_cast<float>(sampleCount - 1);
+float stepZ = worldSizeZ / static_cast<float>(sampleCount - 1);
+
+### Shape Creation (Deferred Validation)
+
+**Source:** [`src/engine/physics/terrain_collision.cpp`](src/engine/physics/terrain_collision.cpp#L137) (line 137)
+
+-----------------------------------------------------------------------
+settings.Create() runs Jolt's validation pipeline:
+  • Checks that sampleCount is a power of 2.
+  • Compresses the height values to the internal bit-packed format.
+  • Builds the bounding-volume quadtree.
+
+If validation fails, result.HasError() is true and result.GetError()
+contains an error string.  We log it and return the invalid sentinel.
+-----------------------------------------------------------------------
+JPH::ShapeSettings::ShapeResult result = settings.Create();
+if (result.HasError())
+{
+LOG_ERROR("[BakeTerrainCollider] HeightFieldShape creation failed: %s",
+result.GetError().c_str());
+return PhysicsWorld::kInvalidBodyID;
+}
+
+### Static Body Creation
+
+**Source:** [`src/engine/physics/terrain_collision.cpp`](src/engine/physics/terrain_collision.cpp#L156) (line 156)
+
+-----------------------------------------------------------------------
+EMotionType::Static means the body has infinite mass and never moves.
+The broad-phase layer NON_MOVING lets Jolt skip this body in the
+moving-vs-moving collision pair generation — a significant optimisation
+for large open-world terrains with many static patches.
+
+We place the body at (0,0,0) in world space because the origin is
+already encoded in the HeightFieldShape mOffset above.
+-----------------------------------------------------------------------
+JPH::BodyCreationSettings bodySettings(
+result.Get(),
+JPH::RVec3(0.0f, 0.0f, 0.0f),
+JPH::Quat::sIdentity(),
+JPH::EMotionType::Static,
+Layers::NON_MOVING
+);
+
+### Terrain Collision in a Physics Engine
+
+**Source:** [`src/engine/physics/terrain_collision.hpp`](src/engine/physics/terrain_collision.hpp#L6) (line 6)
+
+============================================================================
+For an open-world game like FF15, the terrain collision surface must match
+the visual terrain exactly — the player should land where they *see* the
+ground, not where a proxy box approximates it.
+
+Jolt Physics provides JPH::HeightFieldShape specifically for this purpose:
+  • Takes a flat array of float height samples and a world-space scale.
+  • Internally stores heights at reduced bit precision (8-bit by default)
+    for cache efficiency, while retaining float-precision at query time.
+  • Supports raycasts, convex-cast queries, and contact generation with
+    all other shape types (spheres, capsules, boxes).
+  • Used internally in Jolt's own sample code for large outdoor terrains.
+
+The shape is created as a STATIC body (infinite mass, never moves) so the
+simulation can treat it as immovable geometry and apply broad-phase optimisations.
+
+============================================================================
+
+### Isolation from Jolt Headers
+
+**Source:** [`src/engine/physics/terrain_collision.hpp`](src/engine/physics/terrain_collision.hpp#L24) (line 24)
+
+============================================================================
+This header is guarded by ENGINE_ENABLE_PHYSICS so it is only visible to
+translation units that compile with Jolt available.  PhysicsWorld.hpp
+already uses the same guard; terrain_collision.cpp includes physics_impl.hpp
+which is the ONLY file that may include raw <Jolt/...> headers.
+
+External engine code (main.cpp, sandbox scenes) only needs to include this
+header and call BakeTerrainCollider() — Jolt types never leak out.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: Windows (requires Jolt Physics); gated by ENGINE_ENABLE_PHYSICS
+
+### HeightFieldShape Sample Count
+
+**Source:** [`src/engine/physics/terrain_collision.hpp`](src/engine/physics/terrain_collision.hpp#L63) (line 63)
+
+============================================================================
+Jolt's JPH::HeightFieldShapeSettings requires the sample count to be a
+power of 2 (e.g. 2, 4, 8, 16, 32, …).  The function enforces this
+internally by checking (sampleCount & (sampleCount - 1)) == 0.
+
+The heights array must contain exactly sampleCount * sampleCount floats
+in row-major order (row = Z direction, column = X direction).
+
+============================================================================
+
+### World-Space Placement
+
+**Source:** [`src/engine/physics/terrain_collision.hpp`](src/engine/physics/terrain_collision.hpp#L73) (line 73)
+
+============================================================================
+The terrain body is placed at the world origin; the offset parameter moves
+the bottom-left corner of the height field in world space.  This allows
+multiple terrain patches to tile seamlessly: pass the top-left world
+position of each streaming cell as the offset.
+
+@param world       The physics world to add the body to.
+@param heights     Row-major height array (sampleCount × sampleCount floats).
+@param sampleCount Grid dimension (must be a power of 2, e.g. 4, 8, 16).
+@param worldSizeX  Total terrain extent along X in world-space metres.
+@param worldSizeZ  Total terrain extent along Z in world-space metres.
+@param origin      World-space position of the (0, 0) grid corner.
+@return Opaque body ID on success; PhysicsWorld::kInvalidBodyID on failure.
+
 ---
 
 ## engine/platform
@@ -16348,6 +16773,398 @@ Usage:
       ctx->PSSetSamplers(0, 1, &smp);
   }
 @endcode
+
+### Heightmap Grid Mesh Generation
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L6) (line 6)
+
+============================================================================
+For a W×H heightmap, the vertex grid is W×H vertices and (W-1)×(H-1)×2
+triangles (two triangles per quad).  Vertex positions are:
+
+  x = col * cellSize
+  y = heights[row * W + col]     (the heightmap value)
+  z = row * cellSize
+
+UVs are normalised:
+  u = col / (W - 1)
+  v = row / (H - 1)
+
+Normals use finite differences of the height values (see GenerateMesh).
+
+Triangle winding (clockwise in D3D11 default mode, front-face viewed from above):
+  For quad at (row, col):
+    Triangle 0: (row,   col)  → (row,   col+1) → (row+1, col)
+    Triangle 1: (row,   col+1)→ (row+1, col+1) → (row+1, col)
+
+============================================================================
+
+### Why ImmutableBuffers for Terrain?
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L27) (line 27)
+
+============================================================================
+The terrain geometry does not change every frame (unlike skinned meshes or
+particle systems), so we use D3D11_USAGE_IMMUTABLE for the vertex and index
+buffers.  Immutable buffers reside in the fastest GPU memory tier; the driver
+can optimise their placement aggressively.
+
+The constant buffer (world/view/proj matrices) DOES change each frame, so it
+uses D3D11_USAGE_DYNAMIC with D3D11_CPU_ACCESS_WRITE — the Map/Unmap pattern
+that avoids an internal GPU→CPU stall.
+
+============================================================================
+
+### Input validation
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L63) (line 63)
+
+A terrain needs at least 2×2 samples to form one quad.  We also guard
+against extreme sizes (> 4096 samples per axis) that would cause a
+multi-GB vertex buffer — an easy mistake for students learning terrain.
+if (!heights || width < 2 || height < 2 || width > 4096 || height > 4096)
+{
+LOG_ERROR("[TerrainRenderer] Invalid heightmap dimensions: %d x %d", width, height);
+return false;
+}
+if (cellSize <= 0.0f)
+{
+LOG_ERROR("[TerrainRenderer] cellSize must be > 0 (got %.4f)", cellSize);
+return false;
+}
+
+### TRN1 Binary Format Parser
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L91) (line 91)
+
+-----------------------------------------------------------------------
+The binary layout written by bake_terrain() in creation_engine.py:
+
+  Offset  Size  Type      Field
+     0       4   char[4]  magic ("TRN1")
+     4       2   uint16   version (1)
+     6       2   uint16   width
+     8       2   uint16   height
+    10       4   float32  cellSize
+    14    W*H*4  float32  heights (row-major, row=Z, col=X)
+
+We read it as raw bytes and manually unpack using memcpy to avoid
+endianness and alignment assumptions — a defensive habit for cooked data.
+-----------------------------------------------------------------------
+std::ifstream f(path, std::ios::binary | std::ios::ate);
+if (!f.is_open())
+{
+LOG_ERROR("[TerrainRenderer] Cannot open cooked terrain: %s", path);
+return false;
+}
+
+### Vertex Generation
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L180) (line 180)
+
+-----------------------------------------------------------------------
+For each (row, col) pair we:
+  1. Set position  (col*cs, heights[row*W+col], row*cs).
+  2. Compute normal via finite differences (see below).
+  3. Set UV as normalised grid coordinate.
+
+Finite-difference normal:
+  hL = height at (row, col-1)  — use col if at left edge
+  hR = height at (row, col+1)  — use col if at right edge
+  hD = height at (row-1, col)  — use row if at bottom edge
+  hU = height at (row+1, col)  — use row if at top edge
+
+  tangentX = (2*cs, hR-hL, 0)   (step 2*cs in X, height difference in Y)
+  tangentZ = (0, hU-hD, 2*cs)   (step 2*cs in Z, height difference in Y)
+  normal   = normalize(cross(tangentZ, tangentX))
+
+The cross product of tangentZ × tangentX gives an outward normal
+(pointing generally upward) for a terrain with standard CW winding.
+-----------------------------------------------------------------------
+auto idx = [&](int r, int c) -> float {
+return m_heights[static_cast<size_t>(r) * W + c];
+};
+
+### Index Generation (CW winding)
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L249) (line 249)
+
+-----------------------------------------------------------------------
+For each quad formed by corners (r,c), (r,c+1), (r+1,c), (r+1,c+1):
+
+  (r,c) -----  (r,c+1)
+    |      \       |
+    |     ___\     |
+  (r+1,c) -- (r+1,c+1)
+
+We split into two CW-wound triangles (viewed from above, i.e. from +Y):
+  T0: A=(r,c),   B=(r,c+1),   C=(r+1,c)
+  T1: A=(r,c+1), B=(r+1,c+1), C=(r+1,c)
+
+D3D11 default front-face: CLOCKWISE.  Viewed from +Y our triangles
+go A→B→C in clock-wise order, so the top face is front-facing.
+-----------------------------------------------------------------------
+for (int r = 0; r < H - 1; ++r)
+{
+for (int c = 0; c < W - 1; ++c)
+{
+uint32_t a  = static_cast<uint32_t>(r       * W + c);
+uint32_t b  = static_cast<uint32_t>(r       * W + c + 1);
+uint32_t c0 = static_cast<uint32_t>((r + 1) * W + c);
+uint32_t d  = static_cast<uint32_t>((r + 1) * W + c + 1);
+
+### Runtime HLSL Compilation with D3DCompileFromFile
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L300) (line 300)
+
+-----------------------------------------------------------------------
+We compile the HLSL shaders at runtime (during scene load) rather than
+at build time (offline FXC/DXC).  This allows a student to edit
+terrain.vs.hlsl or terrain.ps.hlsl and immediately see the effect the
+next time the engine starts — no rebuild step required.
+
+D3DCompileFromFile is provided by d3dcompiler.lib, which ships with
+every Windows SDK installation (alongside d3d11.lib).
+-----------------------------------------------------------------------
+
+### Input Layout
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L369) (line 369)
+
+-----------------------------------------------------------------------
+The input layout describes how each vertex buffer element maps to a
+VSInput semantic in terrain.vs.hlsl.  The byte offsets must match the
+Vertex struct layout exactly:
+  pos    → offset 0  (3 floats = 12 bytes)
+  normal → offset 12 (3 floats = 12 bytes)
+  uv     → offset 24 (2 floats =  8 bytes)
+  Total vertex stride: 32 bytes
+-----------------------------------------------------------------------
+D3D11_INPUT_ELEMENT_DESC layoutDesc[] =
+{
+{ "POSITION",    0, DXGI_FORMAT_R32G32B32_FLOAT,    0,  0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "NORMAL",      0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+{ "TEXCOORD",    0, DXGI_FORMAT_R32G32_FLOAT,       0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+};
+
+### Immutable Vertex Buffer
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L398) (line 398)
+
+-----------------------------------------------------------------------
+Immutable buffers (D3D11_USAGE_IMMUTABLE) cannot be updated after creation.
+The GPU driver can place them in the fastest available memory tier and
+never needs to track possible writes.  Static terrain geometry is the
+canonical use-case for immutable buffers.
+-----------------------------------------------------------------------
+{
+D3D11_BUFFER_DESC bd{};
+bd.Usage          = D3D11_USAGE_IMMUTABLE;
+bd.ByteWidth      = static_cast<UINT>(m_vertices.size() * sizeof(Vertex));
+bd.BindFlags      = D3D11_BIND_VERTEX_BUFFER;
+
+### Dynamic Constant Buffer
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L441) (line 441)
+
+-----------------------------------------------------------------------
+The constant buffer (matrices + light direction) changes every frame.
+D3D11_USAGE_DYNAMIC + D3D11_CPU_ACCESS_WRITE enables the Map/Unmap
+pattern: the CPU writes new data directly into the GPU-visible mapping,
+the driver queues it efficiently, and we Unmap to commit.
+-----------------------------------------------------------------------
+{
+D3D11_BUFFER_DESC bd{};
+bd.Usage          = D3D11_USAGE_DYNAMIC;
+bd.ByteWidth      = sizeof(TerrainCB);  // Must be multiple of 16
+bd.BindFlags      = D3D11_BIND_CONSTANT_BUFFER;
+bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+### Map / Unmap Constant Buffer Update
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L482) (line 482)
+
+-----------------------------------------------------------------------
+D3D11_MAP_WRITE_DISCARD signals to the driver that we are replacing the
+entire previous contents.  The driver can give us a fresh memory region
+(double/triple buffering internally) without stalling the GPU pipeline.
+This is the standard per-frame CB update pattern.
+-----------------------------------------------------------------------
+D3D11_MAPPED_SUBRESOURCE mapped{};
+if (SUCCEEDED(ctx->Map(m_terrainCB, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+{
+TerrainCB cb{};
+memcpy(cb.world,    worldMat, 64);
+memcpy(cb.view,     viewMat,  64);
+memcpy(cb.proj,     projMat,  64);
+Sun direction: pointing up and slightly toward viewer (standard game sun)
+cb.lightDir[0] =  0.4f;
+cb.lightDir[1] =  0.8f;
+cb.lightDir[2] = -0.4f;
+cb.pad         =  0.0f;
+memcpy(mapped.pData, &cb, sizeof(TerrainCB));
+ctx->Unmap(m_terrainCB, 0);
+}
+
+### COM Release Idiom
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.cpp`](src/engine/rendering/d3d11/terrain_renderer.cpp#L530) (line 530)
+
+-----------------------------------------------------------------------
+Every D3D11 COM object must be Release()'d when we are done.  We null
+the pointer after release so that calling Release() twice is safe (the
+null check prevents a second Release on an already-freed object).
+-----------------------------------------------------------------------
+if (m_terrainCB)  { m_terrainCB->Release();  m_terrainCB  = nullptr; }
+if (m_indexBuf)   { m_indexBuf->Release();   m_indexBuf   = nullptr; }
+if (m_vertexBuf)  { m_vertexBuf->Release();  m_vertexBuf  = nullptr; }
+if (m_inputLayout){ m_inputLayout->Release(); m_inputLayout = nullptr; }
+if (m_ps)         { m_ps->Release();          m_ps         = nullptr; }
+if (m_vs)         { m_vs->Release();          m_vs         = nullptr; }
+m_gpuReady = false;
+}
+
+### What is a Heightmap Terrain?
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L6) (line 6)
+
+============================================================================
+A heightmap terrain represents the world surface as a regular 2-D grid of
+height values (floats).  For a grid of W×H samples, the engine generates
+(W-1)×(H-1)×2 triangles whose vertex Y coordinates come from the height
+samples.  This produces a smooth, undulating surface from a simple flat
+data structure — exactly the technique used in games like Final Fantasy XV,
+The Witcher 3, and the Unreal Engine terrain editor.
+
+Advantages over arbitrary polygon meshes:
+  • O(1) height query at any (x,z) position — ideal for physics and AI.
+  • Trivially divisible into streaming cells (each cell is a sub-grid).
+  • Easy to author: height values can come from a grayscale image or a
+    procedural noise function.
+
+============================================================================
+
+### Two-Phase Initialisation
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L22) (line 22)
+
+============================================================================
+TerrainRenderer uses a two-phase init pattern common in D3D11 renderers:
+
+  Phase 1 — CPU geometry generation (no device required):
+    Call LoadFromSamples() or LoadCooked() to store the height array and
+    call GenerateMesh() internally.  The resulting m_vertices and m_indices
+    are valid CPU-side data that can be inspected / tested without a device.
+
+  Phase 2 — GPU resource creation (requires an ID3D11Device*):
+    Call CreateDeviceResources() to compile the HLSL shaders, create the
+    input layout, and upload the vertex/index data to GPU buffers.  After
+    this call Draw() can be called each frame.
+
+Separating the phases is important for testing: unit tests can call
+LoadFromSamples() and check GetVertices() without needing a WARP device.
+
+============================================================================
+
+### Cooked Terrain Binary Format (TRN1)
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L40) (line 40)
+
+============================================================================
+The Python baker (tools/creation_engine.py :: bake_terrain) converts a
+JSON heightmap description to a compact binary:
+
+  Offset  Size  Field
+  0       4     Magic: "TRN1"
+  4       2     Version: 1 (uint16, little-endian)
+  6       2     Width: number of samples along X (uint16)
+  8       2     Height: number of samples along Z (uint16)
+ 10       4     CellSize: world-space distance between adjacent samples (float32)
+ 14       W*H*4 Height samples: row-major float32 array (row=Z, col=X)
+
+Total: 14 + W*H*4 bytes.
+The runtime loads this binary with LoadCooked() using a simple byte-by-byte
+parse — no external library required.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2024
+C++ Standard: C++17
+Platform: Windows (D3D11); gated by ENGINE_ENABLE_D3D11
+
+### Design Philosophy
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L87) (line 87)
+
+============================================================================
+This class is intentionally self-contained: it owns its D3D11 COM pointers,
+compiles its own HLSL shaders, and manages its own vertex/index buffers.
+That "fat renderer" design matches real engine terrain renderers (UE4's
+FLandscapeComponentSceneProxy, for example) where the terrain is a first-
+class rendering citizen, not a generic static mesh.
+
+The class does NOT use COM smart pointers to keep the COM interaction code
+readable for students — every COM pointer is explicitly released in Release().
+
+============================================================================
+
+### Terrain Vertex Layout
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L104) (line 104)
+
+-----------------------------------------------------------------------
+Each vertex stores position, normal and UV.  The layout must match both:
+  1. The D3D11_INPUT_ELEMENT_DESC array in CreateDeviceResources().
+  2. The VSInput struct in terrain.vs.hlsl.
+
+Fields are packed as plain C floats so the struct is trivially copyable
+and can be uploaded to the GPU with a single memcpy.
+-----------------------------------------------------------------------
+
+### TerrainCB Constant Buffer (CPU-side mirror)
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L123) (line 123)
+
+-----------------------------------------------------------------------
+This struct is the exact C++ mirror of the TerrainCB cbuffer declared in
+terrain.vs.hlsl and terrain.ps.hlsl.  Both stages bind this buffer to b0.
+
+sizeof(TerrainCB) must be a multiple of 16 bytes (D3D11 requirement).
+  3 × float4x4 = 3 × 64 = 192 bytes
+  float3 + float pad =  16 bytes
+  Total: 208 bytes  (13 × 16 ✓)
+-----------------------------------------------------------------------
+
+### Row-Major Heightmap Storage
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L162) (line 162)
+
+The heights array is stored as rows (Z direction) then columns (X
+direction): heights[row * width + col] = Y at (col * cellSize, row * cellSize).
+Row 0 is the "back" row (Z = 0), row (height-1) is the "front" row.
+
+@param heights   Pointer to width×height float values.
+@param width     Number of samples along X (must be >= 2).
+@param height    Number of samples along Z (must be >= 2).
+@param cellSize  World-space distance between adjacent samples (metres).
+@return true on success.
+
+### Finite-Difference Normal Estimation
+
+**Source:** [`src/engine/rendering/d3d11/terrain_renderer.hpp`](src/engine/rendering/d3d11/terrain_renderer.hpp#L248) (line 248)
+
+The normal at grid cell (r, c) is computed from the cross-product of
+the two tangent vectors that span the surface at that point:
+
+  Tx = position(r, c+1) - position(r, c-1)   (tangent along X)
+  Tz = position(r+1, c) - position(r-1, c)   (tangent along Z)
+  N  = normalize(cross(Tz, Tx))               (outward normal)
+
+Edge vertices use a one-sided (forward or backward) difference.
+This is a classic finite-difference scheme — the same used in GPU
+terrain shaders that sample a heightmap texture.
 
 ### Colour Science for Procedural Skies
 
@@ -26301,7 +27118,31 @@ Usage:
   engine_sandbox.exe --headless --scene combat_test        # M19 Action Combat: combo FSM + damage formula acceptance test (CI)
   engine_sandbox.exe --headless --scene quest_test         # M20 Quest system: accept/progress/complete/prereq acceptance test (CI)
   engine_sandbox.exe --headless --scene dialogue_test      # M20 Dialogue system: proximity/begin/advance acceptance test (CI)
+  engine_sandbox.exe --headless --scene save_test          # M26 Save system: slot invariants + delete no-op + version constant (CI)
+  engine_sandbox.exe --headless --scene terrain_test       # M25 Terrain: renderer init + heightmap displacement + physics collision (CI)
 
+============================================================================
+
+### How to add a new headless scene
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L93) (line 93)
+
+============================================================================
+Follow these three steps so future PRs never need to touch this file again:
+
+  1. Add an "else if (scene == "your_scene")" block BEFORE the final
+     "else" near the end of the headless dispatch block (search for
+     "M0 baseline: device init succeeded" to find the insertion point).
+
+  2. Add the CI step in .github/workflows/build-windows.yml immediately
+     after the last existing headless step in the "build-windows" job.
+     Use the same shell: cmd + run: pattern as existing steps.
+
+  3. Update the usage comment above (this section) so readers know about
+     the new scene.
+
+The final "else" (M0 baseline) must remain LAST — it is the catch-all
+fallback for --headless runs with no --scene argument.
 ============================================================================
 
 @author  Educational Game Engine Project
@@ -26312,7 +27153,7 @@ Target: Windows (MSVC)
 
 ### M5 Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L107) (line 107)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L127) (line 127)
 
 ---------------------------------------------------------------------------
 The physics_test scene exercises the Jolt Physics integration on the CPU:
@@ -26331,7 +27172,7 @@ ifdef ENGINE_ENABLE_PHYSICS
 
 ### VehicleSystem (Post-M10) is compiled only when
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L122) (line 122)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L142) (line 142)
 
 ENGINE_ENABLE_PHYSICS is ON; it requires PhysicsWorld for wheel-ray casts.
  include "engine/vehicle/vehicle_system.hpp"
@@ -26339,7 +27180,7 @@ endif
 
 ### M7 World Streaming headless tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L128) (line 128)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L148) (line 148)
 
 ---------------------------------------------------------------------------
 The streaming_load / streaming_evict / streaming_async scenes exercise the
@@ -26357,7 +27198,7 @@ include "engine/world/async_loader.hpp"
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L144) (line 144)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L164) (line 164)
 
 ---------------------------------------------------------------------------
 The m8_gameplay scene drives all gameplay systems (Combat, AI, Quest, etc.)
@@ -26372,7 +27213,7 @@ include "sandbox/game_runtime.hpp"
 
 ### M8.7 Streaming integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L157) (line 157)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L177) (line 177)
 
 ---------------------------------------------------------------------------
 The m8_streaming scene validates the full M8.7 pipeline:
@@ -26392,7 +27233,7 @@ include "game/world/GameStreamingManager.hpp"
 
 ### M10 Dynamic Sky headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L175) (line 175)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L195) (line 195)
 
 ---------------------------------------------------------------------------
 The dynamic_sky scene exercises three acceptance criteria:
@@ -26406,7 +27247,7 @@ include "engine/rendering/sky_renderer.hpp"
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L187) (line 187)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L207) (line 207)
 
 ---------------------------------------------------------------------------
 The bt_test scene validates the three new engine/ai/ subsystems:
@@ -26426,7 +27267,7 @@ include "engine/ai/nav_mesh.hpp"
 
 ### Post-M10 Cinematics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L205) (line 205)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L225) (line 225)
 
 ---------------------------------------------------------------------------
 The cinematic_test scene validates the two new engine/cinematics/ subsystems:
@@ -26443,7 +27284,7 @@ include "engine/cinematics/cinematic_sequencer.hpp"
 
 ### UI Menu Stack headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L220) (line 220)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L240) (line 240)
 
 ---------------------------------------------------------------------------
 The menu_stack_test scene validates the MenuStack navigation subsystem:
@@ -26461,7 +27302,7 @@ include "engine/ui/menu_stack.hpp"
 
 ### SDF Font Renderer headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L236) (line 236)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L256) (line 256)
 
 ---------------------------------------------------------------------------
 The font_test scene validates the SDF FontRenderer subsystem:
@@ -26475,7 +27316,7 @@ The font_test scene validates the SDF FontRenderer subsystem:
 
 ### Why headless font tests?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L247) (line 247)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L267) (line 267)
 
 The SDF atlas generation (CPU) and texture upload (GPU) happen inside Init().
 Running this in headless (WARP) mode on a CI Windows runner exercises the
@@ -26491,7 +27332,7 @@ endif
 
 ### M19 Action Combat headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L261) (line 261)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L281) (line 281)
 
 ---------------------------------------------------------------------------
 The combat_test scene validates the ComboSystem FSM and the CombatSystem
@@ -26525,7 +27366,7 @@ include "game/systems/CombatSystem.hpp"
 
 ### M20 Quest system headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L293) (line 293)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L313) (line 313)
 
 ---------------------------------------------------------------------------
 The quest_test scene validates the QuestSystem lifecycle without any
@@ -26560,7 +27401,7 @@ include "game/GameData.hpp"
 
 ### M20 Dialogue system headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L326) (line 326)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L346) (line 346)
 
 ---------------------------------------------------------------------------
 The dialogue_test scene validates the DialogueSystem proximity and
@@ -26586,9 +27427,60 @@ All three tests are pure C++17 CPU tests — no GPU or audio device needed.
 ---------------------------------------------------------------------------
 include "game/systems/dialogue_system.hpp"
 
+### M26 Save System headless test (save_test)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L372) (line 372)
+
+---------------------------------------------------------------------------
+The save_test scene is added by PR1 ("hotspots/plumbing") to give M26 a
+dedicated CI slot without requiring later PRs to touch this file's central
+scene dispatch.
+
+PR1 validates only the non-JSON-gated schema invariants:
+  Test 1 (slot_invariants): SaveSystem construction + schema constants.
+  Test 2 (delete_nonexistent): DeleteSlot() returns true for absent slot.
+  Test 3 (version_constant): kSaveFormatVersion == "1.0.0" (contract).
+
+M26 will extend this same scene with JSON round-trip, migration, and
+auto-save tests inside the existing save_test block — no further edits to
+the dispatch or to build-windows.yml will be required by that PR.
+
+All three tests are pure C++17 CPU tests — no GPU, audio, or JSON needed.
+---------------------------------------------------------------------------
+include "engine/save/save_system.hpp"
+include "engine/save/save_schema.hpp"
+
+### M25 Terrain headless tests (terrain_test)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L393) (line 393)
+
+---------------------------------------------------------------------------
+terrain_renderer.hpp provides the two-phase TerrainRenderer:
+  Phase 1 (CPU): LoadFromSamples() generates a vertex/index grid from float
+    height samples using finite-difference normal estimation.
+  Phase 2 (GPU): CreateDeviceResources() compiles terrain.vs/ps.hlsl and
+    uploads the mesh to immutable D3D11 VB/IB + a dynamic CB.
+
+terrain_collision.hpp provides BakeTerrainCollider() which creates a
+  JPH::HeightFieldShape static physics body from the same height data, so
+  the visual terrain and the collision surface match exactly.
+
+Test 1 (renderer_init):  CreateDeviceResources() succeeds on WARP device.
+Test 2 (heightmap_displacement): Vertex Y > 0 for non-zero height samples.
+Test 3 (physics_collision): Sphere dropped from height lands at Y > 0
+  (above the terrain surface, not at the default floor Y = 0).
+  This test is compiled only when ENGINE_ENABLE_PHYSICS is defined.
+---------------------------------------------------------------------------
+ifdef ENGINE_ENABLE_D3D11
+ include "engine/rendering/d3d11/terrain_renderer.hpp"
+endif
+ifdef ENGINE_ENABLE_PHYSICS
+ include "engine/physics/terrain_collision.hpp"
+endif
+
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L360) (line 360)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L427) (line 427)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -26605,7 +27497,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L375) (line 375)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L442) (line 442)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -26622,7 +27514,7 @@ Step 0 — Parse command-line arguments.
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L388) (line 388)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L455) (line 455)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -26634,7 +27526,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L410) (line 410)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L477) (line 477)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -26653,7 +27545,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L425) (line 425)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L492) (line 492)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -26666,7 +27558,7 @@ rendererArg = argv[++i];
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L438) (line 438)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L505) (line 505)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -26677,7 +27569,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L467) (line 467)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L534) (line 534)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -26692,7 +27584,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L492) (line 492)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L559) (line 559)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -26702,7 +27594,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L522) (line 522)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L589) (line 589)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -26718,7 +27610,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L555) (line 555)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L622) (line 622)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -26728,7 +27620,7 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L576) (line 576)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L643) (line 643)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -26754,7 +27646,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L598) (line 598)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L665) (line 665)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -26783,7 +27675,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L623) (line 623)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L690) (line 690)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -26807,7 +27699,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L731) (line 731)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L798) (line 798)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -26832,7 +27724,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L852) (line 852)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L919) (line 919)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -26853,7 +27745,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L936) (line 936)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1003) (line 1003)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -26871,7 +27763,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L950) (line 950)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1017) (line 1017)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -26902,7 +27794,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L979) (line 979)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1046) (line 1046)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -26910,7 +27802,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1041) (line 1041)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1108) (line 1108)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -26933,7 +27825,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1116) (line 1116)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1183) (line 1183)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -26951,7 +27843,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1130) (line 1130)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1197) (line 1197)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -26969,7 +27861,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1163) (line 1163)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1230) (line 1230)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -26995,7 +27887,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1214) (line 1214)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1281) (line 1281)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -27017,7 +27909,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1233) (line 1233)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1300) (line 1300)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -27040,7 +27932,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1314) (line 1314)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1381) (line 1381)
 
 -----------------------------------------------------------
 Verifies that:
@@ -27060,7 +27952,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1331) (line 1331)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1398) (line 1398)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -27080,7 +27972,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1374) (line 1374)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1441) (line 1441)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -27096,7 +27988,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1416) (line 1416)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1483) (line 1483)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -27122,7 +28014,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1438) (line 1438)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1505) (line 1505)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -27145,7 +28037,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1547) (line 1547)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1614) (line 1614)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -27172,7 +28064,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1571) (line 1571)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1638) (line 1638)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -27183,14 +28075,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1594) (line 1594)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1661) (line 1661)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1599) (line 1599)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1666) (line 1666)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -27207,7 +28099,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1647) (line 1647)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1714) (line 1714)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -27242,7 +28134,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1705) (line 1705)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1772) (line 1772)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -27252,7 +28144,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1796) (line 1796)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1863) (line 1863)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -27262,7 +28154,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1864) (line 1864)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1931) (line 1931)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -27270,7 +28162,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1915) (line 1915)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1982) (line 1982)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -27299,7 +28191,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1949) (line 1949)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2016) (line 2016)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -27322,7 +28214,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2000) (line 2000)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2067) (line 2067)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -27345,7 +28237,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2041) (line 2041)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2108) (line 2108)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -27362,7 +28254,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2116) (line 2116)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2183) (line 2183)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -27374,7 +28266,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2197) (line 2197)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2264) (line 2264)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -27392,7 +28284,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2411) (line 2411)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2478) (line 2478)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -27405,7 +28297,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2492) (line 2492)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2559) (line 2559)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -27421,7 +28313,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2505) (line 2505)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2572) (line 2572)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -27438,7 +28330,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2546) (line 2546)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2613) (line 2613)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -27456,7 +28348,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2577) (line 2577)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2644) (line 2644)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -27482,7 +28374,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2621) (line 2621)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2688) (line 2688)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -27522,7 +28414,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2708) (line 2708)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2775) (line 2775)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -27563,7 +28455,7 @@ std::cout << "[OK] bloom_test/load: "
 
 ### What the audio_3d_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2797) (line 2797)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2864) (line 2864)
 
 Test 1 (init):
     XAudio2Backend::Init() is called.  On headless CI with no
@@ -27592,7 +28484,7 @@ int testsFailed = 0;
 
 ### What the combat_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2915) (line 2915)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2982) (line 2982)
 
 All four tests are pure C++17 CPU tests — no D3D11 renderer
   or audio hardware is required.
@@ -27625,7 +28517,7 @@ int testsFailed = 0;
 
 ### We define the same combos here that
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2951) (line 2951)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3018) (line 3018)
 
 appear in combat_config.json so the test is self-
 contained and does not require a file on disk.
@@ -27642,7 +28534,7 @@ cs.AddCombo(aaaDef);
 
 ### Set a short config so tests run fast
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3013) (line 3013)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3080) (line 3080)
 
 CombatConfig cfg;
 cfg.comboWindowSeconds = 0.5f;
@@ -27650,7 +28542,7 @@ cs.SetConfig(cfg);
 
 ### Minimal ECS World for a unit test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3113) (line 3113)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3180) (line 3180)
 
 We create the smallest possible World to exercise a specific
 function (CalculateDamage).  This is the game-engine equivalent
@@ -27663,7 +28555,7 @@ RegisterAllComponents(*combatWorld);
 
 ### What the quest_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3205) (line 3205)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3272) (line 3272)
 
 All four tests are pure C++17 CPU tests — no D3D11
   renderer, Jolt physics, or XAudio2 is required.
@@ -27701,7 +28593,7 @@ int testsFailed = 0;
 
 ### Why heap-allocate World?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3243) (line 3243)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3310) (line 3310)
 
 EntityManager::m_signatures is a std::array<bitset<64>, 65536>
 which alone is 512 KB.  Stack-allocating World on Windows
@@ -27712,7 +28604,7 @@ RegisterAllComponents(*questWorld);
 
 ### Quest 1 "The Road to Dawn" is defined
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3266) (line 3266)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3333) (line 3333)
 
 in GameDatabase with no prerequisites so it should always
 be acceptable for a fresh player entity.
@@ -27724,7 +28616,7 @@ active[0]->id == 1;
 
 ### GainXP() accumulates XP in pendingXP
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3310) (line 3310)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3377) (line 3377)
 
 (banked in the field); it only moves to currentXP when
 the player rests at camp (ApplyBankedXP).  We check
@@ -27734,7 +28626,7 @@ const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
 
 ### A fresh player has not completed quest 1
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3356) (line 3356)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3423) (line 3423)
 
 so CanAcceptQuest(6) should return false.
 const bool blockedWithoutPrereq =
@@ -27742,7 +28634,7 @@ const bool blockedWithoutPrereq =
 
 ### A failed quest is neither active nor
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3400) (line 3400)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3467) (line 3467)
 
 complete.  The player could potentially re-accept it
 (if the QuestSystem allows it) or it remains failed for
@@ -27765,7 +28657,7 @@ std::cout << "[OK] quest_test/quest_fail: "
 
 ### What the dialogue_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3436) (line 3436)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3503) (line 3503)
 
 All three tests are pure C++17 CPU tests — no renderer,
   no audio, no physics.  A minimal ECS World is created
@@ -27794,7 +28686,7 @@ int testsFailed = 0;
 
 ### We only change XZ (horizontal plane);
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3509) (line 3509)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3576) (line 3576)
 
 DialogueSystem uses XZ distance, matching the 2.5D
 world layout where Y is the vertical axis.
@@ -27803,16 +28695,184 @@ dlgWorld->GetComponent<TransformComponent>(playerID).position =
 
 ### The stub DialogueSystem (M8.6) uses a
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3542) (line 3542)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3609) (line 3609)
 
 single terminal node.  AdvanceDialogue() on a terminal
 node should close the conversation (IsActive() → false).
 const bool moreNodes = dlgSys.AdvanceDialogue(*dlgWorld);
 const bool closedOk  = !dlgSys.IsActive();
 
+### M26 Save-System CI Stub (PR1 plumbing)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3650) (line 3650)
+
+──────────────────────────────────────────────────────────
+This save_test handler is added in PR1 ("hotspots/plumbing")
+so that the later M26 PR can add full JSON round-trip tests
+here without needing to touch the central headless dispatch
+in this file again.
+
+PR1 validates only the non-JSON-gated invariants that every
+subsequent save-system test will depend upon:
+
+  Test 1 (slot_invariants):
+    kNumSaveSlots==15, kAutoSaveSlot==15, kTotalSlots==16.
+    SaveSystem constructs cleanly with a temp directory and
+    SlotExists(0) returns false on an empty directory.
+    These constants are the contract that M26 migration and
+    slot-UI tests must not accidentally break.
+
+  Test 2 (delete_nonexistent):
+    DeleteSlot(0) returns true when no save file exists.
+    Games call DeleteSlot() to clear a slot the user picks;
+    that slot may already be empty on first run.
+    A silent-success (true) return is the correct behaviour.
+
+  Test 3 (version_constant):
+    kSaveFormatVersion == "1.0.0".
+    The M26 migration tests will write files tagged "0.9.0"
+    and assert the loader upgrades them to "1.0.0".  If the
+    constant drifts, those tests break silently — catching
+    it here in PR1 ensures the contract holds before M26 lands.
+
+M26 will add inside this block:
+  • slot_roundtrip  — Save() + Load() in a temp directory
+  • migration       — Load() of a "0.9.0" file upgrades to "1.0.0"
+  • autosave        — AutoSave() creates save_auto.json
+
+None of those additions require further CI or dispatch edits.
+-----------------------------------------------------------
+int testsFailed = 0;
+
+### We isolate each CI run under a unique temp
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3692) (line 3692)
+
+sub-directory so parallel runs on the same machine don't race.
+Use fs::path concatenation (not string+"/") so the path
+separator is always correct on every OS.
+const fs::path testSaveDir =
+fs::temp_directory_path() / "save_test_pr1";
+
+### A single SaveSystem construction is enough:
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3700) (line 3700)
+
+each test only calls read-side helpers (SlotExists, DeleteSlot)
+that do not mutate persistent state, so all three can share
+the same instance without interference.
+engine::save::SaveSystem saver(testSaveDir.string() + "/");
+
+### Defensive delete
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3735) (line 3735)
+
+DeleteSlot() must return true even when the file does
+not exist.  Games call it to "clear" a slot the user
+selects; that slot may already be absent (first run,
+or previously cleared).  Silent success is correct.
+const bool deleteOk = saver.DeleteSlot(0);
+
+### Version string as a CI contract
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3758) (line 3758)
+
+kSaveFormatVersion is embedded in every save file's
+"version" field.  M26 migration tests will write files
+tagged "0.9.0" and assert the loader upgrades them to
+"1.0.0".  Asserting the constant here in PR1 catches
+accidental bumps before M26 lands.
+const std::string_view ver = engine::save::kSaveFormatVersion;
+if (ver != "1.0.0")
+{
+std::cout << "[FAIL] save_test/version_constant: "
+"kSaveFormatVersion=\"" << ver
+<< "\" (expected \"1.0.0\").\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] save_test/version_constant: "
+"kSaveFormatVersion=\"1.0.0\".\n";
+}
+}
+
+### M25 Terrain Acceptance Tests
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3796) (line 3796)
+
+──────────────────────────────────────────────────────────
+Three acceptance criteria matching the milestone definition
+in docs/PROJECT_MILESTONES.md §M25:
+
+  Test 1 (renderer_init):
+    Create a TerrainRenderer, load a 4×4 heightmap with
+    non-zero heights, call CreateDeviceResources() on the
+    WARP D3D11 device.  The call must succeed (IsGpuReady()
+    returns true), proving that both HLSL shaders compile and
+    all D3D11 VB/IB/CB objects are created without error.
+
+  Test 2 (heightmap_displacement):
+    Inspect the CPU-side vertices produced by GenerateMesh()
+    for a heightmap where every sample = 2.0 f.  Every vertex
+    must have pos[1] (Y) exactly 2.0.  This verifies that the
+    height data flows correctly from the input array through the
+    mesh generator into the vertex buffer.
+
+  Test 3 (physics_collision):
+    Create a PhysicsWorld + BakeTerrainCollider() for a 4×4
+    flat heightfield at Y = 1.0.  Drop a sphere from Y = 10.0.
+    Simulate 240 steps (4 seconds at 60 Hz).  The sphere must
+    come to rest with Y > 0.0 — landing on the terrain surface
+    rather than falling through to Y = 0.
+    This test is compiled only when ENGINE_ENABLE_PHYSICS is
+    defined; otherwise it is reported as "skipped".
+
+### Why a 4×4 heightmap?
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3824) (line 3824)
+
+Jolt's JPH::HeightFieldShape requires a power-of-2 sample
+count.  4 is the smallest valid value (2^2) that produces at
+least one non-trivial quad, making it the minimum useful test.
+-----------------------------------------------------------
+
+### Why downcast here?
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3848) (line 3848)
+
+The headless acceptance tests need the raw ID3D11Device*
+to create auxiliary D3D11 objects (terrain VB, IB, CB,
+shaders) that are independent of the main renderer's
+scene machinery.  The IRenderer interface intentionally
+does not expose GetDevice() — only test code ever needs it.
+auto* d3d = dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
+bool testOk = false;
+
+### HeightFieldShape sample count constraint
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3929) (line 3929)
+
+BakeTerrainCollider requires a power-of-2 sample count.
+We use 4 (2^2) — the smallest valid value for Jolt.
+The heights array (16 values, all 2.0) is reused from above.
+static constexpr float kWorldSize = kCellSize * (kW - 1); // 6.0 m
+
+### Graceful skip when physics is absent
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3995) (line 3995)
+
+The standard Windows CI job builds without Jolt Physics (no
+vcpkg install in that job).  We skip test 3 rather than fail
+so the CI job remains green.  The build-windows-physics job
+runs the full suite including the physics collision test.
+std::cout << "[OK] terrain_test 3/3: (ENGINE_ENABLE_PHYSICS not "
+"defined — physics collision test skipped).\n";
+endif // ENGINE_ENABLE_PHYSICS
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3594) (line 3594)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4029) (line 4029)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -27822,7 +28882,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3602) (line 3602)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4037) (line 4037)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -27852,7 +28912,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3630) (line 3630)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4065) (line 4065)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -27875,7 +28935,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3683) (line 3683)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4118) (line 4118)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -27888,7 +28948,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3699) (line 3699)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4134) (line 4134)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
@@ -29308,6 +30368,70 @@ max_z = min_z + 1.0
 
 **Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L568) (line 568)
 
+### TRN1 Binary Format
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L691) (line 691)
+
+### Why binary, not JSON?
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L709) (line 709)
+
+Binary reduces load time and file size. For a 512x512 terrain patch the
+difference is ~1 MB binary vs ~4 MB JSON. The C++ LoadCooked() parser
+is ~30 lines versus a full JSON tokeniser.
+
+### Row-major height order
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L714) (line 714)
+
+Row 0 is the Z=0 row (columns are X samples). This matches the C++
+GenerateMesh() convention in terrain_renderer.cpp.
+"""
+src = Path(json_path)
+try:
+data = json.loads(src.read_text(encoding="utf-8"))
+except json.JSONDecodeError as exc:
+raise ValueError(f"Invalid JSON in {src}: {exc}") from exc
+
+### struct.pack binary serialisation
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L749) (line 749)
+
+-----------------------------------------------------------------------
+"<" selects little-endian (x86 / Windows ABI).
+  4s → 4 raw bytes (magic)
+  H  → uint16_t (2 bytes)
+  f  → float32  (4 bytes)
+
+Header is 14 bytes; heights are appended as a flat array of floats.
+-----------------------------------------------------------------------
+header = struct.pack(
+"<4sHHHf",
+b"TRN1",
+1,          # version
+width,
+height,
+cell_size,
+)
+heights_bytes = struct.pack(f"<{expected}f", *heights_floats)
+
+### bake-terrain subcommand
+
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1475) (line 1475)
+
+Converts a .terrain.json heightmap source file into a compact TRN1 binary
+that the C++ terrain_renderer.cpp can load with LoadCooked().
+The baker validates the JSON schema (width, height, cellSize, heights),
+confirms that heights.length == width * height, and writes the binary.
+bake_trn = sub.add_parser(
+"bake-terrain",
+help="Bake a heightmap JSON source file into a cooked TRN1 binary terrain asset.",
+)
+bake_trn.add_argument("--input", required=True, metavar="JSON",
+help="Source .terrain.json heightmap file.")
+bake_trn.add_argument("--output", required=True, metavar="TERRAIN",
+help="Output cooked .terrain binary path.")
+
 ---
 
 ## tools/pak
@@ -29710,6 +30834,109 @@ return result
 ### Baker test strategy
 
 **Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L5) (line 5)
+
+### TRN1 binary layout contract test
+
+**Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L250) (line 250)
+
+─────────────────────────────────────────────────
+Verify the header fields and total size of a baked terrain asset.
+
+### Height sample fidelity test
+
+**Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L289) (line 289)
+
+────────────────────────────────────────────
+Every height value stored in the JSON must be retrievable from the binary
+as a float32 with < 1e-4 absolute error.  This confirms that:
+1. The heights array is read in row-major order.
+2. No value is discarded or reordered during serialisation.
+3. float32 precision is sufficient for terrain heights (true for any
+value that fits in a 32-bit float, which all reasonable heights do).
+"""
+known_heights = [0.0, 1.0, 2.0, 3.0,
+0.5, 1.5, 2.5, 3.5,
+1.0, 2.0, 3.0, 4.0,
+1.5, 2.5, 3.5, 4.5]
+src = _make_terrain_json(tmp_path, width=4, height=4,
+cell_size=1.0, heights=known_heights)
+out = tmp_path / "roundtrip.terrain"
+ce.bake_terrain(src, out)
+
+### Validation: heights array length mismatch
+
+**Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L321) (line 321)
+
+──────────────────────────────────────────────────────────
+The baker must raise ValueError if len(heights) != width * height.
+This prevents silent data corruption (partial height data would produce
+incorrect mesh geometry that is hard to debug visually).
+"""
+bad_json = tmp_path / "bad.terrain.json"
+bad_json.write_text(
+json.dumps({
+"width": 4,
+"height": 4,
+"cellSize": 2.0,
+"heights": [0.0, 1.0, 2.0],  # only 3 values instead of 16
+}),
+encoding="utf-8",
+)
+out = tmp_path / "bad.terrain"
+try:
+ce.bake_terrain(bad_json, out)
+except ValueError as exc:
+assert "16" in str(exc) or "3" in str(exc)
+else:
+raise AssertionError("Expected bake_terrain to raise ValueError")
+
+### Validation: minimum grid size
+
+**Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L348) (line 348)
+
+──────────────────────────────────────────────
+A 1×4 or 1×1 grid cannot form a single triangle quad; the baker must
+reject width or height < 2 with a clear error.
+"""
+bad_json = tmp_path / "tiny.terrain.json"
+bad_json.write_text(
+json.dumps({
+"width": 1,
+"height": 4,
+"cellSize": 1.0,
+"heights": [0.0, 1.0, 2.0, 3.0],
+}),
+encoding="utf-8",
+)
+out = tmp_path / "tiny.terrain"
+try:
+ce.bake_terrain(bad_json, out)
+except ValueError as exc:
+assert "width" in str(exc).lower() or "height" in str(exc).lower() or "2" in str(exc)
+else:
+raise AssertionError("Expected bake_terrain to raise ValueError for width=1")
+
+### Output directory auto-creation
+
+**Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L374) (line 374)
+
+───────────────────────────────────────────────
+The baker must create missing parent directories so callers do not need to
+run mkdir before calling bake_terrain.  This matches the convention used by
+all other bakers (bake_navmesh, bake_tod, bake_cinematic).
+"""
+src = _make_terrain_json(tmp_path)
+deep_out = tmp_path / "a" / "b" / "c" / "sample.terrain"
+
+### Sample vertical slice asset contract test
+
+**Source:** [`tools/tests/test_creation_engine_bakers.py`](tools/tests/test_creation_engine_bakers.py#L391) (line 391)
+
+──────────────────────────────────────────────────────────
+Verify that the committed highland.terrain.json in the vertical slice
+project bakes to the correct TRN1 format.  This acts as a golden-file
+sanity check: if the JSON or the baker change in an incompatible way
+this test will fail, alerting reviewers to the regression.
 
 ### Testing the Asset Pipeline Validator
 

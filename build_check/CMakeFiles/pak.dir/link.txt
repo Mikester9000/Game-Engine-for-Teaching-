@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/pak.dir/link.d CMakeFiles/pak.dir/src/tools/pak/pak_main.cpp.o CMakeFiles/pak.dir/src/engine/core/Logger.cpp.o -o pak

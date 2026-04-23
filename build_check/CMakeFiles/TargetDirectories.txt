@@ -1,0 +1,6 @@
+/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build_check/CMakeFiles/lua55_static.dir
+/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build_check/CMakeFiles/game.dir
+/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build_check/CMakeFiles/cook.dir
+/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build_check/CMakeFiles/pak.dir
+/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build_check/CMakeFiles/edit_cache.dir
+/home/runner/work/Game-Engine-for-Teaching-/Game-Engine-for-Teaching-/build_check/CMakeFiles/rebuild_cache.dir

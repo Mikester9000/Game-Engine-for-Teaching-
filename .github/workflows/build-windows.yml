@@ -613,19 +613,25 @@ jobs:
         shell: cmd
 
       # -----------------------------------------------------------------------
-      # M25 — Terrain test CI slot (PR1 plumbing stub)
+      # M25 — Terrain heightmap renderer + collision acceptance tests
       # -----------------------------------------------------------------------
-      # TEACHING NOTE — terrain_test CI Gate (M25 PR1 stub)
-      # This step is the CI hook added by PR1 ("hotspots/plumbing") so that the
-      # M25 PR can implement terrain rendering, heightmap loading, and collision
-      # integration tests in engine_sandbox WITHOUT needing to edit this
-      # workflow file again.
+      # TEACHING NOTE — terrain_test CI Gate (M25 implementation)
+      # Runs the three M25 acceptance subtests defined in src/sandbox/main.cpp:
       #
-      # Until M25 lands, terrain_test exits [PASS] immediately (stub).
-      # M25 will add test logic inside the terrain_test scene block in
-      # src/sandbox/main.cpp — no further CI changes will be required.
+      #   Test 1 (renderer_init):
+      #     TerrainRenderer::CreateDeviceResources() succeeds on WARP D3D11 device.
+      #     Verifies: terrain.vs/ps.hlsl compile, VB/IB/CB created without error.
+      #
+      #   Test 2 (heightmap_displacement):
+      #     CPU-side vertices for a flat 4×4 heightmap (all Y=2.0) must have
+      #     pos[1]==2.0.  Verifies the GenerateMesh() height-sample path.
+      #
+      #   Test 3 (physics_collision):
+      #     Available only in the physics build job (ENGINE_ENABLE_PHYSICS).
+      #     In this job (engine-only build, no Jolt) the test is gracefully skipped.
+      #     The build-windows-physics job runs the full physics collision subtest.
       # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M25 stub — terrain_test)
+      - name: Run headless acceptance test (M25 — terrain_test)
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
         shell: cmd
 
@@ -766,6 +772,20 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Run vehicle physics acceptance tests (Post-M10)
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # M25 terrain_test — full 3-subtest suite (with physics collision)
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — terrain_test in the physics job
+      # The engine-only job (no Jolt) skips test 3 (physics_collision) gracefully.
+      # This physics job has ENGINE_ENABLE_PHYSICS=ON, so all three subtests run:
+      #   Test 1 — renderer_init: TerrainRenderer GPU resources created on WARP.
+      #   Test 2 — heightmap_displacement: vertex Y equals the loaded height.
+      #   Test 3 — physics_collision: BakeTerrainCollider + sphere drop validation.
+      # -----------------------------------------------------------------------
+      - name: Run terrain acceptance tests (M25 — full suite with physics)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene terrain_test
         shell: cmd
 
   # --------------------------------------------------------------------------
