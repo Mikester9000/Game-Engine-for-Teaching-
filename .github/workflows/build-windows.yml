@@ -591,24 +591,19 @@ jobs:
       # -----------------------------------------------------------------------
       # M26 — Save system acceptance test (PR1 plumbing stub, CPU-only)
       # -----------------------------------------------------------------------
-      # TEACHING NOTE — save_test CI Gate (M26 PR1 stub)
-      # This step is the CI hook added by PR1 ("hotspots/plumbing") so that the
-      # M26 PR can extend the save_test scene with full JSON round-trip,
-      # migration, and auto-save tests WITHOUT needing to touch this workflow
-      # file again.
+      # TEACHING NOTE — save_test CI Gate (engine-only build, M26)
+      # This step runs the save_test scene against the engine-only build
+      # (windows-ninja-debug-engine-only) which has NO nlohmann/json.
       #
-      # PR1 tests validate non-JSON save-schema invariants only:
-      #   Test 1 (slot_invariants): kNumSaveSlots==15, kAutoSaveSlot==15,
-      #     kTotalSlots==16, SlotExists(0)==false on a fresh temp directory.
-      #   Test 2 (delete_nonexistent): DeleteSlot(0) returns true for a
-      #     slot that does not exist (graceful no-op delete).
-      #   Test 3 (version_constant): kSaveFormatVersion=="1.0.0" — the
-      #     migration-version contract that M26 tests will depend on.
+      # Without ENGINE_ENABLE_JSON the scene emits [SKIP] for each sub-test
+      # and exits 0.  This keeps the engine-only job green while signalling
+      # that the full test suite is only exercised in the dedicated
+      # build-windows-save-test job (which installs nlohmann-json via vcpkg).
       #
-      # No GPU, audio hardware, vcpkg, or nlohmann/json is required — all three
-      # tests exercise pure C++17 std::filesystem + compile-time constants.
+      # No GPU, audio hardware, or vcpkg packages are required — the [SKIP]
+      # path exercises only the #ifndef ENGINE_ENABLE_JSON branch.
       # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M26 stub — save_test)
+      - name: Run headless acceptance test (M26 save_test — engine-only skip)
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene save_test
         shell: cmd
 
@@ -1008,3 +1003,114 @@ jobs:
         run: .\build\windows-ninja-debug-vulkan\engine_sandbox.exe --renderer vulkan --headless
         shell: cmd
         continue-on-error: true
+
+  # ============================================================================
+  # M26 Save-System CI Hardening job
+  # ============================================================================
+  # TEACHING NOTE — M26 Save-System CI Job (build-windows-save-test)
+  # ============================================================================
+  # This job validates the full save-system acceptance suite (M26).  It:
+  #   1. Installs nlohmann-json via the system vcpkg at C:\vcpkg (classic mode).
+  #      Classic mode is used for the same reason as the physics job: the
+  #      project's vcpkg.json also requests imgui[docking] which may not be
+  #      available on the CI runner; running from $env:TEMP sidesteps the
+  #      manifest-mode install entirely.
+  #   2. Configures engine_sandbox with the windows-ninja-debug-save preset
+  #      (D3D11 only, no Vulkan SDK or Jolt Physics needed).  Passing the
+  #      vcpkg toolchain file allows CMake to find nlohmann/json and set
+  #      ENGINE_ENABLE_JSON, which unlocks the full JSON save/load path.
+  #   3. Builds engine_sandbox.
+  #   4. Runs the M26 three-part headless acceptance suite:
+  #         engine_sandbox.exe --headless --scene save_test
+  #      Tests exercised:
+  #        Test 1 (slot_roundtrip) — Save() + Load() round-trips HP, position,
+  #          and quest array with exact bit-equality.
+  #        Test 2 (migration)      — Load() of a "0.9.0" inline fixture migrates
+  #          to current version without crash; entity HP=99 restored.
+  #        Test 3 (autosave)       — AutoSave() (= CampSystem::Rest hook) writes
+  #          slot 'autosave', file is non-empty, Load() succeeds.
+  #
+  # continue-on-error: false — this is a hard M26 CI gate; save-system
+  # correctness is a load-bearing subsystem for player data persistence.
+  #
+  # No GPU, audio hardware, or Vulkan SDK are required — all three tests
+  # are pure C++17 CPU tests that touch only the filesystem and ECS.
+  # ============================================================================
+  build-windows-save-test:
+    name: Build Windows + Save-System Acceptance Tests (M26)
+    runs-on: windows-latest
+    continue-on-error: false  # TEACHING NOTE — hard M26 CI gate
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # Enter MSVC developer environment (same as primary job).
+      # -----------------------------------------------------------------------
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Classic-mode vcpkg install (save-test job)
+      # -----------------------------------------------------------------------
+      # We install nlohmann-json in classic mode from $env:TEMP (no vcpkg.json
+      # in scope) to avoid manifest-mode resolution of imgui[docking] which
+      # may not be available on the CI runner's vcpkg snapshot.
+      #
+      # nlohmann-json is a header-only library so installation is fast (<5 s).
+      # CMake detects it via find_package(nlohmann_json CONFIG QUIET) and sets
+      # ENGINE_ENABLE_JSON, which enables the full Save()/Load() code path.
+      # -----------------------------------------------------------------------
+      - name: Cache vcpkg packages (nlohmann-json)
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-nlohmann-json-${{ runner.os }}-x64
+
+      - name: Install nlohmann-json via vcpkg (classic mode)
+        run: |
+          Set-Location "$env:TEMP"
+          C:\vcpkg\vcpkg.exe install nlohmann-json:x64-windows
+        shell: pwsh
+
+      # -----------------------------------------------------------------------
+      # Configure CMake with the save-test preset.
+      # Pass the system vcpkg toolchain so CMake finds nlohmann-json.
+      #
+      # TEACHING NOTE — VCPKG_MANIFEST_INSTALL=OFF
+      # Same reason as the physics job: the project vcpkg.json contains
+      # imgui[docking] which may not resolve on the CI runner's vcpkg
+      # snapshot.  VCPKG_MANIFEST_INSTALL=OFF tells the toolchain to skip
+      # the auto-install and use the packages from the previous classic-mode
+      # step instead.
+      # -----------------------------------------------------------------------
+      - name: Configure CMake (D3D11 + nlohmann/json)
+        run: >
+          cmake --preset windows-ninja-debug-save
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_INSTALL=OFF
+        shell: pwsh
+
+      - name: Build engine_sandbox (with JSON)
+        run: cmake --build --preset windows-ninja-debug-save --target engine_sandbox
+
+      # -----------------------------------------------------------------------
+      # M26 — Save-system acceptance tests (CPU-only, no WARP/GPU needed).
+      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Save tests are CPU-only
+      # All three tests exercise only the filesystem, ECS World, and
+      # nlohmann/json serialisation.  No D3D11 device is created and no
+      # GPU is required — the tests run cleanly even on a runner with no
+      # GPU driver.  The engine initialises its headless path and then
+      # immediately enters the save_test scene block without calling any
+      # D3D11 API.
+      # -----------------------------------------------------------------------
+      - name: Run headless save-system acceptance tests (M26)
+        run: .\build\windows-ninja-debug-save\engine_sandbox.exe --headless --scene save_test
+        shell: cmd
