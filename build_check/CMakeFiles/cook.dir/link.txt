@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/cook.dir/link.d CMakeFiles/cook.dir/src/tools/cook/cook_main.cpp.o CMakeFiles/cook.dir/src/engine/core/Logger.cpp.o -o cook

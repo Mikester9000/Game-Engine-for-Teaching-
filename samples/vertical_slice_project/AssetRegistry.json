@@ -1,7 +1,7 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-23T14:05:13Z",
+  "generatedAt": "2026-04-23T14:06:44Z",
   "assets": [
     {
       "id": "63d82695-f567-42f7-a8a3-110afe1e03d0",
@@ -80,6 +80,15 @@
         "level",
         "streaming-cell"
       ]
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "version": "1.0.0",
+      "type": "terrain",
+      "source": "Content/Terrain/highland.terrain.json",
+      "cooked": "Cooked/Terrain/highland.terrain",
+      "hash": "deadbeef00000000000000000000000000000000000000000000000000000001",
+      "dependencies": []
     }
   ]
 }
