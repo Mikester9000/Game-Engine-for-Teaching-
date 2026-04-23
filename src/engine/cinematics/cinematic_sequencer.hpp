@@ -146,7 +146,13 @@ struct ShotEntry
     };
 
     std::vector<AudioEventEntry> audioEvents; ///< Sorted by time (ascending).
-    mutable std::vector<bool>    eventFired;  ///< Parallel fired-flag array.
+    // TEACHING NOTE — Why uint8_t instead of bool?
+    // std::vector<bool> is a specialization that packs bits into words.
+    // Accessing an element returns a proxy object, not a real bool reference.
+    // MSVC enforces this strictly: "for (bool& f : vec<bool>)" is a C2440
+    // compile error.  Using uint8_t (0 = not fired, 1 = fired) avoids the
+    // specialization and allows range-for with a real reference as intended.
+    std::vector<uint8_t>         eventFired;  ///< Parallel fired-flag array (0=pending, 1=fired).
 
     ShotEntry() = default;
     ShotEntry(CameraRig r, float dur, std::string lbl = "")

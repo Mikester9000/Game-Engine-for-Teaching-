@@ -158,7 +158,7 @@ void CinematicSequencer::Play()
     // every shot so events reliably trigger even if the sequence is replayed.
     for (ShotEntry& shot : m_shots)
     {
-        for (bool& fired : shot.eventFired)
+        for (uint8_t& fired : shot.eventFired)
             fired = false;
     }
 
@@ -197,7 +197,7 @@ void CinematicSequencer::SkipToShot(int shotIndex)
     // Reset fired flags for the target shot so audio events can re-fire
     // when the shot is replayed from the beginning.
     ShotEntry& shot = m_shots[static_cast<size_t>(m_currentShot)];
-    for (bool& fired : shot.eventFired)
+    for (uint8_t& fired : shot.eventFired)
         fired = false;
 
     if (m_onShotChanged)
@@ -289,7 +289,7 @@ void CinematicSequencer::Tick(float dt)
         if (m_currentShot < static_cast<int>(m_shots.size()))
         {
             ShotEntry& nextShot = m_shots[static_cast<size_t>(m_currentShot)];
-            for (bool& fired : nextShot.eventFired)
+            for (uint8_t& fired : nextShot.eventFired)
                 fired = false;
 
             // Fire any audio events in the new shot that fall within

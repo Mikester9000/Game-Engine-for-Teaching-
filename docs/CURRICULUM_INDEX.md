@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1883 across 55 subsystems.
+**Total lessons:** 1884 across 55 subsystems.
 
 ---
 
@@ -21,7 +21,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (42 lessons)
-- [engine/cinematics](#enginecinematics) (39 lessons)
+- [engine/cinematics](#enginecinematics) (40 lessons)
 - [engine/combat](#enginecombat) (21 lessons)
 - [engine/core](#enginecore) (50 lessons)
 - [engine/ecs](#engineecs) (41 lessons)
@@ -8076,13 +8076,12 @@ if (duration <= 0.0f)
 LOG_WARN("CinematicSequencer::AddShot — shot duration <= 0; clamped to 0.001 s.");
 duration = 0.001f;
 }
-ShotEntry entry(std::move(rig), duration, std::move(label));
-m_shots.push_back(std::move(entry));
+m_shots.emplace_back(std::move(rig), duration, std::move(label));
 }
 
 ### Authoring guard
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L98) (line 98)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L97) (line 97)
 
 AddAudioEvent() must be called after AddShot() because events are stored
 per-shot.  Calling it with no shots is a logic error in the authoring
@@ -8095,7 +8094,7 @@ return;
 
 ### Clamping event time to shot duration
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L110) (line 110)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L109) (line 109)
 
 If an author accidentally sets an event time past the shot duration we
 clamp it to the last valid frame rather than silently discarding it.
@@ -8108,20 +8107,20 @@ LOG_WARN("CinematicSequencer::AddAudioEvent — event time clamped to shot durat
 
 ### Resetting audio event fired flags on Play()
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L159) (line 159)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L155) (line 155)
 
 Each call to Play() starts the sequence from scratch, so all audio
 events must be eligible to fire again.  We reset the fired flags for
 every shot so events reliably trigger even if the sequence is replayed.
 for (ShotEntry& shot : m_shots)
 {
-for (bool& fired : shot.eventFired)
+for (uint8_t& fired : shot.eventFired)
 fired = false;
 }
 
 ### Bounds clamping for editor scrubbing
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L188) (line 188)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L184) (line 184)
 
 Editor timeline scrubbers often call SkipToShot() with an arbitrary
 index.  Clamping here prevents out-of-bounds access and makes the
@@ -8130,7 +8129,7 @@ if (m_shots.empty()) return;
 
 ### Timed audio event dispatch
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L231) (line 231)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L227) (line 227)
 
 -----------------------------------------------------------------------
 After advancing m_shotTime we check each unfired audio event in the
@@ -8159,7 +8158,7 @@ m_onAudioEvent(curShot.audioEvents[i].clipID);
 
 ### Carry-over loop
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L258) (line 258)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L254) (line 254)
 
 -----------------------------------------------------------------------
 We use a loop rather than a single if-check because in theory a very
@@ -8173,7 +8172,7 @@ const float shotDur = m_shots[static_cast<size_t>(m_currentShot)].duration;
 
 ### Why iterate rather than cache the camera entity ID?
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L326) (line 326)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L322) (line 322)
 
 -----------------------------------------------------------------------
 We call world.View<CameraComponent>() each frame instead of caching
@@ -8185,7 +8184,7 @@ is usually exactly one camera entity).
 
 ### Releasing cinematic control
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L344) (line 344)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L340) (line 340)
 
 When the sequence is done we clear cinematicOverride so that
 CameraSystem reverts to follow-camera mode.  This gives the
@@ -8196,7 +8195,7 @@ return;
 
 ### Time remapping (shot time → rig time)
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L394) (line 394)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L390) (line 390)
 
 -----------------------------------------------------------------------
 shot.duration  is the playback duration set by the sequence author.
@@ -8327,9 +8326,20 @@ m_shotTime reaches event.time and resets the fired flags when the
 shot restarts (e.g. SkipToShot / Play).
 -----------------------------------------------------------------------
 
+### Why uint8_t instead of bool?
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L149) (line 149)
+
+std::vector<bool> is a specialization that packs bits into words.
+Accessing an element returns a proxy object, not a real bool reference.
+MSVC enforces this strictly: "for (bool& f : vec<bool>)" is a C2440
+compile error.  Using uint8_t (0 = not fired, 1 = fired) avoids the
+specialization and allows range-for with a real reference as intended.
+std::vector<uint8_t>         eventFired;  ///< Parallel fired-flag array (0=pending, 1=fired).
+
 ### Event-driven design with std::function callbacks
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L165) (line 165)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L171) (line 171)
 
 Rather than polling IsComplete() every frame, callers can register
 callbacks for events of interest.  std::function<void()> is the idiomatic
@@ -8338,7 +8348,7 @@ Callbacks are optional (left unset = no-op).
 
 ### Why shot-local time?
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L207) (line 207)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L213) (line 213)
 
 Shot-local time makes authoring intuitive: "the sword clash sound fires
 0.3 seconds into this shot" regardless of where that shot falls on the
@@ -8351,7 +8361,7 @@ times every time the shot order changes in the editor.
 
 ### Callback signature (int newShotIndex)
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L226) (line 226)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L232) (line 232)
 
 Passing the new shot index lets the game trigger dialogue or gameplay
 events at specific shots without tightly coupling the sequencer to game
@@ -8361,7 +8371,7 @@ code.  The sequencer knows nothing about dialogue; it just fires an int.
 
 ### Decoupled audio triggering
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L251) (line 251)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L257) (line 257)
 
 The sequencer does not call AudioSystem directly because:
   1. The sequencer lives in engine/cinematics/ with no dependency on audio.
@@ -8372,7 +8382,7 @@ The sequencer does not call AudioSystem directly because:
 
 ### Accumulated dt vs absolute time
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L295) (line 295)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L301) (line 301)
 
 We accumulate delta-time rather than storing an absolute timestamp so
 that the sequencer works correctly even if the application is paused,
@@ -8383,7 +8393,7 @@ require the caller to manage a base timestamp.
 
 ### CameraComponent fields written by the sequencer
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L314) (line 314)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L320) (line 320)
 
 The CameraSystem reads cameraComp.viewPos and cameraComp.lookAt to
 build the view matrix each frame, so the sequencer just writes those
@@ -26898,7 +26908,7 @@ array of float32 vertices + uint32 indices — a single memcpy away from
 Jolt's TriangleMesh shape constructor.
 """
 try:
-import creation_engine as ce  # noqa: F401
+import creation_engine as ce
 _HAS_CE = True
 except ImportError:
 _HAS_CE = False
@@ -26918,7 +26928,7 @@ complexity of FreeType/HarfBuzz integration.  Students can extend the baker
 to accept real TTF input as a self-study exercise.
 """
 try:
-import creation_engine as ce  # noqa: F401
+import creation_engine as ce
 _HAS_CE = True
 except ImportError:
 _HAS_CE = False
@@ -26937,7 +26947,7 @@ teaching we use piecewise linear segments, which are trivial to implement
 and still demonstrate the key concept: runtime nearest-segment queries.
 """
 try:
-import creation_engine as ce  # noqa: F401
+import creation_engine as ce
 _HAS_CE = True
 except ImportError:
 _HAS_CE = False
