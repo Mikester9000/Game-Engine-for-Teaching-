@@ -116,10 +116,19 @@ try {
 # This works on any machine — no GPU or display required.
 # ---------------------------------------------------------------------------
 $BuildDir  = Join-Path $RepoRoot "build\$Preset"
-$ExePath   = Get-ChildItem -Path $BuildDir -Recurse -Filter "engine_sandbox.exe" |
-             Select-Object -First 1 -ExpandProperty FullName
 
-if (-not $ExePath) {
+# TEACHING NOTE — Constructed path vs. recursive search
+# We construct the expected path directly from the known preset output structure
+# (Ninja Multi-Config places binaries in build/<preset>/Debug/ for Debug config
+# and build/<preset>/ for single-config generators).  Recursive Search-Item is
+# fragile when multiple build presets exist under the same root directory.
+$ExeDir    = $BuildDir
+# Try Debug sub-dir first (Ninja Multi-Config); fall back to preset root.
+if (Test-Path (Join-Path $ExeDir "Debug\engine_sandbox.exe")) {
+    $ExePath = Join-Path $ExeDir "Debug\engine_sandbox.exe"
+} elseif (Test-Path (Join-Path $ExeDir "engine_sandbox.exe")) {
+    $ExePath = Join-Path $ExeDir "engine_sandbox.exe"
+} else {
     throw "[bootstrap] engine_sandbox.exe not found under build\$Preset"
 }
 

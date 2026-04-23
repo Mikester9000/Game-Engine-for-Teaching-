@@ -502,6 +502,15 @@ static LONG WINAPI CrashHandler(EXCEPTION_POINTERS* ep)
         CloseHandle(f);
     }
     return EXCEPTION_EXECUTE_HANDLER;
+    // TEACHING NOTE — EXCEPTION_EXECUTE_HANDLER
+    // Returning this constant tells Windows to:
+    //   1. Execute the exception handler (the code above, which wrote the .dmp).
+    //   2. Then terminate the process normally (ExitProcess).
+    // The alternative return values are:
+    //   EXCEPTION_CONTINUE_SEARCH     — pass to the next handler in the chain.
+    //   EXCEPTION_CONTINUE_EXECUTION  — resume execution at the faulting instruction
+    //                                   (dangerous: the process state is corrupt).
+    // We want HANDLER: write the dump, then die cleanly.
 }
 #endif // _WIN32
 
@@ -648,7 +657,18 @@ int main(int argc, char* argv[])
             char tsBuf[32] = {};
             std::strftime(tsBuf, sizeof(tsBuf), "%Y%m%d_%H%M%S", &tm);
 
-            const std::string logPath = (logDir / ("engine_" + std::string(tsBuf) + ".log")).string();
+            // TEACHING NOTE — Append process ID to the timestamp
+            // Multiple engine instances launched within the same second would
+            // produce identical filenames without the PID suffix, causing one
+            // log to silently overwrite another.  The PID is always unique
+            // within a running system so it guarantees a collision-free name.
+#ifdef _WIN32
+            const unsigned long pid = static_cast<unsigned long>(GetCurrentProcessId());
+#else
+            const unsigned long pid = static_cast<unsigned long>(getpid());
+#endif
+            const std::string logPath = (logDir / ("engine_" + std::string(tsBuf) +
+                "_" + std::to_string(pid) + ".log")).string();
             Logger::Instance().Init(logPath, LogLevel::DEBUG, /*echoConsole=*/true);
         }
 

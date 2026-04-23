@@ -39,9 +39,11 @@ namespace engine::core {
 bool EngineConfig::Load(const std::string& path)
 {
 #ifdef ENGINE_ENABLE_JSON
-    // TEACHING NOTE — std::ifstream in binary mode prevents line-ending
-    // translation on Windows which could corrupt binary asset reads.
-    // For text JSON we use default (text) mode here.
+    // TEACHING NOTE — std::ifstream text mode on Windows
+    // We use the default (text) mode here — std::ifstream without std::ios::binary.
+    // On Windows, text mode translates "\r\n" to "\n" on read.  For JSON, this
+    // is harmless: the parser treats whitespace uniformly.  Binary mode is only
+    // needed when reading raw byte arrays where a '\r' byte has semantic meaning.
     std::ifstream f(path);
     if (!f.is_open())
     {

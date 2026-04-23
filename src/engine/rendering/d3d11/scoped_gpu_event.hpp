@@ -57,7 +57,6 @@
 
 #ifdef _WIN32
 #  include <d3d11.h>
-#  include <d3d9.h>    // D3DCOLOR_RGBA used by annotation colours
 
 // ---------------------------------------------------------------------------
 // ScopedGpuEvent — RAII wrapper around ID3DUserDefinedAnnotation.
