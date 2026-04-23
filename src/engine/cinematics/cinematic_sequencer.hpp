@@ -145,7 +145,7 @@ struct ShotEntry
         std::string clipID;  ///< Asset ID of the audio clip to play.
     };
 
-    std::vector<AudioEventEntry> audioEvents; ///< Sorted by time (ascending).
+    std::vector<AudioEventEntry> audioEvents; ///< Audio events kept sorted by time (ascending); insertion maintains invariant.
     // TEACHING NOTE — Why uint8_t instead of bool?
     // std::vector<bool> is a specialization that packs bits into words.
     // Accessing an element returns a proxy object, not a real bool reference.
@@ -216,9 +216,16 @@ public:
      * global timeline.  Absolute timestamps would require recalculating event
      * times every time the shot order changes in the editor.
      *
-     * @param t       Shot-local time in seconds (must be ≥ 0 and ≤ shot duration).
+     * TEACHING NOTE — Invalid authoring input is logged and ignored
+     * This sequencer API keeps authoring helpers lightweight by treating
+     * "no current shot exists yet" as a recoverable misuse: the implementation
+     * logs the problem and ignores the request instead of throwing.  The
+     * declaration documents that behaviour so callers do not rely on exception
+     * handling for normal editor/runtime validation.
+     *
+     * @param t       Shot-local time in seconds (clamped to [0, shot duration]).
      * @param clipID  Asset ID of the audio clip to trigger.
-     * @throws std::logic_error if no shots have been added yet.
+     * @note  If no shots have been added yet, the request is logged and ignored.
      */
     void AddAudioEvent(float t, std::string clipID);
 

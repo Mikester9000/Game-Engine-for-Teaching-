@@ -1017,10 +1017,13 @@ def bake_font(
     # -----------------------------------------------------------------------
     # TEACHING NOTE — Placeholder SDF atlas (R8_UNORM)
     # -----------------------------------------------------------------------
-    # We generate a simple placeholder: each glyph cell has a checkerboard
-    # pattern of 0x7F (boundary) and 0x00 (outside), teaching the *layout*
-    # without requiring a TTF rasteriser.  The pixel shader uses SDF values
-    # to determine inside/outside; 0x7F is the mid-point (boundary distance).
+    # We generate a simple synthetic SDF-like placeholder: each valid glyph
+    # cell receives a radial distance ramp centred in the cell, with higher
+    # values near the middle and lower values toward the edges.  This teaches
+    # atlas layout and signed-distance-style sampling without requiring a real
+    # TTF rasteriser.  The pixel shader treats values near 128 as the notional
+    # contour/boundary threshold, with values above 128 biased toward "inside"
+    # and values below 128 biased toward "outside".
     # -----------------------------------------------------------------------
     atlas_pixels = bytearray(atlas_width * atlas_height)
     for gy in range(atlas_height):

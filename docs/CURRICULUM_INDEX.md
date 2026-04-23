@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1884 across 55 subsystems.
+**Total lessons:** 1886 across 55 subsystems.
 
 ---
 
@@ -21,7 +21,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/animation](#engineanimation) (85 lessons)
 - [engine/assets](#engineassets) (27 lessons)
 - [engine/audio](#engineaudio) (42 lessons)
-- [engine/cinematics](#enginecinematics) (40 lessons)
+- [engine/cinematics](#enginecinematics) (42 lessons)
 - [engine/combat](#enginecombat) (21 lessons)
 - [engine/core](#enginecore) (50 lessons)
 - [engine/ecs](#engineecs) (41 lessons)
@@ -8105,9 +8105,28 @@ if (std::abs(clampedT - t) > 1e-6f)
 LOG_WARN("CinematicSequencer::AddAudioEvent — event time clamped to shot duration.");
 }
 
+### Maintaining the "sorted by time" invariant on insert
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L119) (line 119)
+
+Tick() can make multiple audio events eligible within a single update
+(e.g. when dt is large or a shot is very short).  Iterating a time-sorted
+list guarantees deterministic dispatch order regardless of the authoring
+sequence.  std::lower_bound gives O(log N) search; since a shot typically
+has only a handful of events the constant factor is negligible.
+
+Because eventFired is a parallel array we must insert its flag at the
+exact same index so the correspondence between audioEvents[i] and
+eventFired[i] is always preserved.
+const auto insertIt = std::lower_bound(
+shot.audioEvents.begin(),
+shot.audioEvents.end(),
+clampedT,
+[](const AudioEventEntry& ev, float time) { return ev.time < time; });
+
 ### Resetting audio event fired flags on Play()
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L155) (line 155)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L174) (line 174)
 
 Each call to Play() starts the sequence from scratch, so all audio
 events must be eligible to fire again.  We reset the fired flags for
@@ -8120,7 +8139,7 @@ fired = false;
 
 ### Bounds clamping for editor scrubbing
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L184) (line 184)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L203) (line 203)
 
 Editor timeline scrubbers often call SkipToShot() with an arbitrary
 index.  Clamping here prevents out-of-bounds access and makes the
@@ -8129,7 +8148,7 @@ if (m_shots.empty()) return;
 
 ### Timed audio event dispatch
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L227) (line 227)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L246) (line 246)
 
 -----------------------------------------------------------------------
 After advancing m_shotTime we check each unfired audio event in the
@@ -8158,7 +8177,7 @@ m_onAudioEvent(curShot.audioEvents[i].clipID);
 
 ### Carry-over loop
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L254) (line 254)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L273) (line 273)
 
 -----------------------------------------------------------------------
 We use a loop rather than a single if-check because in theory a very
@@ -8172,7 +8191,7 @@ const float shotDur = m_shots[static_cast<size_t>(m_currentShot)].duration;
 
 ### Why iterate rather than cache the camera entity ID?
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L322) (line 322)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L341) (line 341)
 
 -----------------------------------------------------------------------
 We call world.View<CameraComponent>() each frame instead of caching
@@ -8184,7 +8203,7 @@ is usually exactly one camera entity).
 
 ### Releasing cinematic control
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L340) (line 340)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L359) (line 359)
 
 When the sequence is done we clear cinematicOverride so that
 CameraSystem reverts to follow-camera mode.  This gives the
@@ -8195,7 +8214,7 @@ return;
 
 ### Time remapping (shot time → rig time)
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L390) (line 390)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.cpp`](src/engine/cinematics/cinematic_sequencer.cpp#L409) (line 409)
 
 -----------------------------------------------------------------------
 shot.duration  is the playback duration set by the sequence author.
@@ -8355,13 +8374,23 @@ Shot-local time makes authoring intuitive: "the sword clash sound fires
 global timeline.  Absolute timestamps would require recalculating event
 times every time the shot order changes in the editor.
 
-@param t       Shot-local time in seconds (must be ≥ 0 and ≤ shot duration).
+### Invalid authoring input is logged and ignored
+
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L219) (line 219)
+
+This sequencer API keeps authoring helpers lightweight by treating
+"no current shot exists yet" as a recoverable misuse: the implementation
+logs the problem and ignores the request instead of throwing.  The
+declaration documents that behaviour so callers do not rely on exception
+handling for normal editor/runtime validation.
+
+@param t       Shot-local time in seconds (clamped to [0, shot duration]).
 @param clipID  Asset ID of the audio clip to trigger.
-@throws std::logic_error if no shots have been added yet.
+@note  If no shots have been added yet, the request is logged and ignored.
 
 ### Callback signature (int newShotIndex)
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L232) (line 232)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L239) (line 239)
 
 Passing the new shot index lets the game trigger dialogue or gameplay
 events at specific shots without tightly coupling the sequencer to game
@@ -8371,7 +8400,7 @@ code.  The sequencer knows nothing about dialogue; it just fires an int.
 
 ### Decoupled audio triggering
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L257) (line 257)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L264) (line 264)
 
 The sequencer does not call AudioSystem directly because:
   1. The sequencer lives in engine/cinematics/ with no dependency on audio.
@@ -8382,7 +8411,7 @@ The sequencer does not call AudioSystem directly because:
 
 ### Accumulated dt vs absolute time
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L301) (line 301)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L308) (line 308)
 
 We accumulate delta-time rather than storing an absolute timestamp so
 that the sequencer works correctly even if the application is paused,
@@ -8393,7 +8422,7 @@ require the caller to manage a base timestamp.
 
 ### CameraComponent fields written by the sequencer
 
-**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L320) (line 320)
+**Source:** [`src/engine/cinematics/cinematic_sequencer.hpp`](src/engine/cinematics/cinematic_sequencer.hpp#L327) (line 327)
 
 The CameraSystem reads cameraComp.viewPos and cameraComp.lookAt to
 build the view matrix each frame, so the sequencer just writes those
@@ -31018,10 +31047,13 @@ glyph_table.extend(struct.pack("<5f", u0, v0, u1, v1, advance))
 **Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1018) (line 1018)
 
 -----------------------------------------------------------------------
-We generate a simple placeholder: each glyph cell has a checkerboard
-pattern of 0x7F (boundary) and 0x00 (outside), teaching the *layout*
-without requiring a TTF rasteriser.  The pixel shader uses SDF values
-to determine inside/outside; 0x7F is the mid-point (boundary distance).
+We generate a simple synthetic SDF-like placeholder: each valid glyph
+cell receives a radial distance ramp centred in the cell, with higher
+values near the middle and lower values toward the edges.  This teaches
+atlas layout and signed-distance-style sampling without requiring a real
+TTF rasteriser.  The pixel shader treats values near 128 as the notional
+contour/boundary threshold, with values above 128 biased toward "inside"
+and values below 128 biased toward "outside".
 -----------------------------------------------------------------------
 atlas_pixels = bytearray(atlas_width * atlas_height)
 for gy in range(atlas_height):
@@ -31044,11 +31076,11 @@ atlas_pixels[gy * atlas_width + gx] = max(0, min(255, sdf_val))
 
 ### RD01 Binary Format
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1121) (line 1121)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1124) (line 1124)
 
 ### Road splines and Catmull-Rom
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1138) (line 1138)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1141) (line 1141)
 
 A production road system would use Catmull-Rom or Bezier curves to
 interpolate between waypoints for smooth steering.  This baker stores
@@ -31060,7 +31092,7 @@ VehicleSystem::FindNearestRoadPoint() is a recommended extension.
 
 ### Why a minimum of 2 waypoints?
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1147) (line 1147)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1150) (line 1150)
 
 A single waypoint defines a point, not a path.  A road needs at least
 a start and end to have a direction vector for steering calculation.
@@ -31073,7 +31105,7 @@ raise ValueError(f"Invalid JSON in {src}: {exc}") from exc
 
 ### bake-collision subcommand
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1908) (line 1908)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1911) (line 1911)
 
 Converts a .obj mesh into a compact PHY1 binary collision shape.
 The C++ PhysicsWorld can then load vertex/index data directly without
@@ -31089,7 +31121,7 @@ help="Output cooked .phys binary path.")
 
 ### bake-font subcommand
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1922) (line 1922)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1925) (line 1925)
 
 Converts a font descriptor JSON into an FNT1 SDF atlas binary, so the
 C++ FontRenderer can load a pre-generated atlas instead of computing the
@@ -31105,7 +31137,7 @@ help="Output cooked .font binary path.")
 
 ### bake-road subcommand
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1936) (line 1936)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1939) (line 1939)
 
 Converts a road waypoint JSON into an RD01 binary path, allowing
 VehicleSystem to load road geometry without JSON parsing at runtime.
@@ -31120,7 +31152,7 @@ help="Output cooked .road binary path.")
 
 ### bake-terrain subcommand
 
-**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1949) (line 1949)
+**Source:** [`tools/creation_engine.py`](tools/creation_engine.py#L1952) (line 1952)
 
 Converts a .terrain.json heightmap source file into a compact TRN1 binary
 that the C++ terrain_renderer.cpp can load with LoadCooked().

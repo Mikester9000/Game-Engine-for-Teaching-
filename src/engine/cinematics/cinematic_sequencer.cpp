@@ -116,8 +116,27 @@ void CinematicSequencer::AddAudioEvent(float t, std::string clipID)
         LOG_WARN("CinematicSequencer::AddAudioEvent — event time clamped to shot duration.");
     }
 
-    shot.audioEvents.push_back({clampedT, std::move(clipID)});
-    shot.eventFired.push_back(false);  // parallel fired-flag array stays in sync
+    // TEACHING NOTE — Maintaining the "sorted by time" invariant on insert
+    // Tick() can make multiple audio events eligible within a single update
+    // (e.g. when dt is large or a shot is very short).  Iterating a time-sorted
+    // list guarantees deterministic dispatch order regardless of the authoring
+    // sequence.  std::lower_bound gives O(log N) search; since a shot typically
+    // has only a handful of events the constant factor is negligible.
+    //
+    // Because eventFired is a parallel array we must insert its flag at the
+    // exact same index so the correspondence between audioEvents[i] and
+    // eventFired[i] is always preserved.
+    const auto insertIt = std::lower_bound(
+        shot.audioEvents.begin(),
+        shot.audioEvents.end(),
+        clampedT,
+        [](const AudioEventEntry& ev, float time) { return ev.time < time; });
+
+    const auto insertIndex = static_cast<std::ptrdiff_t>(
+        insertIt - shot.audioEvents.begin());
+
+    shot.audioEvents.insert(insertIt, {clampedT, std::move(clipID)});
+    shot.eventFired.insert(shot.eventFired.begin() + insertIndex, 0u);
 }
 
 // ===========================================================================

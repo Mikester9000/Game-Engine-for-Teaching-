@@ -631,7 +631,7 @@ def test_bake_font_writes_expected_binary_layout(tmp_path: Path) -> None:
 
     blob = out.read_bytes()
     header_fmt = "<4sHHHHHH"
-    hsize = struct.calcsize(header_fmt)  # 14 bytes
+    hsize = struct.calcsize(header_fmt)  # 16 bytes (4s + 6×H)
     magic, version, aw, ah, gc, gs, fc = struct.unpack(header_fmt, blob[:hsize])
 
     assert magic == b"FNT1"
