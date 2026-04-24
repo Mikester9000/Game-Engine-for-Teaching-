@@ -1,0 +1,115 @@
+{
+  "$schema": "../../../../shared/schemas/teaching_stations.schema.json",
+  "version": "1.0.0",
+  "description": "Demo_Game teaching station definitions. Each station is a named in-world landmark that demonstrates a specific engine feature. Students can add new stations by extending this array and rerunning the game.",
+  "stations": [
+    {
+      "id": "rendering_pbr",
+      "displayName": "PBR Rendering",
+      "description": "Cook-Torrance BRDF: GGX NDF + Smith G + Schlick F, IBL split-sum, Reinhard tonemapping, gamma correction.",
+      "biome": "grassland",
+      "worldX": 300.0, "worldZ": 512.0,
+      "sceneHint": "pbr_ibl",
+      "markerColour": [1.0, 0.6, 0.1]
+    },
+    {
+      "id": "rendering_shadows",
+      "displayName": "Shadows & Bloom",
+      "description": "Directional shadow map 512x512, PCF 3x3 SamplerComparisonState, LDR bloom 5-tap Gaussian blur.",
+      "biome": "grassland",
+      "worldX": 350.0, "worldZ": 500.0,
+      "sceneHint": "shadow_test",
+      "markerColour": [0.4, 0.4, 0.9]
+    },
+    {
+      "id": "sky_weather",
+      "displayName": "Dynamic Sky & Weather",
+      "description": "SkyRenderer time-of-day clock, WeatherFx fog density and rain intensity, procedural sun disc.",
+      "biome": "coast",
+      "worldX": 512.0, "worldZ": 700.0,
+      "sceneHint": "dynamic_sky",
+      "markerColour": [0.2, 0.8, 1.0]
+    },
+    {
+      "id": "physics_jolt",
+      "displayName": "Jolt Physics",
+      "description": "Rigid-body simulation, character capsule step-up, raycast hit detection, AABB hit volumes.",
+      "biome": "desert",
+      "worldX": 680.0, "worldZ": 400.0,
+      "sceneHint": "physics_test",
+      "markerColour": [0.9, 0.3, 0.2]
+    },
+    {
+      "id": "audio_3d",
+      "displayName": "3D Positional Audio",
+      "description": "X3DAudio DSP path, distance attenuation, SetListenerPosition, per-frame ECS TransformComponent read.",
+      "biome": "forest",
+      "worldX": 420.0, "worldZ": 350.0,
+      "sceneHint": "audio_3d_test",
+      "markerColour": [0.6, 0.9, 0.4]
+    },
+    {
+      "id": "animation_skinning",
+      "displayName": "GPU Skeletal Animation",
+      "description": "64-joint skinned mesh, GpuSkinningBuffer DYNAMIC CB, Two-Bone IK (law of cosines) + FABRIK iterative IK.",
+      "biome": "grassland",
+      "worldX": 512.0, "worldZ": 450.0,
+      "sceneHint": "skinned_mesh",
+      "markerColour": [0.9, 0.8, 0.2]
+    },
+    {
+      "id": "ai_formation",
+      "displayName": "Behaviour Trees & Formation",
+      "description": "BtTree FSM, BtSequence / BtSelector, FormationSystem LINE/V_SHAPE/CIRCLE, A* NavMesh grid pathfinding.",
+      "biome": "forest",
+      "worldX": 380.0, "worldZ": 600.0,
+      "sceneHint": "bt_test",
+      "markerColour": [0.7, 0.3, 0.9]
+    },
+    {
+      "id": "quests_dialogue",
+      "displayName": "Quests & Dialogue",
+      "description": "QuestSystem objective tracking, prerequisite gating, DialogueSystem in-range NPC conversation trees.",
+      "biome": "grassland",
+      "worldX": 600.0, "worldZ": 520.0,
+      "sceneHint": "quest_test",
+      "markerColour": [0.9, 0.6, 0.9]
+    },
+    {
+      "id": "world_streaming",
+      "displayName": "World Streaming",
+      "description": "WorldStreamingManager async cell load/evict, AsyncLoader worker thread, frame-budget cap, ImGui minimap.",
+      "biome": "snow",
+      "worldX": 512.0, "worldZ": 800.0,
+      "sceneHint": "streaming_load",
+      "markerColour": [0.5, 0.9, 0.9]
+    },
+    {
+      "id": "terrain",
+      "displayName": "Terrain Renderer",
+      "description": "Heightmap-driven grid mesh (TRN1 binary format), height-based colour blend, Lambert + Reinhard tonemap.",
+      "biome": "snow",
+      "worldX": 450.0, "worldZ": 750.0,
+      "sceneHint": "terrain_test",
+      "markerColour": [0.6, 0.5, 0.3]
+    },
+    {
+      "id": "cinematics",
+      "displayName": "Cinematics",
+      "description": "CinematicSequencer shot/cut, CameraRig keyframe Lerp, timed audio events, OnComplete callback.",
+      "biome": "desert",
+      "worldX": 650.0, "worldZ": 600.0,
+      "sceneHint": "cinematic_test",
+      "markerColour": [1.0, 0.8, 0.0]
+    },
+    {
+      "id": "combat",
+      "displayName": "Action Combat (ComboSystem)",
+      "description": "IDLE/BUILDING/COOLDOWN FSM, prefix-match combo chains, window expiry, damage formula testing.",
+      "biome": "grassland",
+      "worldX": 560.0, "worldZ": 470.0,
+      "sceneHint": "combat_test",
+      "markerColour": [1.0, 0.2, 0.2]
+    }
+  ]
+}

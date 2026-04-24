@@ -446,6 +446,17 @@
 #include <iostream>
 #include <exception>
 #include <cstring>      // std::strcmp
+
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Demo_Game open-world state machine
+// ---------------------------------------------------------------------------
+// The OpenWorld header is included here so that engine_sandbox can expose
+// the --scene demo_world headless acceptance test alongside all other CI
+// scenes.  OpenWorld itself has no platform or D3D11 dependency — it is
+// pure C++17 logic — so including it here does not affect the build on any
+// platform where engine_sandbox is built.
+// ---------------------------------------------------------------------------
+#include "demo_game/open_world.hpp"
 #include <cstdlib>      // std::getenv — ENGINE_PROJECT_ROOT env var lookup
 #include <cmath>        // std::sin — used for the animated clear colour
 #include <algorithm>    // std::sort — authored_content .tex file ordering
@@ -4857,6 +4868,152 @@ int main(int argc, char* argv[])
 
                 std::cout << "[PASS] authored_content: all 3 acceptance tests passed "
                              "(file count, DDS magic, header validity).\n";
+            }
+            else if (scene == "demo_world")
+            {
+                // -----------------------------------------------------------
+                // Demo_Game (demo_world): OpenWorld state machine acceptance test.
+                // -----------------------------------------------------------
+                // TEACHING NOTE — demo_world CI Acceptance Test
+                // ──────────────────────────────────────────────
+                // This test validates the Demo_Game open-world state machine
+                // (OpenWorld in demo_game/open_world.hpp/.cpp) independently of
+                // the demo_game executable itself.  Running it here via
+                // engine_sandbox keeps CI simple: one binary, one job step.
+                //
+                // Acceptance criteria:
+                //   Test 1 — Init():  12+ teaching stations registered.
+                //   Test 2 — Boot:    initial state is BOOT_MENU.
+                //   Test 3 — Flow:    auto-advance boots into PLAYING; all 5
+                //                     biomes visited before IsHeadlessDone().
+                //   Test 4 — Teleport: TeleportToStation("rendering_pbr") sets
+                //                      biome to GRASSLAND.
+                //   Test 5 — Stations: every registered station has a non-empty
+                //                      id, displayName, and sceneHint.
+                // -----------------------------------------------------------
+                int testsFailed = 0;
+
+                // ── Test 1: Init + station count ────────────────────────────
+                // TEACHING NOTE — Fail explicitly on insufficient stations
+                // We check both that Init() returned true AND that the station
+                // count is at least the expected minimum.  A successful Init()
+                // that registered zero stations is still a regression failure.
+                constexpr int kExpectedStations = 12;
+                OpenWorld ow;
+                if (!ow.Init())
+                {
+                    std::cout << "[FAIL] demo_world/1: OpenWorld::Init() returned false.\n";
+                    ++testsFailed;
+                }
+                else if (static_cast<int>(ow.GetStations().size()) < kExpectedStations)
+                {
+                    std::cout << "[FAIL] demo_world/1: Expected >= " << kExpectedStations
+                              << " stations after Init(), got "
+                              << ow.GetStations().size() << ".\n";
+                    ++testsFailed;
+                }
+                else
+                {
+                    std::cout << "[OK] demo_world/1: Init — "
+                              << ow.GetStations().size() << " stations registered.\n";
+                }
+
+                // ── Test 2: Boot state ──────────────────────────────────────
+                if (ow.GetState() != OpenWorldState::BOOT_MENU)
+                {
+                    std::cout << "[FAIL] demo_world/2: initial state is not BOOT_MENU.\n";
+                    ++testsFailed;
+                }
+                else
+                {
+                    std::cout << "[OK] demo_world/2: Initial state = BOOT_MENU.\n";
+                }
+
+                // ── Test 3: Full headless flow ──────────────────────────────
+                // TEACHING NOTE — Extra guard frames
+                // At 60 Hz, a 0.1 s LOADING wait is about 6 frames
+                // (0.1 / (1/60) ≈ 6).  We also need 2 frames for the
+                // BOOT_MENU auto-advance, giving ~8 overhead frames.
+                // kExtraGuardFrames = 12 provides a comfortable margin;
+                // the loop exits early via `break` once IsHeadlessDone() is true.
+                constexpr float kDt = 1.0f / 60.0f;
+                constexpr int   kExtraGuardFrames = 12; // boot (2) + loading (~6 @ 60Hz) + margin
+                for (int f = 0; f < OpenWorld::kHeadlessFrames + kExtraGuardFrames; ++f)
+                {
+                    ow.Update(kDt, /*headless=*/true);
+                    if (ow.IsHeadlessDone()) { break; }
+                }
+                if (!ow.IsHeadlessDone())
+                {
+                    std::cout << "[FAIL] demo_world/3: IsHeadlessDone() never became "
+                                 "true after " << OpenWorld::kHeadlessFrames << " frames.\n";
+                    ++testsFailed;
+                }
+                else
+                {
+                    std::cout << "[OK] demo_world/3: PLAYING state; all biomes visited "
+                                 "at frame " << ow.GetFrameCount() << ".\n";
+                }
+
+                // ── Test 4: Teleport ────────────────────────────────────────
+                ow.TeleportToStation("rendering_pbr");
+                if (ow.GetCurrentBiome() != BiomeType::GRASSLAND)
+                {
+                    std::cout << "[FAIL] demo_world/4: TeleportToStation(\"rendering_pbr\") "
+                                 "did not set biome to GRASSLAND.\n";
+                    ++testsFailed;
+                }
+                else
+                {
+                    std::cout << "[OK] demo_world/4: Teleport → rendering_pbr = GRASSLAND.\n";
+                }
+
+                // ── Test 5: Station data integrity ──────────────────────────
+                // TEACHING NOTE — An empty station list is a test failure, not
+                // a vacuous success.  This acceptance test verifies that station
+                // registration happened AND that each station's required fields
+                // were populated.
+                const auto& stationsRef = ow.GetStations();
+                bool stationDataOk = true;
+                if (stationsRef.empty())
+                {
+                    std::cout << "[FAIL] demo_world/5: GetStations() returned 0 stations; "
+                                 "station registration may have failed.\n";
+                    stationDataOk = false;
+                    ++testsFailed;
+                }
+                else
+                {
+                    for (const auto& s : stationsRef)
+                    {
+                        if (s.id.empty() || s.displayName.empty() || s.sceneHint.empty())
+                        {
+                            std::cout << "[FAIL] demo_world/5: station has empty id, "
+                                         "displayName, or sceneHint.\n";
+                            stationDataOk = false;
+                            ++testsFailed;
+                            break;
+                        }
+                    }
+                }
+                if (stationDataOk)
+                {
+                    std::cout << "[OK] demo_world/5: All " << stationsRef.size()
+                              << " stations have non-empty id + displayName + sceneHint.\n";
+                }
+
+                ow.Shutdown();
+
+                if (testsFailed > 0)
+                {
+                    std::cout << "[FAIL] demo_world: " << testsFailed
+                              << " test(s) failed.\n";
+                    renderer->Shutdown();
+                    window.Shutdown();
+                    return 1;
+                }
+                std::cout << "[PASS] demo_world: 5 acceptance tests passed "
+                             "(init, boot_menu, biome_cycle, teleport, station_data).\n";
             }
             else
             {

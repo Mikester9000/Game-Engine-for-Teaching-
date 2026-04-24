@@ -1,7 +1,7 @@
 {
   "$schema": "../../shared/schemas/asset_registry.schema.json",
   "version": "1.0.0",
-  "generatedAt": "2026-04-23T22:25:05Z",
+  "generatedAt": "2026-04-24T10:10:51Z",
   "assets": [
     {
       "id": "b3e26c6f-6eb8-48eb-bc81-a610ab1ce2c6",
@@ -484,12 +484,12 @@
       ]
     },
     {
-      "id": "341a7084-46a0-43f7-93a9-c1dc6caf0c94",
+      "id": "2ccf82ea-36a7-43c1-87a4-d2ba5bc5bf54",
       "type": "audio_bank",
       "name": "VerticalSliceBank",
       "source": "Audio/",
       "cooked": "Cooked/Audio/VerticalSliceBank.bank.json",
-      "hash": "d8c0edc5330b45b9736f30afbbbe356056e1b79f98fc3e0d17648e13a350ec87",
+      "hash": "eb9844aa250895f18799854e39470e52095335feeb36aa532685d248da2d9dc8",
       "dependencies": [],
       "tags": [
         "audio_bank"

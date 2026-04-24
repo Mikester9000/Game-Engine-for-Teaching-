@@ -6,15 +6,18 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1928 across 55 subsystems.
+**Total lessons:** 1965 across 58 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (75 lessons)
-- [ci/workflows](#ciworkflows) (70 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (80 lessons)
+- [ci/workflows](#ciworkflows) (73 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
+- [demo_game/demo_main.cpp](#demo_gamedemo_main.cpp) (11 lessons)
+- [demo_game/open_world.cpp](#demo_gameopen_world.cpp) (7 lessons)
+- [demo_game/open_world.hpp](#demo_gameopen_world.hpp) (6 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (104 lessons)
 - [engine/ai](#engineai) (49 lessons)
@@ -45,7 +48,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (35 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (122 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (127 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -166,9 +169,28 @@ Set BUILD_EDITOR=ON to include the editor:
 
 option(BUILD_EDITOR "Build the Dear ImGui Creation Suite editor" OFF)
 
-### C++17 is required for:
+### Demo_Game Executable
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L97) (line 97)
+
+─────────────────────────────────────────────────────────────────────────────
+Demo_Game is the player-facing binary built from src/demo_game/demo_main.cpp.
+It reuses all engine + gameplay sources from engine_sandbox but starts
+directly in the open-world game mode with a boot menu.
+
+Enable it with:
+  cmake --preset windows-ninja-debug-demo
+  cmake --preset windows-debug-engine-only -DBUILD_DEMO_GAME=ON
+
+Build target: demo_game
+  demo_game.exe --headless           # CI validation (no window)
+  demo_game.exe                      # Full windowed open world
+─────────────────────────────────────────────────────────────────────────────
+option(BUILD_DEMO_GAME "Build the Demo_Game standalone open-world executable" OFF)
+
+### C++17 is required for:
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L116) (line 116)
 
 • if constexpr             (used in LuaEngine::SetGlobal<T>)
   • std::optional            (future use)
@@ -180,7 +202,7 @@ set(CMAKE_CXX_EXTENSIONS        OFF)
 
 ### CMake Options
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L128) (line 128)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L147) (line 147)
 
 option() declares a boolean flag the user can set on the cmake command line:
   cmake .. -DENGINE_ENABLE_TERMINAL=OFF
@@ -194,7 +216,7 @@ We gate the terminal (ncurses) renderer to non-Windows platforms because:
 
 ### ENGINE_ENABLE_TERMINAL
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L139) (line 139)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L158) (line 158)
 
 Defaults to ON everywhere EXCEPT Windows (where ncurses is unavailable).
 if(WIN32)
@@ -205,7 +227,7 @@ endif()
 
 ### ENGINE_ENABLE_D3D11 (default ON on Windows)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L148) (line 148)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L167) (line 167)
 
 ---------------------------------------------------------------------------
 Direct3D 11 is the *default* Windows renderer.  It ships with Windows 7+
@@ -226,7 +248,7 @@ endif()
 
 ### ENGINE_ENABLE_VULKAN (optional, high-end path)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L167) (line 167)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L186) (line 186)
 
 ---------------------------------------------------------------------------
 Vulkan is the *high-end / modern* renderer backend.  It is built when ON
@@ -250,7 +272,7 @@ endif()
 
 ### ENGINE_ENABLE_PHYSICS (M5 Jolt Physics)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L189) (line 189)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L208) (line 208)
 
 ---------------------------------------------------------------------------
 Jolt Physics (MIT licence, by Jorrit Rouwe) is a high-performance physics
@@ -274,7 +296,7 @@ option(ENGINE_ENABLE_PHYSICS "Build Jolt Physics integration (M5)" ON)
 
 ### find_package(Jolt CONFIG)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L211) (line 211)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L230) (line 230)
 
 The vcpkg port for joltphysics (v5+) provides a CMake config that
 registers the imported target Jolt::Jolt.  The CMake package name is
@@ -294,7 +316,7 @@ endif()
 
 ### nlohmann/json in the engine
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L231) (line 231)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L250) (line 250)
 
 nlohmann-json is already in vcpkg.json (required by cook.exe and the editor).
 When the vcpkg toolchain is active, find_package(nlohmann_json) will find it
@@ -315,7 +337,7 @@ endif()
 
 ### find_package(Curses) sets:
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L254) (line 254)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L273) (line 273)
 
 CURSES_LIBRARIES    — ncurses link flags
   CURSES_INCLUDE_DIRS — header directory (usually /usr/include)
@@ -329,7 +351,7 @@ endif()
 
 ### Build Lua from source (preferred)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L266) (line 266)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L285) (line 285)
 
 ──────────────────────────────────────────────────
 Lua is a small, self-contained library (~30 .c files).  Building it from the
@@ -351,7 +373,7 @@ Detection order:
 
 ### Building a static library from C source in CMake
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L293) (line 293)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L312) (line 312)
 
 -----------------------------------------------------------------------
 add_library(target STATIC files…) compiles the listed .c files and
@@ -363,7 +385,7 @@ include_directories() needed at the call-site.
 
 ### Platform compile flags for Lua
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L319) (line 319)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L338) (line 338)
 
 On POSIX (Linux/macOS) Lua needs _GNU_SOURCE for POSIX math functions and
 popen().  On Windows MSVC we disable several noisy warnings that come from
@@ -385,7 +407,7 @@ endif()
 
 ### find_package(Vulkan QUIET) — soft failure
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L375) (line 375)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L394) (line 394)
 
 We use QUIET (no error message on missing SDK) and check Vulkan_FOUND
 manually.  If the SDK is absent we disable Vulkan and log a warning so
@@ -416,7 +438,7 @@ endif()
 
 ### Conditional Target Creation
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L417) (line 417)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L436) (line 436)
 
 add_executable() is only called when ENGINE_ENABLE_TERMINAL is ON.
 On Windows this block is entirely skipped so MSVC never tries to compile
@@ -426,7 +448,7 @@ if(ENGINE_ENABLE_TERMINAL)
 
 ### Post-M10 Behaviour Tree AI (terminal game).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L441) (line 441)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L460) (line 460)
 
 The engine/ai/ layer is pure C++17 with no rendering or platform
 dependencies — it builds on Linux (ncurses game) and Windows alike.
@@ -436,7 +458,7 @@ src/engine/ai/nav_mesh.cpp
 
 ### M19 Action Combat: ComboSystem FSM (terminal game).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L447) (line 447)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L466) (line 466)
 
 The ComboSystem is renderer-agnostic and builds on Linux unchanged.
 src/engine/combat/combo_system.cpp
@@ -445,7 +467,7 @@ src/game/Game.cpp
 
 ### ENGINE_ENABLE_LUA compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L471) (line 471)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L490) (line 490)
 
 The terminal game links against Lua 5.5 (built from bundled source or
 found as a system package).  ENGINE_ENABLE_LUA activates the Lua
@@ -457,7 +479,7 @@ endif()
 
 ### engine_sandbox Rendering Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L493) (line 493)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L512) (line 512)
 
 ─────────────────────────────────────────────────
 engine_sandbox supports two rendering backends selectable at runtime:
@@ -482,7 +504,7 @@ Build commands (D3D11, no Vulkan SDK needed):
 
 ### Animation Runtime Sources (M4)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L532) (line 532)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L551) (line 551)
 
 -----------------------------------------------------------------------
 The animation runtime is renderer-agnostic: it runs on both D3D11 and
@@ -497,7 +519,7 @@ src/engine/animation/animation_system.cpp
 
 ### M4b: IK solver (renderer-agnostic, pure C++17).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L543) (line 543)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L562) (line 562)
 
 Two-Bone analytical IK and FABRIK iterative N-joint IK.
 Lives in animation/ alongside the other CPU-side animation systems.
@@ -506,7 +528,7 @@ src/engine/animation/ik_solver.cpp
 
 ### Behaviour Tree AI Sources (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L550) (line 550)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L569) (line 569)
 
 -----------------------------------------------------------------------
 The engine/ai/ layer provides THREE complementary AI systems:
@@ -531,7 +553,7 @@ src/engine/ai/nav_mesh.cpp
 
 ### Cinematics Sources (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L573) (line 573)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L592) (line 592)
 
 -----------------------------------------------------------------------
 The engine/cinematics/ layer provides TWO subsystems for cut-scene
@@ -560,7 +582,7 @@ src/engine/cinematics/cinematic_sequencer.cpp
 
 ### Conditional Source Files
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L602) (line 602)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L621) (line 621)
 
 We add D3D11Renderer.cpp only when the D3D11 feature is enabled.
 This keeps the source list explicit and makes it easy to see which
@@ -572,7 +594,7 @@ src/engine/rendering/d3d11/D3D11Renderer.cpp
 
 ### M3: D3D11 texture loader (DDS/BC7 → ID3D11SRV).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L610) (line 610)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L629) (line 629)
 
 d3d11_texture.cpp is a self-contained DDS parser that uses only
 the Windows SDK headers already required by D3D11Renderer.
@@ -580,7 +602,7 @@ src/engine/rendering/d3d11/d3d11_texture.cpp
 
 ### M4b: GpuSkinningBuffer — D3D11 DYNAMIC constant
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L614) (line 614)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L633) (line 633)
 
 buffer that uploads 64 joint matrices (4096 bytes) to the VS
 every frame.  Uses Map/WRITE_DISCARD for zero-stall streaming.
@@ -588,7 +610,7 @@ src/engine/animation/gpu_skinning.cpp
 
 ### M10: SkyRenderer + WeatherFx are renderer-agnostic
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L618) (line 618)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L637) (line 637)
 
 CPU objects that compute time-of-day sky colours and weather state.
 They are compiled alongside D3D11Renderer because D3D11Renderer
@@ -599,7 +621,7 @@ src/engine/rendering/weather_fx.cpp
 
 ### Post-M10: SDF FontRenderer (D3D11 text rendering).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L625) (line 625)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L644) (line 644)
 
 font_renderer.cpp builds a CPU-side signed distance field atlas from
 an embedded 8×8 bitmap font, uploads it as an R8_UNORM D3D11 texture,
@@ -609,7 +631,7 @@ src/engine/ui/font_renderer.cpp
 
 ### M25: TerrainRenderer (heightmap-driven grid mesh).
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L631) (line 631)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L650) (line 650)
 
 terrain_renderer.cpp generates a W×H vertex/index grid from float
 height samples, compiles terrain.vs/ps.hlsl at runtime via
@@ -621,7 +643,7 @@ endif()
 
 ### XAudio2 is Windows-only
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L655) (line 655)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L674) (line 674)
 
 xaudio2.h and xaudio2.lib ship with every Windows SDK installation
 (alongside d3d11.h / d3d11.lib).  No separate download is needed.
@@ -634,13 +656,13 @@ src/engine/audio/audio_system.cpp
 
 ### Optional Physics Subsystem
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L668) (line 668)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L687) (line 687)
 
 -----------------------------------------------------------------------
 
 ### Physics Source Inclusion Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L670) (line 670)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L689) (line 689)
 
 -----------------------------------------------------------------------
 physics_world.cpp, rigid_body.cpp, character_controller.cpp, and
@@ -667,7 +689,7 @@ src/engine/physics/raycast.cpp
 
 ### M11 Vehicle Physics (Post-M10)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L693) (line 693)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L712) (line 712)
 
 vehicle_system.cpp implements the VehicleSystem: four wheel-ray
 suspension raycasts, spring-damper force model, Ackermann steering,
@@ -677,7 +699,7 @@ src/engine/vehicle/vehicle_system.cpp
 
 ### M25 Terrain Collision
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L699) (line 699)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L718) (line 718)
 
 terrain_collision.cpp creates a JPH::HeightFieldShape from a
 float height array and registers it as a static physics body.
@@ -694,7 +716,7 @@ src/engine/physics/hit_volume.cpp
 
 ### Conditional JSON sources
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L716) (line 716)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L735) (line 735)
 
 scene_serialiser.cpp is compiled in ALL Windows sandbox builds.
 The actual JSON I/O code inside it is guarded by #ifdef ENGINE_ENABLE_JSON.
@@ -708,7 +730,7 @@ src/engine/scene/scene_serialiser.cpp
 
 ### M7 World Streaming Source Strategy
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L730) (line 730)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L749) (line 749)
 
 ─────────────────────────────────────────────────────
 The three world-streaming modules are pure C++17 with no platform or
@@ -730,7 +752,7 @@ src/engine/world/world_streaming.cpp
 
 ### Conditional Scripting in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L752) (line 752)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L771) (line 771)
 
 LuaEngine.cpp is added to engine_sandbox ONLY when LUA_BUNDLED=ON
 (i.e. headers in Lua/include/ AND import lib in Lua/lib/ are found).
@@ -743,7 +765,7 @@ endif()
 
 ### Cross-Platform Game Systems
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L765) (line 765)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L784) (line 784)
 
 The gameplay systems (CombatSystem, AISystem, WeatherSystem, etc.) are
 pure C++17 with no platform or ncurses dependencies.  They compile on
@@ -766,7 +788,7 @@ src/game/world/Zone.cpp
 
 ### M7.1: GameStreamingManager wires Zone lifecycle into
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L784) (line 784)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L803) (line 803)
 
 WorldStreamingManager.  Compiled alongside Zone.cpp so that
 OnCellLoaded / OnEvictCell can call Zone::SpawnEnemies / Zone::Unload.
@@ -774,7 +796,7 @@ src/game/world/GameStreamingManager.cpp
 
 ### M8 Gameplay Integration: new systems.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L788) (line 788)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L807) (line 807)
 
 game_runtime.cpp owns and drives all gameplay systems from engine_sandbox.
 input_mapper.cpp reads Win32 key state → ECS components.
@@ -793,17 +815,26 @@ src/engine/save/save_system.cpp
 
 ### M19 Action Combat: ComboSystem FSM.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L803) (line 803)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L822) (line 822)
 
 combo_system.cpp is pure C++17 with no platform or rendering
 dependencies.  It compiles on Linux (terminal game) and Windows alike.
 JSON loading inside it is guarded by ENGINE_ENABLE_JSON.
 src/engine/combat/combo_system.cpp
+
+### Demo_Game OpenWorld state machine
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L827) (line 827)
+
+open_world.cpp is a pure C++17 module with no D3D11 or Win32
+dependency.  It is compiled into engine_sandbox so the headless
+--scene demo_world acceptance test is available in every CI build.
+src/demo_game/open_world.cpp
 )
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L829) (line 829)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L853) (line 853)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -815,7 +846,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L838) (line 838)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L862) (line 862)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -824,7 +855,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L848) (line 848)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L872) (line 872)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -836,7 +867,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L857) (line 857)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L881) (line 881)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -846,7 +877,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L867) (line 867)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L891) (line 891)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -855,7 +886,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L873) (line 873)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L897) (line 897)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -864,7 +895,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L878) (line 878)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L902) (line 902)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -876,7 +907,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L895) (line 895)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L919) (line 919)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -887,7 +918,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L903) (line 903)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L927) (line 927)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -897,7 +928,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L915) (line 915)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L939) (line 939)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -931,7 +962,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L947) (line 947)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L971) (line 971)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -946,7 +977,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L962) (line 962)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L986) (line 986)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -961,7 +992,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1004) (line 1004)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1028) (line 1028)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -984,7 +1015,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1025) (line 1025)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1049) (line 1049)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -1005,7 +1036,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1042) (line 1042)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1066) (line 1066)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -1015,7 +1046,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1048) (line 1048)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1072) (line 1072)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -1027,7 +1058,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1056) (line 1056)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1080) (line 1080)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -1039,7 +1070,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Post-M10: SDF text rendering HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1064) (line 1064)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1088) (line 1088)
 
 sdf_text.vs.hlsl transforms screen-space pixel quads to NDC.
 sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
@@ -1049,7 +1080,7 @@ sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
 
 ### M16: PBR + Image-Based Lighting (IBL) shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1070) (line 1070)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1094) (line 1094)
 
 pbr_ibl.vs.hlsl is structurally identical to pbr_mesh.vs.hlsl —
   it outputs worldPos, worldNrm, and UV to the pixel shader.
@@ -1066,7 +1097,7 @@ pbr_ibl.ps.hlsl adds the full split-sum IBL ambient:
 
 ### M17: Directional shadow map shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1084) (line 1084)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1108) (line 1108)
 
 shadow.vs.hlsl       — depth-only VS for the shadow pass (one matrix
   multiply, no PS output).  Identity world is baked into lightViewProj.
@@ -1080,7 +1111,7 @@ shadow_lit.ps.hlsl   — lit-pass PS: 3×3 PCF shadow lookup via
 
 ### M17: HDR bloom post-processing shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1095) (line 1095)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1119) (line 1119)
 
 All three passes reuse sky.vs.hlsl as the full-screen triangle VS
 (SV_VertexID → full-screen quad trick — no vertex buffer needed).
@@ -1098,7 +1129,7 @@ bloom_composite.ps.hlsl — adds bloom × g_bloomStrength to the scene,
 
 ### M25: Terrain heightmap shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1110) (line 1110)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1134) (line 1134)
 
 terrain.vs.hlsl transforms the CPU-generated heightmap grid vertices
   (pos, normal, uv) through world→view→clip matrices and passes
@@ -1110,9 +1141,70 @@ Both use a shared TerrainCB constant buffer bound to b0 in both stages.
 "${CMAKE_SOURCE_DIR}/shaders/terrain.ps.hlsl"
 )
 
+### Demo_Game vs engine_sandbox
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1160) (line 1160)
+
+─────────────────────────────────────────────────────────────────────────────
+engine_sandbox is the internal test harness; demo_game is the player-facing
+binary.  Both share the same engine + gameplay source files; the only
+difference is the entry point:
+
+  engine_sandbox  → src/sandbox/main.cpp  (--scene dispatch, CI tests)
+  demo_game       → src/demo_game/demo_main.cpp (open world, boot menu)
+
+The OpenWorld state machine (open_world.hpp/.cpp) is a NEW pure-C++17
+module compiled into both demo_game (primary) and engine_sandbox (for the
+--scene demo_world CI headless test).  It has no D3D11 or Win32 dependency.
+
+Usage:
+  demo_game.exe                # windowed: boot menu → open world
+  demo_game.exe --headless     # CI: headless demo_world acceptance test
+─────────────────────────────────────────────────────────────────────────────
+if(BUILD_DEMO_GAME AND WIN32 AND ENGINE_ENABLE_D3D11)
+
+### Deriving DEMO_GAME_SOURCES from SANDBOX_SOURCES
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1179) (line 1179)
+
+─────────────────────────────────────────────────────────────────
+Rather than maintaining a duplicate source list (which is easy to let
+drift when new engine/game files are added), we derive DEMO_GAME_SOURCES
+from the fully-populated SANDBOX_SOURCES variable and swap only the
+executable entry point.  Both targets stay in lockstep automatically.
+
+Steps:
+  1. Copy the entire SANDBOX_SOURCES list.
+  2. Remove src/sandbox/main.cpp (the test-harness entry point).
+  3. Append src/demo_game/demo_main.cpp (the player-facing entry point).
+
+open_world.cpp is already present in SANDBOX_SOURCES (added for the
+--scene demo_world acceptance test), so it does not need to be re-added.
+All conditionally-included sources (Jolt physics, LuaEngine, etc.) are
+carried over automatically because SANDBOX_SOURCES was already populated
+by those conditional blocks above.
+set(DEMO_GAME_SOURCES ${SANDBOX_SOURCES})
+list(REMOVE_ITEM DEMO_GAME_SOURCES src/sandbox/main.cpp)
+list(APPEND DEMO_GAME_SOURCES src/demo_game/demo_main.cpp)
+
+### Status messages should distinguish "not requested"
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1240) (line 1240)
+
+from "requested but unavailable due to unmet platform/backend
+requirements" so configure-time output tells the user what to fix.
+if(BUILD_DEMO_GAME AND NOT WIN32)
+message(STATUS "  demo_game target : SKIPPED (requires WIN32 platform)")
+elseif(BUILD_DEMO_GAME AND NOT ENGINE_ENABLE_D3D11)
+message(STATUS "  demo_game target : SKIPPED (requires ENGINE_ENABLE_D3D11=ON)")
+else()
+message(STATUS "  demo_game target : OFF (pass -DBUILD_DEMO_GAME=ON to enable)")
+endif()
+endif()
+
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1136) (line 1136)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1255) (line 1255)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -1134,7 +1226,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1155) (line 1155)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1274) (line 1274)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -1145,7 +1237,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1163) (line 1163)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1282) (line 1282)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -1155,7 +1247,7 @@ endif()
 
 ### PAK1 Packager Tool
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1177) (line 1177)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1296) (line 1296)
 
 ─────────────────────────────────────────────────────────────────────────────
 The pak tool bundles an input directory into a binary .pak archive
@@ -1180,7 +1272,7 @@ src/engine/core/Logger.cpp
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1203) (line 1203)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1322) (line 1322)
 
 Same reasoning as cook.exe: stdout/stderr must be visible in a terminal.
 if(MSVC)
@@ -1189,7 +1281,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1232) (line 1232)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1351) (line 1351)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -1198,7 +1290,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1239) (line 1239)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1358) (line 1358)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1214,7 +1306,7 @@ endif()
 
 ### CMake install()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1255) (line 1255)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1374) (line 1374)
 
 ─────────────────────────────────────────────────────────────────────────────
 Running `cmake --install <build-dir> --prefix dist/` copies all installed
@@ -2094,13 +2186,23 @@ Packing is only useful if extracting works too.  This step:
 If pak.exe --extract is broken or the extracted AssetDB is corrupted,
 this gate catches it before the bug reaches a release build.
 -----------------------------------------------------------------------
+
+### Extract PAK content into a Cooked/ subdirectory (CI-3)
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L705) (line 705)
+
+The PAK archive contains the Cooked/ directory contents (built from
+samples\vertical_slice_project\Cooked\).  We extract into
+%TEMP%\pak_extracted\Cooked so that the next step can run
+--validate-project %TEMP%\pak_extracted — which appends \Cooked\ when
+looking for assetdb.json, matching the extracted layout exactly.
 - name: Extract PAK archive (CI-3)
-run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted
+run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted\Cooked
 shell: cmd
 
 ### Validate extracted PAK content (CI-3)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L709) (line 709)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L715) (line 715)
 
 engine_sandbox --validate-project reads the AssetDB from the extracted
 directory and verifies every registered asset can be opened.  A non-zero
@@ -2112,7 +2214,7 @@ shell: cmd
 
 ### Windows Python Tests (CI-1)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L721) (line 721)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L727) (line 727)
 
 The Python tool tests (tools/tests/, tests/) normally run only in the
 Linux job.  Running them on Windows catches Windows-specific regressions
@@ -2123,9 +2225,30 @@ or struct.pack byte-order assumptions in the baker tools.
 run: python -m pip install -r requirements-dev.txt --quiet
 shell: cmd
 
+### demo_world Headless CI Test
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L744) (line 744)
+
+─────────────────────────────────────────────
+The --scene demo_world flag exercises the OpenWorld state machine that
+powers Demo_Game.  It runs inside engine_sandbox (no separate binary
+needed for CI) because engine_sandbox compiles open_world.cpp alongside
+its own sources.
+
+5 acceptance tests are run:
+  1. Init:          12+ teaching stations registered.
+  2. Boot:          initial state = BOOT_MENU.
+  3. Biome cycle:   auto-advance through LOADING → PLAYING; all biomes.
+  4. Teleport:      TeleportToStation("rendering_pbr") → GRASSLAND biome.
+  5. Station data:  every station has non-empty id, displayName, sceneHint.
+-----------------------------------------------------------------------
+- name: Run Demo_Game acceptance test (demo_world — OpenWorld state machine)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene demo_world
+shell: cmd
+
 ### M5 Physics CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L738) (line 738)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L765) (line 765)
 
 ============================================================================
 This job validates the Jolt Physics integration (M5).  It:
@@ -2151,7 +2274,7 @@ continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
 
 ### Classic-mode vcpkg install (physics job only)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L777) (line 777)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L804) (line 804)
 
 -----------------------------------------------------------------------
 The project's vcpkg.json lists ALL engine dependencies, including
@@ -2177,7 +2300,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L811) (line 811)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L838) (line 838)
 
 The vcpkg CMake toolchain detects vcpkg.json in the project root and
 would automatically re-run `vcpkg install` in manifest mode during
@@ -2198,7 +2321,7 @@ shell: pwsh
 
 ### Physics is CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L835) (line 835)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L862) (line 862)
 
 Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
 scene does not touch the D3D11 renderer at all.  It initialises
@@ -2211,7 +2334,7 @@ shell: cmd
 
 ### VehicleSystem CI Gate
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L848) (line 848)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L875) (line 875)
 
 Like physics_test, vehicle_test runs entirely on the CPU: it
 initialises Jolt Physics, creates a flat ground body and a vehicle
@@ -2226,7 +2349,7 @@ shell: cmd
 
 ### terrain_test in the physics job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L863) (line 863)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L890) (line 890)
 
 The engine-only job (no Jolt) skips test 3 (physics_collision) gracefully.
 This physics job has ENGINE_ENABLE_PHYSICS=ON, so all three subtests run:
@@ -2240,7 +2363,7 @@ shell: cmd
 
 ### M6 Editor CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L877) (line 877)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L904) (line 904)
 
 ============================================================================
 This job validates the Dear ImGui editor build (M6).  It:
@@ -2271,7 +2394,7 @@ continue-on-error: false
 
 ### Job-level env for pinned vcpkg version.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L905) (line 905)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L932) (line 932)
 
 Declaring the tag once here keeps the clone step, cache key, and restore
 key in sync automatically.  Update this single value when upgrading vcpkg.
@@ -2280,7 +2403,7 @@ VCPKG_TAG: "2024.12.16"
 
 ### Pinned workspace vcpkg (editor job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L927) (line 927)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L954) (line 954)
 
 -----------------------------------------------------------------------
 We clone a specific vcpkg release tag into the workspace instead of
@@ -2308,7 +2431,7 @@ git clone https://github.com/microsoft/vcpkg.git "$env:GITHUB_WORKSPACE\vcpkg" -
 
 ### Classic-mode install
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L962) (line 962)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L989) (line 989)
 
 Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
 vcpkg uses classic mode and only installs the packages we request.
@@ -2317,7 +2440,7 @@ Set-Location "$env:TEMP"
 
 ### VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L976) (line 976)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1003) (line 1003)
 
 The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
 root and auto-switches to "manifest mode", where it expects packages
@@ -2339,7 +2462,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Headless editor test
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1001) (line 1001)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1028) (line 1028)
 
 creation-suite-editor.exe --headless instantiates SceneEditorPanel and
 verifies it initialises cleanly (empty entity list, selectedIdx == -1).
@@ -2353,7 +2476,7 @@ run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor
 
 ### Optional Vulkan CI Job
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1025) (line 1025)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1052) (line 1052)
 
 This job validates the Vulkan backend when a Vulkan SDK is available.
 It is separated from the primary job so:
@@ -2371,7 +2494,7 @@ continue-on-error: true
 
 ### Keep toolchain consistent with primary Windows job.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1050) (line 1050)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1077) (line 1077)
 
 The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
 avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
@@ -2382,7 +2505,7 @@ arch: x64
 
 ### Why cache the Vulkan SDK?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1061) (line 1061)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1088) (line 1088)
 
 The Vulkan SDK is ~500 MB.  Without caching, every CI run would
 re-download it.  vulkan-use-cache: true stores the download in
@@ -2397,7 +2520,7 @@ vulkan-use-cache: true
 
 ### Vulkan Headless Limitation
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1083) (line 1083)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1110) (line 1110)
 
 GitHub-hosted runners install the Vulkan loader but NOT a software ICD
 (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
@@ -2412,7 +2535,7 @@ continue-on-error: true
 
 ### M26 Save-System CI Job (build-windows-save-test)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1098) (line 1098)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1125) (line 1125)
 
 ============================================================================
 This job validates the full save-system acceptance suite (M26).  It:
@@ -2449,7 +2572,7 @@ continue-on-error: false  # TEACHING NOTE — hard M26 CI gate
 
 ### Classic-mode vcpkg install (save-test job)
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1148) (line 1148)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1175) (line 1175)
 
 -----------------------------------------------------------------------
 We install nlohmann-json in classic mode from $env:TEMP (no vcpkg.json
@@ -2468,7 +2591,7 @@ key: vcpkg-nlohmann-json-${{ runner.os }}-x64
 
 ### VCPKG_MANIFEST_INSTALL=OFF
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1174) (line 1174)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1201) (line 1201)
 
 Same reason as the physics job: the project vcpkg.json contains
 imgui[docking] which may not resolve on the CI runner's vcpkg
@@ -2485,7 +2608,7 @@ shell: pwsh
 
 ### Save tests are CPU-only
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1194) (line 1194)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1221) (line 1221)
 
 All three tests exercise only the filesystem, ECS World, and
 nlohmann/json serialisation.  No D3D11 device is created and no
@@ -2497,6 +2620,30 @@ D3D11 API.
 - name: Run headless save-system acceptance tests (M26)
 run: .\build\windows-ninja-debug-save\engine_sandbox.exe --headless --scene save_test
 shell: cmd
+
+### Demo_Game CI Build Job
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L1236) (line 1236)
+
+============================================================================
+This job validates that the demo_game executable compiles successfully.
+It uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON,
+ENGINE_ENABLE_D3D11=ON).  No Vulkan SDK is needed.
+
+Steps:
+  1. Build engine_sandbox + demo_game + cook (same preset).
+  2. Verify demo_game.exe exists.
+  3. Run demo_game.exe --headless to exercise the full OpenWorld flow.
+
+The --headless flag runs the same 5 acceptance tests as
+  engine_sandbox --headless --scene demo_world
+but through the demo_main.cpp entry point (different code path).
+
+continue-on-error: false — Demo_Game is a first-class deliverable.
+============================================================================
+build-windows-demo:
+name: Build Windows — Demo_Game executable (Epic)
+runs-on: windows-latest
 
 ### Contract Tests in CI
 
@@ -2588,6 +2735,417 @@ REPO_ROOT / "tools" / "audio_authoring",
 REPO_ROOT / "tools" / "anim_authoring",
 REPO_ROOT / "tools" / "quest_baker",
 )
+
+---
+
+## demo_game/demo_main.cpp
+
+### Demo_Game vs engine_sandbox
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L6) (line 6)
+
+============================================================================
+engine_sandbox is the internal development/test harness.  It exposes every
+--scene flag, including CI-only acceptance tests, and is the first binary
+students encounter when learning the engine.
+
+Demo_Game is the **player-facing** binary.  It always starts in the open
+world and hides all internal test infrastructure.  Its design goals are:
+
+  1. SINGLE BINARY — Launches straight into the title screen with no
+     command-line fuss.  Students hand this to non-technical testers.
+
+  2. BOOT MENU — Title screen → New Game / Continue / Settings / Quit,
+     matching the convention of every commercial RPG.
+
+  3. OPEN WORLD — After "New Game" the player is in the large multi-biome
+     exploration area defined by OpenWorld (open_world.hpp/.cpp).
+
+  4. F1 DEBUG MENU — Press F1 at any time to open the developer overlay
+     (station list, teleport, overlay toggles).  Mirrors the in-game debug
+     menu used in AAA studios during production.
+
+  5. HEADLESS CI — Pass --headless to exercise the full boot→load→play
+     flow without a window or GPU.  The headless path is CPU-only: it runs
+     the OpenWorld state machine directly without initialising D3D11 or
+     Win32.  (engine_sandbox --scene demo_world additionally wraps this
+     test inside an active D3D11 WARP device for extra coverage.)
+
+─── Renderer Dependency ────────────────────────────────────────────────────
+demo_main.cpp compiles ONLY when ENGINE_ENABLE_D3D11=ON (Win32 + D3D11).
+The OpenWorld state machine itself is renderer-agnostic (pure C++17 logic).
+This file is the thin Win32 + D3D11 wrapper around it.
+
+============================================================================
+
+### Boot Menu Pattern
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L40) (line 40)
+
+============================================================================
+A boot menu (title screen) before gameplay serves three purposes:
+  1. LOADING COVER — gives the engine time to stream the first cell ring.
+  2. PLAYER AGENCY — "New Game / Continue" is a contract with the player:
+     their progress is respected.
+  3. SETTINGS HOOK — resolution, volume, and key bindings are set before
+     the first frame of gameplay runs.
+
+The menu state machine lives in OpenWorld::UpdateBootMenu().
+
+============================================================================
+
+### F1 Debug / Teaching Station Menu
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L52) (line 52)
+
+============================================================================
+The F1 overlay is the "professor's remote control".  In a classroom session:
+  • Instructor presses F1 and selects "PBR Rendering" → teleports to the
+    rendering teaching station instantly.
+  • Students can see the F1 overlay source code (this file) and understand
+    how ImGui overlays and engine teleport hooks work.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2026
+C++ Standard: C++17
+Platform: Windows (D3D11 — Win32 window + WARP headless)
+
+### Headless Demo_Game CI
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L131) (line 131)
+
+─────────────────────────────────────
+When --headless is passed, demo_main skips the Win32 window and runs the
+OpenWorld state machine for kHeadlessFrames frames.  Acceptance criteria:
+
+  1. Init() returns true (stations registered, state = BOOT_MENU).
+  2. After 2 frames the state machine auto-selects "New Game".
+  3. After a brief simulated load the state becomes PLAYING.
+  4. All 5 biomes are visited in headless cycle mode.
+  5. IsHeadlessDone() returns true at frame kHeadlessFrames.
+  6. The executable exits 0.
+─────────────────────────────────────────────────────────────────────────────
+
+### Extra guard frames
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L173) (line 173)
+
+We allow kHeadlessFrames + kExtraGuardFrames iterations so the
+BOOT_MENU auto-advance (2 frames) and LOADING phase (about 6 frames
+at 60 Hz: 0.1 s / (1/60 s) ≈ 6) complete before we start counting
+the PLAYING biome-cycle frames.  The loop exits early via `break`
+once IsHeadlessDone() is true.
+-----------------------------------------------------------------------
+constexpr float kDt             = 1.0f / 60.0f;
+constexpr int   kExtraGuardFrames = 12; // boot (2) + loading (~6 @ 60Hz) + margin
+for (int f = 0; f < OpenWorld::kHeadlessFrames + kExtraGuardFrames; ++f)
+{
+world.Update(kDt, /*headless=*/true);
+if (world.IsHeadlessDone())
+{
+break;
+}
+}
+
+### Fail explicitly on empty station list
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L207) (line 207)
+
+An empty list is a test failure, not a vacuous success.  We check the
+count first (not just the per-field loop) so the error message tells
+the student exactly what went wrong.
+if (actualStations < kExpectedStations)
+{
+std::cout << "[FAIL] demo_world/4: Expected >= " << kExpectedStations
+<< " teaching stations, got " << actualStations << ".\n";
+return 1;
+}
+
+### Windowed Demo_Game
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L262) (line 262)
+
+─────────────────────────────────────────────────────────────────────────────
+The windowed path mirrors engine_sandbox's main loop (Win32 window + D3D11
+renderer + game-loop delta-time) but always starts in the open world.
+
+Key differences from engine_sandbox:
+  • No --scene flag — the open world IS the scene.
+  • Boot menu is shown first (OpenWorld FSM state BOOT_MENU).
+  • F1 key toggles the developer station overlay (DemoDebugMenu).
+  • ESC pauses the game (PAUSED state) rather than quitting immediately.
+─────────────────────────────────────────────────────────────────────────────
+
+### Reusing GameRuntime from engine_sandbox (M8)
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L323) (line 323)
+
+─────────────────────────────────────────────────────────────
+Demo_Game reuses the same GameRuntime that engine_sandbox uses for its
+--scene game mode.  This avoids duplicating the gameplay system
+initialisation code.  The only difference is the entry path:
+  engine_sandbox --scene game → GameRuntime started immediately.
+  demo_game                  → GameRuntime started after the boot menu.
+-----------------------------------------------------------------------
+std::unique_ptr<sandbox::GameRuntime> gameRuntime;
+
+### F1 key state tracking (windowed mode)
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L336) (line 336)
+
+We track whether F1 was down in the previous frame to detect a rising
+edge (key just pressed).  Using a local bool avoids static state inside
+the loop body.  In a full implementation this would live in InputMapper
+or an InputSystem component so multiple systems can react.
+-----------------------------------------------------------------------
+bool debugMenuOpen = false; // F1 overlay toggle
+bool f1WasDown     = false; // previous-frame F1 state for rising-edge detect
+
+### Key-State Polling (Win32)
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L361) (line 361)
+
+GetAsyncKeyState returns the real-time physical key state;
+0x8000 is the "currently held down" bit.  We track the previous
+frame state in f1WasDown to detect a rising edge (just pressed).
+In a full engine this would be routed through EventBus so multiple
+systems can react without each polling the Win32 API directly.
+-----------------------------------------------------------------
+const bool f1IsDown = (::GetAsyncKeyState(VK_F1) & 0x8000) != 0;
+if (f1IsDown && !f1WasDown)
+{
+debugMenuOpen = !debugMenuOpen;
+std::cout << "[demo_game] F1 debug menu: "
+<< (debugMenuOpen ? "OPEN" : "CLOSED") << "\n";
+}
+f1WasDown = f1IsDown;
+
+### Entry Point Design
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L434) (line 434)
+
+─────────────────────────────────────────────────────────────────────────────
+We keep main() minimal: parse args, dispatch to headless or windowed path.
+This mirrors the "thin entry point" convention used in most AAA engines:
+  main() owns lifetime but delegates all logic to subsystems.
+
+The subsystem separation (OpenWorld, GameRuntime, Win32Window, D3D11Renderer)
+means you can add a new subsystem (VR, network, analytics) without touching
+the others — the Hollywood Principle ("don't call us, we'll call you") in
+action via the renderer independence already established by IRenderer.
+─────────────────────────────────────────────────────────────────────────────
+
+---
+
+## demo_game/open_world.cpp
+
+### Data-Driven Open World Design
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L6) (line 6)
+
+============================================================================
+Rather than scattering station setup throughout gameplay code, this file
+centralises the canonical teaching-station data in
+RegisterDefaultStations().
+
+The current Demo_Game build uses these built-in C++ defaults only, so the
+game is playable out-of-the-box even without the JSON world-data files
+present.  The JSON files under Content/World/ are the intended authoring
+format for a future data-driven loading path.
+
+### Fallback Data Pattern
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L17) (line 17)
+
+──────────────────────────────────────
+AAA engines always ship a set of hardcoded defaults so the game doesn't
+crash when an asset is missing.  The external data files (JSON, binary
+blobs) override those defaults at runtime.  We follow the same pattern
+here: C++ registers the defaults first; a future runtime loader would
+merge overrides from Content/World/teaching_stations.json.
+
+─── State Machine Transitions ──────────────────────────────────────────────
+
+  BOOT_MENU  ──(BootSelectNewGame)──► LOADING
+  LOADING    ──(stateTime > 1.5s)──► PLAYING
+  PLAYING    ──(ESC / pause key)──► PAUSED
+  PAUSED     ──(ESC / resume)──► PLAYING
+  PAUSED     ──(quit)──► BOOT_MENU
+
+In headless CI mode the transitions happen automatically so the test
+exercises the entire flow without user input.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2026
+C++ Standard: C++17
+
+### Biome Colour Palettes
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L108) (line 108)
+
+─────────────────────────────────────────────────────────────────────────────
+Each biome maps to a distinctive sky colour so even the clear colour alone
+communicates the current area to the player.  In a full implementation these
+values would be read from the biome's SkyRenderer config (M10 SkyRenderer
+already has a time-of-day clock; here we use a static palette for simplicity).
+─────────────────────────────────────────────────────────────────────────────
+
+### Headless Auto-Advance
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L183) (line 183)
+
+──────────────────────────────────────
+In CI (headless) mode there is no keyboard, so we automatically select
+"New Game" after two frames to exercise the full BOOT_MENU→LOADING→PLAYING
+flow without user input.  The "headless" flag is the only difference
+between CI and interactive mode in this function.
+if (headless && m_frameCount >= 2)
+{
+BootSelectNewGame();
+}
+}
+
+### Simulated Loading Stall
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L197) (line 197)
+
+─────────────────────────────────────────
+In a real engine this state waits for the async streaming system (M7)
+to warm up the first ring of cells around the spawn point.  Here we
+simply wait a brief time in headless mode (vs. a longer splash time
+for a real windowed game so the player can read the loading screen).
+static constexpr float kHeadlessLoadTimeSeconds = 0.1f;
+static constexpr float kWindowedLoadTimeSeconds = 1.5f;
+const float waitTime = headless ? kHeadlessLoadTimeSeconds
+: kWindowedLoadTimeSeconds;
+
+### Biome Simulation
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L219) (line 219)
+
+──────────────────────────────────
+In a real implementation the biome is determined by the player's world
+coordinates (sampled from a biome map texture or Voronoi diagram).  Here
+we cycle through biomes every kFramesPerBiome frames in headless mode
+to exercise the full set of sky colours in CI without travelling.
+if (headless)
+{
+kBiomeCount must match the number of BiomeType enum values (5).
+static constexpr int kBiomeCount    = 5;
+static constexpr int kFramesPerBiome = kHeadlessFrames / kBiomeCount;
+const int biomeIdx = (m_frameCount / kFramesPerBiome) % kBiomeCount;
+m_currentBiome = static_cast<BiomeType>(biomeIdx);
+
+### Inline Default Station Data
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L255) (line 255)
+
+─────────────────────────────────────────────
+We register the canonical teaching stations here so that Demo_Game works
+out-of-the-box even if the Content/World/teaching_stations.json file is
+missing.  Students can override or extend these by editing the JSON.
+
+Station coordinate convention: X increases East, Z increases North.
+The world is 1024 × 1024 world-units; spawn is at (512, 512).
+─────────────────────────────────────────────────────────────────────────────
+
+---
+
+## demo_game/open_world.hpp
+
+### What is an Open World?
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L6) (line 6)
+
+============================================================================
+An "open world" game loads a large continuous level with multiple distinct
+biomes (areas) that transition seamlessly as the player moves through them.
+Famous examples: The Witcher 3, Breath of the Wild, Final Fantasy XV.
+
+Key techniques used here (all reflected in the engine):
+  • World streaming  — only load nearby cells; evict distant ones (M7).
+  • Biome data       — JSON-driven area definitions (terrain, weather, music).
+  • Teaching stations— landmark objects that demonstrate engine features.
+  • Debug F1 overlay — developer jump-to-station and overlay toggle.
+
+─── OpenWorld State Machine ────────────────────────────────────────────────
+
+  BOOT_MENU ──► LOADING ──► PLAYING ──► PAUSED ──► PLAYING
+                                                └──► BOOT_MENU (quit)
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2026
+C++ Standard: C++17
+Platform: Windows (demo_game) / headless CI
+
+### Biomes as Enum Values
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L46) (line 46)
+
+──────────────────────────────────────
+Each enum value maps to a distinct area in the open world with its own:
+  • Sky colour and fog density (SkyRenderer + WeatherFx parameters).
+  • Ambient music track (AudioSystem music FSM).
+  • Terrain height variation and texture blend.
+  • NPC/enemy spawn tables (QuestSystem + AISystem).
+
+### Teaching Stations as Data-Shaped Records
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L74) (line 74)
+
+─────────────────────────────────────────────────────────
+The current demo registers a small set of built-in teaching stations in
+C++ at startup (see RegisterDefaultStations() in open_world.cpp) rather
+than loading them from JSON.  We still keep each station as a plain data
+struct so the design is easy to read today and easy to migrate to an
+external-data loader in the future.
+
+The file Content/World/teaching_stations.json is the planned authoring
+format for a fully data-driven version of the demo station list.
+
+### State Machines for Game Flow
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L104) (line 104)
+
+─────────────────────────────────────────────
+Every game needs a clear flow: title screen → loading → gameplay → paused.
+A finite state machine (FSM) with an enum + switch statement is the simplest
+correct implementation — easy to read, debug, and extend.
+
+More complex games use a class hierarchy (State pattern) or a pushdown
+automaton (same as MenuStack).  For the demo we use the plain enum approach
+because students can see the entire flow in one switch block.
+
+### Headless Safety
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L138) (line 138)
+
+────────────────────────────────
+OpenWorld does NOT call any Win32 or D3D11 API directly.  All rendering
+state (clear colour, overlay text) is returned through accessor methods
+so that demo_main.cpp can forward it to the renderer.  This keeps the
+game logic testable without a GPU.
+
+### Biome-Driven Sky Colours
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L191) (line 191)
+
+──────────────────────────────────────────
+Each biome has a characteristic sky colour that reinforces its identity:
+  Grassland → warm daylight blue.
+  Forest    → dim filtered green-grey.
+  Snow      → pale icy blue.
+  Desert    → hot orange-amber.
+  Coast     → deep sea-blue cyan.
 
 ---
 
@@ -28242,9 +28800,29 @@ immediately rather than silently using the 1×1 white fallback SRV.
 ---------------------------------------------------------------------------
 <filesystem> is already included transitively; add fstream for binary read.
 
+### Demo_Game open-world state machine
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L451) (line 451)
+
+---------------------------------------------------------------------------
+The OpenWorld header is included here so that engine_sandbox can expose
+the --scene demo_world headless acceptance test alongside all other CI
+scenes.  OpenWorld itself has no platform or D3D11 dependency — it is
+pure C++17 logic — so including it here does not affect the build on any
+platform where engine_sandbox is built.
+---------------------------------------------------------------------------
+include "demo_game/open_world.hpp"
+include <cstdlib>      // std::getenv — ENGINE_PROJECT_ROOT env var lookup
+include <cmath>        // std::sin — used for the animated clear colour
+include <algorithm>    // std::sort — authored_content .tex file ordering
+include <string>
+include <filesystem>   // std::filesystem::path (C++17)
+include <chrono>       // high_resolution_clock (testworld dt measurement)
+include <ctime>        // std::time, std::tm — log timestamp generation
+
 ### LC-2: Minidump writer (SetUnhandledExceptionFilter)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L458) (line 458)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L469) (line 469)
 
 ---------------------------------------------------------------------------
 When engine_sandbox crashes without a try/catch handler the OS terminates
@@ -28271,7 +28849,7 @@ pragma comment(lib, "dbghelp.lib")
 
 ### Crash dump directory
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L489) (line 489)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L500) (line 500)
 
 We honour the same ENGINE_SAVE_DIR environment variable used by the
 logger so that crash dumps land alongside log files in whichever save
@@ -28283,7 +28861,7 @@ GetEnvironmentVariableA("ENGINE_SAVE_DIR", saveBuf, sizeof(saveBuf));
 
 ### PID-suffixed dump filename
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L504) (line 504)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L515) (line 515)
 
 Using crash_<pid>.dmp instead of crash.dmp prevents a new crash from
 silently overwriting the dump from a previous crash.  The PID is always
@@ -28294,7 +28872,7 @@ sprintf_s(dmpPath, sizeof(dmpPath), kDumpFmt, crashDir, pid);
 
 ### EXCEPTION_EXECUTE_HANDLER
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L529) (line 529)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L540) (line 540)
 
 Returning this constant tells Windows to:
   1. Execute the exception handler (the code above, which wrote the .dmp).
@@ -28309,7 +28887,7 @@ endif // _WIN32
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L542) (line 542)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L553) (line 553)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -28326,7 +28904,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Executable Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L557) (line 557)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L568) (line 568)
 
 ---------------------------------------------------------------------------
 engine_config.json is placed next to the executable by CMake (or the user).
@@ -28343,7 +28921,7 @@ return (p.has_parent_path() ? p.parent_path() : fs::path(".")).string();
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L572) (line 572)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L583) (line 583)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -28362,7 +28940,7 @@ endif
 
 ### AP-4: --version flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L591) (line 591)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L602) (line 602)
 
 -------------------------------------------------------------------
 Print the short git SHA baked in at compile time and exit.
@@ -28381,7 +28959,7 @@ return 0;
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L610) (line 610)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L621) (line 621)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -28393,7 +28971,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L632) (line 632)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L643) (line 643)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -28412,7 +28990,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L647) (line 647)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L658) (line 658)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -28425,7 +29003,7 @@ rendererArg = argv[++i];
 
 ### Timestamped Log Files
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L665) (line 665)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L676) (line 676)
 
 Each run writes its log to a unique timestamped file so logs from
 multiple sessions do not overwrite each other.  This is essential
@@ -28443,7 +29021,7 @@ namespace fs = std::filesystem;
 
 ### Append process ID to the timestamp
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L699) (line 699)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L710) (line 710)
 
 Multiple engine instances launched within the same second would
 produce identical filenames without the PID suffix, causing one
@@ -28461,7 +29039,7 @@ Logger::Instance().Init(logPath, LogLevel::DEBUG, /*echoConsole=*/true);
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L717) (line 717)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L728) (line 728)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -28472,7 +29050,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L746) (line 746)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L757) (line 757)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -28487,7 +29065,7 @@ if (bytes.empty())
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L771) (line 771)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L782) (line 782)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -28497,7 +29075,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Configuration Path Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L781) (line 781)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L792) (line 792)
 
 We resolve engine_config.json relative to the executable directory
 (same strategy as GetShaderDir) so the config is found regardless of
@@ -28523,7 +29101,7 @@ LOG_INFO("[EngineConfig] No config at: " + configPath + " — using defaults.");
 
 ### Resolution types
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L815) (line 815)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L826) (line 826)
 
 engConfig.resolution.width/height are uint32_t (same as Win32Window::Init's
 parameter types) and have been clamped to [64, 16384] by EngineConfig::Load(),
@@ -28536,7 +29114,7 @@ return 1;
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L833) (line 833)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L844) (line 844)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -28552,7 +29130,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L866) (line 866)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L877) (line 877)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -28562,7 +29140,7 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L887) (line 887)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L898) (line 898)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
@@ -28588,7 +29166,7 @@ scene == "pbr_mesh")
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L909) (line 909)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L920) (line 920)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -28617,7 +29195,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L934) (line 934)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L945) (line 945)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -28641,7 +29219,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1042) (line 1042)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1053) (line 1053)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -28666,7 +29244,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1163) (line 1163)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1174) (line 1174)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -28687,7 +29265,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1247) (line 1247)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1258) (line 1258)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -28705,7 +29283,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1261) (line 1261)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1272) (line 1272)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -28736,7 +29314,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1290) (line 1290)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1301) (line 1301)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -28744,7 +29322,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1352) (line 1352)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1363) (line 1363)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -28767,7 +29345,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1427) (line 1427)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1438) (line 1438)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -28785,7 +29363,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1441) (line 1441)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1452) (line 1452)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -28803,7 +29381,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1474) (line 1474)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1485) (line 1485)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -28829,7 +29407,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1525) (line 1525)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1536) (line 1536)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -28851,7 +29429,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1544) (line 1544)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1555) (line 1555)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -28874,7 +29452,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1625) (line 1625)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1636) (line 1636)
 
 -----------------------------------------------------------
 Verifies that:
@@ -28894,7 +29472,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1642) (line 1642)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1653) (line 1653)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -28914,7 +29492,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1685) (line 1685)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1696) (line 1696)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -28930,7 +29508,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1727) (line 1727)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1738) (line 1738)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -28956,7 +29534,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1749) (line 1749)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1760) (line 1760)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -28979,7 +29557,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1858) (line 1858)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1869) (line 1869)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -29006,7 +29584,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1882) (line 1882)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1893) (line 1893)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -29017,14 +29595,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1905) (line 1905)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1916) (line 1916)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1910) (line 1910)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1921) (line 1921)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -29041,7 +29619,7 @@ return 1;
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1958) (line 1958)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1969) (line 1969)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -29076,7 +29654,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2016) (line 2016)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2027) (line 2027)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -29086,7 +29664,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2107) (line 2107)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2118) (line 2118)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -29096,7 +29674,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2175) (line 2175)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2186) (line 2186)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -29104,7 +29682,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2226) (line 2226)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2237) (line 2237)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -29133,7 +29711,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2260) (line 2260)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2271) (line 2271)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -29156,7 +29734,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2311) (line 2311)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2322) (line 2322)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -29179,7 +29757,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2352) (line 2352)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2363) (line 2363)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -29196,7 +29774,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2427) (line 2427)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2438) (line 2438)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -29208,7 +29786,7 @@ CinematicSequencer seq;
 
 ### What is a "timed audio event"?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2497) (line 2497)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2508) (line 2508)
 
 In a cut-scene, a sound effect must play at a precise moment:
 e.g. a door creak at t=0.3 s or a sword clash at t=1.5 s.
@@ -29218,7 +29796,7 @@ because we check immediately after advancing m_shotTime.
 
 ### Why not test with XAudio2 here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2504) (line 2504)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2515) (line 2515)
 
 The acceptance test only needs to verify the callback fires
 at the right time.  Coupling to XAudio2 would require a
@@ -29231,7 +29809,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2597) (line 2597)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2608) (line 2608)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -29249,7 +29827,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2811) (line 2811)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2822) (line 2822)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -29262,7 +29840,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2892) (line 2892)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2903) (line 2903)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -29278,7 +29856,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2905) (line 2905)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2916) (line 2916)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -29295,7 +29873,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2946) (line 2946)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2957) (line 2957)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -29313,7 +29891,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2977) (line 2977)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2988) (line 2988)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -29339,7 +29917,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3021) (line 3021)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3032) (line 3032)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -29379,7 +29957,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3108) (line 3108)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3119) (line 3119)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -29420,7 +29998,7 @@ std::cout << "[OK] bloom_test/load: "
 
 ### What the audio_3d_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3197) (line 3197)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3208) (line 3208)
 
 Test 1 (init):
     XAudio2Backend::Init() is called.  On headless CI with no
@@ -29449,7 +30027,7 @@ int testsFailed = 0;
 
 ### What the combat_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3315) (line 3315)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3326) (line 3326)
 
 All four tests are pure C++17 CPU tests — no D3D11 renderer
   or audio hardware is required.
@@ -29482,7 +30060,7 @@ int testsFailed = 0;
 
 ### We define the same combos here that
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3351) (line 3351)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3362) (line 3362)
 
 appear in combat_config.json so the test is self-
 contained and does not require a file on disk.
@@ -29499,7 +30077,7 @@ cs.AddCombo(aaaDef);
 
 ### Set a short config so tests run fast
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3413) (line 3413)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3424) (line 3424)
 
 CombatConfig cfg;
 cfg.comboWindowSeconds = 0.5f;
@@ -29507,7 +30085,7 @@ cs.SetConfig(cfg);
 
 ### Minimal ECS World for a unit test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3513) (line 3513)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3524) (line 3524)
 
 We create the smallest possible World to exercise a specific
 function (CalculateDamage).  This is the game-engine equivalent
@@ -29520,7 +30098,7 @@ RegisterAllComponents(*combatWorld);
 
 ### What the quest_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3605) (line 3605)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3616) (line 3616)
 
 All four tests are pure C++17 CPU tests — no D3D11
   renderer, Jolt physics, or XAudio2 is required.
@@ -29558,7 +30136,7 @@ int testsFailed = 0;
 
 ### Why heap-allocate World?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3643) (line 3643)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3654) (line 3654)
 
 EntityManager::m_signatures is a std::array<bitset<64>, 65536>
 which alone is 512 KB.  Stack-allocating World on Windows
@@ -29569,7 +30147,7 @@ RegisterAllComponents(*questWorld);
 
 ### Quest 1 "The Road to Dawn" is defined
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3666) (line 3666)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3677) (line 3677)
 
 in GameDatabase with no prerequisites so it should always
 be acceptable for a fresh player entity.
@@ -29581,7 +30159,7 @@ active[0]->id == 1;
 
 ### GainXP() accumulates XP in pendingXP
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3710) (line 3710)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3721) (line 3721)
 
 (banked in the field); it only moves to currentXP when
 the player rests at camp (ApplyBankedXP).  We check
@@ -29591,7 +30169,7 @@ const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
 
 ### A fresh player has not completed quest 1
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3756) (line 3756)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3767) (line 3767)
 
 so CanAcceptQuest(6) should return false.
 const bool blockedWithoutPrereq =
@@ -29599,7 +30177,7 @@ const bool blockedWithoutPrereq =
 
 ### A failed quest is neither active nor
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3800) (line 3800)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3811) (line 3811)
 
 complete.  The player could potentially re-accept it
 (if the QuestSystem allows it) or it remains failed for
@@ -29622,7 +30200,7 @@ std::cout << "[OK] quest_test/quest_fail: "
 
 ### What the dialogue_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3836) (line 3836)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3847) (line 3847)
 
 All three tests are pure C++17 CPU tests — no renderer,
   no audio, no physics.  A minimal ECS World is created
@@ -29651,7 +30229,7 @@ int testsFailed = 0;
 
 ### We only change XZ (horizontal plane);
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3909) (line 3909)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3920) (line 3920)
 
 DialogueSystem uses XZ distance, matching the 2.5D
 world layout where Y is the vertical axis.
@@ -29660,7 +30238,7 @@ dlgWorld->GetComponent<TransformComponent>(playerID).position =
 
 ### The stub DialogueSystem (M8.6) uses a
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3942) (line 3942)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3953) (line 3953)
 
 single terminal node.  AdvanceDialogue() on a terminal
 node should close the conversation (IsActive() → false).
@@ -29669,7 +30247,7 @@ const bool closedOk  = !dlgSys.IsActive();
 
 ### M26 Save-System CI Acceptance Suite
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3983) (line 3983)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3994) (line 3994)
 
 ──────────────────────────────────────────────────────────
 Three correctness properties validated here, matching the
@@ -29722,7 +30300,7 @@ int testsFailed = 0;
 
 ### Temp directory isolation with clock-based uniqueness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4036) (line 4036)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4047) (line 4047)
 
 Appending a nanosecond timestamp to the directory name prevents two
 concurrent engine_sandbox processes (e.g. parallel CI matrix jobs
@@ -29738,7 +30316,7 @@ const std::string saveDirStr = testSaveDir.string() + "/";
 
 ### Error checking for filesystem setup
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4050) (line 4050)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4061) (line 4061)
 
 Failing to set up the temp directory (e.g. permissions,
 locked files from a previous crashed run) would cause all
@@ -29770,7 +30348,7 @@ return 1;
 
 ### Graceful skip without ENGINE_ENABLE_JSON
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4082) (line 4082)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4093) (line 4093)
 
 The full three tests require nlohmann/json for Save() and
 Load().  Rather than reporting a false [FAIL] when the
@@ -29797,7 +30375,7 @@ Test 1 — Round-trip equivalence
 
 ### Deterministic world state for round-trip
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4105) (line 4105)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4116) (line 4116)
 
 We set specific values for HP, position, and a quest entry
 so that the assertions below are unambiguous.  Using magic
@@ -29810,7 +30388,7 @@ const EntityID playerID = worldA.CreateEntity();
 
 ### Compare all three axes
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4179) (line 4179)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4190) (line 4190)
 
 Checking only x and z would miss a bug where
 y is corrupted by a float serialisation error
@@ -29821,7 +30399,7 @@ tf2.position.z == 200.0f);
 
 ### Full quest field validation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4190) (line 4190)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4201) (line 4201)
 
 Asserting every saved field (questID,
 objective, progress, required, isComplete)
@@ -29839,7 +30417,7 @@ break; // found the player entity
 
 ### Inline fixture for older-version saves
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4227) (line 4227)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4238) (line 4238)
 
 Rather than checking in an external fixture file, we write
 a "0.9.0"-versioned JSON payload inline using std::ofstream.
@@ -29862,7 +30440,7 @@ Raw JSON string — written to slot 1 via ofstream.
 
 ### Raw string literals (R"(...)") in C++11+
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4246) (line 4246)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4257) (line 4257)
 
 avoid the need to escape every double-quote inside the
 JSON payload.  The delimiter "JSON" is arbitrary but
@@ -29884,7 +30462,7 @@ static const char kFixtureJSON[] = R"JSON({
 
 ### Validate the fixture write before Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4267) (line 4267)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4278) (line 4278)
 
 If the ofstream fails to open (permissions, disk full),
 the file will be absent.  Load() would then return false
@@ -29911,7 +30489,7 @@ std::cout << "[FAIL] save_test 2/3: Migration — "
 
 ### Simulating CampSystem::Rest auto-save hook
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4344) (line 4344)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4355) (line 4355)
 
 In the live game, CampSystem::Rest() calls SaveSystem::AutoSave()
 after all HP/MP restoration.  The headless test invokes the
@@ -29929,7 +30507,7 @@ const EntityID campPlayerID = worldCamp.CreateEntity();
 
 ### Always check the error_code from file_size
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4386) (line 4386)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4397) (line 4397)
 
 fs::file_size(path, ec) returns uintmax_t(-1) on error and
 sets ec.  Checking only fileSize == 0 would treat an error-
@@ -29941,7 +30519,7 @@ slotExists ? fs::file_size(autoPath, ecSize)
 
 ### Explicit HP assertion after Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4408) (line 4408)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4419) (line 4419)
 
 Asserting that the loaded world contains an entity with
 hp==350/maxHp==500 proves data integrity, not just that
@@ -29963,7 +30541,7 @@ worldLoaded.GetEntityManager()
 
 ### M25 Terrain Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4477) (line 4477)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4488) (line 4488)
 
 ──────────────────────────────────────────────────────────
 Three acceptance criteria matching the milestone definition
@@ -29994,7 +30572,7 @@ in docs/PROJECT_MILESTONES.md §M25:
 
 ### Why a 4×4 heightmap?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4505) (line 4505)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4516) (line 4516)
 
 Jolt's JPH::HeightFieldShape requires a power-of-2 sample
 count.  4 is the smallest valid value (2^2) that produces at
@@ -30003,7 +30581,7 @@ least one non-trivial quad, making it the minimum useful test.
 
 ### Why downcast here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4529) (line 4529)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4540) (line 4540)
 
 The headless acceptance tests need the raw ID3D11Device*
 to create auxiliary D3D11 objects (terrain VB, IB, CB,
@@ -30015,7 +30593,7 @@ bool testOk = false;
 
 ### HeightFieldShape sample count constraint
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4610) (line 4610)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4621) (line 4621)
 
 BakeTerrainCollider requires a power-of-2 sample count.
 We use 4 (2^2) — the smallest valid value for Jolt.
@@ -30024,7 +30602,7 @@ static constexpr float kWorldSize = kCellSize * (kW - 1); // 6.0 m
 
 ### Graceful skip when physics is absent
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4676) (line 4676)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4687) (line 4687)
 
 The standard Windows CI job builds without Jolt Physics (no
 vcpkg install in that job).  We skip test 3 rather than fail
@@ -30036,7 +30614,7 @@ endif // ENGINE_ENABLE_PHYSICS
 
 ### M24 Authored Content Acceptance Suite
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4699) (line 4699)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4710) (line 4710)
 
 =========================================================
 The authored_content scene is a pure filesystem check with no
@@ -30065,9 +30643,122 @@ Acceptance criteria:
   • 0 files with corrupt DDS_HEADER.dwSize.
 ---------------------------------------------------------------
 
-### Fixed Timestep vs Variable Timestep
+### demo_world CI Acceptance Test
 
 **Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4877) (line 4877)
+
+──────────────────────────────────────────────
+This test validates the Demo_Game open-world state machine
+(OpenWorld in demo_game/open_world.hpp/.cpp) independently of
+the demo_game executable itself.  Running it here via
+engine_sandbox keeps CI simple: one binary, one job step.
+
+Acceptance criteria:
+  Test 1 — Init():  12+ teaching stations registered.
+  Test 2 — Boot:    initial state is BOOT_MENU.
+  Test 3 — Flow:    auto-advance boots into PLAYING; all 5
+                    biomes visited before IsHeadlessDone().
+  Test 4 — Teleport: TeleportToStation("rendering_pbr") sets
+                     biome to GRASSLAND.
+  Test 5 — Stations: every registered station has a non-empty
+                     id, displayName, and sceneHint.
+-----------------------------------------------------------
+int testsFailed = 0;
+
+### Fail explicitly on insufficient stations
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4897) (line 4897)
+
+We check both that Init() returned true AND that the station
+count is at least the expected minimum.  A successful Init()
+that registered zero stations is still a regression failure.
+constexpr int kExpectedStations = 12;
+OpenWorld ow;
+if (!ow.Init())
+{
+std::cout << "[FAIL] demo_world/1: OpenWorld::Init() returned false.\n";
+++testsFailed;
+}
+else if (static_cast<int>(ow.GetStations().size()) < kExpectedStations)
+{
+std::cout << "[FAIL] demo_world/1: Expected >= " << kExpectedStations
+<< " stations after Init(), got "
+<< ow.GetStations().size() << ".\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] demo_world/1: Init — "
+<< ow.GetStations().size() << " stations registered.\n";
+}
+
+### Extra guard frames
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4933) (line 4933)
+
+At 60 Hz, a 0.1 s LOADING wait is about 6 frames
+(0.1 / (1/60) ≈ 6).  We also need 2 frames for the
+BOOT_MENU auto-advance, giving ~8 overhead frames.
+kExtraGuardFrames = 12 provides a comfortable margin;
+the loop exits early via `break` once IsHeadlessDone() is true.
+constexpr float kDt = 1.0f / 60.0f;
+constexpr int   kExtraGuardFrames = 12; // boot (2) + loading (~6 @ 60Hz) + margin
+for (int f = 0; f < OpenWorld::kHeadlessFrames + kExtraGuardFrames; ++f)
+{
+ow.Update(kDt, /*headless=*/true);
+if (ow.IsHeadlessDone()) { break; }
+}
+if (!ow.IsHeadlessDone())
+{
+std::cout << "[FAIL] demo_world/3: IsHeadlessDone() never became "
+"true after " << OpenWorld::kHeadlessFrames << " frames.\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] demo_world/3: PLAYING state; all biomes visited "
+"at frame " << ow.GetFrameCount() << ".\n";
+}
+
+### An empty station list is a test failure, not
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4972) (line 4972)
+
+a vacuous success.  This acceptance test verifies that station
+registration happened AND that each station's required fields
+were populated.
+const auto& stationsRef = ow.GetStations();
+bool stationDataOk = true;
+if (stationsRef.empty())
+{
+std::cout << "[FAIL] demo_world/5: GetStations() returned 0 stations; "
+"station registration may have failed.\n";
+stationDataOk = false;
+++testsFailed;
+}
+else
+{
+for (const auto& s : stationsRef)
+{
+if (s.id.empty() || s.displayName.empty() || s.sceneHint.empty())
+{
+std::cout << "[FAIL] demo_world/5: station has empty id, "
+"displayName, or sceneHint.\n";
+stationDataOk = false;
+++testsFailed;
+break;
+}
+}
+}
+if (stationDataOk)
+{
+std::cout << "[OK] demo_world/5: All " << stationsRef.size()
+<< " stations have non-empty id + displayName + sceneHint.\n";
+}
+
+### Fixed Timestep vs Variable Timestep
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5034) (line 5034)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -30077,7 +30768,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4885) (line 4885)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5042) (line 5042)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -30107,7 +30798,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4913) (line 4913)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5070) (line 5070)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -30130,7 +30821,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4966) (line 4966)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5123) (line 5123)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -30143,7 +30834,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4982) (line 4982)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5139) (line 5139)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window

@@ -92,6 +92,25 @@ message(STATUS "Engine build SHA : ${ENGINE_GIT_SHA}")
 option(BUILD_EDITOR "Build the Dear ImGui Creation Suite editor" OFF)
 
 # ---------------------------------------------------------------------------
+# Top-level option: Build the Demo_Game standalone executable
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Demo_Game Executable
+# ─────────────────────────────────────────────────────────────────────────────
+# Demo_Game is the player-facing binary built from src/demo_game/demo_main.cpp.
+# It reuses all engine + gameplay sources from engine_sandbox but starts
+# directly in the open-world game mode with a boot menu.
+#
+# Enable it with:
+#   cmake --preset windows-ninja-debug-demo
+#   cmake --preset windows-debug-engine-only -DBUILD_DEMO_GAME=ON
+#
+# Build target: demo_game
+#   demo_game.exe --headless           # CI validation (no window)
+#   demo_game.exe                      # Full windowed open world
+# ─────────────────────────────────────────────────────────────────────────────
+option(BUILD_DEMO_GAME "Build the Demo_Game standalone open-world executable" OFF)
+
+# ---------------------------------------------------------------------------
 # C++ standard
 # ---------------------------------------------------------------------------
 # TEACHING NOTE — C++17 is required for:
@@ -805,6 +824,11 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         # dependencies.  It compiles on Linux (terminal game) and Windows alike.
         # JSON loading inside it is guarded by ENGINE_ENABLE_JSON.
         src/engine/combat/combo_system.cpp
+        # TEACHING NOTE — Demo_Game OpenWorld state machine
+        # open_world.cpp is a pure C++17 module with no D3D11 or Win32
+        # dependency.  It is compiled into engine_sandbox so the headless
+        # --scene demo_world acceptance test is available in every CI build.
+        src/demo_game/open_world.cpp
     )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})
@@ -1129,6 +1153,101 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     endif() # ENGINE_ENABLE_D3D11
 
 endif() # WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN)
+
+# ---------------------------------------------------------------------------
+# demo_game target — Demo_Game standalone open-world executable (Epic: Demo_Game)
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Demo_Game vs engine_sandbox
+# ─────────────────────────────────────────────────────────────────────────────
+# engine_sandbox is the internal test harness; demo_game is the player-facing
+# binary.  Both share the same engine + gameplay source files; the only
+# difference is the entry point:
+#
+#   engine_sandbox  → src/sandbox/main.cpp  (--scene dispatch, CI tests)
+#   demo_game       → src/demo_game/demo_main.cpp (open world, boot menu)
+#
+# The OpenWorld state machine (open_world.hpp/.cpp) is a NEW pure-C++17
+# module compiled into both demo_game (primary) and engine_sandbox (for the
+# --scene demo_world CI headless test).  It has no D3D11 or Win32 dependency.
+#
+# Usage:
+#   demo_game.exe                # windowed: boot menu → open world
+#   demo_game.exe --headless     # CI: headless demo_world acceptance test
+# ─────────────────────────────────────────────────────────────────────────────
+if(BUILD_DEMO_GAME AND WIN32 AND ENGINE_ENABLE_D3D11)
+
+    # TEACHING NOTE — Deriving DEMO_GAME_SOURCES from SANDBOX_SOURCES
+    # ─────────────────────────────────────────────────────────────────
+    # Rather than maintaining a duplicate source list (which is easy to let
+    # drift when new engine/game files are added), we derive DEMO_GAME_SOURCES
+    # from the fully-populated SANDBOX_SOURCES variable and swap only the
+    # executable entry point.  Both targets stay in lockstep automatically.
+    #
+    # Steps:
+    #   1. Copy the entire SANDBOX_SOURCES list.
+    #   2. Remove src/sandbox/main.cpp (the test-harness entry point).
+    #   3. Append src/demo_game/demo_main.cpp (the player-facing entry point).
+    #
+    # open_world.cpp is already present in SANDBOX_SOURCES (added for the
+    # --scene demo_world acceptance test), so it does not need to be re-added.
+    # All conditionally-included sources (Jolt physics, LuaEngine, etc.) are
+    # carried over automatically because SANDBOX_SOURCES was already populated
+    # by those conditional blocks above.
+    set(DEMO_GAME_SOURCES ${SANDBOX_SOURCES})
+    list(REMOVE_ITEM DEMO_GAME_SOURCES src/sandbox/main.cpp)
+    list(APPEND DEMO_GAME_SOURCES src/demo_game/demo_main.cpp)
+
+    add_executable(demo_game ${DEMO_GAME_SOURCES})
+
+    target_include_directories(demo_game PRIVATE src/)
+
+    target_link_libraries(demo_game PRIVATE
+        d3d11.lib dxgi.lib d3dcompiler.lib xaudio2.lib ole32.lib
+    )
+
+    set(DEMO_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
+        ENGINE_ENABLE_D3D11
+        "ENGINE_VERSION_SHA=\"${ENGINE_GIT_SHA}\"")
+
+    if(nlohmann_json_FOUND)
+        target_link_libraries(demo_game PRIVATE nlohmann_json::nlohmann_json)
+        list(APPEND DEMO_DEFS ENGINE_ENABLE_JSON)
+    endif()
+
+    if(LUA_BUNDLED)
+        target_link_libraries(demo_game PRIVATE ${LUA_LIBRARIES})
+        list(APPEND DEMO_DEFS ENGINE_ENABLE_LUA)
+    endif()
+
+    target_compile_definitions(demo_game PRIVATE ${DEMO_DEFS})
+
+    if(MSVC)
+        set_target_properties(demo_game PROPERTIES LINK_FLAGS "/SUBSYSTEM:CONSOLE")
+    endif()
+
+    # Copy HLSL shaders alongside demo_game.exe at build time.
+    add_custom_command(TARGET demo_game POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:demo_game>/shaders"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${HLSL_SHADERS}
+            "$<TARGET_FILE_DIR:demo_game>/shaders/"
+        COMMENT "Copying D3D11 HLSL shaders to demo_game output directory"
+    )
+
+    message(STATUS "  demo_game target : ON (BUILD_DEMO_GAME=ON)")
+else()
+    # TEACHING NOTE — Status messages should distinguish "not requested"
+    # from "requested but unavailable due to unmet platform/backend
+    # requirements" so configure-time output tells the user what to fix.
+    if(BUILD_DEMO_GAME AND NOT WIN32)
+        message(STATUS "  demo_game target : SKIPPED (requires WIN32 platform)")
+    elseif(BUILD_DEMO_GAME AND NOT ENGINE_ENABLE_D3D11)
+        message(STATUS "  demo_game target : SKIPPED (requires ENGINE_ENABLE_D3D11=ON)")
+    else()
+        message(STATUS "  demo_game target : OFF (pass -DBUILD_DEMO_GAME=ON to enable)")
+    endif()
+endif()
 
 # ---------------------------------------------------------------------------
 # cook target — standalone C++ asset cooker (Milestone M2)
