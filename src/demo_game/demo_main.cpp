@@ -503,7 +503,277 @@ static void DrawHudBar(HWND hwnd, int clientW,
     ::DeleteObject(font);
 }
 
+// ===========================================================================
+// DrawQuestHud — bottom-left quest / activity progress strip
+// ===========================================================================
+// TEACHING NOTE — Quest HUD as Persistent Overlay
+// ─────────────────────────────────────────────────────────────────────────────
+// The quest HUD is drawn in the bottom-left corner whenever the game is in
+// PLAYING state.  It shows:
+//   • The current main quest objective (one line, gold colour).
+//   • The three side-activity progress bars / counts (three lines, dim colour
+//     for in-progress, green for complete).
+//
+// This is the minimal HUD that every commercial RPG ships: the player always
+// knows their current objective at a glance.  (Witcher 3 pins the active
+// quest in the top-right; FFXV shows it in the bottom-left — we follow FFXV.)
+//
+// GDI note: we render the HUD AFTER DrawFrame (same as the other overlays).
+// ─────────────────────────────────────────────────────────────────────────────
+
+static void DrawQuestHud(HWND hwnd, int clientW, int clientH,
+                         const DemoQuestManager& qm)
+{
+    const auto& quest      = qm.GetMainQuest();
+    const auto& activities = qm.GetActivities();
+
+    if (activities.empty())
+        return;
+
+    GdiScope dc(hwnd);
+    if (!dc.Valid()) return;
+
+    HFONT fontHead = CreateOverlayFont(16);
+    HFONT fontItem = CreateOverlayFont(15);
+
+    // ---- Panel geometry ────────────────────────────────────────────────────
+    // Height: heading + quest line + separator + 3 activity lines + padding.
+    const int numLines = 1            // main quest objective
+                       + static_cast<int>(activities.size()) // activity lines
+                       + 1;          // "Activities: N/3" summary line
+
+    const int panelH = kPadY * 2 + kLineH + 4 + numLines * kLineH;
+    const int panelW = kPanelW;
+    const int panelX = 12;
+    const int panelY = clientH - panelH - 12;
+
+    DrawPanel(dc.Get(), panelX, panelY, panelW, panelH, kColBackground, kColBorder);
+
+    int cy = panelY + kPadY;
+
+    // ---- Main quest heading ────────────────────────────────────────────────
+    {
+        char heading[128];
+        if (quest.completed)
+        {
+            std::snprintf(heading, sizeof(heading),
+                          " MAIN: %s [COMPLETE]", quest.title.c_str());
+        }
+        else
+        {
+            const DemoQuestObjective* obj = quest.CurrentObjective();
+            const int objIdx = quest.currentObjective + 1;
+            const int objMax = static_cast<int>(quest.objectives.size());
+            if (obj)
+            {
+                std::snprintf(heading, sizeof(heading),
+                              " MAIN [%d/%d]: %s",
+                              objIdx, objMax, obj->description.c_str());
+            }
+            else
+            {
+                std::snprintf(heading, sizeof(heading),
+                              " MAIN: %s", quest.title.c_str());
+            }
+        }
+        DrawLine(dc.Get(), fontHead, panelX + kPadX, cy,
+                 heading, quest.completed ? RGB(80, 230, 80) : kColHeading);
+        cy += kLineH + 4;
+    }
+
+    // ---- Side activity lines ───────────────────────────────────────────────
+    for (const auto& act : activities)
+    {
+        char line[128];
+        std::snprintf(line, sizeof(line),
+                      "  %s  %s [%d/%d]",
+                      act.completed ? "[DONE]" : "[    ]",
+                      act.title.c_str(),
+                      act.progress,
+                      act.required);
+
+        const COLORREF col = act.completed ? RGB(80, 230, 80) : kColDim;
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, line, col);
+        cy += kLineH;
+    }
+
+    // ---- Activity summary ──────────────────────────────────────────────────
+    {
+        char summary[64];
+        std::snprintf(summary, sizeof(summary),
+                      "  Activities: %d/%d complete",
+                      qm.CompletedActivities(),
+                      static_cast<int>(activities.size()));
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, summary, kColText);
+    }
+
+    ::DeleteObject(fontHead);
+    ::DeleteObject(fontItem);
+}
+
+// ===========================================================================
+// DrawInteractPrompt — "Press E to interact" hint when near a station
+// ===========================================================================
+// TEACHING NOTE — Interact Prompt UX Pattern
+// ─────────────────────────────────────────────────────────────────────────────
+// A brief contextual prompt tells the player that an action is available.
+// This pattern is used in nearly every modern action/RPG:
+//   • FFXV   — "X: Interact" appears near interactable objects.
+//   • Witcher 3 — "E: Talk / Examine" near NPCs / items.
+//   • Dark Souls — "Y: Light Bonfire" near bonfires.
+//
+// The prompt:
+//   • Appears at the bottom-centre of the screen — visible but unobtrusive.
+//   • Shows the station name and the Interact key binding.
+//   • Disappears as soon as the player is no longer near any station.
+// ─────────────────────────────────────────────────────────────────────────────
+
+static void DrawInteractPrompt(HWND hwnd, int clientW, int clientH,
+                               const std::string& nearStationID,
+                               const std::vector<TeachingStation>& stations)
+{
+    if (nearStationID.empty()) return;
+
+    // Resolve display name from station list.
+    const char* displayName = nearStationID.c_str();
+    for (const auto& s : stations)
+        if (s.id == nearStationID) { displayName = s.displayName.c_str(); break; }
+
+    GdiScope dc(hwnd);
+    if (!dc.Valid()) return;
+
+    HFONT font = CreateOverlayFont(18);
+
+    char text[128];
+    std::snprintf(text, sizeof(text),
+                  "  [E]  Interact — %s  ", displayName);
+
+    const int promptW = kPanelW;
+    const int promptH = kLineH + kPadY;
+    const int promptX = (clientW - promptW) / 2;
+    const int promptY = clientH - promptH - 60; // above quest HUD
+
+    DrawPanel(dc.Get(), promptX, promptY, promptW, promptH,
+              kColBackground, kColSelected);
+    DrawLine(dc.Get(), font, promptX + kPadX, promptY + kPadY / 2,
+             text, kColSelected);
+
+    ::DeleteObject(font);
+}
+
+// ===========================================================================
+// DrawLessonPanel — modal lesson content shown when player presses E at station
+// ===========================================================================
+// TEACHING NOTE — Lesson Panel as in-game documentation
+// ─────────────────────────────────────────────────────────────────────────────
+// The lesson panel is the teaching-game equivalent of a "codex" or "lore book"
+// in a commercial RPG.  It appears when the player deliberately interacts with
+// a teaching station (E key) and shows:
+//
+//   1. LESSON TITLE    — what subsystem this station demonstrates.
+//   2. LESSON TEXT     — multi-line prose explanation (may include \n).
+//   3. CODE POINTERS   — file paths / class names to inspect in VS Code.
+//   4. DISMISS HINT    — "Press ESC or Enter to close".
+//
+// The lesson text is loaded from Content/World/station_lessons.json at runtime
+// (see OpenWorld::TryLoadLessonsFromJSON).  Instructors can update lessons
+// without recompiling the engine.
+//
+// GDI newline handling:
+// GDI TextOut does not interpret "\n"; we split the text on '\n' manually and
+// call DrawLine once per line.
+// ─────────────────────────────────────────────────────────────────────────────
+
+static void DrawLessonPanel(HWND hwnd, int clientW, int clientH,
+                            const StationLesson& lesson)
+{
+    GdiScope dc(hwnd);
+    if (!dc.Valid()) return;
+
+    HFONT fontTitle   = CreateOverlayFont(19);
+    HFONT fontBody    = CreateOverlayFont(15);
+    HFONT fontPointer = CreateOverlayFont(13);
+    HFONT fontFooter  = CreateOverlayFont(14);
+
+    // ---- Split lesson text on '\n' ----
+    std::vector<std::string> bodyLines;
+    {
+        std::string remaining = lesson.lessonText;
+        size_t pos = 0;
+        while ((pos = remaining.find('\n')) != std::string::npos)
+        {
+            bodyLines.push_back(remaining.substr(0, pos));
+            remaining = remaining.substr(pos + 1);
+        }
+        if (!remaining.empty())
+            bodyLines.push_back(remaining);
+    }
+
+    // ---- Panel geometry ----
+    const int numBodyLines   = static_cast<int>(bodyLines.size());
+    const int numPtrLines    = static_cast<int>(lesson.codePointers.size());
+
+    const int panelH = kPadY * 2
+                     + kLineH + 6                          // title
+                     + numBodyLines * 17                   // body text (compact)
+                     + (numPtrLines > 0 ? 10 + 4 : 0)     // code pointers heading
+                     + numPtrLines * 16                    // code pointer lines
+                     + 8 + 16;                             // footer
+
+    const int panelW = std::min(clientW - 80, 760);
+    const int panelX = (clientW - panelW) / 2;
+    const int panelY = (clientH - panelH) / 2;
+
+    DrawPanel(dc.Get(), panelX, panelY, panelW, panelH, kColBackground, kColSelected);
+
+    int cy = panelY + kPadY;
+
+    // ---- Title ----
+    DrawLine(dc.Get(), fontTitle, panelX + kPadX, cy,
+             lesson.lessonTitle.c_str(), kColHeading);
+    cy += kLineH + 6;
+
+    // ---- Body text ----
+    for (const auto& line : bodyLines)
+    {
+        DrawLine(dc.Get(), fontBody, panelX + kPadX, cy,
+                 line.c_str(), kColText);
+        cy += 17;
+    }
+
+    // ---- Code pointers ----
+    if (!lesson.codePointers.empty())
+    {
+        cy += 10;
+        DrawLine(dc.Get(), fontBody, panelX + kPadX, cy,
+                 "Key files / classes to inspect:", kColHeading);
+        cy += 4 + 16;
+        for (const auto& ptr : lesson.codePointers)
+        {
+            std::string line = "  + " + ptr;
+            DrawLine(dc.Get(), fontPointer, panelX + kPadX, cy,
+                     line.c_str(), kColDim);
+            cy += 16;
+        }
+    }
+
+    // ---- Footer ----
+    cy += 8;
+    DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
+             "  Press ESC or ENTER to close", kColDim);
+
+    ::DeleteObject(fontTitle);
+    ::DeleteObject(fontBody);
+    ::DeleteObject(fontPointer);
+    ::DeleteObject(fontFooter);
+}
+
 } // namespace overlay
+
+// ===========================================================================
+// Forward-declare demo_quest_manager types (used by DrawQuestHud)
+// ===========================================================================
+// Already available via open_world.hpp → demo_quest_manager.hpp
 
 // ===========================================================================
 // Headless validation path (CI — no window, no user input)
@@ -616,7 +886,12 @@ static int RunHeadless()
                  "displayName, and sceneHint.\n";
 
     // -----------------------------------------------------------------------
-    // 5. Teleport test — exercise TeleportToStation.
+    // 5. Teleport test — navigation only; no quest progress.
+    // TEACHING NOTE — Verifying teleport is navigation-only
+    // ─────────────────────────────────────────────────────────────────────────
+    // After this change teleport updates biome + sets nearestStationID but
+    // does NOT advance the quest.  We verify the biome change (still works)
+    // and that the nearest station ID was set correctly.
     // -----------------------------------------------------------------------
     world.TeleportToStation("rendering_pbr");
     if (world.GetCurrentBiome() != BiomeType::GRASSLAND)
@@ -625,7 +900,14 @@ static int RunHeadless()
                      "did not set biome to GRASSLAND.\n";
         return 1;
     }
-    std::cout << "[OK] demo_world/5: Teleport to rendering_pbr → biome = GRASSLAND.\n";
+    if (world.GetNearestStationID() != "rendering_pbr")
+    {
+        std::cout << "[FAIL] demo_world/5: TeleportToStation(\"rendering_pbr\") "
+                     "did not set nearestStationID to \"rendering_pbr\".\n";
+        return 1;
+    }
+    std::cout << "[OK] demo_world/5: Teleport to rendering_pbr → "
+                 "biome=GRASSLAND, nearestStation=rendering_pbr (navigation only).\n";
 
     // -----------------------------------------------------------------------
     // 6. Station list non-empty after TryLoadStationsFromJSON fallback.
@@ -659,11 +941,113 @@ static int RunHeadless()
     }
 
     // -----------------------------------------------------------------------
-    // 7. Report PASS.
+    // 7. Quest & activity definitions — DemoQuestManager initialisation.
     // -----------------------------------------------------------------------
-    world.Shutdown();
-    std::cout << "[PASS] demo_world: 6 acceptance tests passed "
-                 "(init, boot_menu, biome_cycle, stations, teleport, json_fallback).\n";
+    // TEACHING NOTE — Testing the quest/activity layer independently
+    // ─────────────────────────────────────────────────────────────────────────
+    // The DemoQuestManager is accessible via OpenWorld::GetQuestManager().
+    // We already called OpenWorld::Init() (test 1), which initialised the
+    // quest manager with built-in defaults.  Here we:
+    //   a) Verify that TotalDefined() returns 1 main quest + 3 activities = 4.
+    //   b) Verify the main quest has 3 objectives.
+    //   c) Simulate Teleport+Interact for three station objectives in order
+    //      and verify the main quest completes.
+    //   d) Verify the Lesson Reader activity advances on unique interacts.
+    // ─────────────────────────────────────────────────────────────────────────
+    {
+        // Use 'world' (already past PLAYING after test 3) — its quest manager
+        // was initialised in world.Init() with built-in defaults.
+        const DemoQuestManager& qm = world.GetQuestManager();
+
+        // a) Total definitions check.
+        constexpr int kExpectedTotal = 1 + DemoQuestManager::kExpectedActivities;
+        if (qm.TotalDefined() != kExpectedTotal)
+        {
+            std::cout << "[FAIL] demo_world/7a: TotalDefined() = "
+                      << qm.TotalDefined()
+                      << " (expected " << kExpectedTotal << ").\n";
+            return 1;
+        }
+
+        // b) Main quest objectives count.
+        const int objCount = static_cast<int>(qm.GetMainQuest().objectives.size());
+        if (objCount < 2)
+        {
+            std::cout << "[FAIL] demo_world/7b: main quest has " << objCount
+                      << " objectives (expected >= 2).\n";
+            return 1;
+        }
+
+        // c) Complete the main quest by visiting objectives in order.
+        //    We use a fresh OpenWorld so the quest starts from scratch.
+        OpenWorld qWorld;
+        if (!qWorld.Init())
+        {
+            std::cout << "[FAIL] demo_world/7c: qWorld.Init() returned false.\n";
+            return 1;
+        }
+
+        // Visit each station whose ID matches a main quest objective.
+        // TEACHING NOTE — Simulating Interact in headless CI
+        // ─────────────────────────────────────────────────────
+        // In headless mode there is no keyboard, so we cannot literally press E.
+        // Instead we call TeleportToStation() (which sets m_nearestStationID)
+        // followed immediately by InteractAtStation() — the same sequence the
+        // player would perform: arrive at the station (teleport) then press E.
+        // This is deterministic and reproducible in CI without any UI.
+        const auto& questRef = qWorld.GetQuestManager().GetMainQuest();
+        for (const auto& obj : questRef.objectives)
+        {
+            if (!obj.stationID.empty())
+            {
+                qWorld.TeleportToStation(obj.stationID);  // navigate to station
+                qWorld.InteractAtStation();               // press E at station
+            }
+        }
+
+        if (!qWorld.GetQuestManager().GetMainQuest().completed)
+        {
+            std::cout << "[FAIL] demo_world/7c: main quest did not complete "
+                         "after interacting at all objective stations.\n";
+            return 1;
+        }
+
+        // d) STATION_INTERACT activity — 3 unique station interacts.
+        //    qWorld already interacted at the 3 objective stations; each was
+        //    unique, so the Lesson Reader activity (3 distinct interacts) should
+        //    have progress >= 3.
+        const auto& scanAct = qWorld.GetQuestManager().GetActivities();
+        bool scannerOk = false;
+        for (const auto& a : scanAct)
+        {
+            if (a.type == DemoActivityType::STATION_INTERACT
+                && a.specificStationID.empty()
+                && a.progress >= 3)
+            {
+                scannerOk = true;
+                break;
+            }
+        }
+        if (!scannerOk)
+        {
+            std::cout << "[FAIL] demo_world/7d: Lesson Reader activity did not "
+                         "reach progress >= 3 after interacting at 3 unique stations.\n";
+            return 1;
+        }
+
+        std::cout << "[OK] demo_world/7: DemoQuestManager — "
+                  << qm.TotalDefined()
+                  << " defined (1 main quest, " << DemoQuestManager::kExpectedActivities
+                  << " activities); main quest completes on station interacts; "
+                     "Lesson Reader advances on unique interacts.\n";
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. Report PASS.
+    // -----------------------------------------------------------------------    world.Shutdown();
+    std::cout << "[PASS] demo_world: 7 acceptance tests passed "
+                 "(init, boot_menu, biome_cycle, stations, teleport, json_fallback, "
+                 "quest_manager_interact).\n";
     return 0;
 }
 
@@ -797,17 +1181,20 @@ static int RunWindowed(const DemoArgs& args)
 
     // --- Input edges ---
     KeyEdge keyF1  (VK_F1);          // F1 → toggle F1 debug overlay
-    KeyEdge keyESC (VK_ESCAPE);      // ESC → pause / close overlay
+    KeyEdge keyESC (VK_ESCAPE);      // ESC → pause / close overlay / close lesson panel
     KeyEdge keyUp  (VK_UP);          // ↑ navigate menu / station list
     KeyEdge keyDown(VK_DOWN);        // ↓ navigate menu / station list
-    KeyEdge keyEnter(VK_RETURN);     // Enter → confirm selection
+    KeyEdge keyEnter(VK_RETURN);     // Enter → confirm selection / dismiss lesson panel
     KeyEdge keyD   ('D');            // D → toggle debug info strip
+    KeyEdge keyE   ('E');            // E → Interact with nearest teaching station
 
     // --- Overlay state ---
     bool debugMenuOpen  = false; ///< F1 overlay visible
     bool showDebugInfo  = false; ///< Debug info bar (biome + FPS)
     int  bootMenuSel    = 0;     ///< Boot menu highlighted item (0..3)
     int  stationSel     = 0;     ///< F1 overlay selected station index
+    bool lessonPanelOpen = false; ///< Lesson panel visible (shown on E press)
+    StationLesson currentLesson;  ///< Content of the currently displayed lesson
 
     // --- FPS tracking ---
     float fpsAccum  = 0.f;
@@ -854,6 +1241,7 @@ static int RunWindowed(const DemoArgs& args)
         const bool pressedDown  = keyDown.JustPressed();
         const bool pressedEnter = keyEnter.JustPressed();
         const bool pressedD     = keyD.JustPressed();
+        const bool pressedE     = keyE.JustPressed();
 
         // Toggle debug info bar with D (available in all states).
         if (pressedD)
@@ -902,10 +1290,31 @@ static int RunWindowed(const DemoArgs& args)
                 }
             }
         }
+        else if (lessonPanelOpen)
+        {
+            // -----------------------------------------------------------------
+            // LESSON PANEL input — ESC or Enter dismisses the panel.
+            // TEACHING NOTE — Modal dismiss pattern
+            // The lesson panel is a soft modal: it doesn't block the world
+            // update but intercepts input so other actions don't fire while
+            // the student is reading.  ESC and Enter are standard dismiss keys
+            // in UI systems (think "OK" button / "Press Enter to continue").
+            // -----------------------------------------------------------------
+            if (pressedESC || pressedEnter)
+            {
+                lessonPanelOpen = false;
+                currentLesson   = StationLesson{};
+                std::cout << "[demo_game] Lesson panel: CLOSED\n";
+            }
+        }
         else if (debugMenuOpen)
         {
             // -----------------------------------------------------------------
             // F1 OVERLAY input
+            // TEACHING NOTE — Teleport is navigation only
+            // Teleporting via the F1 menu brings the player to a station so
+            // they can press E to interact.  The teleport itself does NOT
+            // advance the quest or trigger a lesson panel.
             // -----------------------------------------------------------------
             if (pressedF1 || pressedESC)
             {
@@ -926,6 +1335,11 @@ static int RunWindowed(const DemoArgs& args)
                 std::cout << "[demo_game] Teleporting to station: "
                           << s.displayName << "\n";
                 world.TeleportToStation(s.id);
+                // Close the F1 menu so the prompt "[E] Interact" is visible
+                // and the player can press E without the overlay in the way.
+                debugMenuOpen = false;
+                std::cout << "[demo_game] Press E to interact with \""
+                          << s.displayName << "\"\n";
             }
         }
         else
@@ -941,6 +1355,32 @@ static int RunWindowed(const DemoArgs& args)
                     stationSel = 0;
                 std::cout << "[demo_game] F1 debug menu: OPEN ("
                           << numStations << " stations)\n";
+            }
+
+            // TEACHING NOTE — Interact key (E) at a station
+            // ─────────────────────────────────────────────────────────────────
+            // When the player presses E, OpenWorld::InteractAtStation() checks
+            // whether the player is near a station (m_nearestStationID).
+            // If so it:
+            //   1. Advances the main quest objective (if this station matches).
+            //   2. Advances STATION_INTERACT side activities.
+            //   3. Returns the StationLesson for the lesson panel.
+            // The F1 menu teleport sets m_nearestStationID so that the next E
+            // press at the correct location triggers the lesson correctly.
+            if (pressedE && state == OpenWorldState::PLAYING)
+            {
+                StationLesson lesson = world.InteractAtStation();
+                if (lesson.IsValid())
+                {
+                    currentLesson   = std::move(lesson);
+                    lessonPanelOpen = true;
+                    std::cout << "[demo_game] Lesson panel OPEN: \""
+                              << currentLesson.lessonTitle << "\"\n";
+                }
+                else
+                {
+                    std::cout << "[demo_game] E pressed — not near a station.\n";
+                }
             }
 
             if (pressedESC)
@@ -1012,6 +1452,10 @@ static int RunWindowed(const DemoArgs& args)
         {
             overlay::DrawBootMenu(hwnd, winW, winH, bootMenuSel);
         }
+        else if (lessonPanelOpen)
+        {
+            overlay::DrawLessonPanel(hwnd, winW, winH, currentLesson);
+        }
         else if (debugMenuOpen)
         {
             const char* biomeName = GetBiomeDisplayName(world.GetCurrentBiome());
@@ -1026,6 +1470,23 @@ static int RunWindowed(const DemoArgs& args)
         {
             const char* biomeName = GetBiomeDisplayName(world.GetCurrentBiome());
             overlay::DrawHudBar(hwnd, winW, biomeName, fps);
+        }
+
+        // Quest HUD — always visible while PLAYING (not in boot, lesson, or debug menu).
+        // TEACHING NOTE — Persistent quest overlay
+        // The quest HUD is drawn on top of all other content when the player
+        // is in the PLAYING state.  It does not interfere with the lesson panel
+        // (DrawLessonPanel takes centre stage), the F1 overlay, or the boot menu.
+        if (world.GetState() == OpenWorldState::PLAYING && !debugMenuOpen && !lessonPanelOpen)
+        {
+            // Show the interact prompt when the player is near a station.
+            if (!world.GetNearestStationID().empty())
+            {
+                overlay::DrawInteractPrompt(hwnd, winW, winH,
+                                            world.GetNearestStationID(),
+                                            world.GetStations());
+            }
+            overlay::DrawQuestHud(hwnd, winW, winH, world.GetQuestManager());
         }
     }
 

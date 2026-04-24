@@ -1,0 +1,54 @@
+{
+  "version": "1.0.0",
+  "_comment": "Demo_Game activity definitions — loaded at runtime by DemoQuestManager::TryLoadFromJSON. These override the C++ defaults in demo_quest_manager.cpp when ENGINE_ENABLE_JSON is active. See docs/DEMO_GAME.md for gameplay details.",
+  "mainQuest": {
+    "id": "demo_main_quest",
+    "title": "Tour of the Engine",
+    "description": "Walk up to each teaching station and press E to read the lesson. Use the F1 overlay to teleport to stations if needed, then press E when you arrive to continue the tour.",
+    "objectives": [
+      {
+        "id": "interact_quest_station",
+        "description": "Press E at the Quests & Dialogue station",
+        "stationID": "quests_dialogue"
+      },
+      {
+        "id": "interact_combat_station",
+        "description": "Press E at the Action Combat station",
+        "stationID": "combat"
+      },
+      {
+        "id": "interact_pbr_station",
+        "description": "Press E at the PBR Rendering station to complete the tour",
+        "stationID": "rendering_pbr"
+      }
+    ],
+    "xpReward": 500,
+    "gilReward": 3000
+  },
+  "activities": [
+    {
+      "id": "lesson_reader",
+      "title": "Lesson Reader",
+      "description": "Press E at 3 different teaching stations to read their lessons. Use F1 to navigate to stations.",
+      "type": "station_interact",
+      "specificStationID": "",
+      "required": 3
+    },
+    {
+      "id": "code_explorer_combat",
+      "title": "Code Explorer: Combat",
+      "description": "Press E at the Action Combat station to read the ComboSystem lesson.",
+      "type": "station_interact",
+      "specificStationID": "combat",
+      "required": 1
+    },
+    {
+      "id": "code_explorer_rendering",
+      "title": "Code Explorer: Rendering",
+      "description": "Press E at the PBR Rendering station to read the BRDF pipeline lesson.",
+      "type": "station_interact",
+      "specificStationID": "rendering_pbr",
+      "required": 1
+    }
+  ]
+}

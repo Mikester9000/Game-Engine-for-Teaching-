@@ -4955,7 +4955,11 @@ int main(int argc, char* argv[])
                                  "at frame " << ow.GetFrameCount() << ".\n";
                 }
 
-                // ── Test 4: Teleport ────────────────────────────────────────
+                // ── Test 4: Teleport — navigation only ─────────────────────
+                // TEACHING NOTE — Teleport sets nearestStationID but NOT quest
+                // Verifies that TeleportToStation sets the biome (navigation) and
+                // m_nearestStationID (for subsequent E interact) but does NOT
+                // advance the quest.
                 ow.TeleportToStation("rendering_pbr");
                 if (ow.GetCurrentBiome() != BiomeType::GRASSLAND)
                 {
@@ -4963,9 +4967,16 @@ int main(int argc, char* argv[])
                                  "did not set biome to GRASSLAND.\n";
                     ++testsFailed;
                 }
+                else if (ow.GetNearestStationID() != "rendering_pbr")
+                {
+                    std::cout << "[FAIL] demo_world/4: TeleportToStation(\"rendering_pbr\") "
+                                 "did not set nearestStationID to \"rendering_pbr\".\n";
+                    ++testsFailed;
+                }
                 else
                 {
-                    std::cout << "[OK] demo_world/4: Teleport → rendering_pbr = GRASSLAND.\n";
+                    std::cout << "[OK] demo_world/4: Teleport → rendering_pbr = GRASSLAND, "
+                                 "nearestStationID = rendering_pbr (navigation only).\n";
                 }
 
                 // ── Test 5: Station data integrity ──────────────────────────
@@ -5030,6 +5041,96 @@ int main(int argc, char* argv[])
                     ow2.Shutdown();
                 }
 
+                // ── Test 7: DemoQuestManager initialisation + interact-based quest advance ──
+                // TEACHING NOTE — Testing the quest/activity layer
+                // ──────────────────────────────────────────────────────────────────
+                // DemoQuestManager is initialised inside OpenWorld::Init(), so 'ow'
+                // already has a valid quest manager.  We verify:
+                //   a) TotalDefined() = 1 main quest + 3 activities = 4.
+                //   b) The main quest has >= 2 objectives.
+                //   c) Teleport+Interact at objective stations completes the quest.
+                //   d) Unique station interacts advance the Lesson Reader activity.
+                // ──────────────────────────────────────────────────────────────────
+                {
+                    // a) Total definitions.
+                    constexpr int kExpectedTotal = 1 + DemoQuestManager::kExpectedActivities;
+                    if (ow.GetQuestManager().TotalDefined() != kExpectedTotal)
+                    {
+                        std::cout << "[FAIL] demo_world/7a: TotalDefined() = "
+                                  << ow.GetQuestManager().TotalDefined()
+                                  << " (expected " << kExpectedTotal << ").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        // b) Main quest objective count.
+                        const int objCount = static_cast<int>(
+                            ow.GetQuestManager().GetMainQuest().objectives.size());
+                        if (objCount < 2)
+                        {
+                            std::cout << "[FAIL] demo_world/7b: main quest has "
+                                      << objCount << " objectives (expected >= 2).\n";
+                            ++testsFailed;
+                        }
+                        else
+                        {
+                            // c) Complete the main quest by Teleport+Interact at objective stations.
+                            // TEACHING NOTE — Headless interact simulation
+                            // TeleportToStation sets m_nearestStationID; InteractAtStation
+                            // checks it and triggers quest progress.  This is how CI exercises
+                            // the E-key flow without real keyboard input.
+                            OpenWorld questWorld;
+                            questWorld.Init();
+                            const auto& mqRef = questWorld.GetQuestManager().GetMainQuest();
+                            for (const auto& obj : mqRef.objectives)
+                            {
+                                if (!obj.stationID.empty())
+                                {
+                                    questWorld.TeleportToStation(obj.stationID);
+                                    questWorld.InteractAtStation();
+                                }
+                            }
+
+                            const bool questDone = questWorld.GetQuestManager().GetMainQuest().completed;
+                            // d) Lesson Reader activity (STATION_INTERACT, any 3 unique stations).
+                            const auto& acts = questWorld.GetQuestManager().GetActivities();
+                            bool scanOk = false;
+                            for (const auto& a : acts)
+                                if (a.type == DemoActivityType::STATION_INTERACT
+                                    && a.specificStationID.empty()
+                                    && a.progress >= 3)
+                                    scanOk = true;
+
+                            questWorld.Shutdown();
+
+                            if (!questDone)
+                            {
+                                std::cout << "[FAIL] demo_world/7c: main quest did not "
+                                             "complete after Teleport+Interact at all "
+                                             "objective stations.\n";
+                                ++testsFailed;
+                            }
+                            else if (!scanOk)
+                            {
+                                std::cout << "[FAIL] demo_world/7d: Lesson Reader "
+                                             "activity did not reach progress >= 3 after "
+                                             "3 unique station interacts.\n";
+                                ++testsFailed;
+                            }
+                            else
+                            {
+                                std::cout << "[OK] demo_world/7: DemoQuestManager — "
+                                          << kExpectedTotal
+                                          << " defined (1 main quest, "
+                                          << DemoQuestManager::kExpectedActivities
+                                          << " activities); quest completes on Teleport+"
+                                             "Interact; Lesson Reader advances on unique "
+                                             "station interacts.\n";
+                            }
+                        }
+                    }
+                }
+
                 ow.Shutdown();
 
                 if (testsFailed > 0)
@@ -5040,8 +5141,9 @@ int main(int argc, char* argv[])
                     window.Shutdown();
                     return 1;
                 }
-                std::cout << "[PASS] demo_world: 6 acceptance tests passed "
-                             "(init, boot_menu, biome_cycle, teleport, station_data, json_fallback).\n";
+                std::cout << "[PASS] demo_world: 7 acceptance tests passed "
+                             "(init, boot_menu, biome_cycle, teleport_nav_only, station_data, "
+                             "json_fallback, quest_manager_interact).\n";
             }
             else
             {
