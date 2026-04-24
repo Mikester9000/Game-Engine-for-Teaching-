@@ -720,15 +720,30 @@ bool OpenWorld::TryLoadLessonsFromJSON(const std::string& jsonPath)
             // TEACHING NOTE — Optional combo-challenge fields
             // ─────────────────────────────────────────────────
             // challengeTitle and challengeKeys are optional extensions defined
-            // in station_lessons.schema.json.  We load them only when both are
-            // present, so stations without a challenge need no extra JSON fields.
-            if (obj.contains("challengeTitle") && obj["challengeTitle"].is_string())
-                lesson.challengeTitle = obj["challengeTitle"].get<std::string>();
+            // in station_lessons.schema.json.  We only apply them when *both*
+            // fields are present in the JSON — a lesson with only one of the two
+            // would produce a broken HasChallenge() state (title but no keys, or
+            // vice-versa).  Partial data is silently discarded so the lesson still
+            // displays normally without a challenge prompt.
+            const bool hasTitle = obj.contains("challengeTitle")
+                                   && obj["challengeTitle"].is_string()
+                                   && !obj["challengeTitle"].get<std::string>().empty();
+            const bool hasKeys  = obj.contains("challengeKeys")
+                                   && obj["challengeKeys"].is_array()
+                                   && !obj["challengeKeys"].empty();
 
-            if (obj.contains("challengeKeys") && obj["challengeKeys"].is_array())
+            if (hasTitle && hasKeys)
             {
+                lesson.challengeTitle = obj["challengeTitle"].get<std::string>();
                 for (const auto& key : obj["challengeKeys"])
                     lesson.challengeKeys.push_back(key.get<std::string>());
+            }
+            else if (hasTitle != hasKeys)
+            {
+                std::cout << "[OpenWorld] station_lessons.json: station \""
+                          << lesson.stationID
+                          << "\" has only one of challengeTitle/challengeKeys — "
+                             "both required together; challenge disabled for this station.\n";
             }
 
             if (!lesson.stationID.empty() && lesson.IsValid())

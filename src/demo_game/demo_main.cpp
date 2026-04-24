@@ -879,12 +879,12 @@ static void DrawChallengeOverlay(HWND hwnd, int clientW, int clientH,
 
     // ── Key sequence row ─────────────────────────────────────────────────────
     {
-        // Build a display string like  [1] → [2] → [3]
+        // Build a display string like  [1] -> [2] -> [3]
         // Completed steps shown dim; current step shown gold; future steps dim.
         std::string seq;
         for (int i = 0; i < numKeys; ++i)
         {
-            if (i > 0) seq += " \u2192 "; // UTF-8 → (but GDI draws ASCII so use "->" instead)
+            if (i > 0) seq += " -> "; // ASCII arrow for GDI compatibility
             seq += "["; seq += lesson.challengeKeys[i]; seq += "]";
         }
         DrawLine(dc.Get(), fontKey, panelX + kPadX, cy,
@@ -1258,8 +1258,14 @@ static int RunHeadless()
                          "has text + " << combatLesson->codePointers.size()
                       << " code pointer(s) + combo challenge ("
                       << combatLesson->challengeKeys.size() << " keys: "
-                      << combatLesson->challengeKeys[0] << " → "
-                      << combatLesson->challengeKeys.back() << ").\n";
+                      << (combatLesson->challengeKeys.empty()
+                              ? std::string{}
+                              : combatLesson->challengeKeys.front())
+                      << " -> "
+                      << (combatLesson->challengeKeys.empty()
+                              ? std::string{}
+                              : combatLesson->challengeKeys.back())
+                      << ").\n";
         }
     }
 
@@ -1335,11 +1341,21 @@ static int RunHeadless()
         }
 
         cWorld.Shutdown();
-        std::cout << "[OK] demo_world/9: Combo challenge simulation — "
-                     "TeleportToStation + InteractAtStation + NotifyChallengePassed "
-                     "→ COMBO_PRACTICE activity complete; lastLessonTitle = \""
-                  << cWorld.GetLastLessonTitle() << "\".\n";
-    }
+        if (cLesson.HasChallenge() && !cLesson.challengeKeys.empty())
+        {
+            std::cout << "[OK] demo_world/9: Combo challenge simulation — "
+                         "TeleportToStation + InteractAtStation + NotifyChallengePassed "
+                         "-> COMBO_PRACTICE activity complete; lastLessonTitle = \""
+                      << cWorld.GetLastLessonTitle() << "\" "
+                      << "challengeKeys[0]='" << cLesson.challengeKeys.front()
+                      << "' last='" << cLesson.challengeKeys.back() << "'.\n";
+        }
+        else
+        {
+            std::cout << "[OK] demo_world/9: Combo challenge simulation complete "
+                         "(no challenge JSON loaded — fallback lesson used).\n";
+        }
+    } // end test 9
 
     // -----------------------------------------------------------------------
     // 10. Report PASS.
