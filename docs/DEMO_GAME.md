@@ -203,8 +203,10 @@ the screen shows a persistent quest progress panel:
 
 | File | Purpose |
 |------|---------|
-| `Content/World/demo_activities.json` | JSON authoring for main quest + activities (loaded by `DemoQuestManager::TryLoadFromJSON`) |
-| `Content/quest_bank.json` | QuestSystem definitions (IDs 10–13: Tour, Station Scanner, Combat Challenge, Collector's Run) |
+| `Content/World/demo_activities.json` | JSON authoring for main quest + activities (loaded by `DemoQuestManager::TryLoadFromJSON`). Uses **string** `stationID` fields. |
+| `Content/quest_bank.json` | QuestSystem definitions (IDs 10–13: Tour, Station Scanner, Combat Challenge, Collector's Run). Uses **numeric** `targetID` fields per the `quest_bank.schema.json`. |
+
+> **Note — Two quest systems, two ID spaces:** `quest_bank.json` uses numeric `targetID` values (QuestSystem schema) while `demo_activities.json` uses string `stationID` values (DemoQuestManager). This is intentional: the two systems operate independently. The QuestSystem handles XP/Gil rewards and Lua callbacks; DemoQuestManager drives the GDI HUD overlay. See `src/demo_game/demo_quest_manager.hpp` for the full dual-system design rationale.
 
 ### Controls for Quest Activities
 
