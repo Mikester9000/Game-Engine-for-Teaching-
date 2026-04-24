@@ -289,7 +289,8 @@ static int RunWindowed(const DemoArgs& args)
     // -----------------------------------------------------------------------
     // Create D3D11 renderer.
     // -----------------------------------------------------------------------
-    auto renderer = engine::rendering::RendererFactory::Create(args.renderer);
+    auto renderer = engine::rendering::CreateRenderer(
+        engine::rendering::ParseRendererBackend(args.renderer));
     if (!renderer)
     {
         std::cerr << "[FATAL] demo_game: RendererFactory could not create '"
@@ -297,7 +298,7 @@ static int RunWindowed(const DemoArgs& args)
         window.Shutdown();
         return 1;
     }
-    if (!renderer->Init(window.GetHandle(), kWidth, kHeight))
+    if (!renderer->Init(window.GetHWND(), kWidth, kHeight))
     {
         std::cerr << "[FATAL] demo_game: renderer Init() failed.\n";
         window.Shutdown();
