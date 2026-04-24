@@ -787,6 +787,36 @@ static void DrawLessonPanel(HWND hwnd, int clientW, int clientH,
 }
 
 // ===========================================================================
+} // namespace overlay
+
+// ===========================================================================
+// SettingsRow — row index enum for the settings panel (file scope)
+// ===========================================================================
+// TEACHING NOTE — Why file scope instead of overlay::?
+// ─────────────────────────────────────────────────────────────────────────────
+// DrawSettingsPanel (inside overlay::) accepts `int selRow` rather than
+// SettingsRow so the function signature has no dependency on the enum type.
+// RunWindowed (outside overlay::) uses the strongly-typed enum for clarity so
+// that `settingsRow = static_cast<int>(SettingsRow::APPLY)` is self-
+// documenting at each usage site.  Placing the enum at file scope avoids
+// prefixing every usage in RunWindowed with `overlay::`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum class SettingsRow : int
+{
+    PRESET    = 0,
+    VOLUME    = 1,
+    VSYNC     = 2,
+    FRAME_CAP = 3,
+    APPLY     = 4,
+    CANCEL    = 5,
+    COUNT     = 6,
+};
+
+namespace overlay
+{
+
+// ===========================================================================
 // DrawSettingsPanel — performance preset + volume settings overlay (M-DG-S1)
 // ===========================================================================
 // TEACHING NOTE — Settings Menu as Performance-Preset Selector
@@ -805,18 +835,6 @@ static void DrawLessonPanel(HWND hwnd, int clientW, int clientH,
 //   ENTER on "Cancel"
 //   or ESC             — discard changes and close.
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Rows in the settings panel.
-enum class SettingsRow : int
-{
-    PRESET    = 0,
-    VOLUME    = 1,
-    VSYNC     = 2,
-    FRAME_CAP = 3,
-    APPLY     = 4,
-    CANCEL    = 5,
-    COUNT     = 6,
-};
 
 static void DrawSettingsPanel(HWND hwnd, int clientW, int clientH,
                               int selRow,
