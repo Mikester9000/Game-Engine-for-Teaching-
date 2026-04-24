@@ -150,47 +150,64 @@ boots regardless of content-file status.
 
 ---
 
-## Quest & Activity Gameplay Loop (M-DG9)
+## Quest & Activity Gameplay Loop (M-DG9, updated)
 
 ### Main Quest — "Tour of the Engine"
 
-The main quest guides the player through three teaching stations in sequence,
-serving as an in-world tutorial that reveals the engine's core features.
+The main quest is a **tour quest** designed for teaching.  The player must
+physically interact with each station by pressing **E** (Interact) — not just
+teleport to it.  Pressing E shows the station's lesson panel and advances the
+objective.
 
-| Step | Objective | Triggering Station |
-|------|-----------|-------------------|
-| 1 | Visit the Quests & Dialogue station | `quests_dialogue` |
-| 2 | Visit the Action Combat station | `combat` |
-| 3 | Return to the PBR Rendering station | `rendering_pbr` |
+| Step | Objective | Station | Engine Feature |
+|------|-----------|---------|---------------|
+| 1 | Press E at the Quests & Dialogue station | `quests_dialogue` | QuestSystem + DialogueSystem |
+| 2 | Press E at the Action Combat station | `combat` | ComboSystem FSM |
+| 3 | Press E at the PBR Rendering station | `rendering_pbr` | Cook-Torrance BRDF + IBL |
 
 **Reward**: 500 XP · 3,000 Gil (via QuestSystem when GameRuntime is active)
 
-**How to start**: Press **Enter** on "New Game" at the boot menu.  The quest
-HUD appears immediately in the bottom-left corner.  Open **F1** → select a
-station → press **Enter** to teleport.
+**Teleport is navigation-only**: The F1 menu teleports the player to a station
+for convenience (especially useful for a classroom demo).  Teleporting does NOT
+advance quest objectives — only pressing E at the station does.
 
-### Side Activities
+### Side Activities (teaching-oriented)
 
-Three optional activities can be completed in any order, independently of the
-main quest:
+All three activities are triggered by pressing **E** (Interact) at teaching stations:
 
-| Activity | Goal | Trigger |
-|----------|------|---------|
-| **Station Scanner** | Visit 3 distinct teaching stations | Teleporting to / walking to any 3 stations |
-| **Combat Challenge** | Defeat 5 enemies | Enemy kills forwarded via `OpenWorld::NotifyEnemyKilled()` |
-| **Collector's Run** | Collect 5 Engine Crystals | Item pickups forwarded via `OpenWorld::NotifyItemCollected()` |
+| Activity | Goal | How to complete |
+|----------|------|----------------|
+| **Lesson Reader** | Interact at 3 distinct stations | Press E at any 3 different stations |
+| **Code Explorer: Combat** | Read the Combat lesson | Press E at the Action Combat station |
+| **Code Explorer: Rendering** | Read the Rendering lesson | Press E at the PBR Rendering station |
+
+### Interact Flow
+
+```
+Player teleports to station (F1 → Enter)   ← navigation only
+         ↓
+"[E] Interact — <Station Name>" prompt appears
+         ↓
+Player presses E
+         ↓
+  • Lesson panel opens (lessonTitle + lessonText + codePointers)
+  • Quest objective advances (if station matches current objective)
+  • STATION_INTERACT activities advance
+         ↓
+Player presses ESC or Enter → lesson panel closes
+```
 
 ### Quest HUD Overlay
 
-While in the **PLAYING** state (and not in the F1 menu), the bottom-left of
-the screen shows a persistent quest progress panel:
+While in the **PLAYING** state (and not in the F1 menu or lesson panel), the
+bottom-left of the screen shows a persistent quest progress panel:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ MAIN [1/3]: Visit the Quests & Dialogue station              │
-│   [ ] Station Scanner     [0/3]                              │
-│   [ ] Combat Challenge    [0/5]                              │
-│   [ ] Collector's Run     [0/5]                              │
+│ MAIN [1/3]: Press E at the Quests & Dialogue station         │
+│   [ ] Lesson Reader              [0/3]                       │
+│   [ ] Code Explorer: Combat      [0/1]                       │
+│   [ ] Code Explorer: Rendering   [0/1]                       │
 │   Activities: 0/3 complete                                   │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -199,24 +216,101 @@ the screen shows a persistent quest progress panel:
 - Green text = completed item/activity
 - Grey text = in-progress activity
 
+### Lesson Panel
+
+When E is pressed at a station the lesson panel opens in the centre of the
+screen and shows:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  PBR Rendering — Cook-Torrance BRDF                              │
+│                                                                  │
+│  This station demonstrates Physically Based Rendering (PBR).    │
+│  The engine uses the Cook-Torrance BRDF with three terms:        │
+│    • GGX Normal Distribution Function …                          │
+│    • Smith Geometry Function …                                   │
+│    • Schlick Fresnel …                                           │
+│                                                                  │
+│  Key files / classes to inspect:                                 │
+│    + shaders/pbr_mesh.vs.hlsl / pbr_mesh.ps.hlsl                │
+│    + shaders/pbr_ibl.vs.hlsl / pbr_ibl.ps.hlsl                  │
+│    + src/engine/rendering/d3d11/D3D11Renderer.cpp               │
+│                                                                  │
+│  Press ESC or ENTER to close                                     │
+└──────────────────────────────────────────────────────────────────┘
+```
+
 ### Data Files
 
 | File | Purpose |
 |------|---------|
-| `Content/World/demo_activities.json` | JSON authoring for main quest + activities (loaded by `DemoQuestManager::TryLoadFromJSON`). Uses **string** `stationID` fields. |
-| `Content/quest_bank.json` | QuestSystem definitions (IDs 10–13: Tour, Station Scanner, Combat Challenge, Collector's Run). Uses **numeric** `targetID` fields per the `quest_bank.schema.json`. |
+| `Content/World/demo_activities.json` | Main quest + activities (loaded by `DemoQuestManager::TryLoadFromJSON`). Uses string `stationID` + `specificStationID` fields. |
+| `Content/World/station_lessons.json` | Per-station lesson content (loaded by `OpenWorld::TryLoadLessonsFromJSON`). Fields: `lessonTitle`, `lessonText`, `codePointers`, `relatedStations`. |
+| `Content/quest_bank.json` | QuestSystem definitions (IDs 10–13: Tour, Lesson Reader, Code Explorer activities). |
 
-> **Note — Two quest systems, two ID spaces:** `quest_bank.json` uses numeric `targetID` values (QuestSystem schema) while `demo_activities.json` uses string `stationID` values (DemoQuestManager). This is intentional: the two systems operate independently. The QuestSystem handles XP/Gil rewards and Lua callbacks; DemoQuestManager drives the GDI HUD overlay. See `src/demo_game/demo_quest_manager.hpp` for the full dual-system design rationale.
+> **Note — Two quest systems:** `quest_bank.json` uses numeric `targetID` values (QuestSystem schema) while `demo_activities.json` uses string `stationID` values (DemoQuestManager). See `src/demo_game/demo_quest_manager.hpp` for the dual-system design rationale.
 
 ### Controls for Quest Activities
 
 | Key | Action |
 |-----|--------|
-| **F1** | Open station selector overlay |
+| **E** | Interact at nearest teaching station (advances quest, opens lesson panel) |
+| **F1** | Open station selector overlay (navigation aid — does NOT advance quest) |
 | **↑ / ↓** | Move selection in F1 overlay |
-| **Enter** | Teleport to selected station (also triggers quest objective if it matches) |
+| **Enter** | Teleport to selected station (in F1 menu); dismiss lesson panel (in lesson panel) |
+| **ESC** | Close F1 overlay; dismiss lesson panel |
 | **D** | Toggle biome + FPS debug strip |
-| **ESC** | Close F1 overlay |
+
+---
+
+## Lesson Authoring Guide
+
+Station lessons are data-driven: you can add or update them without recompiling.
+
+### JSON format (`station_lessons.json`)
+
+```json
+{
+  "version": "1.0.0",
+  "lessons": [
+    {
+      "stationID":   "my_station_id",
+      "lessonTitle": "Short panel heading",
+      "lessonText":  "Multi-line explanation.\nUse \\n for line breaks.\nBe concrete and concise.",
+      "codePointers": [
+        "src/engine/my_subsystem/my_class.hpp",
+        "shaders/my_shader.hlsl  (key function: MyFunction)"
+      ],
+      "relatedStations": ["other_station_id"]
+    }
+  ]
+}
+```
+
+### Authoring tips
+
+1. **lessonText** — aim for 5–10 lines max.  Use bullet points (•) for lists.
+   Separate concerns with blank lines (`\n\n`).
+2. **codePointers** — list file paths relative to the repo root.  Optionally
+   append `  (Class::Method)` to point at specific symbols.
+3. **relatedStations** — helps students navigate between related topics.
+   Not currently rendered but reserved for future cross-link UI.
+4. **Safe fallback** — if `station_lessons.json` is missing or malformed, the
+   game shows a stub message and continues normally.  No crash.
+
+### Extending stations in C++ (no JSON required)
+
+If `ENGINE_ENABLE_JSON` is OFF, edit `OpenWorld::RegisterDefaultStations()` in
+`src/demo_game/open_world.cpp` and add lesson entries programmatically:
+
+```cpp
+StationLesson l;
+l.stationID   = "my_station_id";
+l.lessonTitle = "My Lesson";
+l.lessonText  = "My explanation.\nSecond line.";
+l.codePointers.push_back("src/engine/my_module/my_file.hpp");
+m_lessons[l.stationID] = l;
+```
 
 ---
 
@@ -317,13 +411,13 @@ The 7 acceptance tests are:
 
 | Test | Name | What is verified |
 |------|------|-----------------|
-| 1 | `init` | `OpenWorld::Init()` returns true; ≥ 12 stations registered |
+| 1 | `init` | `OpenWorld::Init()` returns true; ≥ 12 stations + lessons registered |
 | 2 | `boot_menu` | Initial state is `BOOT_MENU` |
 | 3 | `biome_cycle` | All 5 biomes visited before `IsHeadlessDone()` |
 | 4 | `stations` | Every station has non-empty id, displayName, sceneHint |
-| 5 | `teleport` | `TeleportToStation("rendering_pbr")` sets biome to GRASSLAND |
+| 5 | `teleport` | `TeleportToStation("rendering_pbr")` sets biome=GRASSLAND + nearestStationID (navigation only) |
 | 6 | `json_fallback` | Missing JSON file leaves station list intact |
-| 7 | `quest_manager` | `DemoQuestManager`: 4 defined; quest completes on station visits; Scanner advances |
+| 7 | `quest_manager_interact` | `DemoQuestManager`: 4 defined; quest completes on Teleport+Interact; Lesson Reader advances on unique interacts |
 
 ---
 
@@ -339,7 +433,7 @@ The 7 acceptance tests are:
 | **M-DG6** | Boot menu UI (keyboard navigation, New Game / Quit) | ✅ Done (GDI overlay) |
 | **M-DG7** | F1 debug overlay (station list, teleport, debug info toggle) | ✅ Done (GDI overlay) |
 | **M-DG8** | Data-driven station loading from `teaching_stations.json` | ✅ Done (`TryLoadStationsFromJSON`, ENGINE_ENABLE_JSON gated) |
-| **M-DG9** | Quest & activity skeleton (main quest + 3 side activities + HUD) | ✅ Done (`DemoQuestManager`, quest HUD overlay, `demo_activities.json`, `quest_bank.json` extended) |
+| **M-DG9** | Quest & activity skeleton (tour main quest + 3 teaching activities + interact-based HUD + lesson panel) | ✅ Done (interact-first redesign: E key, lesson panel, station_lessons.json) |
 | **M-DG10**| Full open-world biome traversal with real streaming cells | ⬜ Pending content population |
 | **M-DG11**| NPC vendors, interactable camp sites, extended activities | ⬜ Pending |
 | **M-DG12**| Settings menu (resolution, volume, key bindings) | ⬜ Pending |
@@ -349,11 +443,13 @@ The 7 acceptance tests are:
 
 ## See Also
 
-- `src/demo_game/open_world.hpp/.cpp` — OpenWorld state machine + JSON loading
+- `src/demo_game/open_world.hpp/.cpp` — OpenWorld state machine + JSON loading + InteractAtStation
 - `src/demo_game/demo_quest_manager.hpp/.cpp` — DemoQuestManager (M-DG9)
-- `src/demo_game/demo_main.cpp` — Standalone entry point, GDI overlays
+- `src/demo_game/demo_main.cpp` — Standalone entry point, GDI overlays (lesson panel, interact prompt)
 - `src/sandbox/game_runtime.hpp/.cpp` — Reused M8 gameplay systems
 - `samples/vertical_slice_project/Content/World/` — Content JSON files
+- `samples/vertical_slice_project/Content/World/station_lessons.json` — Per-station lesson content
+- `samples/vertical_slice_project/Content/World/demo_activities.json` — Quest + activity authoring
 - `samples/vertical_slice_project/Content/quest_bank.json` — Quest definitions (IDs 1–13)
 - `docs/FF15_REQUIREMENTS_BLUEPRINT.md` — Full requirements reference
 

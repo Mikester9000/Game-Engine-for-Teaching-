@@ -147,19 +147,38 @@ void DemoQuestManager::NotifyStationVisited(const std::string& stationID)
     }
 
     // -----------------------------------------------------------------------
-    // 2. Station Scanner activity — count unique stations.
+    // 2. STATION_INTERACT activities — count station interacts.
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — Set-based deduplication
-    // std::set<std::string>::insert() returns {iterator, bool}.  The bool is
-    // true when the element was newly inserted (not already present).  We use
-    // that to guard the progress increment so one station can only count once.
+    // TEACHING NOTE — Set-based deduplication + specificStationID filter
+    // ─────────────────────────────────────────────────────────────────────
+    // For activities with an empty specificStationID we count unique stations
+    // using m_visitedStations (same "set membership" pattern as before).
+    // For activities with a non-empty specificStationID we only count when
+    // the interacted station matches that ID — a simple equality check.
+    // We still use m_visitedStations for the "any unique station" activities
+    // so one station can only count once per such activity.
     // -----------------------------------------------------------------------
     const bool wasInserted = m_visitedStations.insert(stationID).second;
-    if (wasInserted)
+
+    for (auto& a : m_activities)
     {
-        DemoActivity* scan = FindActivity(DemoActivityType::STATION_SCAN);
-        if (scan)
-            scan->Advance();
+        if (a.type != DemoActivityType::STATION_INTERACT)
+            continue;
+        if (a.completed)
+            continue;
+
+        if (a.specificStationID.empty())
+        {
+            // Generic "interact at any N distinct stations" activity.
+            if (wasInserted)
+                a.Advance();
+        }
+        else
+        {
+            // Targeted "interact at this specific station" activity.
+            if (a.specificStationID == stationID)
+                a.Advance();
+        }
     }
 }
 
@@ -205,8 +224,7 @@ DemoActivity* DemoQuestManager::FindActivity(DemoActivityType type) noexcept
     // prevents a hypothetical caller from accidentally matching an uninitialised
     // activity (which would have type INVALID from zero-initialisation).
     if (type == DemoActivityType::INVALID)
-        return nullptr;
-    for (auto& a : m_activities)
+        return nullptr;    for (auto& a : m_activities)
         if (a.type == type)
             return &a;
     return nullptr;
@@ -235,76 +253,93 @@ void DemoQuestManager::RegisterDefaults()
     m_visitedStations.clear();
 
     // ── Main quest — "Tour of the Engine" ────────────────────────────────────
+    // TEACHING NOTE — Tour quest as interactive tutorial
+    // ─────────────────────────────────────────────────────────────────────────
+    // A "tour quest" is a guided walkthrough masquerading as gameplay.  The
+    // player follows a sequence of stations, pressing E at each one to read
+    // the teaching explanation.  This is the same pattern used in:
+    //   • FFXV  — Ignis' cooking tutorial chains several in-world prompts.
+    //   • Zelda:BotW — the plateau shrines force the player to interact with
+    //     core mechanics before entering the open world.
+    //   • DOOM Eternal — the "Doom Slayer's Fortress" doubles as a tutorial.
+    //
+    // Key design rule: the objective ONLY advances on Interact (E key).
+    // Teleporting via F1 is navigation only — it does not advance the quest.
+    // ─────────────────────────────────────────────────────────────────────────
     m_mainQuest.id          = "demo_main_quest";
     m_mainQuest.title       = "Tour of the Engine";
     m_mainQuest.description =
-        "Explore the open world and visit three key teaching stations "
-        "to complete your orientation tour.  Use the F1 overlay to teleport.";
+        "Walk up to each teaching station and press E to read the lesson. "
+        "Use the F1 overlay to teleport to stations if needed, "
+        "then press E when you arrive to continue the tour.";
 
-    // Objective 1 — Quests & Dialogue station (demonstrates QuestSystem)
+    // Objective 1 — Quests & Dialogue station (demonstrates QuestSystem + DialogueSystem)
     {
         DemoQuestObjective obj;
-        obj.description = "Visit the Quests & Dialogue station";
+        obj.description = "Press E at the Quests & Dialogue station";
         obj.stationID   = "quests_dialogue";
         m_mainQuest.objectives.push_back(obj);
     }
     // Objective 2 — Combat station (demonstrates ComboSystem)
     {
         DemoQuestObjective obj;
-        obj.description = "Visit the Action Combat station";
+        obj.description = "Press E at the Action Combat station";
         obj.stationID   = "combat";
         m_mainQuest.objectives.push_back(obj);
     }
-    // Objective 3 — PBR Rendering station (demonstrates PBR pipeline)
+    // Objective 3 — PBR Rendering station (demonstrates full rendering pipeline)
     {
         DemoQuestObjective obj;
-        obj.description = "Return to the PBR Rendering station to complete the tour";
+        obj.description = "Press E at the PBR Rendering station to complete the tour";
         obj.stationID   = "rendering_pbr";
         m_mainQuest.objectives.push_back(obj);
     }
 
-    // ── Side activity 1 — Station Scanner (interaction task) ─────────────────
-    // TEACHING NOTE — Interaction / exploration activity
-    // Visiting any 3 distinct teaching stations teaches the player to use the
-    // F1 overlay and explore the world.  Unique-station deduplication is
-    // handled by m_visitedStations (see NotifyStationVisited).
+    // ── Side activity 1 — Lesson Reader (teaching interaction) ───────────────
+    // TEACHING NOTE — Generic teaching activity
+    // Pressing E at any 3 distinct stations forces the player to read three
+    // different engine lessons — breadth-first orientation before going deep.
     {
         DemoActivity a;
-        a.id          = "station_scanner";
-        a.title       = "Station Scanner";
-        a.description = "Visit 3 different teaching stations in the open world.";
-        a.type        = DemoActivityType::STATION_SCAN;
-        a.required    = 3;
+        a.id                = "lesson_reader";
+        a.title             = "Lesson Reader";
+        a.description       = "Press E at 3 different teaching stations to read their lessons.";
+        a.type              = DemoActivityType::STATION_INTERACT;
+        a.specificStationID = ""; // any unique station counts
+        a.required          = 3;
         m_activities.push_back(a);
     }
 
-    // ── Side activity 2 — Combat Challenge (combat task) ─────────────────────
-    // TEACHING NOTE — Combat activity
-    // Defeating 5 enemies exercises ComboSystem + CombatSystem + AISystem.
-    // The count is driven by OpenWorld::NotifyEnemyKilled(), which the game
-    // loop calls whenever the player wins a combat encounter.
+    // ── Side activity 2 — Code Explorer: Combat (targeted teaching) ──────────
+    // TEACHING NOTE — Targeted station activity
+    // Specifically visiting the Combat station via Interact ensures the player
+    // reads the ComboSystem lesson — the most complex action-game subsystem.
+    // specificStationID restricts progress to ONLY the combat station.
     {
         DemoActivity a;
-        a.id          = "combat_challenge";
-        a.title       = "Combat Challenge";
-        a.description = "Defeat 5 enemies near the Action Combat station.";
-        a.type        = DemoActivityType::COMBAT_CHALLENGE;
-        a.required    = 5;
+        a.id                = "code_explorer_combat";
+        a.title             = "Code Explorer: Combat";
+        a.description       = "Press E at the Action Combat station to study the ComboSystem.";
+        a.type              = DemoActivityType::STATION_INTERACT;
+        a.specificStationID = "combat"; // only combat station counts
+        a.required          = 1;
         m_activities.push_back(a);
     }
 
-    // ── Side activity 3 — Collector's Run (collection task) ──────────────────
-    // TEACHING NOTE — Collection activity
-    // Collecting Engine Crystals exercises the InventorySystem.
-    // The count is driven by OpenWorld::NotifyItemCollected(), which the game
-    // loop calls when the player picks up an item near a teaching station.
+    // ── Side activity 3 — Code Explorer: Rendering (targeted teaching) ───────
+    // TEACHING NOTE — Targeted station activity (second variant)
+    // Specifically visiting the PBR Rendering station ensures the player reads
+    // the BRDF / IBL lesson — the most visually impressive subsystem.
+    // Pairing two "code explorer" activities for different stations teaches the
+    // breadth of the engine's rendering capabilities.
     {
         DemoActivity a;
-        a.id          = "collectors_run";
-        a.title       = "Collector's Run";
-        a.description = "Collect 5 Engine Crystals scattered at teaching stations.";
-        a.type        = DemoActivityType::ITEM_COLLECTION;
-        a.required    = 5;
+        a.id                = "code_explorer_rendering";
+        a.title             = "Code Explorer: Rendering";
+        a.description       = "Press E at the PBR Rendering station to study the BRDF pipeline.";
+        a.type              = DemoActivityType::STATION_INTERACT;
+        a.specificStationID = "rendering_pbr"; // only rendering_pbr counts
+        a.required          = 1;
         m_activities.push_back(a);
     }
 }
@@ -378,7 +413,9 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
         // switches if all enum values are not handled).
         auto parseType = [](const std::string& s) -> DemoActivityType
         {
-            if (s == "station_scan")     return DemoActivityType::STATION_SCAN;
+            if (s == "station_interact") return DemoActivityType::STATION_INTERACT;
+            // Legacy alias kept for backward compat with existing JSON files.
+            if (s == "station_scan")    return DemoActivityType::STATION_INTERACT;
             if (s == "combat_challenge") return DemoActivityType::COMBAT_CHALLENGE;
             if (s == "item_collection")  return DemoActivityType::ITEM_COLLECTION;
             // Unknown type → INVALID; the entry will be rejected below.
@@ -389,11 +426,12 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
         for (const auto& obj : root["activities"])
         {
             DemoActivity a;
-            a.id          = obj.value("id",          "");
-            a.title       = obj.value("title",       "");
-            a.description = obj.value("description", "");
-            a.type        = parseType(obj.value("type", "station_scan"));
-            a.required    = obj.value("required",    1);
+            a.id                = obj.value("id",                "");
+            a.title             = obj.value("title",             "");
+            a.description       = obj.value("description",       "");
+            a.type              = parseType(obj.value("type",    "station_interact"));
+            a.specificStationID = obj.value("specificStationID", "");
+            a.required          = obj.value("required",          1);
 
             if (!a.id.empty() && !a.title.empty() && a.required >= 1
                 && a.type != DemoActivityType::INVALID)

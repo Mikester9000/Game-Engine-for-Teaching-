@@ -74,7 +74,8 @@
  * compiler enforce exhaustive switch coverage and avoids typo bugs.  Each
  * type maps to one Notify*() method on DemoQuestManager:
  *
- *   STATION_SCAN     → NotifyStationVisited()  (unique-station deduplicated)
+ *   STATION_INTERACT → NotifyStationVisited()  (interact via E key; unique-station
+ *                       deduplicated unless specificStationID is set)
  *   COMBAT_CHALLENGE → NotifyEnemyKilled()
  *   ITEM_COLLECTION  → NotifyItemCollected()
  *
@@ -82,15 +83,15 @@
  * ────────────────────────────────
  * INVALID (= 0) is the first entry so that zero-initialised `DemoActivityType`
  * variables produce a detectable, obviously-wrong value rather than silently
- * falling through to STATION_SCAN.  The pattern matches other engine enums
+ * falling through to STATION_INTERACT.  The pattern matches other engine enums
  * (e.g., BiomeType::NONE in open_world.hpp).
  */
 enum class DemoActivityType : uint8_t
 {
-    INVALID          = 0, ///< Zero-init sentinel — must not appear in a registered activity.
-    STATION_SCAN,         ///< Visit N unique teaching stations.
-    COMBAT_CHALLENGE,     ///< Defeat N enemies in the open world.
-    ITEM_COLLECTION,      ///< Collect N items (Engine Crystals) at stations.
+    INVALID           = 0, ///< Zero-init sentinel — must not appear in a registered activity.
+    STATION_INTERACT,      ///< Interact (press E) at N unique teaching stations.
+    COMBAT_CHALLENGE,      ///< Defeat N enemies in the open world.
+    ITEM_COLLECTION,       ///< Collect N items (Engine Crystals) at stations.
 };
 
 // ===========================================================================
@@ -113,10 +114,12 @@ enum class DemoActivityType : uint8_t
  */
 struct DemoActivity
 {
-    std::string      id;           ///< Unique identifier, e.g. "station_scanner".
+    std::string      id;           ///< Unique identifier, e.g. "lesson_reader".
     std::string      title;        ///< Short label shown in the quest HUD.
     std::string      description;  ///< Flavour text describing the task.
     DemoActivityType type;         ///< Which Notify*() event advances this activity.
+    std::string      specificStationID; ///< If non-empty (STATION_INTERACT only): only
+                                        ///< this station ID advances the activity.
     int              required = 1; ///< Event count needed to mark complete.
     int              progress = 0; ///< Events accumulated so far.
     bool             completed = false; ///< True once progress >= required.
@@ -255,19 +258,21 @@ public:
     // =========================================================================
 
     /**
-     * @brief Notify that the player visited a teaching station.
+     * @brief Notify that the player interacted (pressed E) at a teaching station.
      *
-     * TEACHING NOTE — Unique-station deduplication
-     * ─────────────────────────────────────────────
-     * The Station Scanner activity requires visiting N *distinct* stations.
-     * We maintain a set<string> of already-counted station IDs so the player
-     * cannot farm the same station repeatedly.  This is the canonical
-     * "set membership" deduplication pattern.
+     * TEACHING NOTE — Interact-only quest advancement
+     * ─────────────────────────────────────────────────
+     * This method is called ONLY from OpenWorld::InteractAtStation() — i.e.,
+     * only when the player deliberately presses E while near a station.
+     * TeleportToStation() (navigation via F1 menu) does NOT call this method.
      *
-     * Main quest objectives are also checked: if the current objective's
-     * stationID matches, the objective is advanced regardless of whether the
-     * station was visited before (the player may return to the same station
-     * multiple times as they progress).
+     * This enforces the teaching-design principle: the player must engage with
+     * a station intentionally, not just teleport to it.
+     *
+     * For STATION_INTERACT activities:
+     *   • If specificStationID is empty  → any unique station interact counts.
+     *   • If specificStationID is set    → only that station counts.
+     * Unique-station deduplication is performed via m_visitedStations.
      *
      * @param stationID  Station identifier (must match a TeachingStation::id).
      */

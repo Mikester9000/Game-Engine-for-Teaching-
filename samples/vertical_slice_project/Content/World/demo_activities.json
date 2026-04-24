@@ -4,21 +4,21 @@
   "mainQuest": {
     "id": "demo_main_quest",
     "title": "Tour of the Engine",
-    "description": "Explore the Demo_Game open world and visit three key teaching stations to complete your orientation tour. Use the F1 overlay to teleport between stations.",
+    "description": "Walk up to each teaching station and press E to read the lesson. Use the F1 overlay to teleport to stations if needed, then press E when you arrive to continue the tour.",
     "objectives": [
       {
-        "id": "visit_quest_station",
-        "description": "Visit the Quests & Dialogue station",
+        "id": "interact_quest_station",
+        "description": "Press E at the Quests & Dialogue station",
         "stationID": "quests_dialogue"
       },
       {
-        "id": "visit_combat_station",
-        "description": "Visit the Action Combat station",
+        "id": "interact_combat_station",
+        "description": "Press E at the Action Combat station",
         "stationID": "combat"
       },
       {
-        "id": "visit_pbr_station",
-        "description": "Return to the PBR Rendering station to complete the tour",
+        "id": "interact_pbr_station",
+        "description": "Press E at the PBR Rendering station to complete the tour",
         "stationID": "rendering_pbr"
       }
     ],
@@ -27,25 +27,28 @@
   },
   "activities": [
     {
-      "id": "station_scanner",
-      "title": "Station Scanner",
-      "description": "Visit 3 different teaching stations in the open world. Open the F1 menu, browse the station list, and press Enter to teleport.",
-      "type": "station_scan",
+      "id": "lesson_reader",
+      "title": "Lesson Reader",
+      "description": "Press E at 3 different teaching stations to read their lessons. Use F1 to navigate to stations.",
+      "type": "station_interact",
+      "specificStationID": "",
       "required": 3
     },
     {
-      "id": "combat_challenge",
-      "title": "Combat Challenge",
-      "description": "Defeat 5 enemies near the Action Combat station. Use the combo attack system (press F1 and teleport to the 'Action Combat' station first).",
-      "type": "combat_challenge",
-      "required": 5
+      "id": "code_explorer_combat",
+      "title": "Code Explorer: Combat",
+      "description": "Press E at the Action Combat station to read the ComboSystem lesson.",
+      "type": "station_interact",
+      "specificStationID": "combat",
+      "required": 1
     },
     {
-      "id": "collectors_run",
-      "title": "Collector's Run",
-      "description": "Collect 5 Engine Crystals scattered at teaching stations across the open world.",
-      "type": "item_collection",
-      "required": 5
+      "id": "code_explorer_rendering",
+      "title": "Code Explorer: Rendering",
+      "description": "Press E at the PBR Rendering station to read the BRDF pipeline lesson.",
+      "type": "station_interact",
+      "specificStationID": "rendering_pbr",
+      "required": 1
     }
   ]
 }

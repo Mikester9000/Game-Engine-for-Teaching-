@@ -96,6 +96,14 @@ bool OpenWorld::Init()
     TryLoadStationsFromJSON(
         "samples/vertical_slice_project/Content/World/teaching_stations.json");
 
+    // TEACHING NOTE — Load station lesson content
+    // ─────────────────────────────────────────────
+    // station_lessons.json holds the per-station teaching explanations shown
+    // when the player presses E (Interact) at a station.  Failure to load is
+    // non-fatal — stations are still fully usable, just without lesson text.
+    TryLoadLessonsFromJSON(
+        "samples/vertical_slice_project/Content/World/station_lessons.json");
+
     // ── Quest & activity initialisation ──────────────────────────────────────
     // TEACHING NOTE — Chained data-driven initialisation
     // DemoQuestManager uses the same fallback pattern as stations:
@@ -111,7 +119,8 @@ bool OpenWorld::Init()
     m_stateTime = 0.f;
 
     std::cout << "[OpenWorld] Initialised — " << m_stations.size()
-              << " teaching stations registered.\n";
+              << " teaching stations, " << m_lessons.size()
+              << " lessons registered.\n";
     return true;
 }
 
@@ -202,15 +211,85 @@ void OpenWorld::TeleportToStation(const std::string& stationID)
                       << "\" at (" << s.worldX << ", " << s.worldZ << ")\n";
             m_currentBiome = s.biome;
 
-            // TEACHING NOTE — Forwarding station visits to the quest manager
-            // DemoQuestManager::NotifyStationVisited() advances the main quest
-            // objective (if this station is the current target) and the Station
-            // Scanner side activity (unique-station deduplication inside).
-            m_quests.NotifyStationVisited(stationID);
+            // TEACHING NOTE — Teleport is navigation only; no quest progress
+            // ────────────────────────────────────────────────────────────────
+            // Teleporting brings the player close to a station but does NOT
+            // advance the quest or count as an "interact".  The player must
+            // press E (Interact) after teleporting to trigger the lesson panel
+            // and advance the current quest objective.
+            //
+            // This separates "navigation" (getting there) from "engagement"
+            // (choosing to read the lesson) — a deliberate teaching-design
+            // decision matching Issue #83's updated direction.
+            //
+            // We record the player's new world position and the nearest station
+            // so the subsequent InteractAtStation() call can act on it.
+            m_playerX          = s.worldX;
+            m_playerZ          = s.worldZ;
+            m_nearestStationID = stationID; // within interact range by definition
             return;
         }
     }
     std::cout << "[OpenWorld] Warning: station \"" << stationID << "\" not found.\n";
+}
+
+StationLesson OpenWorld::InteractAtStation()
+{
+    // TEACHING NOTE — Interact gate: player must be near a station
+    // ─────────────────────────────────────────────────────────────
+    // In a real engine with continuous movement this check would compute
+    // distance from the player's live transform to each station's world
+    // position each frame.  Here, m_nearestStationID is set by
+    // TeleportToStation() (navigation) and cleared after a successful interact
+    // so repeated presses on the same station don't spam the quest manager.
+    if (m_nearestStationID.empty())
+    {
+        std::cout << "[OpenWorld] Interact: not near any station.\n";
+        return StationLesson{}; // empty lesson = panel should not open
+    }
+
+    const std::string interactedID = m_nearestStationID;
+
+    // Find the station record so we have display info for the log.
+    const TeachingStation* stationPtr = nullptr;
+    for (const auto& s : m_stations)
+        if (s.id == interactedID) { stationPtr = &s; break; }
+
+    const std::string displayName = stationPtr ? stationPtr->displayName : interactedID;
+    std::cout << "[OpenWorld] Interact → station \"" << displayName << "\"\n";
+
+    // ── Notify quest manager — this is the single trigger for quest progress ─
+    // TEACHING NOTE — Single point of quest advancement
+    // ───────────────────────────────────────────────────
+    // DemoQuestManager::NotifyStationVisited() is called ONLY from here, not
+    // from TeleportToStation().  This guarantees that quest objectives advance
+    // only when the player deliberately interacts with a station via E key.
+    m_quests.NotifyStationVisited(interactedID);
+
+    // ── Return the lesson content for the lesson panel ───────────────────────
+    StationLesson result;
+    auto it = m_lessons.find(interactedID);
+    if (it != m_lessons.end())
+    {
+        result = it->second;
+    }
+    else
+    {
+        // Built-in fallback lesson — always safe even without station_lessons.json.
+        result.stationID   = interactedID;
+        result.lessonTitle = displayName;
+        result.lessonText  = "No lesson content loaded for this station.\n"
+                             "Add an entry in Content/World/station_lessons.json\n"
+                             "to provide teaching text and code pointers.";
+    }
+
+    return result;
+}
+
+const StationLesson* OpenWorld::GetStationLesson(const std::string& stationID) const noexcept
+{
+    auto it = m_lessons.find(stationID);
+    return (it != m_lessons.end()) ? &it->second : nullptr;
 }
 
 void OpenWorld::NotifyEnemyKilled()
@@ -546,4 +625,87 @@ void OpenWorld::RegisterDefaultStations()
         560.f, 470.f,
         "combat_test"
     });
+}
+
+// ---------------------------------------------------------------------------
+// TryLoadLessonsFromJSON
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Per-station lesson content loading
+// ─────────────────────────────────────────────────────────────────────────────
+// station_lessons.json stores the multi-line teaching text and code pointers
+// shown in the Lesson Panel when the player presses E (Interact) at a station.
+//
+// The format is intentionally simple — a flat array of lesson objects keyed
+// by stationID.  This makes it easy for course authors to add / edit lessons
+// without touching C++ code.
+//
+// Same safe-fallback pattern as TryLoadStationsFromJSON:
+//   • Missing file → silent fallback (built-in stub lesson in InteractAtStation).
+//   • Malformed JSON → log + keep existing lessons map empty.
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool OpenWorld::TryLoadLessonsFromJSON(const std::string& jsonPath)
+{
+#ifdef ENGINE_ENABLE_JSON
+    std::ifstream file(jsonPath);
+    if (!file.is_open())
+        return false; // silent — missing lesson file is non-fatal
+
+    nlohmann::json root;
+    try
+    {
+        file >> root;
+    }
+    catch (const std::exception& ex)
+    {
+        std::cout << "[OpenWorld] station_lessons.json parse error: "
+                  << ex.what() << " — lesson panel will show stub text.\n";
+        return false;
+    }
+
+    if (!root.contains("lessons") || !root["lessons"].is_array())
+    {
+        std::cout << "[OpenWorld] station_lessons.json: missing \"lessons\" array.\n";
+        return false;
+    }
+
+    for (const auto& obj : root["lessons"])
+    {
+        try
+        {
+            StationLesson lesson;
+            lesson.stationID   = obj.at("stationID").get<std::string>();
+            lesson.lessonTitle = obj.value("lessonTitle", "");
+            lesson.lessonText  = obj.value("lessonText",  "");
+
+            if (obj.contains("codePointers") && obj["codePointers"].is_array())
+            {
+                for (const auto& ptr : obj["codePointers"])
+                    lesson.codePointers.push_back(ptr.get<std::string>());
+            }
+
+            if (obj.contains("relatedStations") && obj["relatedStations"].is_array())
+            {
+                for (const auto& rel : obj["relatedStations"])
+                    lesson.relatedStations.push_back(rel.get<std::string>());
+            }
+
+            if (!lesson.stationID.empty() && lesson.IsValid())
+                m_lessons[lesson.stationID] = std::move(lesson);
+        }
+        catch (const std::exception& ex)
+        {
+            std::cout << "[OpenWorld] station_lessons.json: skipping malformed "
+                         "entry — " << ex.what() << "\n";
+        }
+    }
+
+    std::cout << "[OpenWorld] Loaded " << m_lessons.size()
+              << " station lessons from " << jsonPath << ".\n";
+    return !m_lessons.empty();
+
+#else
+    (void)jsonPath;
+    return false;
+#endif // ENGINE_ENABLE_JSON
 }

@@ -1,0 +1,149 @@
+{
+  "version": "1.0.0",
+  "_comment": "Per-station teaching lesson content. Loaded at runtime by OpenWorld::TryLoadLessonsFromJSON. Used to populate the Lesson Panel shown when the player presses E at a station during the Tour Quest. See docs/DEMO_GAME.md for the lesson authoring guide.",
+  "lessons": [
+    {
+      "stationID": "rendering_pbr",
+      "lessonTitle": "PBR Rendering — Cook-Torrance BRDF",
+      "lessonText": "This station demonstrates Physically Based Rendering (PBR).\n\nThe engine uses the Cook-Torrance BRDF with three terms:\n  • GGX Normal Distribution Function (NDF) — how rough the surface is.\n  • Smith Geometry Function — self-shadowing microfacets.\n  • Schlick Fresnel — reflectance at glancing angles.\n\nIBL (Image-Based Lighting) contributes via a BRDF LUT, an irradiance\ncubemap, and a prefiltered environment cubemap generated from a\nprocedural sky on CPU.\n\nFinal luminance passes through Reinhard tonemapping and gamma correction\nbefore reaching the framebuffer.",
+      "codePointers": [
+        "shaders/pbr_mesh.vs.hlsl / pbr_mesh.ps.hlsl  (HLSL SM 4.0 shaders)",
+        "shaders/pbr_ibl.vs.hlsl / pbr_ibl.ps.hlsl   (IBL split-sum variant)",
+        "src/engine/rendering/d3d11/D3D11Renderer.cpp  LoadScene(\"pbr_mesh\")"
+      ],
+      "relatedStations": ["rendering_shadows"]
+    },
+    {
+      "stationID": "rendering_shadows",
+      "lessonTitle": "Shadows & Bloom — PCF + Gaussian Blur",
+      "lessonText": "This station demonstrates directional shadow maps and LDR bloom.\n\nShadow Map:\n  • 512x512 D32_FLOAT depth texture rendered from light POV.\n  • Depth-bias rasteriser state prevents z-fighting.\n  • PCF (Percentage Closer Filtering) 3x3 tap via SamplerComparisonState\n    in shadow_lit.ps.hlsl — produces soft shadow edges.\n\nBloom:\n  • Bright-pass extracts pixels above luminance threshold.\n  • Separable 5-tap Gaussian blur ping-pongs between two RGBA8 RTs.\n  • Composite adds blurred result back with Reinhard tonemap.",
+      "codePointers": [
+        "shaders/shadow.vs.hlsl               (depth-only light-space pass)",
+        "shaders/shadow_lit.vs/ps.hlsl        (PCF lit pass, SamplerComparisonState)",
+        "shaders/bloom_bright/blur/composite.ps.hlsl",
+        "src/engine/rendering/d3d11/D3D11Renderer.cpp  ShadowScene / BloomScene"
+      ],
+      "relatedStations": ["rendering_pbr"]
+    },
+    {
+      "stationID": "sky_weather",
+      "lessonTitle": "Dynamic Sky & Weather — SkyRenderer + WeatherFx",
+      "lessonText": "This station demonstrates the procedural sky and weather system.\n\nSkyRenderer:\n  • Tracks a time-of-day clock (0..24 h compressed to real-time).\n  • Computes sun direction from hour angle.\n  • Interpolates zenith/horizon colour through Dawn, Day, Dusk, Night phases.\n  • Generates a procedural sky cubemap on CPU each frame.\n\nWeatherFx:\n  • Smooth-lerp transitions between fog density, rain intensity, cloud cover.\n  • State broadcast via EventBus<WeatherEvent> to audio, particles, terrain.\n\nThe full-screen sky triangle uses SV_VertexID in sky.vs.hlsl\n— no vertex buffer required.",
+      "codePointers": [
+        "src/engine/rendering/sky_renderer.hpp/.cpp",
+        "src/engine/rendering/weather_fx.hpp/.cpp",
+        "shaders/sky.vs.hlsl / sky.ps.hlsl"
+      ],
+      "relatedStations": []
+    },
+    {
+      "stationID": "physics_jolt",
+      "lessonTitle": "Jolt Physics — Rigid Body & Character Controller",
+      "lessonText": "This station demonstrates the Jolt Physics integration (M5).\n\nKey concepts:\n  • PhysicsWorld (pImpl facade) wraps JPH::PhysicsSystem so Jolt headers\n    are hidden from all public APIs (see physics_impl.hpp).\n  • RigidBodyCreator creates Box / Sphere / Capsule bodies via\n    JPH::BodyCreationSettings and adds them to the world.\n  • CharacterController wraps JPH::CharacterVirtual — handles\n    gravity (9.81 m/s²), step-up (0.4 m), slope-slide (50°), jump.\n  • CastRay / CastSphere provide scene queries for AI and hit detection.\n  • HitVolumeManager tracks AABB Attack/Hurt volumes for combat.",
+      "codePointers": [
+        "src/engine/physics/physics_world.hpp/.cpp",
+        "src/engine/physics/character_controller.hpp/.cpp",
+        "src/engine/physics/raycast.hpp/.cpp",
+        "src/engine/physics/hit_volume.hpp/.cpp",
+        "src/engine/physics/physics_impl.hpp  (pImpl — Jolt hidden here)"
+      ],
+      "relatedStations": ["combat"]
+    },
+    {
+      "stationID": "audio_3d",
+      "lessonTitle": "3D Positional Audio — X3DAudio DSP Path",
+      "lessonText": "This station demonstrates the XAudio2 + X3DAudio audio system (M18).\n\nXAudio2Backend:\n  • Initialises X3DAudio after the mastering voice: X3DAudioInitialize().\n  • Maintains a 16-slot source voice pool; WAV files are parsed inline.\n  • Play(slot, path) / Stop(slot) / SetSlotVolume(slot, vol).\n\n3D Attenuation:\n  • SetListenerPosition() updates the X3DAUDIO_LISTENER each frame.\n  • Compute3DVolume() runs the X3DAudio DSP calculation path;\n    falls back to a linear distance formula when X3DAudio is unavailable.\n  • Apply3DAttenuation() writes the result to the source voice.\n\nAudioSystem (ECS):\n  • Reads TransformComponent for every AudioSourceComponent entity.\n  • Calls Apply3DAttenuation() per frame — distance attenuation is live.",
+      "codePointers": [
+        "src/engine/audio/xaudio2_backend.hpp/.cpp",
+        "src/engine/audio/audio_system.hpp/.cpp",
+        "src/engine/ecs/ECS.hpp  (AudioSourceComponent)"
+      ],
+      "relatedStations": []
+    },
+    {
+      "stationID": "animation_skinning",
+      "lessonTitle": "GPU Skeletal Animation — Skinning + IK Solver",
+      "lessonText": "This station demonstrates the animation runtime (M4 + M4b).\n\nCPU pipeline:\n  • Skeleton — joint hierarchy, bind pose, world-space transform chain.\n  • AnimClip — keyframe channels, lerp/slerp evaluation per joint.\n  • BlendTree — clip nodes + linear alpha blend.\n  • AnimationSystem (ECS) — advances time, evaluates, writes AnimatorComponent.\n\nIK Solver:\n  • Two-Bone analytical IK (law of cosines) — foot placement.\n  • FABRIK iterative N-joint IK — spine / tail.\n\nGPU Skinning:\n  • GpuSkinningBuffer uploads 64 joint matrices as a DYNAMIC constant buffer.\n  • skinned_mesh.vs.hlsl blends up to 4 bone influences per vertex.\n  • All in shaders/skinned_mesh.vs.hlsl + skinned_mesh.ps.hlsl.",
+      "codePointers": [
+        "src/engine/animation/skeleton.hpp/.cpp",
+        "src/engine/animation/anim_clip.hpp/.cpp",
+        "src/engine/animation/blend_tree.hpp/.cpp",
+        "src/engine/animation/ik_solver.hpp/.cpp",
+        "src/engine/animation/gpu_skinning.hpp/.cpp",
+        "shaders/skinned_mesh.vs.hlsl / skinned_mesh.ps.hlsl"
+      ],
+      "relatedStations": []
+    },
+    {
+      "stationID": "ai_formation",
+      "lessonTitle": "Behaviour Trees & Formation System — AI Architecture",
+      "lessonText": "This station demonstrates the AI systems (Post-M10).\n\nBehaviour Tree:\n  • BtTree owns a root BtNode and a shared BtBlackboard (key-value store).\n  • BtSequence — runs children left-to-right; fails on first child failure.\n  • BtSelector — tries children; succeeds on first child success.\n  • BtCondition — tests a blackboard predicate.\n  • BtAction — executes a lambda; returns RUNNING / SUCCESS / FAILURE.\n\nFormationSystem:\n  • LINE / V_SHAPE / CIRCLE slot layouts.\n  • Greedy assignment of entity IDs to formation slots.\n  • World-space offset transform per slot.\n\nNavMesh (A* pathfinding):\n  • Grid-based NavMesh baked from a 2D walkability array.\n  • BakeFromGrid() / BakeEmpty() / SetWalkable().\n  • FindPath() — A* with 4-dir + diagonal moves and obstacle routing.",
+      "codePointers": [
+        "src/engine/ai/behaviour_tree.hpp/.cpp",
+        "src/engine/ai/formation_system.hpp/.cpp",
+        "src/engine/ai/nav_mesh.hpp/.cpp"
+      ],
+      "relatedStations": []
+    },
+    {
+      "stationID": "quests_dialogue",
+      "lessonTitle": "Quest System & Dialogue System — Data-Driven Narrative",
+      "lessonText": "This station demonstrates the quest and dialogue systems (M8/M20).\n\nQuestSystem:\n  • Reads quest_bank.json (shared/schemas/quest_bank.schema.json).\n  • AcceptQuest / UpdateObjective / CompleteQuest / FailQuest.\n  • OnEnemyKilled() / OnLocationReached() — event-driven hooks.\n  • Fires UIEvent (SHOW_NOTIFICATION) and QuestEvent via EventBus<T>.\n\nDialogueSystem:\n  • Reads dialogue_tree.json — a graph of DialogueNode entries.\n  • Proximity check (DialogueComponent.interactRange).\n  • NPC stays at the current node until the player advances.\n  • Triggered by ECS DialogueComponent — no hard-coded NPC data.\n\nLua callbacks: on_quest_accepted(questID), on_quest_complete(questID)\nare fired from C++ and handled in scripts/quests.lua.",
+      "codePointers": [
+        "src/game/systems/QuestSystem.hpp/.cpp",
+        "src/game/systems/dialogue_system.hpp/.cpp",
+        "samples/vertical_slice_project/Content/quest_bank.json",
+        "samples/vertical_slice_project/Content/dialogue_tree.json",
+        "scripts/quests.lua"
+      ],
+      "relatedStations": []
+    },
+    {
+      "stationID": "world_streaming",
+      "lessonTitle": "World Streaming — Async Cell Load & Evict",
+      "lessonText": "This station demonstrates the world streaming system (M7).\n\nWorldStreamingManager:\n  • Delta load/evict coordinator — computes which cells enter/leave the\n    load radius each frame.\n  • SetMaxCompletionsPerFrame(n) — frame-budget cap prevents stutter.\n  • DrawDebugOverlay(ImDrawList*) — colour-coded cell minimap.\n\nWorldPartition:\n  • Spatial grid: CellCoord, CellIdFromCoord, GetCellsNearPosition.\n\nAsyncLoader (worker thread):\n  • Single background thread + job queue.\n  • CancelJob(cellId) via shared_ptr<atomic<bool>> cancellation token.\n  • PumpMainThreadCompletions(maxCount) moves ready cells to the main thread.\n\nGameStreamingManager (game layer):\n  • OnLoadCell calls AssetLoader::LoadRaw + deserialises JSON.\n  • OnCellLoaded calls Zone::SpawnEnemies/SpawnNPCs.\n  • OnEvictCell calls Zone::Unload.",
+      "codePointers": [
+        "src/engine/world/world_streaming.hpp/.cpp",
+        "src/engine/world/world_partition.hpp/.cpp",
+        "src/engine/world/async_loader.hpp/.cpp",
+        "src/game/world/GameStreamingManager.hpp/.cpp"
+      ],
+      "relatedStations": []
+    },
+    {
+      "stationID": "terrain",
+      "lessonTitle": "Terrain Renderer — Heightmap Grid Mesh",
+      "lessonText": "This station demonstrates the terrain rendering system (M25).\n\nTerrainRenderer:\n  • Two-phase init: LoadFromSamples/LoadCooked (CPU), CreateDeviceResources (GPU).\n  • TRN1 binary format: 14-byte header (magic + H×W + cellSize) + float32 heights.\n  • Builds a grid mesh with (width-1)x(height-1) quads from height samples.\n  • Height-based colour blend in terrain.ps.hlsl.\n  • Lambert + Reinhard tonemap for consistent lighting with the rest of the scene.\n\nTerrain Collision:\n  • BakeTerrainCollider uses JPH::HeightFieldShape (power-of-2 required).\n  • Integrated into PhysicsWorld — walking on terrain uses Jolt physics.\n\nTool:\n  • creation_engine.py bake-terrain: .terrain.json → .trn (TRN1 binary).",
+      "codePointers": [
+        "src/engine/rendering/d3d11/terrain_renderer.hpp/.cpp",
+        "src/engine/physics/terrain_collision.hpp/.cpp",
+        "shaders/terrain.vs.hlsl / terrain.ps.hlsl",
+        "tools/creation_engine.py  (bake_terrain command)"
+      ],
+      "relatedStations": ["physics_jolt"]
+    },
+    {
+      "stationID": "cinematics",
+      "lessonTitle": "Cinematics Runtime — CinematicSequencer & CameraRig",
+      "lessonText": "This station demonstrates the cinematic system (Post-M10 + M22).\n\nCinematicSequencer:\n  • Shot / cut timeline: Play(), Tick(dt), SkipToShot().\n  • OnShotChanged / OnComplete callbacks.\n  • AddAudioEvent(t, clipID) — timed audio dispatch; fires once per shot.\n  • ApplyToCamera() — writes shot transform to CameraComponent.\n\nCameraRig:\n  • Keyframe list with world-space position/rotation.\n  • Binary-search bracket + Lerp between adjacent keyframes.\n\nCinematic baker (tool):\n  • creation_engine.py bake-cinematic: .cinematic.json → .cinematic binary.\n\nEditor panel:\n  • editor/src/panels/CinematicEditorPanel.hpp — timeline editor with\n    shot/keyframe authoring and preview controls.",
+      "codePointers": [
+        "src/engine/cinematics/cinematic_sequencer.hpp/.cpp",
+        "src/engine/cinematics/camera_rig.hpp/.cpp",
+        "editor/src/panels/CinematicEditorPanel.hpp/.cpp",
+        "tools/creation_engine.py  (bake-cinematic command)"
+      ],
+      "relatedStations": []
+    },
+    {
+      "stationID": "combat",
+      "lessonTitle": "Action Combat — ComboSystem FSM & Damage Formula",
+      "lessonText": "This station demonstrates the action combat system (M19).\n\nComboSystem FSM:\n  • Three states: IDLE → BUILDING → COOLDOWN.\n  • IDLE: waiting for first input.\n  • BUILDING: collecting button sequence; times out if no input within window.\n  • COOLDOWN: brief pause after combo fires before returning to IDLE.\n\nCombo matching:\n  • Prefix match — e.g. [A, B] triggers if the registered [A, B, C] starts here.\n  • Exact match — [A, B, C] fires the registered combo completely.\n  • Smart reset (plinking) — partial match that can't continue resets cleanly.\n\nDamage formula: finalDmg = baseDmg * (strength / defence) * elementMultiplier\n\nCombatConfig loaded from combat_config.json (ENGINE_ENABLE_JSON gated);\n4 registered combos: Avalanche Chain, Warp Strike, Magic Burst, Phantom Sword.",
+      "codePointers": [
+        "src/engine/combat/combo_system.hpp/.cpp",
+        "src/game/systems/CombatSystem.hpp/.cpp",
+        "samples/vertical_slice_project/Content/combat_config.json"
+      ],
+      "relatedStations": ["physics_jolt"]
+    }
+  ]
+}
