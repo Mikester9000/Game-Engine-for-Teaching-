@@ -33,6 +33,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <cstdint>
 
 #include "demo_game/demo_quest_manager.hpp"
@@ -93,6 +94,40 @@ struct TeachingStation
     float       worldX = 0.f;///< World X coordinate of the station centre.
     float       worldZ = 0.f;///< World Z coordinate of the station centre.
     std::string sceneHint;   ///< Optional --scene argument to showcase it.
+};
+
+// ===========================================================================
+// StationLesson — teaching content shown when a player interacts at a station
+// ===========================================================================
+
+/**
+ * @struct StationLesson
+ * @brief Data-driven teaching explanation for a single teaching station.
+ *
+ * TEACHING NOTE — Data-Driven Lesson Content
+ * ───────────────────────────────────────────
+ * Storing lesson content in JSON (station_lessons.json) rather than hard-coded
+ * strings allows course instructors to update the explanations, add code
+ * pointers, and extend lessons without recompiling the engine.
+ *
+ * This is the same "authoring-time data, runtime consumption" pattern used
+ * throughout the engine:
+ *   • quest_bank.json    → QuestSystem
+ *   • teaching_stations.json → OpenWorld
+ *   • combat_config.json → ComboSystem
+ *   • station_lessons.json  → OpenWorld (this struct)
+ */
+struct StationLesson
+{
+    std::string              stationID;      ///< Must match a TeachingStation::id.
+    std::string              lessonTitle;    ///< Short heading shown in the lesson panel.
+    std::string              lessonText;     ///< Multi-line explanation (may contain \n).
+    std::vector<std::string> codePointers;  ///< File paths / class names to inspect.
+    std::vector<std::string> relatedStations; ///< Optional cross-references.
+
+    /// Returns true when this lesson has content (non-empty title + text).
+    bool IsValid() const noexcept
+    { return !lessonTitle.empty() && !lessonText.empty(); }
 };
 
 // ===========================================================================
@@ -236,13 +271,61 @@ public:
     void BootSelectNewGame();
 
     /**
-     * @brief Teleport the player to a teaching station (by ID).
+     * @brief Teleport the player to a teaching station (by ID) — navigation only.
      *
-     * Used by the F1 debug menu.  If the station ID is not found, does nothing.
+     * Updates the player's world position to the station's coordinates and
+     * sets the "nearest station" so that a subsequent Interact (E key) press
+     * can pick it up.  Does NOT advance the quest or trigger lesson content.
+     *
+     * TEACHING NOTE — Separation of navigation and quest progression
+     * ──────────────────────────────────────────────────────────────
+     * Teleporting is a convenience shortcut (professor's remote control).
+     * It must NOT auto-complete quest objectives, because that would remove the
+     * player's agency and devalue the teaching experience.  Only an explicit
+     * Interact action (E key) at the station counts as "visited" for the quest.
      *
      * @param stationID  Station identifier string (must match a registered station id).
      */
     void TeleportToStation(const std::string& stationID);
+
+    /**
+     * @brief Interact with the nearest teaching station (E key action).
+     *
+     * Checks whether the player is close enough to a station, advances the
+     * main quest objective (if the station matches), advances teaching-oriented
+     * side activities, and returns the lesson content for the station.
+     *
+     * TEACHING NOTE — Interact vs Teleport
+     * ─────────────────────────────────────
+     * Teleport brings the player to a station; Interact is the deliberate act
+     * of engaging with it.  This mirrors commercial game design where proximity
+     * is necessary but not sufficient — the player must also choose to interact.
+     * (Compare: Dark Souls bonfires require pressing a button even when standing
+     * on top of them; FFXV quest markers require pressing X to talk to NPCs.)
+     *
+     * @return The StationLesson for the nearest station, or an empty lesson
+     *         if the player is not close enough to any station.
+     */
+    StationLesson InteractAtStation();
+
+    /**
+     * @brief Return the ID of the station the player is currently nearest to.
+     *
+     * Empty string if the player is not within interact range of any station.
+     * Set by TeleportToStation(); in a real open world it would be computed
+     * each frame from player world-space position vs. station positions.
+     */
+    const std::string& GetNearestStationID() const noexcept { return m_nearestStationID; }
+
+    /**
+     * @brief Retrieve a station lesson by station ID.
+     *
+     * Returns nullptr if the station has no lesson content loaded.
+     * Lesson content is loaded by TryLoadLessonsFromJSON in Init().
+     *
+     * @param stationID  Station identifier.
+     */
+    const StationLesson* GetStationLesson(const std::string& stationID) const noexcept;
 
     /**
      * @brief Forward an enemy-kill event to the DemoQuestManager.
@@ -280,12 +363,26 @@ public:
      */
     bool TryLoadStationsFromJSON(const std::string& jsonPath);
 
+    /**
+     * @brief Attempt to load/override lessons from station_lessons.json.
+     *
+     * Compiled only when ENGINE_ENABLE_JSON is defined.
+     *
+     * @param jsonPath  Absolute or relative path to station_lessons.json.
+     * @return true if the JSON was parsed and lessons loaded,
+     *         false if the file was missing or contained a parse error.
+     */
+    bool TryLoadLessonsFromJSON(const std::string& jsonPath);
+
     // =========================================================================
     // Constants
     // =========================================================================
 
     /// Number of Update() frames to run in headless CI mode before reporting PASS.
     static constexpr int kHeadlessFrames = 120;
+
+    /// Radius (world-units) within which the player can interact with a station.
+    static constexpr float kInteractRadius = 60.f;
 
 private:
     // ---- FSM state ----
@@ -298,6 +395,14 @@ private:
 
     // ---- Teaching stations ----
     std::vector<TeachingStation> m_stations;
+
+    // ---- Station lessons (teaching content) ----
+    std::map<std::string, StationLesson> m_lessons; ///< stationID → lesson content.
+
+    // ---- Player position (set by TeleportToStation; would be live in full impl) ----
+    float       m_playerX          = 0.f;   ///< Player world X.
+    float       m_playerZ          = 0.f;   ///< Player world Z.
+    std::string m_nearestStationID;          ///< Station within interact range (if any).
 
     // ---- Quest / activity tracker ----
     DemoQuestManager m_quests; ///< Tracks main quest + 3 side activities.
