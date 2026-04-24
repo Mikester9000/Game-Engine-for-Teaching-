@@ -130,16 +130,6 @@
 #include "engine/rendering/RendererFactory.hpp"
 #include "engine/rendering/IRenderer.hpp"
 
-// ---------------------------------------------------------------------------
-// Demo game: OpenWorld state machine
-// ---------------------------------------------------------------------------
-#include "demo_game/open_world.hpp"
-
-// ---------------------------------------------------------------------------
-// Game runtime (reuse existing M8 gameplay systems)
-// ---------------------------------------------------------------------------
-#include "sandbox/game_runtime.hpp"
-
 // ===========================================================================
 // Helper: parse command-line arguments
 // ===========================================================================
