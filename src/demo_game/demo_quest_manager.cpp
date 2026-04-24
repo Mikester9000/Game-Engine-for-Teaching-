@@ -414,8 +414,9 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
         auto parseType = [](const std::string& s) -> DemoActivityType
         {
             if (s == "station_interact") return DemoActivityType::STATION_INTERACT;
-            // Legacy alias kept for backward compat with existing JSON files.
             if (s == "station_scan")    return DemoActivityType::STATION_INTERACT;
+            // ↑ Legacy alias: authored JSON that still uses the old "station_scan" string
+            //   string is accepted so that any existing data files load cleanly.
             if (s == "combat_challenge") return DemoActivityType::COMBAT_CHALLENGE;
             if (s == "item_collection")  return DemoActivityType::ITEM_COLLECTION;
             // Unknown type → INVALID; the entry will be rejected below.

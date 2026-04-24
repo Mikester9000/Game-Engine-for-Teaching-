@@ -89,7 +89,8 @@
 enum class DemoActivityType : uint8_t
 {
     INVALID           = 0, ///< Zero-init sentinel — must not appear in a registered activity.
-    STATION_INTERACT,      ///< Interact (press E) at N unique teaching stations.
+    STATION_INTERACT,      ///< Interact (press E) at N stations — any unique station if
+                           ///<  specificStationID is empty; only that specific station otherwise.
     COMBAT_CHALLENGE,      ///< Defeat N enemies in the open world.
     ITEM_COLLECTION,       ///< Collect N items (Engine Crystals) at stations.
 };

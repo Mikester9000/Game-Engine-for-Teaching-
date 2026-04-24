@@ -266,6 +266,18 @@ StationLesson OpenWorld::InteractAtStation()
     // only when the player deliberately interacts with a station via E key.
     m_quests.NotifyStationVisited(interactedID);
 
+    // ── Clear the nearest-station tracker after a successful interact ─────────
+    // TEACHING NOTE — One interact per visit
+    // ─────────────────────────────────────────
+    // We clear m_nearestStationID so that pressing E a second time at the same
+    // station does NOT call NotifyStationVisited() again.  The player must
+    // teleport (or walk) back to the station to trigger another interact.
+    // This prevents accidental quest-spam from keyboard repeat events.
+    // Note: the quest manager's m_visitedStations set already deduplicates
+    // STATION_INTERACT activities, but clearing here is an extra safeguard and
+    // matches the real-game pattern where a station "completes" on first touch.
+    m_nearestStationID.clear();
+
     // ── Return the lesson content for the lesson panel ───────────────────────
     StationLesson result;
     auto it = m_lessons.find(interactedID);

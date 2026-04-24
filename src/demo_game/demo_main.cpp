@@ -1335,7 +1335,9 @@ static int RunWindowed(const DemoArgs& args)
                 std::cout << "[demo_game] Teleporting to station: "
                           << s.displayName << "\n";
                 world.TeleportToStation(s.id);
-                debugMenuOpen = false; // close menu so player can press E
+                // Close the F1 menu so the prompt "[E] Interact" is visible
+                // and the player can press E without the overlay in the way.
+                debugMenuOpen = false;
                 std::cout << "[demo_game] Press E to interact with \""
                           << s.displayName << "\"\n";
             }
