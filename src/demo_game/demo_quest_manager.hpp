@@ -77,12 +77,20 @@
  *   STATION_SCAN     → NotifyStationVisited()  (unique-station deduplicated)
  *   COMBAT_CHALLENGE → NotifyEnemyKilled()
  *   ITEM_COLLECTION  → NotifyItemCollected()
+ *
+ * TEACHING NOTE — Sentinel Value
+ * ────────────────────────────────
+ * INVALID (= 0) is the first entry so that zero-initialised `DemoActivityType`
+ * variables produce a detectable, obviously-wrong value rather than silently
+ * falling through to STATION_SCAN.  The pattern matches other engine enums
+ * (e.g., BiomeType::NONE in open_world.hpp).
  */
 enum class DemoActivityType : uint8_t
 {
-    STATION_SCAN,      ///< Visit N unique teaching stations.
-    COMBAT_CHALLENGE,  ///< Defeat N enemies in the open world.
-    ITEM_COLLECTION,   ///< Collect N items (Engine Crystals) at stations.
+    INVALID          = 0, ///< Zero-init sentinel — must not appear in a registered activity.
+    STATION_SCAN,         ///< Visit N unique teaching stations.
+    COMBAT_CHALLENGE,     ///< Defeat N enemies in the open world.
+    ITEM_COLLECTION,      ///< Collect N items (Engine Crystals) at stations.
 };
 
 // ===========================================================================

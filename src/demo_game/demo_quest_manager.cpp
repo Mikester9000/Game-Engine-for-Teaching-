@@ -154,8 +154,8 @@ void DemoQuestManager::NotifyStationVisited(const std::string& stationID)
     // true when the element was newly inserted (not already present).  We use
     // that to guard the progress increment so one station can only count once.
     // -----------------------------------------------------------------------
-    const bool isNew = m_visitedStations.insert(stationID).second;
-    if (isNew)
+    const bool wasInserted = m_visitedStations.insert(stationID).second;
+    if (wasInserted)
     {
         DemoActivity* scan = FindActivity(DemoActivityType::STATION_SCAN);
         if (scan)
@@ -200,6 +200,12 @@ int DemoQuestManager::TotalDefined() const noexcept
 
 DemoActivity* DemoQuestManager::FindActivity(DemoActivityType type) noexcept
 {
+    // TEACHING NOTE — Guard against INVALID sentinel
+    // We never register activities with type INVALID, but the early-return here
+    // prevents a hypothetical caller from accidentally matching an uninitialised
+    // activity (which would have type INVALID from zero-initialisation).
+    if (type == DemoActivityType::INVALID)
+        return nullptr;
     for (auto& a : m_activities)
         if (a.type == type)
             return &a;
@@ -365,12 +371,18 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
     // ---- Activities ----
     if (root.contains("activities") && root["activities"].is_array())
     {
-        // Map type string → enum.
+        // TEACHING NOTE — Explicit string-to-enum mapping
+        // A separate static helper makes the dependency on DemoActivityType
+        // explicit, prevents silent fallback for typos, and is easy to extend
+        // when a new type is added (the compiler will warn on non-exhaustive
+        // switches if all enum values are not handled).
         auto parseType = [](const std::string& s) -> DemoActivityType
         {
+            if (s == "station_scan")     return DemoActivityType::STATION_SCAN;
             if (s == "combat_challenge") return DemoActivityType::COMBAT_CHALLENGE;
             if (s == "item_collection")  return DemoActivityType::ITEM_COLLECTION;
-            return DemoActivityType::STATION_SCAN; // default
+            // Unknown type → INVALID; the entry will be rejected below.
+            return DemoActivityType::INVALID;
         };
 
         std::vector<DemoActivity> loaded;
@@ -383,7 +395,8 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
             a.type        = parseType(obj.value("type", "station_scan"));
             a.required    = obj.value("required",    1);
 
-            if (!a.id.empty() && !a.title.empty() && a.required >= 1)
+            if (!a.id.empty() && !a.title.empty() && a.required >= 1
+                && a.type != DemoActivityType::INVALID)
                 loaded.push_back(a);
         }
 
