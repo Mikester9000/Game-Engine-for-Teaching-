@@ -298,7 +298,7 @@ static int RunWindowed(const DemoArgs& args)
         window.Shutdown();
         return 1;
     }
-    if (!renderer->Init(window.GetHWND(), kWidth, kHeight))
+    if (!renderer->Init(window.GetHINSTANCE(), window.GetHWND(), kWidth, kHeight))
     {
         std::cerr << "[FATAL] demo_game: renderer Init() failed.\n";
         window.Shutdown();
@@ -413,7 +413,7 @@ static int RunWindowed(const DemoArgs& args)
             world.GetClearColour(r, g, b);
         }
 
-        renderer->DrawFrame(r, g, b, static_cast<float>(window.GetDeltaTime()));
+        renderer->DrawFrame(r, g, b);
     }
 
     // -----------------------------------------------------------------------
