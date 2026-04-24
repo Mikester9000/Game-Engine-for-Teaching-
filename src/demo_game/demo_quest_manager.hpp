@@ -338,12 +338,21 @@ public:
 
         struct ActivityEntry
         {
-            std::string              id;
-            int                      progress  = 0;
-            bool                     completed = false;
-            std::vector<std::string> visitedStations;
+            std::string id;
+            int         progress  = 0;
+            bool        completed = false;
+            // TEACHING NOTE — No per-activity visited-station list
+            // m_visitedStations is a *global* set shared by all STATION_INTERACT
+            // activities.  Visiting a station once deduplicates across ALL such
+            // activities simultaneously.  We therefore store the set once at the
+            // top-level snapshot (globalVisitedStations) rather than redundantly
+            // repeating it for every activity.
         };
         std::vector<ActivityEntry> activities;
+
+        // Global set of station IDs that have been visited (used by all
+        // STATION_INTERACT activities for deduplication).
+        std::vector<std::string>   globalVisitedStations;
     };
 
     /**

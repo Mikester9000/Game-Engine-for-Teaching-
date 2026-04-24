@@ -465,6 +465,13 @@ DemoQuestManager::SaveSnapshot DemoQuestManager::Capture() const
     snap.questObjectiveIndex = m_mainQuest.currentObjective;
     snap.questCompleted      = m_mainQuest.completed;
 
+    // TEACHING NOTE — Global vs per-activity visited stations
+    // m_visitedStations is a single global set: visiting station A once
+    // deduplicates across ALL STATION_INTERACT activities simultaneously.
+    // We therefore save it once at the snapshot level, not once per activity.
+    snap.globalVisitedStations.assign(m_visitedStations.begin(),
+                                      m_visitedStations.end());
+
     snap.activities.reserve(m_activities.size());
     for (const auto& act : m_activities)
     {
@@ -472,10 +479,6 @@ DemoQuestManager::SaveSnapshot DemoQuestManager::Capture() const
         entry.id        = act.id;
         entry.progress  = act.progress;
         entry.completed = act.completed;
-        // Capture the set of visited station IDs so unique-station
-        // deduplication is preserved across save/load.
-        entry.visitedStations.assign(m_visitedStations.begin(),
-                                     m_visitedStations.end());
         snap.activities.push_back(std::move(entry));
     }
 
@@ -502,8 +505,12 @@ void DemoQuestManager::Restore(const SaveSnapshot& snap)
             m_mainQuest.objectives[i].done = true;
     }
 
-    // Restore activity progress.  Unrecognised IDs in the snapshot are skipped.
+    // Restore the global visited-station deduplication set.
     m_visitedStations.clear();
+    for (const auto& sid : snap.globalVisitedStations)
+        m_visitedStations.insert(sid);
+
+    // Restore activity progress.  Unrecognised IDs in the snapshot are skipped.
     for (const auto& entry : snap.activities)
     {
         for (auto& act : m_activities)
@@ -512,9 +519,6 @@ void DemoQuestManager::Restore(const SaveSnapshot& snap)
             {
                 act.progress  = entry.progress;
                 act.completed = entry.completed;
-                // Restore visited-station deduplication set.
-                for (const auto& sid : entry.visitedStations)
-                    m_visitedStations.insert(sid);
                 break;
             }
         }

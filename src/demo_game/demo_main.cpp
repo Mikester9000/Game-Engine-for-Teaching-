@@ -134,6 +134,26 @@ static DemoArgs ParseArgs(int argc, char* argv[])
 }
 
 // ===========================================================================
+// File-scope constants
+// ===========================================================================
+// TEACHING NOTE — Named constants avoid magic strings/numbers
+// ─────────────────────────────────────────────────────────────────────────────
+// Defining config path and step sizes as named constants:
+//   • Makes every usage self-documenting.
+//   • Ensures consistency — one change updates all occurrences.
+//   • Aids testing — tests can reference the same constant.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Path to the engine configuration file (relative to the executable's CWD).
+static constexpr const char* kEngineConfigPath = "engine_config.json";
+
+/// Auto-save file path (relative to the executable's CWD).
+static constexpr const char* kAutoSavePath = "SavedGames/demo_auto.json";
+
+/// Volume adjustment step size in integer percent per LEFT/RIGHT key press.
+static constexpr int kVolumeStep = 5;
+
+// ===========================================================================
 // GDI Overlay Renderer
 // ===========================================================================
 // TEACHING NOTE — GDI Text Overlay for Windowed D3D11
@@ -1355,7 +1375,7 @@ static int RunWindowed(const DemoArgs& args)
     // means the game always boots even on a fresh install without a config.
     // -----------------------------------------------------------------------
     engine::core::EngineConfig engConfig;
-    const bool configLoaded = engConfig.Load("engine_config.json");
+    const bool configLoaded = engConfig.Load(kEngineConfigPath);
     if (configLoaded)
         std::cout << "[demo_game] engine_config.json loaded (preset="
                   << engine::core::PresetName(engConfig.activePreset) << ").\n";
@@ -1366,7 +1386,7 @@ static int RunWindowed(const DemoArgs& args)
     // -----------------------------------------------------------------------
     // Check for existing save file — M-DG-S3
     // -----------------------------------------------------------------------
-    const bool saveExists = OpenWorld::SaveExists("SavedGames/demo_auto.json");
+    const bool saveExists = OpenWorld::SaveExists(kAutoSavePath);
     if (saveExists)
         std::cout << "[demo_game] Save file detected — Continue is available.\n";
 
@@ -1569,7 +1589,7 @@ static int RunWindowed(const DemoArgs& args)
                             // and transitions the FSM to PLAYING.  The GameRuntime
                             // will be created on the next frame when IsPlaying() is
                             // detected (same path as New Game).
-                            if (!world.LoadProgress("SavedGames/demo_auto.json"))
+                            if (!world.LoadProgress(kAutoSavePath))
                             {
                                 std::cerr << "[demo_game] Continue: save file exists "
                                              "but LoadProgress failed — starting New Game.\n";
@@ -1644,7 +1664,7 @@ static int RunWindowed(const DemoArgs& args)
                         break;
                     }
                     case SettingsRow::VOLUME:
-                        settingsVolume = std::max(0, std::min(100, settingsVolume + dir * 5));
+                        settingsVolume = std::max(0, std::min(100, settingsVolume + dir * kVolumeStep));
                         break;
                     case SettingsRow::VSYNC:
                         settingsVsync = !settingsVsync;
@@ -1689,7 +1709,7 @@ static int RunWindowed(const DemoArgs& args)
                     renderer->SetAnisoLevel    (engConfig.presetConfig.anisoLevel);
 
                     // Persist to engine_config.json so the choice survives restarts.
-                    const bool saved = engConfig.Save("engine_config.json");
+                    const bool saved = engConfig.Save(kEngineConfigPath);
                     std::cout << "[demo_game] Settings applied: preset="
                               << engine::core::PresetName(engConfig.activePreset)
                               << " vol=" << settingsVolume
@@ -1806,7 +1826,7 @@ static int RunWindowed(const DemoArgs& args)
                     // (engaging with learning content) doubles as a save point.
                     // The save is silent — the player sees the lesson panel and
                     // does not need to manually navigate to a save menu.
-                    world.SaveProgress("SavedGames/demo_auto.json");
+                    world.SaveProgress(kAutoSavePath);
                 }
                 else
                 {

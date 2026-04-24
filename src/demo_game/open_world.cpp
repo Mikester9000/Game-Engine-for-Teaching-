@@ -785,6 +785,12 @@ bool OpenWorld::SaveProgress(const std::string& path) const
     j["questObjectiveIndex"]= snap.questObjectiveIndex;
     j["questCompleted"]     = snap.questCompleted;
 
+    // TEACHING NOTE — Global visited stations at save-file level
+    // m_visitedStations is a single global set shared by all STATION_INTERACT
+    // activities.  We serialise it once here (not once per activity) to avoid
+    // redundant data and to correctly represent the shared ownership model.
+    j["visitedStations"] = snap.globalVisitedStations;
+
     json acts = json::array();
     for (const auto& entry : snap.activities)
     {
@@ -792,7 +798,6 @@ bool OpenWorld::SaveProgress(const std::string& path) const
         a["id"]       = entry.id;
         a["progress"] = entry.progress;
         a["completed"]= entry.completed;
-        a["visitedStations"] = entry.visitedStations;
         acts.push_back(std::move(a));
     }
     j["activities"] = std::move(acts);
@@ -873,6 +878,13 @@ bool OpenWorld::LoadProgress(const std::string& path)
     snap.questObjectiveIndex = j.value("questObjectiveIndex", 0);
     snap.questCompleted      = j.value("questCompleted",      false);
 
+    // Restore global visited-station set (stored once at save-file level).
+    if (j.contains("visitedStations") && j["visitedStations"].is_array())
+    {
+        for (const auto& sid : j["visitedStations"])
+            snap.globalVisitedStations.push_back(sid.get<std::string>());
+    }
+
     if (j.contains("activities") && j["activities"].is_array())
     {
         for (const auto& a : j["activities"])
@@ -881,11 +893,6 @@ bool OpenWorld::LoadProgress(const std::string& path)
             entry.id        = a.value("id",        "");
             entry.progress  = a.value("progress",  0);
             entry.completed = a.value("completed", false);
-            if (a.contains("visitedStations") && a["visitedStations"].is_array())
-            {
-                for (const auto& sid : a["visitedStations"])
-                    entry.visitedStations.push_back(sid.get<std::string>());
-            }
             snap.activities.push_back(std::move(entry));
         }
     }

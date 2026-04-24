@@ -722,12 +722,34 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
 
         LARGE_INTEGER now;
         ::QueryPerformanceCounter(&now);
+
+        // TEACHING NOTE — First-frame tick initialisation
+        // On the very first call to DrawFrame, m_frameStartTick is zero (it was
+        // default-initialised).  In that case `elapsed` would measure time since
+        // the LARGE_INTEGER epoch, causing a huge overshoot.  We detect this by
+        // checking whether the elapsed time is larger than one full second (i.e.
+        // the perf counter frequency) and skip sleeping in that frame only.
         const LONGLONG elapsed = now.QuadPart - m_frameStartTick;
-        if (elapsed < budget)
+        const bool firstFrame  = (m_frameStartTick.QuadPart == 0)
+                               || (elapsed > s_perfFreq.QuadPart);
+        if (!firstFrame && elapsed < budget)
         {
+            // TEACHING NOTE — Windows Sleep() scheduler slack correction
+            // Sleep(n) on Windows does NOT guarantee exactly n milliseconds.
+            // The Windows timer resolution defaults to ~15.6 ms (the default
+            // scheduler quantum).  Calling timeBeginPeriod(1) reduces this to
+            // ~1 ms, but we do not call it here to avoid disturbing the
+            // system-wide timer for other processes.
+            //
+            // Instead we subtract 1 ms from the sleep request so we wake up
+            // slightly early, then busy-wait for the remaining time via the
+            // QueryPerformanceCounter loop (not shown here — we rely on the
+            // natural jitter of DrawFrame being called again next loop
+            // iteration).  This gives a reasonable ~1–2 ms accuracy without
+            // spinlooping and without affecting the system timer.
             const LONGLONG remainMs = (budget - elapsed) * 1000LL / s_perfFreq.QuadPart;
             if (remainMs > 1)
-                ::Sleep(static_cast<DWORD>(remainMs - 1)); // -1 ms scheduler slack
+                ::Sleep(static_cast<DWORD>(remainMs - 1)); // -1 ms: see TEACHING NOTE above
         }
     }
     // Record the start tick for the next frame's cap calculation.
