@@ -5002,6 +5002,34 @@ int main(int argc, char* argv[])
                               << " stations have non-empty id + displayName + sceneHint.\n";
                 }
 
+                // ── Test 6: JSON fallback — missing file leaves stations intact ──
+                // TEACHING NOTE — Fallback data pattern validation
+                // ──────────────────────────────────────────────────────────────────
+                // TryLoadStationsFromJSON() must silently ignore a missing file and
+                // leave the C++ default station list intact.  We verify this by
+                // creating a fresh OpenWorld, calling TryLoadStationsFromJSON with
+                // an intentionally bad path, and asserting the station count is
+                // still >= kExpectedStations.
+                // ──────────────────────────────────────────────────────────────────
+                {
+                    OpenWorld ow2;
+                    ow2.Init();
+                    ow2.TryLoadStationsFromJSON("/nonexistent/path/teaching_stations.json");
+                    const int count6 = static_cast<int>(ow2.GetStations().size());
+                    if (count6 < kExpectedStations)
+                    {
+                        std::cout << "[FAIL] demo_world/6: after bad JSON path, station count = "
+                                  << count6 << " (expected >= " << kExpectedStations << ").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        std::cout << "[OK] demo_world/6: JSON fallback safe — "
+                                  << count6 << " stations retained.\n";
+                    }
+                    ow2.Shutdown();
+                }
+
                 ow.Shutdown();
 
                 if (testsFailed > 0)
@@ -5012,8 +5040,8 @@ int main(int argc, char* argv[])
                     window.Shutdown();
                     return 1;
                 }
-                std::cout << "[PASS] demo_world: 5 acceptance tests passed "
-                             "(init, boot_menu, biome_cycle, teleport, station_data).\n";
+                std::cout << "[PASS] demo_world: 6 acceptance tests passed "
+                             "(init, boot_menu, biome_cycle, teleport, station_data, json_fallback).\n";
             }
             else
             {

@@ -239,6 +239,26 @@ public:
      */
     void TeleportToStation(const std::string& stationID);
 
+    /**
+     * @brief Attempt to load/override stations from teaching_stations.json.
+     *
+     * TEACHING NOTE — Data-Driven Station Loading
+     * ─────────────────────────────────────────────
+     * This method merges station data from the JSON content file on top of the
+     * C++ defaults registered by RegisterDefaultStations().  It is compiled in
+     * only when ENGINE_ENABLE_JSON is defined (nlohmann/json is available via
+     * vcpkg).  When the JSON file is absent or malformed, the C++ defaults are
+     * retained so the game always boots regardless of content file status.
+     *
+     * Exposed as public so headless acceptance tests can exercise the fallback
+     * path with an intentionally bad file path.
+     *
+     * @param jsonPath  Absolute or relative path to teaching_stations.json.
+     * @return true  if the JSON was parsed and stations updated,
+     *         false if the file was missing or contained a parse error.
+     */
+    bool TryLoadStationsFromJSON(const std::string& jsonPath);
+
     // =========================================================================
     // Constants
     // =========================================================================
