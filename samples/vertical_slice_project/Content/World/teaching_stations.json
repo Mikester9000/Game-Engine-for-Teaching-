@@ -1,4 +1,5 @@
 {
+  "$schema": "../../../../shared/schemas/teaching_stations.schema.json",
   "version": "1.0.0",
   "description": "Demo_Game teaching station definitions. Each station is a named in-world landmark that demonstrates a specific engine feature. Students can add new stations by extending this array and rerunning the game.",
   "stations": [

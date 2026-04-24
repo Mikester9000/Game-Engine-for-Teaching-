@@ -71,14 +71,16 @@ const char* BiomeName(BiomeType b) noexcept;
  * @struct TeachingStation
  * @brief Describes a single feature/gameplay demonstration station.
  *
- * TEACHING NOTE — Teaching Stations as Data
- * ──────────────────────────────────────────
- * Each station is defined in JSON (teaching_stations.json) and loaded at
- * startup.  Keeping station definitions in data (not code) lets a student
- * add a new station by editing JSON only — zero C++ changes needed.
+ * TEACHING NOTE — Teaching Stations as Data-Shaped Records
+ * ─────────────────────────────────────────────────────────
+ * The current demo registers a small set of built-in teaching stations in
+ * C++ at startup (see RegisterDefaultStations() in open_world.cpp) rather
+ * than loading them from JSON.  We still keep each station as a plain data
+ * struct so the design is easy to read today and easy to migrate to an
+ * external-data loader in the future.
  *
- * In-world: each station has a unique (worldX, worldZ) position and a
- * teleport marker visible in the F1 debug menu.
+ * The file Content/World/teaching_stations.json is the planned authoring
+ * format for a fully data-driven version of the demo station list.
  */
 struct TeachingStation
 {
@@ -233,7 +235,7 @@ public:
      *
      * Used by the F1 debug menu.  If the station ID is not found, does nothing.
      *
-     * @param stationID  Station identifier string from teaching_stations.json.
+     * @param stationID  Station identifier string (must match a registered station id).
      */
     void TeleportToStation(const std::string& stationID);
 

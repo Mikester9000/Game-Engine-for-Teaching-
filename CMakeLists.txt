@@ -101,7 +101,7 @@ option(BUILD_EDITOR "Build the Dear ImGui Creation Suite editor" OFF)
 # directly in the open-world game mode with a boot menu.
 #
 # Enable it with:
-#   cmake --preset windows-debug-demo
+#   cmake --preset windows-ninja-debug-demo
 #   cmake --preset windows-debug-engine-only -DBUILD_DEMO_GAME=ON
 #
 # Build target: demo_game
@@ -1176,66 +1176,26 @@ endif() # WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN)
 # ─────────────────────────────────────────────────────────────────────────────
 if(BUILD_DEMO_GAME AND WIN32 AND ENGINE_ENABLE_D3D11)
 
-    # TEACHING NOTE — DEMO_GAME_SOURCES reuses the same set as SANDBOX_SOURCES
-    # but replaces src/sandbox/main.cpp with src/demo_game/demo_main.cpp.
-    # We also add the new demo_game/ module files.
-    set(DEMO_GAME_SOURCES
-        src/demo_game/demo_main.cpp
-        src/demo_game/open_world.cpp
-        src/engine/platform/win32/Win32Window.cpp
-        src/engine/core/Logger.cpp
-        src/engine/core/engine_config.cpp
-        src/engine/assets/asset_db.cpp
-        src/engine/assets/asset_loader.cpp
-        src/engine/animation/skeleton.cpp
-        src/engine/animation/anim_clip.cpp
-        src/engine/animation/blend_tree.cpp
-        src/engine/animation/animation_system.cpp
-        src/engine/animation/ik_solver.cpp
-        src/engine/ai/behaviour_tree.cpp
-        src/engine/ai/formation_system.cpp
-        src/engine/ai/nav_mesh.cpp
-        src/engine/cinematics/camera_rig.cpp
-        src/engine/cinematics/cinematic_sequencer.cpp
-        src/engine/rendering/d3d11/D3D11Renderer.cpp
-        src/engine/rendering/d3d11/d3d11_texture.cpp
-        src/engine/animation/gpu_skinning.cpp
-        src/engine/rendering/sky_renderer.cpp
-        src/engine/rendering/weather_fx.cpp
-        src/engine/ui/font_renderer.cpp
-        src/engine/rendering/d3d11/terrain_renderer.cpp
-        src/engine/audio/xaudio2_backend.cpp
-        src/engine/audio/audio_system.cpp
-        src/engine/physics/hit_volume.cpp
-        src/engine/scene/scene_serialiser.cpp
-        src/engine/world/async_loader.cpp
-        src/engine/world/world_partition.cpp
-        src/engine/world/world_streaming.cpp
-        src/sandbox/test_world.cpp
-        src/game/systems/CombatSystem.cpp
-        src/game/systems/AISystem.cpp
-        src/game/systems/WeatherSystem.cpp
-        src/game/systems/QuestSystem.cpp
-        src/game/systems/InventorySystem.cpp
-        src/game/systems/ShopSystem.cpp
-        src/game/systems/CampSystem.cpp
-        src/game/world/TileMap.cpp
-        src/game/world/WorldMap.cpp
-        src/game/world/Zone.cpp
-        src/game/world/GameStreamingManager.cpp
-        src/sandbox/game_runtime.cpp
-        src/game/systems/input_mapper.cpp
-        src/game/systems/dialogue_system.cpp
-        src/engine/rendering/camera_system.cpp
-        src/engine/ui/hud.cpp
-        src/engine/ui/menu_stack.cpp
-        src/engine/save/save_system.cpp
-        src/engine/combat/combo_system.cpp
-    )
-
-    if(LUA_BUNDLED)
-        list(APPEND DEMO_GAME_SOURCES src/engine/scripting/LuaEngine.cpp)
-    endif()
+    # TEACHING NOTE — Deriving DEMO_GAME_SOURCES from SANDBOX_SOURCES
+    # ─────────────────────────────────────────────────────────────────
+    # Rather than maintaining a duplicate source list (which is easy to let
+    # drift when new engine/game files are added), we derive DEMO_GAME_SOURCES
+    # from the fully-populated SANDBOX_SOURCES variable and swap only the
+    # executable entry point.  Both targets stay in lockstep automatically.
+    #
+    # Steps:
+    #   1. Copy the entire SANDBOX_SOURCES list.
+    #   2. Remove src/sandbox/main.cpp (the test-harness entry point).
+    #   3. Append src/demo_game/demo_main.cpp (the player-facing entry point).
+    #
+    # open_world.cpp is already present in SANDBOX_SOURCES (added for the
+    # --scene demo_world acceptance test), so it does not need to be re-added.
+    # All conditionally-included sources (Jolt physics, LuaEngine, etc.) are
+    # carried over automatically because SANDBOX_SOURCES was already populated
+    # by those conditional blocks above.
+    set(DEMO_GAME_SOURCES ${SANDBOX_SOURCES})
+    list(REMOVE_ITEM DEMO_GAME_SOURCES src/sandbox/main.cpp)
+    list(APPEND DEMO_GAME_SOURCES src/demo_game/demo_main.cpp)
 
     add_executable(demo_game ${DEMO_GAME_SOURCES})
 
@@ -1277,8 +1237,13 @@ if(BUILD_DEMO_GAME AND WIN32 AND ENGINE_ENABLE_D3D11)
 
     message(STATUS "  demo_game target : ON (BUILD_DEMO_GAME=ON)")
 else()
+    # TEACHING NOTE — Status messages should distinguish "not requested"
+    # from "requested but unavailable due to unmet platform/backend
+    # requirements" so configure-time output tells the user what to fix.
     if(BUILD_DEMO_GAME AND NOT WIN32)
-        message(STATUS "  demo_game target : SKIPPED (requires WIN32 + ENGINE_ENABLE_D3D11)")
+        message(STATUS "  demo_game target : SKIPPED (requires WIN32 platform)")
+    elseif(BUILD_DEMO_GAME AND NOT ENGINE_ENABLE_D3D11)
+        message(STATUS "  demo_game target : SKIPPED (requires ENGINE_ENABLE_D3D11=ON)")
     else()
         message(STATUS "  demo_game target : OFF (pass -DBUILD_DEMO_GAME=ON to enable)")
     endif()

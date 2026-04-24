@@ -4893,11 +4893,23 @@ int main(int argc, char* argv[])
                 // -----------------------------------------------------------
                 int testsFailed = 0;
 
-                // ── Test 1: Init ────────────────────────────────────────────
+                // ── Test 1: Init + station count ────────────────────────────
+                // TEACHING NOTE — Fail explicitly on insufficient stations
+                // We check both that Init() returned true AND that the station
+                // count is at least the expected minimum.  A successful Init()
+                // that registered zero stations is still a regression failure.
+                constexpr int kExpectedStations = 12;
                 OpenWorld ow;
                 if (!ow.Init())
                 {
                     std::cout << "[FAIL] demo_world/1: OpenWorld::Init() returned false.\n";
+                    ++testsFailed;
+                }
+                else if (static_cast<int>(ow.GetStations().size()) < kExpectedStations)
+                {
+                    std::cout << "[FAIL] demo_world/1: Expected >= " << kExpectedStations
+                              << " stations after Init(), got "
+                              << ow.GetStations().size() << ".\n";
                     ++testsFailed;
                 }
                 else
@@ -4919,13 +4931,13 @@ int main(int argc, char* argv[])
 
                 // ── Test 3: Full headless flow ──────────────────────────────
                 // TEACHING NOTE — Extra guard frames
-                // We allow kHeadlessFrames + 4 iterations to give the state
-                // machine a small margin for the BOOT_MENU auto-advance (2 frames)
-                // and the LOADING phase (at least 1 frame at 1/60 s >= 0.1 s load
-                // wait), before we reach the PLAYING+biome-cycle frames proper.
-                // The loop exits early via the `break` once IsHeadlessDone() is true.
+                // At 60 Hz, a 0.1 s LOADING wait is about 6 frames
+                // (0.1 / (1/60) ≈ 6).  We also need 2 frames for the
+                // BOOT_MENU auto-advance, giving ~8 overhead frames.
+                // kExtraGuardFrames = 12 provides a comfortable margin;
+                // the loop exits early via `break` once IsHeadlessDone() is true.
                 constexpr float kDt = 1.0f / 60.0f;
-                constexpr int   kExtraGuardFrames = 4; // boot (2) + loading (>=1) + margin
+                constexpr int   kExtraGuardFrames = 12; // boot (2) + loading (~6 @ 60Hz) + margin
                 for (int f = 0; f < OpenWorld::kHeadlessFrames + kExtraGuardFrames; ++f)
                 {
                     ow.Update(kDt, /*headless=*/true);
@@ -4957,21 +4969,36 @@ int main(int argc, char* argv[])
                 }
 
                 // ── Test 5: Station data integrity ──────────────────────────
+                // TEACHING NOTE — An empty station list is a test failure, not
+                // a vacuous success.  This acceptance test verifies that station
+                // registration happened AND that each station's required fields
+                // were populated.
+                const auto& stationsRef = ow.GetStations();
                 bool stationDataOk = true;
-                for (const auto& s : ow.GetStations())
+                if (stationsRef.empty())
                 {
-                    if (s.id.empty() || s.displayName.empty() || s.sceneHint.empty())
+                    std::cout << "[FAIL] demo_world/5: GetStations() returned 0 stations; "
+                                 "station registration may have failed.\n";
+                    stationDataOk = false;
+                    ++testsFailed;
+                }
+                else
+                {
+                    for (const auto& s : stationsRef)
                     {
-                        std::cout << "[FAIL] demo_world/5: station has empty id, "
-                                     "displayName, or sceneHint.\n";
-                        stationDataOk = false;
-                        ++testsFailed;
-                        break;
+                        if (s.id.empty() || s.displayName.empty() || s.sceneHint.empty())
+                        {
+                            std::cout << "[FAIL] demo_world/5: station has empty id, "
+                                         "displayName, or sceneHint.\n";
+                            stationDataOk = false;
+                            ++testsFailed;
+                            break;
+                        }
                     }
                 }
                 if (stationDataOk)
                 {
-                    std::cout << "[OK] demo_world/5: All " << ow.GetStations().size()
+                    std::cout << "[OK] demo_world/5: All " << stationsRef.size()
                               << " stations have non-empty id + displayName + sceneHint.\n";
                 }
 

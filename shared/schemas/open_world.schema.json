@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Open World Definition",
+  "description": "Schema for Demo_Game open-world biome layout definitions.",
+  "type": "object",
+  "required": ["version", "description", "biomes"],
+  "properties": {
+    "version": { "type": "string" },
+    "description": { "type": "string" },
+    "spawnPoint": {
+      "type": "object",
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "worldSizeX": { "type": "number" },
+    "worldSizeZ": { "type": "number" },
+    "cellSizeX":  { "type": "number" },
+    "cellSizeZ":  { "type": "number" },
+    "biomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "displayName", "boundsMinX", "boundsMinZ", "boundsMaxX", "boundsMaxZ"],
+        "properties": {
+          "id":                 { "type": "string" },
+          "displayName":        { "type": "string" },
+          "boundsMinX":         { "type": "number" },
+          "boundsMinZ":         { "type": "number" },
+          "boundsMaxX":         { "type": "number" },
+          "boundsMaxZ":         { "type": "number" },
+          "skyZenithColour":    { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+          "skyHorizonColour":   { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+          "fogDensity":         { "type": "number" },
+          "ambientMusicTrack":  { "type": "string" },
+          "spawnTable":         { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

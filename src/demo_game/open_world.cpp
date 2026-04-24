@@ -5,16 +5,22 @@
  * ============================================================================
  * TEACHING NOTE — Data-Driven Open World Design
  * ============================================================================
- * Rather than hardcoding biome colours and station positions, this file uses
- * two data sources:
+ * Rather than scattering station setup throughout gameplay code, this file
+ * centralises the canonical teaching-station data in
+ * RegisterDefaultStations().
  *
- *   1. RegisterDefaultStations() — inlines the canonical set of teaching
- *      stations so the game is playable even without the JSON files present.
- *      This is the "fallback data" pattern used in AAA engines.
+ * The current Demo_Game build uses these built-in C++ defaults only, so the
+ * game is playable out-of-the-box even without the JSON world-data files
+ * present.  The JSON files under Content/World/ are the intended authoring
+ * format for a future data-driven loading path.
  *
- *   2. Content/World/teaching_stations.json (loaded by demo_main.cpp) can
- *      override or extend the default set — students customise without
- *      recompiling C++.
+ * TEACHING NOTE — Fallback Data Pattern
+ * ──────────────────────────────────────
+ * AAA engines always ship a set of hardcoded defaults so the game doesn't
+ * crash when an asset is missing.  The external data files (JSON, binary
+ * blobs) override those defaults at runtime.  We follow the same pattern
+ * here: C++ registers the defaults first; a future runtime loader would
+ * merge overrides from Content/World/teaching_stations.json.
  *
  * ─── State Machine Transitions ──────────────────────────────────────────────
  *
@@ -172,7 +178,7 @@ void OpenWorld::TeleportToStation(const std::string& stationID)
 // Private: state update helpers
 // ---------------------------------------------------------------------------
 
-void OpenWorld::UpdateBootMenu(float dt, bool headless)
+void OpenWorld::UpdateBootMenu(float /*dt*/, bool headless)
 {
     // TEACHING NOTE — Headless Auto-Advance
     // ──────────────────────────────────────
@@ -186,7 +192,7 @@ void OpenWorld::UpdateBootMenu(float dt, bool headless)
     }
 }
 
-void OpenWorld::UpdateLoading(float dt, bool headless)
+void OpenWorld::UpdateLoading(float /*dt*/, bool headless)
 {
     // TEACHING NOTE — Simulated Loading Stall
     // ─────────────────────────────────────────
@@ -208,7 +214,7 @@ void OpenWorld::UpdateLoading(float dt, bool headless)
     }
 }
 
-void OpenWorld::UpdatePlaying(float dt, bool headless)
+void OpenWorld::UpdatePlaying(float /*dt*/, bool headless)
 {
     // TEACHING NOTE — Biome Simulation
     // ──────────────────────────────────
@@ -233,7 +239,7 @@ void OpenWorld::UpdatePlaying(float dt, bool headless)
     }
 }
 
-void OpenWorld::UpdatePaused(float dt, bool headless)
+void OpenWorld::UpdatePaused(float /*dt*/, bool headless)
 {
     // Nothing to tick while paused; headless auto-resumes after 5 frames.
     if (headless && m_stateTime > (5.f / 60.f))

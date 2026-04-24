@@ -90,17 +90,22 @@ Expected output:
 | `desert`    | Leide Badlands      | (512,0) – (1024,512)        | exploration_desert   |
 | `coast`     | Cape Caem Shore     | (384,640) – (640,1024)      | exploration_coast    |
 
-Biome boundaries are defined in
-`samples/vertical_slice_project/Content/World/open_world.json`.
+Biome sky colours are defined in `OpenWorld::GetClearColour()` in
+`src/demo_game/open_world.cpp`.  The file
+`samples/vertical_slice_project/Content/World/open_world.json` is the
+planned authoring format for a future data-driven biome loader, but it is
+not consumed by the current runtime yet.
 
 ---
 
 ## Teaching Stations
 
-All stations are defined in
-`samples/vertical_slice_project/Content/World/teaching_stations.json`.
-Students can add new stations by extending the JSON array — no C++ changes
-are needed.
+The current `OpenWorld` runtime registers stations in C++ inside
+`RegisterDefaultStations()` (`src/demo_game/open_world.cpp`).  The file
+`samples/vertical_slice_project/Content/World/teaching_stations.json` is
+the planned authoring format for a future data-driven version of the station
+list.  Until that runtime loading path is implemented, adding or changing
+stations still requires a C++ edit.
 
 | ID                  | Station Name               | Engine Feature                    |
 |---------------------|---------------------------|-----------------------------------|
@@ -121,15 +126,19 @@ are needed.
 
 ## F1 Debug / Teaching Station Menu
 
-Press **F1** at any time while playing to open the developer overlay.  From
-there you can:
+Press **F1** at any time while playing to toggle the demo's debug-menu state.
+In the current implementation `demo_main.cpp` flips `debugMenuOpen` and emits
+a log line so the input path can be verified during development.
 
-- See a list of all teaching stations.
-- Teleport instantly to any station (classroom demo mode).
+> **Current status:** the full in-game ImGui teaching-station overlay is **not
+> yet implemented** in `demo_main.cpp`.  The F1 path is a stub / hook for
+> the future overlay.
+
+Planned expansion for this menu:
+
+- List all teaching stations (from `OpenWorld::GetStations()`).
+- Teleport instantly to a selected station (classroom demo mode).
 - Toggle debug overlays (AI nav-mesh, streaming cell grid, audio zones).
-
-This is implemented in `demo_main.cpp` (`debugMenuOpen` toggle) using the
-same `ImGui`-based overlay infrastructure as the editor.
 
 ---
 
@@ -137,22 +146,29 @@ same `ImGui`-based overlay infrastructure as the editor.
 
 ### Add a new teaching station
 
-1. Open `samples/vertical_slice_project/Content/World/teaching_stations.json`.
-2. Append a new entry following the schema (id, displayName, description, biome,
-   worldX, worldZ, sceneHint, markerColour).
-3. Rebuild — the JSON is loaded at runtime; no C++ change needed.
+1. Open `src/demo_game/open_world.cpp` and append an entry to
+   `RegisterDefaultStations()`.
+2. Add a matching entry in
+   `samples/vertical_slice_project/Content/World/teaching_stations.json`
+   so the authoring record stays in sync with the C++ data.
+3. Rebuild `demo_game`.
+
+> **Future:** once a JSON runtime loader is added, step 1 will be replaced
+> by editing the JSON file only — no C++ change needed.
 
 ### Add a new biome
 
-1. Open `samples/vertical_slice_project/Content/World/open_world.json`.
-2. Add a new entry in the `biomes` array with bounds, sky colours, fog density,
-   music track, and spawn table.
-3. Update `BiomeType` enum in `src/demo_game/open_world.hpp` if you need to
-   reference the biome in C++ code.
+1. Add the new value to the `BiomeType` enum in `src/demo_game/open_world.hpp`.
+2. Add its sky colour to `OpenWorld::GetClearColour()` in
+   `src/demo_game/open_world.cpp`.
+3. Add matching stations in `RegisterDefaultStations()` if needed.
+4. Add a corresponding entry in
+   `samples/vertical_slice_project/Content/World/open_world.json` to keep
+   the authoring record in sync.
+5. Rebuild `demo_game`.
 
 ### Add a new quest
 
-Quests are defined in
 `samples/vertical_slice_project/Content/quest_bank.json`.
 Add a new quest entry following the schema (see `shared/schemas/quest_bank.schema.json`).
 The `QuestSystem` (M8/M20) will automatically pick it up.

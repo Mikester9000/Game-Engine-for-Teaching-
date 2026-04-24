@@ -26,7 +26,10 @@
  *      menu used in AAA studios during production.
  *
  *   5. HEADLESS CI — Pass --headless to exercise the full boot→load→play
- *      flow without a window or GPU.  Uses D3D11 WARP like engine_sandbox.
+ *      flow without a window or GPU.  The headless path is CPU-only: it runs
+ *      the OpenWorld state machine directly without initialising D3D11 or
+ *      Win32.  (engine_sandbox --scene demo_world additionally wraps this
+ *      test inside an active D3D11 WARP device for extra coverage.)
  *
  * ─── Renderer Dependency ────────────────────────────────────────────────────
  * demo_main.cpp compiles ONLY when ENGINE_ENABLE_D3D11=ON (Win32 + D3D11).
@@ -169,11 +172,13 @@ static int RunHeadless()
     // -----------------------------------------------------------------------
     // TEACHING NOTE — Extra guard frames
     // We allow kHeadlessFrames + kExtraGuardFrames iterations so the
-    // BOOT_MENU auto-advance (2 frames) and LOADING phase (>= 1 frame)
-    // complete before we start counting the PLAYING biome-cycle frames.
+    // BOOT_MENU auto-advance (2 frames) and LOADING phase (about 6 frames
+    // at 60 Hz: 0.1 s / (1/60 s) ≈ 6) complete before we start counting
+    // the PLAYING biome-cycle frames.  The loop exits early via `break`
+    // once IsHeadlessDone() is true.
     // -----------------------------------------------------------------------
     constexpr float kDt             = 1.0f / 60.0f;
-    constexpr int   kExtraGuardFrames = 4; // boot (2) + loading (>=1) + margin
+    constexpr int   kExtraGuardFrames = 12; // boot (2) + loading (~6 @ 60Hz) + margin
     for (int f = 0; f < OpenWorld::kHeadlessFrames + kExtraGuardFrames; ++f)
     {
         world.Update(kDt, /*headless=*/true);
@@ -193,18 +198,42 @@ static int RunHeadless()
               << world.GetFrameCount() << ".\n";
 
     // -----------------------------------------------------------------------
-    // 4. Verify station count.
+    // 4. Verify station count and per-station data integrity.
     // -----------------------------------------------------------------------
     constexpr int kExpectedStations = 12;
-    const int actualStations = static_cast<int>(world.GetStations().size());
+    const auto& stations = world.GetStations();
+    const int actualStations = static_cast<int>(stations.size());
+
+    // TEACHING NOTE — Fail explicitly on empty station list
+    // An empty list is a test failure, not a vacuous success.  We check the
+    // count first (not just the per-field loop) so the error message tells
+    // the student exactly what went wrong.
     if (actualStations < kExpectedStations)
     {
         std::cout << "[FAIL] demo_world/4: Expected >= " << kExpectedStations
                   << " teaching stations, got " << actualStations << ".\n";
         return 1;
     }
-    std::cout << "[OK] demo_world/4: Teaching stations registered = "
-              << actualStations << " (>= " << kExpectedStations << ").\n";
+
+    // Every station must have non-empty id, displayName, and sceneHint.
+    bool stationDataOk = true;
+    for (const auto& s : stations)
+    {
+        if (s.id.empty() || s.displayName.empty() || s.sceneHint.empty())
+        {
+            std::cout << "[FAIL] demo_world/4: station has empty id, "
+                         "displayName, or sceneHint.\n";
+            stationDataOk = false;
+            break;
+        }
+    }
+    if (!stationDataOk)
+    {
+        return 1;
+    }
+    std::cout << "[OK] demo_world/4: " << actualStations
+              << " teaching stations registered; all have non-empty id, "
+                 "displayName, and sceneHint.\n";
 
     // -----------------------------------------------------------------------
     // 5. Teleport test — exercise TeleportToStation.

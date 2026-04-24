@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Teaching Stations",
+  "description": "Schema for Demo_Game in-world teaching-station landmark definitions.",
+  "type": "object",
+  "required": ["version", "stations"],
+  "properties": {
+    "version":     { "type": "string" },
+    "description": { "type": "string" },
+    "stations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "displayName", "description", "biome", "worldX", "worldZ", "sceneHint"],
+        "properties": {
+          "id":          { "type": "string", "description": "Unique station identifier used by TeleportToStation()." },
+          "displayName": { "type": "string", "description": "Human-readable label shown in the F1 station list." },
+          "description": { "type": "string", "description": "One-line summary of the engine feature the station demonstrates." },
+          "biome":       { "type": "string", "description": "Biome ID the station sits within." },
+          "worldX":      { "type": "number", "description": "World X coordinate of the station centre." },
+          "worldZ":      { "type": "number", "description": "World Z coordinate of the station centre." },
+          "sceneHint":   { "type": "string", "description": "Optional --scene argument that best showcases this station." },
+          "markerColour": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 3,
+            "maxItems": 4,
+            "description": "RGB or RGBA colour for the in-world teleport marker."
+          }
+        }
+      }
+    }
+  }
+}
