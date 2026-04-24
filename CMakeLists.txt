@@ -829,6 +829,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
         # dependency.  It is compiled into engine_sandbox so the headless
         # --scene demo_world acceptance test is available in every CI build.
         src/demo_game/open_world.cpp
+        # TEACHING NOTE — Demo_Game Quest & Activity Manager (M-DG9)
+        # demo_quest_manager.cpp is a pure C++17 module (no D3D11/Win32/ECS).
+        # It is compiled into engine_sandbox alongside open_world.cpp so the
+        # --scene demo_world acceptance test 7 (quest_manager) runs in CI.
+        # demo_game inherits it automatically via DEMO_GAME_SOURCES derivation.
+        src/demo_game/demo_quest_manager.cpp
     )
 
     add_executable(engine_sandbox ${SANDBOX_SOURCES})

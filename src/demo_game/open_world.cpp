@@ -96,6 +96,16 @@ bool OpenWorld::Init()
     TryLoadStationsFromJSON(
         "samples/vertical_slice_project/Content/World/teaching_stations.json");
 
+    // ── Quest & activity initialisation ──────────────────────────────────────
+    // TEACHING NOTE — Chained data-driven initialisation
+    // DemoQuestManager uses the same fallback pattern as stations:
+    //   1. RegisterDefaults() builds valid in-code quest/activity definitions.
+    //   2. TryLoadFromJSON() (inside Init) overlays content-authored data.
+    // The JSON path is passed here so the quest manager can overlay from
+    // demo_activities.json when ENGINE_ENABLE_JSON is active.
+    m_quests.Init(
+        "samples/vertical_slice_project/Content/World/demo_activities.json");
+
     // Start at the boot menu.
     m_state     = OpenWorldState::BOOT_MENU;
     m_stateTime = 0.f;
@@ -191,10 +201,26 @@ void OpenWorld::TeleportToStation(const std::string& stationID)
             std::cout << "[OpenWorld] Teleport → station \"" << s.displayName
                       << "\" at (" << s.worldX << ", " << s.worldZ << ")\n";
             m_currentBiome = s.biome;
+
+            // TEACHING NOTE — Forwarding station visits to the quest manager
+            // DemoQuestManager::NotifyStationVisited() advances the main quest
+            // objective (if this station is the current target) and the Station
+            // Scanner side activity (unique-station deduplication inside).
+            m_quests.NotifyStationVisited(stationID);
             return;
         }
     }
     std::cout << "[OpenWorld] Warning: station \"" << stationID << "\" not found.\n";
+}
+
+void OpenWorld::NotifyEnemyKilled()
+{
+    m_quests.NotifyEnemyKilled();
+}
+
+void OpenWorld::NotifyItemCollected()
+{
+    m_quests.NotifyItemCollected();
 }
 
 // ---------------------------------------------------------------------------

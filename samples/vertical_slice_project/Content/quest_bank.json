@@ -71,6 +71,99 @@
       "gilReward": 2000,
       "prereqQuestIDs": [1],
       "luaCompleteCallback": "onCompleteCrystalCall"
+    },
+    {
+      "id": 10,
+      "title": "Tour of the Engine",
+      "description": "Explore the Demo_Game open world and visit three key teaching stations to complete your orientation tour. Use the F1 overlay to teleport between stations.",
+      "isMainQuest": true,
+      "objectives": [
+        {
+          "type": "reach_location",
+          "description": "Visit the Quests & Dialogue station",
+          "targetID": 10,
+          "requiredCount": 1
+        },
+        {
+          "type": "reach_location",
+          "description": "Visit the Action Combat station",
+          "targetID": 11,
+          "requiredCount": 1
+        },
+        {
+          "type": "reach_location",
+          "description": "Return to the PBR Rendering station to complete the tour",
+          "targetID": 12,
+          "requiredCount": 1
+        }
+      ],
+      "xpReward": 500,
+      "gilReward": 3000,
+      "prereqQuestIDs": [],
+      "luaCompleteCallback": "onCompleteTourOfEngine"
+    },
+    {
+      "id": 11,
+      "title": "Station Scanner",
+      "description": "Explore the open world by visiting three distinct teaching stations. Use the F1 overlay to discover and teleport to each station.",
+      "isMainQuest": false,
+      "objectives": [
+        {
+          "type": "reach_location",
+          "description": "Visit the Quests & Dialogue station",
+          "targetID": 10,
+          "requiredCount": 1
+        },
+        {
+          "type": "reach_location",
+          "description": "Visit the 3D Positional Audio station",
+          "targetID": 13,
+          "requiredCount": 1
+        },
+        {
+          "type": "reach_location",
+          "description": "Visit the GPU Skeletal Animation station",
+          "targetID": 14,
+          "requiredCount": 1
+        }
+      ],
+      "xpReward": 150,
+      "gilReward": 750,
+      "prereqQuestIDs": []
+    },
+    {
+      "id": 12,
+      "title": "Combat Challenge",
+      "description": "Head to the Action Combat teaching station and prove your skills by defeating five enemies using the ComboSystem.",
+      "isMainQuest": false,
+      "objectives": [
+        {
+          "type": "kill_enemy",
+          "description": "Defeat 5 Field Enemies near the Combat station",
+          "targetID": 5,
+          "requiredCount": 5
+        }
+      ],
+      "xpReward": 200,
+      "gilReward": 1000,
+      "prereqQuestIDs": []
+    },
+    {
+      "id": 13,
+      "title": "Collector's Run",
+      "description": "Engine Crystals are hidden at teaching stations across the open world. Collect 5 to complete this challenge.",
+      "isMainQuest": false,
+      "objectives": [
+        {
+          "type": "collect_item",
+          "description": "Collect 5 Engine Crystals",
+          "targetID": 100,
+          "requiredCount": 5
+        }
+      ],
+      "xpReward": 175,
+      "gilReward": 850,
+      "prereqQuestIDs": []
     }
   ]
 }

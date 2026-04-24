@@ -35,6 +35,8 @@
 #include <vector>
 #include <cstdint>
 
+#include "demo_game/demo_quest_manager.hpp"
+
 // ===========================================================================
 // BiomeType — identifies the major biome regions of the open world
 // ===========================================================================
@@ -217,6 +219,9 @@ public:
     /// Returns the registered teaching stations.
     const std::vector<TeachingStation>& GetStations() const noexcept { return m_stations; }
 
+    /// Returns the quest/activity manager (for HUD and CI queries).
+    const DemoQuestManager& GetQuestManager() const noexcept { return m_quests; }
+
     // =========================================================================
     // Control
     // =========================================================================
@@ -238,6 +243,22 @@ public:
      * @param stationID  Station identifier string (must match a registered station id).
      */
     void TeleportToStation(const std::string& stationID);
+
+    /**
+     * @brief Forward an enemy-kill event to the DemoQuestManager.
+     *
+     * Called by demo_main.cpp when the player defeats an enemy (e.g., via
+     * GameRuntime combat) while the world is in PLAYING state.
+     */
+    void NotifyEnemyKilled();
+
+    /**
+     * @brief Forward an item-collect event to the DemoQuestManager.
+     *
+     * Called by demo_main.cpp when the player picks up an item (e.g., via
+     * GameRuntime inventory) while the world is in PLAYING state.
+     */
+    void NotifyItemCollected();
 
     /**
      * @brief Attempt to load/override stations from teaching_stations.json.
@@ -277,6 +298,9 @@ private:
 
     // ---- Teaching stations ----
     std::vector<TeachingStation> m_stations;
+
+    // ---- Quest / activity tracker ----
+    DemoQuestManager m_quests; ///< Tracks main quest + 3 side activities.
 
     // ---- Frame tracking ----
     int  m_frameCount    = 0;
