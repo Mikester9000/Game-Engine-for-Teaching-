@@ -503,7 +503,120 @@ static void DrawHudBar(HWND hwnd, int clientW,
     ::DeleteObject(font);
 }
 
+// ===========================================================================
+// DrawQuestHud — bottom-left quest / activity progress strip
+// ===========================================================================
+// TEACHING NOTE — Quest HUD as Persistent Overlay
+// ─────────────────────────────────────────────────────────────────────────────
+// The quest HUD is drawn in the bottom-left corner whenever the game is in
+// PLAYING state.  It shows:
+//   • The current main quest objective (one line, gold colour).
+//   • The three side-activity progress bars / counts (three lines, dim colour
+//     for in-progress, green for complete).
+//
+// This is the minimal HUD that every commercial RPG ships: the player always
+// knows their current objective at a glance.  (Witcher 3 pins the active
+// quest in the top-right; FFXV shows it in the bottom-left — we follow FFXV.)
+//
+// GDI note: we render the HUD AFTER DrawFrame (same as the other overlays).
+// ─────────────────────────────────────────────────────────────────────────────
+
+static void DrawQuestHud(HWND hwnd, int clientW, int clientH,
+                         const DemoQuestManager& qm)
+{
+    const auto& quest      = qm.GetMainQuest();
+    const auto& activities = qm.GetActivities();
+
+    if (activities.empty())
+        return;
+
+    GdiScope dc(hwnd);
+    if (!dc.Valid()) return;
+
+    HFONT fontHead = CreateOverlayFont(16);
+    HFONT fontItem = CreateOverlayFont(15);
+
+    // ---- Panel geometry ────────────────────────────────────────────────────
+    // Height: heading + quest line + separator + 3 activity lines + padding.
+    const int numLines = 1            // main quest objective
+                       + static_cast<int>(activities.size()) // activity lines
+                       + 1;          // "Activities: N/3" summary line
+
+    const int panelH = kPadY * 2 + kLineH + 4 + numLines * kLineH;
+    const int panelW = kPanelW;
+    const int panelX = 12;
+    const int panelY = clientH - panelH - 12;
+
+    DrawPanel(dc.Get(), panelX, panelY, panelW, panelH, kColBackground, kColBorder);
+
+    int cy = panelY + kPadY;
+
+    // ---- Main quest heading ────────────────────────────────────────────────
+    {
+        char heading[128];
+        if (quest.completed)
+        {
+            std::snprintf(heading, sizeof(heading),
+                          " MAIN: %s [COMPLETE]", quest.title.c_str());
+        }
+        else
+        {
+            const DemoQuestObjective* obj = quest.CurrentObjective();
+            const int objIdx = quest.currentObjective + 1;
+            const int objMax = static_cast<int>(quest.objectives.size());
+            if (obj)
+            {
+                std::snprintf(heading, sizeof(heading),
+                              " MAIN [%d/%d]: %s",
+                              objIdx, objMax, obj->description.c_str());
+            }
+            else
+            {
+                std::snprintf(heading, sizeof(heading),
+                              " MAIN: %s", quest.title.c_str());
+            }
+        }
+        DrawLine(dc.Get(), fontHead, panelX + kPadX, cy,
+                 heading, quest.completed ? RGB(80, 230, 80) : kColHeading);
+        cy += kLineH + 4;
+    }
+
+    // ---- Side activity lines ───────────────────────────────────────────────
+    for (const auto& act : activities)
+    {
+        char line[128];
+        std::snprintf(line, sizeof(line),
+                      "  %s  %s [%d/%d]",
+                      act.completed ? "[DONE]" : "[    ]",
+                      act.title.c_str(),
+                      act.progress,
+                      act.required);
+
+        const COLORREF col = act.completed ? RGB(80, 230, 80) : kColDim;
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, line, col);
+        cy += kLineH;
+    }
+
+    // ---- Activity summary ──────────────────────────────────────────────────
+    {
+        char summary[64];
+        std::snprintf(summary, sizeof(summary),
+                      "  Activities: %d/%d complete",
+                      qm.CompletedActivities(),
+                      static_cast<int>(activities.size()));
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, summary, kColText);
+    }
+
+    ::DeleteObject(fontHead);
+    ::DeleteObject(fontItem);
+}
+
 } // namespace overlay
+
+// ===========================================================================
+// Forward-declare demo_quest_manager types (used by DrawQuestHud)
+// ===========================================================================
+// Already available via open_world.hpp → demo_quest_manager.hpp
 
 // ===========================================================================
 // Headless validation path (CI — no window, no user input)
@@ -659,11 +772,102 @@ static int RunHeadless()
     }
 
     // -----------------------------------------------------------------------
-    // 7. Report PASS.
+    // 7. Quest & activity definitions — DemoQuestManager initialisation.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Testing the quest/activity layer independently
+    // ─────────────────────────────────────────────────────────────────────────
+    // The DemoQuestManager is accessible via OpenWorld::GetQuestManager().
+    // We already called OpenWorld::Init() (test 1), which initialised the
+    // quest manager with built-in defaults.  Here we:
+    //   a) Verify that TotalDefined() returns 1 main quest + 3 activities = 4.
+    //   b) Verify the main quest has 3 objectives.
+    //   c) Simulate three station visits that correspond to the main quest
+    //      objectives in order and verify the main quest completes.
+    //   d) Simulate three *distinct* station visits via a fresh world2 and
+    //      verify the Station Scanner activity advances.
+    // ─────────────────────────────────────────────────────────────────────────
+    {
+        // Use 'world' (already past PLAYING after test 3) — its quest manager
+        // was initialised in world.Init() with built-in defaults.
+        const DemoQuestManager& qm = world.GetQuestManager();
+
+        // a) Total definitions check.
+        constexpr int kExpectedTotal = 1 + DemoQuestManager::kExpectedActivities;
+        if (qm.TotalDefined() != kExpectedTotal)
+        {
+            std::cout << "[FAIL] demo_world/7a: TotalDefined() = "
+                      << qm.TotalDefined()
+                      << " (expected " << kExpectedTotal << ").\n";
+            return 1;
+        }
+
+        // b) Main quest objectives count.
+        const int objCount = static_cast<int>(qm.GetMainQuest().objectives.size());
+        if (objCount < 2)
+        {
+            std::cout << "[FAIL] demo_world/7b: main quest has " << objCount
+                      << " objectives (expected >= 2).\n";
+            return 1;
+        }
+
+        // c) Complete the main quest by visiting objectives in order.
+        //    We use a fresh OpenWorld so the quest starts from scratch.
+        OpenWorld qWorld;
+        if (!qWorld.Init())
+        {
+            std::cout << "[FAIL] demo_world/7c: qWorld.Init() returned false.\n";
+            return 1;
+        }
+
+        // Visit each station whose ID matches a main quest objective.
+        const auto& questRef = qWorld.GetQuestManager().GetMainQuest();
+        for (const auto& obj : questRef.objectives)
+        {
+            if (!obj.stationID.empty())
+                qWorld.TeleportToStation(obj.stationID);
+        }
+
+        if (!qWorld.GetQuestManager().GetMainQuest().completed)
+        {
+            std::cout << "[FAIL] demo_world/7c: main quest did not complete "
+                         "after visiting all objective stations.\n";
+            return 1;
+        }
+
+        // d) Station Scanner activity — 3 unique station visits.
+        //    qWorld already visited the 3 objective stations; each was unique,
+        //    so the Station Scanner should have at least 3 progress.
+        const auto& scanAct = qWorld.GetQuestManager().GetActivities();
+        bool scannerOk = false;
+        for (const auto& a : scanAct)
+        {
+            if (a.type == DemoActivityType::STATION_SCAN && a.progress >= 3)
+            {
+                scannerOk = true;
+                break;
+            }
+        }
+        if (!scannerOk)
+        {
+            std::cout << "[FAIL] demo_world/7d: Station Scanner activity did not "
+                         "reach progress >= 3 after visiting 3 unique stations.\n";
+            return 1;
+        }
+
+        std::cout << "[OK] demo_world/7: DemoQuestManager — "
+                  << qm.TotalDefined()
+                  << " defined (1 main quest, " << DemoQuestManager::kExpectedActivities
+                  << " activities); main quest completes on station visits; "
+                     "Station Scanner advances on unique visits.\n";
+    }
+
+    // -----------------------------------------------------------------------
+    // 8. Report PASS.
     // -----------------------------------------------------------------------
     world.Shutdown();
-    std::cout << "[PASS] demo_world: 6 acceptance tests passed "
-                 "(init, boot_menu, biome_cycle, stations, teleport, json_fallback).\n";
+    std::cout << "[PASS] demo_world: 7 acceptance tests passed "
+                 "(init, boot_menu, biome_cycle, stations, teleport, json_fallback, "
+                 "quest_manager).\n";
     return 0;
 }
 
@@ -1026,6 +1230,17 @@ static int RunWindowed(const DemoArgs& args)
         {
             const char* biomeName = GetBiomeDisplayName(world.GetCurrentBiome());
             overlay::DrawHudBar(hwnd, winW, biomeName, fps);
+        }
+
+        // Quest HUD — always visible while PLAYING (not in boot or debug menu).
+        // TEACHING NOTE — Persistent quest overlay
+        // The quest HUD is drawn on top of all other content when the player
+        // is in the PLAYING state.  It does not interfere with the F1 overlay
+        // (DrawDebugOverlay takes the full right panel in that state) or the
+        // boot menu (DrawBootMenu takes the centre).
+        if (world.GetState() == OpenWorldState::PLAYING && !debugMenuOpen)
+        {
+            overlay::DrawQuestHud(hwnd, winW, winH, world.GetQuestManager());
         }
     }
 

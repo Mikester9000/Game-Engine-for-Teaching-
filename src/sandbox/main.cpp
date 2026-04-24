@@ -5030,6 +5030,82 @@ int main(int argc, char* argv[])
                     ow2.Shutdown();
                 }
 
+                // ── Test 7: DemoQuestManager initialisation + station-visit quest advance ──
+                // TEACHING NOTE — Testing the quest/activity layer
+                // ──────────────────────────────────────────────────────────────────
+                // DemoQuestManager is initialised inside OpenWorld::Init(), so 'ow'
+                // already has a valid quest manager.  We verify:
+                //   a) TotalDefined() = 1 main quest + 3 activities = 4.
+                //   b) The main quest has >= 2 objectives.
+                //   c) Visiting the objective stations in order completes the quest.
+                //   d) Unique station visits advance the Station Scanner activity.
+                // ──────────────────────────────────────────────────────────────────
+                {
+                    // a) Total definitions.
+                    constexpr int kExpectedTotal = 1 + DemoQuestManager::kExpectedActivities;
+                    if (ow.GetQuestManager().TotalDefined() != kExpectedTotal)
+                    {
+                        std::cout << "[FAIL] demo_world/7a: TotalDefined() = "
+                                  << ow.GetQuestManager().TotalDefined()
+                                  << " (expected " << kExpectedTotal << ").\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        // b) Main quest objective count.
+                        const int objCount = static_cast<int>(
+                            ow.GetQuestManager().GetMainQuest().objectives.size());
+                        if (objCount < 2)
+                        {
+                            std::cout << "[FAIL] demo_world/7b: main quest has "
+                                      << objCount << " objectives (expected >= 2).\n";
+                            ++testsFailed;
+                        }
+                        else
+                        {
+                            // c) Complete the main quest by visiting objective stations.
+                            OpenWorld qw;
+                            qw.Init();
+                            const auto& mqRef = qw.GetQuestManager().GetMainQuest();
+                            for (const auto& obj : mqRef.objectives)
+                                if (!obj.stationID.empty())
+                                    qw.TeleportToStation(obj.stationID);
+
+                            const bool questDone = qw.GetQuestManager().GetMainQuest().completed;
+                            // d) Station Scanner progress.
+                            const auto& acts = qw.GetQuestManager().GetActivities();
+                            bool scanOk = false;
+                            for (const auto& a : acts)
+                                if (a.type == DemoActivityType::STATION_SCAN && a.progress >= 3)
+                                    scanOk = true;
+
+                            qw.Shutdown();
+
+                            if (!questDone)
+                            {
+                                std::cout << "[FAIL] demo_world/7c: main quest did not "
+                                             "complete after visiting all objective stations.\n";
+                                ++testsFailed;
+                            }
+                            else if (!scanOk)
+                            {
+                                std::cout << "[FAIL] demo_world/7d: Station Scanner "
+                                             "activity did not reach progress >= 3.\n";
+                                ++testsFailed;
+                            }
+                            else
+                            {
+                                std::cout << "[OK] demo_world/7: DemoQuestManager — "
+                                          << kExpectedTotal
+                                          << " defined (1 main quest, "
+                                          << DemoQuestManager::kExpectedActivities
+                                          << " activities); quest completes on station "
+                                             "visits; Scanner advances.\n";
+                            }
+                        }
+                    }
+                }
+
                 ow.Shutdown();
 
                 if (testsFailed > 0)
@@ -5040,8 +5116,9 @@ int main(int argc, char* argv[])
                     window.Shutdown();
                     return 1;
                 }
-                std::cout << "[PASS] demo_world: 6 acceptance tests passed "
-                             "(init, boot_menu, biome_cycle, teleport, station_data, json_fallback).\n";
+                std::cout << "[PASS] demo_world: 7 acceptance tests passed "
+                             "(init, boot_menu, biome_cycle, teleport, station_data, "
+                             "json_fallback, quest_manager).\n";
             }
             else
             {
