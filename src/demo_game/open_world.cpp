@@ -46,6 +46,19 @@
 #include <iostream>  // std::cout for headless CI log output
 
 // ---------------------------------------------------------------------------
+// TEACHING NOTE — Conditional JSON dependency
+// ─────────────────────────────────────────────
+// ENGINE_ENABLE_JSON is defined by CMake when nlohmann/json is available via
+// vcpkg (see CMakeLists.txt: if(nlohmann_json_FOUND) … ENGINE_ENABLE_JSON).
+// We guard the JSON include so open_world.cpp also compiles cleanly without
+// vcpkg (e.g., the headless CI preset that does not install nlohmann-json).
+// ---------------------------------------------------------------------------
+#ifdef ENGINE_ENABLE_JSON
+#  include <fstream>
+#  include <nlohmann/json.hpp>
+#endif
+
+// ---------------------------------------------------------------------------
 // BiomeName
 // ---------------------------------------------------------------------------
 
@@ -72,6 +85,16 @@ bool OpenWorld::Init()
 {
     // Register the canonical teaching stations (inline data fallback).
     RegisterDefaultStations();
+
+    // TEACHING NOTE — Overlay stations from JSON (when available)
+    // ─────────────────────────────────────────────────────────────
+    // TryLoadStationsFromJSON() replaces the C++ default station list with
+    // data from the content file.  If the file is missing (e.g., first run
+    // without content deployed) the C++ defaults from RegisterDefaultStations()
+    // are kept intact.  This is the AAA "fallback data" pattern: ship sane
+    // defaults in code; let external files override at runtime.
+    TryLoadStationsFromJSON(
+        "samples/vertical_slice_project/Content/World/teaching_stations.json");
 
     // Start at the boot menu.
     m_state     = OpenWorldState::BOOT_MENU;
@@ -247,6 +270,118 @@ void OpenWorld::UpdatePaused(float /*dt*/, bool headless)
         m_state     = OpenWorldState::PLAYING;
         m_stateTime = 0.f;
     }
+}
+
+// ---------------------------------------------------------------------------
+// TryLoadStationsFromJSON
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — JSON Data Override Pattern
+// ─────────────────────────────────────────────────────────────────────────────
+// This method replaces the C++ station list with data from a JSON content
+// file.  It follows the "try-and-fallback" pattern common in AAA engines:
+//
+//   1. C++ code registers safe defaults (RegisterDefaultStations).
+//   2. Runtime code attempts to load the content-authored overrides.
+//   3. If the override file is missing or malformed, the defaults remain.
+//
+// ENGINE_ENABLE_JSON guards the entire implementation so the file compiles
+// cleanly even when nlohmann/json is not installed (e.g., CI presets that
+// skip vcpkg).
+// ─────────────────────────────────────────────────────────────────────────────
+
+bool OpenWorld::TryLoadStationsFromJSON(const std::string& jsonPath)
+{
+#ifdef ENGINE_ENABLE_JSON
+    // ---- Open the JSON file ----
+    std::ifstream file(jsonPath);
+    if (!file.is_open())
+    {
+        // TEACHING NOTE — Silent fallback
+        // We do NOT print an error here; a missing content file is a normal
+        // condition during early development (the cook step may not have run
+        // yet).  RegisterDefaultStations() already populated m_stations, so
+        // the game is in a valid state.
+        return false;
+    }
+
+    // ---- Parse ----
+    nlohmann::json root;
+    try
+    {
+        file >> root;
+    }
+    catch (const std::exception& ex)
+    {
+        std::cout << "[OpenWorld] teaching_stations.json parse error: "
+                  << ex.what() << " — keeping C++ defaults.\n";
+        return false;
+    }
+
+    // ---- Helper: map biome string to enum ----
+    // TEACHING NOTE — String→Enum mapping
+    // JSON stores biome names as human-readable strings ("grassland",
+    // "forest", …).  The runtime uses the BiomeType enum for efficiency.
+    // A small lambda (or free function) centralises the mapping so it is
+    // easy to extend when new biomes are added.
+    auto parseBiome = [](const std::string& s) -> BiomeType
+    {
+        if (s == "forest")    return BiomeType::FOREST;
+        if (s == "snow")      return BiomeType::SNOW;
+        if (s == "desert")    return BiomeType::DESERT;
+        if (s == "coast")     return BiomeType::COAST;
+        return BiomeType::GRASSLAND; // default for unknown strings
+    };
+
+    // ---- Build station list from JSON ----
+    if (!root.contains("stations") || !root["stations"].is_array())
+    {
+        std::cout << "[OpenWorld] teaching_stations.json: missing \"stations\" array "
+                     "— keeping C++ defaults.\n";
+        return false;
+    }
+
+    std::vector<TeachingStation> loaded;
+    for (const auto& obj : root["stations"])
+    {
+        try
+        {
+            TeachingStation s;
+            s.id          = obj.at("id").get<std::string>();
+            s.displayName = obj.at("displayName").get<std::string>();
+            s.description = obj.value("description", "");
+            s.biome       = parseBiome(obj.value("biome", "grassland"));
+            s.worldX      = obj.value("worldX", 512.f);
+            s.worldZ      = obj.value("worldZ", 512.f);
+            s.sceneHint   = obj.value("sceneHint", "");
+
+            if (!s.id.empty() && !s.displayName.empty())
+                loaded.push_back(std::move(s));
+        }
+        catch (const std::exception& ex)
+        {
+            std::cout << "[OpenWorld] teaching_stations.json: skipping malformed "
+                         "entry — " << ex.what() << "\n";
+        }
+    }
+
+    if (loaded.empty())
+    {
+        std::cout << "[OpenWorld] teaching_stations.json: no valid stations found "
+                     "— keeping C++ defaults.\n";
+        return false;
+    }
+
+    // ---- Apply loaded stations ----
+    m_stations = std::move(loaded);
+    std::cout << "[OpenWorld] Loaded " << m_stations.size()
+              << " teaching stations from " << jsonPath << ".\n";
+    return true;
+
+#else
+    // ENGINE_ENABLE_JSON is OFF — JSON loading compiled out.
+    (void)jsonPath;
+    return false;
+#endif // ENGINE_ENABLE_JSON
 }
 
 // ---------------------------------------------------------------------------

@@ -73,10 +73,28 @@ Expected output:
 [OK] demo_world/1: Init — 12 stations registered.
 [OK] demo_world/2: Initial state = BOOT_MENU.
 [OK] demo_world/3: All biomes visited; headless done at frame 124.
-[OK] demo_world/4: Teleport → rendering_pbr = GRASSLAND.
-[OK] demo_world/5: All 12 stations have non-empty id + displayName + sceneHint.
-[PASS] demo_world: 5 acceptance tests passed ...
+[OK] demo_world/4: 12 teaching stations registered; all have non-empty id, displayName, and sceneHint.
+[OK] demo_world/5: Teleport to rendering_pbr → biome = GRASSLAND.
+[OK] demo_world/6: JSON fallback safe — 12 stations retained after missing-file load.
+[PASS] demo_world: 6 acceptance tests passed (init, boot_menu, biome_cycle, stations, teleport, json_fallback)
 ```
+
+---
+
+## Boot Menu
+
+When `demo_game.exe` launches it shows a title screen overlay in BOOT_MENU state.
+
+| Key | Action |
+|-----|--------|
+| **↑ / ↓** | Navigate menu items |
+| **Enter** | Select highlighted item |
+
+Menu items:
+- **New Game** — transitions to LOADING → PLAYING state
+- **Continue** — (stub; coming in future milestone)
+- **Settings** — (stub; coming in future milestone)
+- **Quit** — cleanly exits the application
 
 ---
 
@@ -100,12 +118,13 @@ not consumed by the current runtime yet.
 
 ## Teaching Stations
 
-The current `OpenWorld` runtime registers stations in C++ inside
-`RegisterDefaultStations()` (`src/demo_game/open_world.cpp`).  The file
-`samples/vertical_slice_project/Content/World/teaching_stations.json` is
-the planned authoring format for a future data-driven version of the station
-list.  Until that runtime loading path is implemented, adding or changing
-stations still requires a C++ edit.
+`OpenWorld::Init()` first registers the canonical stations in C++ via
+`RegisterDefaultStations()`, then calls `TryLoadStationsFromJSON()` to
+optionally override them from
+`samples/vertical_slice_project/Content/World/teaching_stations.json`
+(requires `ENGINE_ENABLE_JSON` / nlohmann-json via vcpkg).  When the JSON
+file is missing or malformed, the C++ defaults are used — the game always
+boots regardless of content-file status.
 
 | ID                  | Station Name               | Engine Feature                    |
 |---------------------|---------------------------|-----------------------------------|
@@ -126,19 +145,37 @@ stations still requires a C++ edit.
 
 ## F1 Debug / Teaching Station Menu
 
-Press **F1** at any time while playing to toggle the demo's debug-menu state.
-In the current implementation `demo_main.cpp` flips `debugMenuOpen` and emits
-a log line so the input path can be verified during development.
+Press **F1** at any time while in the **PLAYING** state to open the
+developer station overlay.
 
-> **Current status:** the full in-game ImGui teaching-station overlay is **not
-> yet implemented** in `demo_main.cpp`.  The F1 path is a stub / hook for
-> the future overlay.
+### What the overlay shows
 
-Planned expansion for this menu:
+- A panel listing every teaching station registered in `OpenWorld::GetStations()`,
+  with its `displayName` and `sceneHint`.
+- The currently selected station is highlighted in blue.
+- An optional debug-info strip (toggled with **D**) showing the current biome
+  name and live FPS.
 
-- List all teaching stations (from `OpenWorld::GetStations()`).
-- Teleport instantly to a selected station (classroom demo mode).
-- Toggle debug overlays (AI nav-mesh, streaming cell grid, audio zones).
+### Controls
+
+| Key | Action |
+|-----|--------|
+| **F1** | Open overlay (from PLAYING state) |
+| **↑ / ↓** | Move station selection |
+| **Enter** | Teleport to selected station (`OpenWorld::TeleportToStation`) |
+| **F1 / ESC** | Close the overlay |
+| **D** | Toggle biome-name + FPS debug strip (works outside F1 overlay too) |
+
+### Implementation notes
+
+The overlay is implemented using Windows **GDI** (`GetDC` / `DrawText` /
+`ReleaseDC`) drawn after the D3D11 `DrawFrame` call.  In windowed D3D11 mode
+the Desktop Window Manager (DWM) composites both surfaces, so the text appears
+on top of the rendered scene without requiring an extra shader or ImGui
+dependency.
+
+> **For shipping games**: replace GDI with the engine's SDF `FontRenderer`
+> (`src/engine/ui/font_renderer.hpp`) for GPU-accelerated anti-aliased text.
 
 ---
 
@@ -146,15 +183,13 @@ Planned expansion for this menu:
 
 ### Add a new teaching station
 
-1. Open `src/demo_game/open_world.cpp` and append an entry to
-   `RegisterDefaultStations()`.
-2. Add a matching entry in
-   `samples/vertical_slice_project/Content/World/teaching_stations.json`
-   so the authoring record stays in sync with the C++ data.
+1. Edit `samples/vertical_slice_project/Content/World/teaching_stations.json`
+   — add a new entry following the existing format.  If `ENGINE_ENABLE_JSON`
+   is active the runtime picks it up automatically on next boot.
+2. If the JSON runtime path is not active (no vcpkg / ENGINE_ENABLE_JSON),
+   also append a matching entry to `RegisterDefaultStations()` in
+   `src/demo_game/open_world.cpp`.
 3. Rebuild `demo_game`.
-
-> **Future:** once a JSON runtime loader is added, step 1 will be replaced
-> by editing the JSON file only — no C++ change needed.
 
 ### Add a new biome
 
@@ -186,7 +221,7 @@ The `demo_world` scene is validated in every CI run as part of the primary
 ```
 
 A dedicated `build-windows-demo` CI job builds `demo_game.exe` and runs its
-headless path:
+headless path (6 acceptance tests):
 
 ```yaml
 - name: Run Demo_Game headless acceptance test (demo_main path)
@@ -202,20 +237,22 @@ headless path:
 | **M-DG1** | `demo_game` executable + CMake target + `BUILD_DEMO_GAME` option | ✅ Done |
 | **M-DG2** | `OpenWorld` state machine (BOOT_MENU → LOADING → PLAYING) | ✅ Done |
 | **M-DG3** | Biome definitions JSON + teaching station definitions JSON | ✅ Done |
-| **M-DG4** | `--scene demo_world` headless CI test (5 acceptance tests) | ✅ Done |
+| **M-DG4** | `--scene demo_world` headless CI test (acceptance tests) | ✅ Done |
 | **M-DG5** | `build-windows-demo` CI job (builds + validates `demo_game.exe`) | ✅ Done |
-| **M-DG6** | F1 debug overlay (station list, teleport, overlays) | 🔨 Windowed only (F1 key detected; ImGui pass pending) |
-| **M-DG7** | Full open-world biome traversal with real streaming cells | ⬜ Pending content population |
-| **M-DG8** | NPC vendors, interactable camp sites, side activities | ⬜ Pending |
-| **M-DG9** | Settings menu (resolution, volume, key bindings) | ⬜ Pending |
-| **M-DG10**| Performance / LOD pass (Intel HD 4000 baseline) | ⬜ Pending |
+| **M-DG6** | Boot menu UI (keyboard navigation, New Game / Quit) | ✅ Done (GDI overlay) |
+| **M-DG7** | F1 debug overlay (station list, teleport, debug info toggle) | ✅ Done (GDI overlay) |
+| **M-DG8** | Data-driven station loading from `teaching_stations.json` | ✅ Done (`TryLoadStationsFromJSON`, ENGINE_ENABLE_JSON gated) |
+| **M-DG9** | Full open-world biome traversal with real streaming cells | ⬜ Pending content population |
+| **M-DG10**| NPC vendors, interactable camp sites, side activities | ⬜ Pending |
+| **M-DG11**| Settings menu (resolution, volume, key bindings) | ⬜ Pending |
+| **M-DG12**| Performance / LOD pass (Intel HD 4000 baseline) | ⬜ Pending |
 
 ---
 
 ## See Also
 
-- `src/demo_game/open_world.hpp/.cpp` — OpenWorld state machine
-- `src/demo_game/demo_main.cpp` — Standalone entry point
+- `src/demo_game/open_world.hpp/.cpp` — OpenWorld state machine + JSON loading
+- `src/demo_game/demo_main.cpp` — Standalone entry point, GDI overlays
 - `src/sandbox/game_runtime.hpp/.cpp` — Reused M8 gameplay systems
 - `samples/vertical_slice_project/Content/World/` — Content JSON files
 - `docs/FF15_REQUIREMENTS_BLUEPRINT.md` — Full requirements reference
