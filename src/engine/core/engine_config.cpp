@@ -29,6 +29,10 @@
 #include <algorithm>
 #include <fstream>
 
+// TEACHING NOTE — engine_config.cpp includes performance_preset.hpp indirectly
+// via engine_config.hpp, which already pulls in the header.  No extra include
+// is needed here.
+
 #ifdef ENGINE_ENABLE_JSON
 #  include <nlohmann/json.hpp>
    using json = nlohmann::json;
@@ -86,6 +90,46 @@ bool EngineConfig::Load(const std::string& path)
             keys.interact = k.value("interact", keys.interact);
         }
 
+        // Performance preset block (M-DG-P1).
+        // TEACHING NOTE — Preset load order
+        // We first apply the named preset (which fills all fields from
+        // PresetDefaults), then apply any per-field overrides from JSON.
+        // This means a user can select "Low" preset but manually turn
+        // shadows back ON — the override takes precedence.
+        if (j.contains("performance"))
+        {
+            const auto& p = j["performance"];
+
+            // Named preset tier: reads the string ("Low", "Medium", etc.) and
+            // calls ApplyPreset() to fill presetConfig from canonical defaults.
+            if (p.contains("preset"))
+            {
+                const std::string presetName = p.value("preset",
+                    std::string(PresetName(activePreset)));
+                ApplyPreset(ParsePresetName(presetName));
+            }
+
+            // Per-field overrides — applied on top of the preset defaults.
+            if (p.contains("shadowsEnabled"))
+                presetConfig.shadowsEnabled = p.value("shadowsEnabled",
+                                                      presetConfig.shadowsEnabled);
+            if (p.contains("bloomEnabled"))
+                presetConfig.bloomEnabled   = p.value("bloomEnabled",
+                                                      presetConfig.bloomEnabled);
+            if (p.contains("iblEnabled"))
+                presetConfig.iblEnabled     = p.value("iblEnabled",
+                                                      presetConfig.iblEnabled);
+            if (p.contains("vsync"))
+                presetConfig.vsync          = p.value("vsync",
+                                                      presetConfig.vsync);
+            if (p.contains("frameCap"))
+                presetConfig.frameCap       = p.value("frameCap",
+                                                      presetConfig.frameCap);
+            if (p.contains("anisoLevel"))
+                presetConfig.anisoLevel     = p.value("anisoLevel",
+                                                      presetConfig.anisoLevel);
+        }
+
         // TEACHING NOTE — EngineConfig::Load() is intentionally silent.
         // Diagnostics are surfaced via the bool return value so the caller can
         // route them through the engine Logger, ensuring they appear in the
@@ -119,6 +163,18 @@ bool EngineConfig::Save(const std::string& path) const
     j["keys"]["jump"]     = keys.jump;
     j["keys"]["menu"]     = keys.menu;
     j["keys"]["interact"] = keys.interact;
+
+    // TEACHING NOTE — Saving the performance preset
+    // We write both the named preset tier AND each individual toggle.
+    // The individual toggles allow users to override the preset without
+    // changing the tier name.  Load() applies them in the correct order.
+    j["performance"]["preset"]         = PresetName(activePreset);
+    j["performance"]["shadowsEnabled"] = presetConfig.shadowsEnabled;
+    j["performance"]["bloomEnabled"]   = presetConfig.bloomEnabled;
+    j["performance"]["iblEnabled"]     = presetConfig.iblEnabled;
+    j["performance"]["vsync"]          = presetConfig.vsync;
+    j["performance"]["frameCap"]       = presetConfig.frameCap;
+    j["performance"]["anisoLevel"]     = presetConfig.anisoLevel;
 
     std::ofstream f(path);
     if (!f.is_open())

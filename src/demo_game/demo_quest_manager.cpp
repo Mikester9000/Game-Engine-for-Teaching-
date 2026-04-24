@@ -454,3 +454,69 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
     return false;
 #endif // ENGINE_ENABLE_JSON
 }
+
+// ===========================================================================
+// Capture / Restore — M-DG-S2
+// ===========================================================================
+
+DemoQuestManager::SaveSnapshot DemoQuestManager::Capture() const
+{
+    SaveSnapshot snap;
+    snap.questObjectiveIndex = m_mainQuest.currentObjective;
+    snap.questCompleted      = m_mainQuest.completed;
+
+    snap.activities.reserve(m_activities.size());
+    for (const auto& act : m_activities)
+    {
+        SaveSnapshot::ActivityEntry entry;
+        entry.id        = act.id;
+        entry.progress  = act.progress;
+        entry.completed = act.completed;
+        // Capture the set of visited station IDs so unique-station
+        // deduplication is preserved across save/load.
+        entry.visitedStations.assign(m_visitedStations.begin(),
+                                     m_visitedStations.end());
+        snap.activities.push_back(std::move(entry));
+    }
+
+    return snap;
+}
+
+void DemoQuestManager::Restore(const SaveSnapshot& snap)
+{
+    // TEACHING NOTE — Defensive Restore
+    // Clamp the restored objective index to the valid range so that a save
+    // file written before new objectives were added does not put the quest
+    // past the last objective.
+    const int maxObj = static_cast<int>(m_mainQuest.objectives.size());
+    m_mainQuest.currentObjective = (snap.questObjectiveIndex >= 0
+                                    && snap.questObjectiveIndex <= maxObj)
+                                   ? snap.questObjectiveIndex
+                                   : 0;
+    m_mainQuest.completed = snap.questCompleted;
+
+    // Mark past objectives as done so the HUD shows them correctly.
+    for (int i = 0; i < m_mainQuest.currentObjective; ++i)
+    {
+        if (i < maxObj)
+            m_mainQuest.objectives[i].done = true;
+    }
+
+    // Restore activity progress.  Unrecognised IDs in the snapshot are skipped.
+    m_visitedStations.clear();
+    for (const auto& entry : snap.activities)
+    {
+        for (auto& act : m_activities)
+        {
+            if (act.id == entry.id)
+            {
+                act.progress  = entry.progress;
+                act.completed = entry.completed;
+                // Restore visited-station deduplication set.
+                for (const auto& sid : entry.visitedStations)
+                    m_visitedStations.insert(sid);
+                break;
+            }
+        }
+    }
+}

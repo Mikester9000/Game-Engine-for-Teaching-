@@ -156,6 +156,108 @@ public:
      * @brief Return the human-readable name of this backend ("D3D11", "Vulkan").
      */
     virtual const char* BackendName() const = 0;
+
+    // -----------------------------------------------------------------------
+    // Feature toggles — Performance Preset System (M-DG-P1)
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Default No-Op Virtual Methods
+    // ──────────────────────────────────────────────
+    // These methods are intentionally NOT pure virtual.  Instead they provide
+    // empty default implementations so that:
+    //   1. VulkanRenderer (which has not yet implemented these features) still
+    //      compiles without change — the Vulkan backend silently ignores the
+    //      toggling until Vulkan feature parity is implemented (M14).
+    //   2. New renderer backends (e.g., a future Metal backend) start with
+    //      safe no-op behaviour.
+    //
+    // The D3D11Renderer overrides all of them to honour the preset.
+    // -----------------------------------------------------------------------
+
+    /**
+     * @brief Enable or disable the directional shadow-map pass.
+     *
+     * When disabled the shadow-test scene renders without a shadow pass,
+     * and the pbr_ibl scene ambient is computed without shadow occlusion.
+     *
+     * @param enabled  true  = shadows ON (default after Init).
+     *                 false = shadows OFF (recommended for LOW preset).
+     */
+    virtual void SetShadowsEnabled(bool enabled) { (void)enabled; }
+
+    /**
+     * @brief Enable or disable the bloom post-processing pipeline.
+     *
+     * When disabled the bloom_test scene skips the bright-pass, Gaussian blur,
+     * and composite passes — the back buffer receives only the base scene colour.
+     *
+     * @param enabled  true  = bloom ON (default after Init).
+     *                 false = bloom OFF (recommended for LOW/MEDIUM preset).
+     */
+    virtual void SetBloomEnabled(bool enabled) { (void)enabled; }
+
+    /**
+     * @brief Enable or disable image-based lighting (IBL).
+     *
+     * When disabled the pbr_ibl scene falls back to a constant ambient term
+     * instead of sampling the BRDF LUT, irradiance cubemap, and prefiltered
+     * environment map.
+     *
+     * @param enabled  true  = IBL ON (default after Init).
+     *                 false = IBL OFF (recommended for LOW/MEDIUM preset).
+     */
+    virtual void SetIBLEnabled(bool enabled) { (void)enabled; }
+
+    /**
+     * @brief Set the swap-chain sync interval (v-sync).
+     *
+     * @param enabled  true  = sync to VBlank, Present(1, 0) — steady 60 fps
+     *                         on a 60 Hz monitor.  Prevents screen tearing.
+     *                 false = present immediately, Present(0, 0) — maximum
+     *                         frame rate; tearing may be visible.
+     *
+     * TEACHING NOTE — VSync and Frame Pacing
+     * ─────────────────────────────────────────
+     * V-sync reduces tearing but introduces "frame-drop" artefacts if the GPU
+     * cannot render faster than the monitor refresh.  A common compromise is
+     * "G-Sync / FreeSync": the monitor adapts its refresh rate to the GPU
+     * frame rate.  We don't implement that here — VSync ON/OFF is the
+     * classic two-state toggle used since the early 2000s.
+     */
+    virtual void SetVSyncEnabled(bool enabled) { (void)enabled; }
+
+    /**
+     * @brief Set a software frame-rate cap (sleep-based limiter).
+     *
+     * @param fps  Target frame rate cap.
+     *             0 = uncapped (no sleep).
+     *             30 = cap at 30 fps (LOW preset).
+     *             60 = cap at 60 fps (MEDIUM/HIGH preset).
+     *
+     * TEACHING NOTE — Software vs Hardware Frame Cap
+     * ─────────────────────────────────────────────────
+     * Hardware VSync caps the frame rate at the monitor refresh frequency.
+     * A software frame cap is a `Sleep()` call at the end of each frame that
+     * burns any remaining budget.  The two can combine: v-sync ON + 30 fps cap
+     * means "lock to 30 fps on a 60 Hz monitor" (half refresh rate).  This is
+     * how console games achieve a rock-solid 30 fps without tearing.
+     */
+    virtual void SetFrameCap(int fps) { (void)fps; }
+
+    /**
+     * @brief Set the anisotropic filtering level for texture samplers.
+     *
+     * @param level  Max anisotropy: 1 (bilinear), 2, 4, 8, or 16.
+     *               Values outside 1–16 are clamped to 1–16 by the backend.
+     *
+     * TEACHING NOTE — Anisotropic Filtering
+     * ──────────────────────────────────────
+     * Bilinear filtering looks blurry on surfaces viewed at a steep angle
+     * (e.g., a floor receding into the distance).  Anisotropic filtering
+     * samples the texture in an elongated "footprint" aligned with the angle
+     * of view.  16× anisotropy is essentially indistinguishable from perfect
+     * but is ~2× the memory bandwidth of 1× on modern GPUs.
+     */
+    virtual void SetAnisoLevel(int level) { (void)level; }
 };
 
 } // namespace rendering

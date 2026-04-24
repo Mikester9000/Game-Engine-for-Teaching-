@@ -127,6 +127,60 @@ public:
     const char* BackendName() const override { return "D3D11"; }
 
     // -----------------------------------------------------------------------
+    // IRenderer feature toggles — Performance Preset System (M-DG-P1)
+    // -----------------------------------------------------------------------
+
+    /**
+     * @brief Enable or disable the directional shadow-map pass.
+     *
+     * When false, the "shadow_test" scene skips DrawShadowScene() and renders
+     * only the clear colour + ambient sphere (no shadow depth pass, no PCF).
+     */
+    void SetShadowsEnabled(bool enabled) override { m_shadowsEnabled = enabled; }
+
+    /**
+     * @brief Enable or disable the bloom post-processing pipeline.
+     *
+     * When false, the "bloom_test" scene skips DrawBloomScene() and renders
+     * only the clear colour (no bright-pass, no blur, no composite).
+     */
+    void SetBloomEnabled(bool enabled) override { m_bloomEnabled = enabled; }
+
+    /**
+     * @brief Enable or disable image-based lighting.
+     *
+     * When false, the "pbr_ibl" scene falls back to DrawPBRMesh() (constant
+     * ambient instead of BRDF LUT + irradiance + prefiltered env maps).
+     */
+    void SetIBLEnabled(bool enabled) override { m_iblEnabled = enabled; }
+
+    /**
+     * @brief Set the swap-chain sync interval (v-sync).
+     *
+     * Stored and applied each frame in the Present() call.
+     */
+    void SetVSyncEnabled(bool enabled) override { m_vsyncEnabled = enabled; }
+
+    /**
+     * @brief Set the software frame-rate cap.
+     *
+     * 0 = uncapped; positive value = target fps (uses Sleep in DrawFrame).
+     */
+    void SetFrameCap(int fps) override { m_frameCap = fps; }
+
+    /**
+     * @brief Set the anisotropic filtering level.
+     *
+     * Stored for use when creating new samplers (future scenes).
+     * Currently no existing sampler is recreated — applies on next LoadScene.
+     */
+    void SetAnisoLevel(int level) override
+    {
+        // Clamp to the D3D11 valid range [1, 16].
+        m_anisoLevel = (level < 1) ? 1 : (level > 16) ? 16 : level;
+    }
+
+    // -----------------------------------------------------------------------
     // D3D11-specific accessors (for advanced use)
     // -----------------------------------------------------------------------
 
@@ -298,6 +352,26 @@ private:
 
     bool                    m_headless      = false;
     bool                    m_initialised   = false;
+
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Performance Preset Feature Flags (M-DG-P1)
+    // -----------------------------------------------------------------------
+    // These flags mirror the active PerformancePresetConfig and are set via
+    // the IRenderer Set*() override methods.  They are checked in DrawFrame()
+    // and RecordHeadlessFrame() to skip expensive passes on low-end presets.
+    //
+    // All flags default to true so that the renderer behaves identically to
+    // the original (all features ON) when no preset is applied.
+    // -----------------------------------------------------------------------
+    bool m_shadowsEnabled = true;  ///< Honour shadow pass in shadow_test scene.
+    bool m_bloomEnabled   = true;  ///< Honour bloom pipeline in bloom_test scene.
+    bool m_iblEnabled     = true;  ///< Use IBL in pbr_ibl scene (false → PBR only).
+    bool m_vsyncEnabled   = true;  ///< Swap-chain sync interval (true=1, false=0).
+    int  m_frameCap       = 0;     ///< Software frame cap fps; 0 = uncapped.
+    int  m_anisoLevel     = 4;     ///< Anisotropic filter level for future samplers.
+
+    /// High-resolution tick recorded at the end of each DrawFrame for frame-cap math.
+    LARGE_INTEGER m_frameStartTick = {};
 
 public:
     // -----------------------------------------------------------------------
