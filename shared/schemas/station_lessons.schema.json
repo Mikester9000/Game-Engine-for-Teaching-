@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Station Lessons",
+  "description": "Per-station teaching lesson content for the Demo_Game lesson panel. Loaded at runtime by OpenWorld::TryLoadLessonsFromJSON. See docs/DEMO_GAME.md for the lesson authoring guide.",
+  "type": "object",
+  "required": ["version", "lessons"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "SemVer string. Bump the major version on breaking field changes."
+    },
+    "_comment": {
+      "type": "string",
+      "description": "Optional free-text comment — ignored by the runtime."
+    },
+    "lessons": {
+      "type": "array",
+      "description": "Array of lesson entries, one per teaching station.",
+      "items": {
+        "type": "object",
+        "required": ["stationID", "lessonTitle", "lessonText"],
+        "properties": {
+          "stationID": {
+            "type": "string",
+            "description": "Must match a TeachingStation::id registered in C++ or teaching_stations.json."
+          },
+          "lessonTitle": {
+            "type": "string",
+            "description": "Short heading shown at the top of the lesson panel (≤ 80 chars recommended)."
+          },
+          "lessonText": {
+            "type": "string",
+            "description": "Multi-line explanation. Use \\n for line breaks. Aim for 5–10 lines."
+          },
+          "codePointers": {
+            "type": "array",
+            "description": "File paths / class names the student should inspect. Relative to the repo root.",
+            "items": { "type": "string" }
+          },
+          "relatedStations": {
+            "type": "array",
+            "description": "Station IDs that cover related topics. Reserved for future cross-link UI.",
+            "items": { "type": "string" }
+          },
+          "challengeTitle": {
+            "type": "string",
+            "description": "Optional: short title for the combo-practice mini-game available at this station. When present together with challengeKeys, the lesson panel shows a [Space] prompt to start the challenge."
+          },
+          "challengeKeys": {
+            "type": "array",
+            "description": "Optional: ordered sequence of single-character keys (e.g. ['1','2','3']) the player must press in order to complete the combo challenge. Must be non-empty when challengeTitle is set.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1
+            },
+            "minItems": 1,
+            "maxItems": 8
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

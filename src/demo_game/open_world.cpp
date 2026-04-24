@@ -295,6 +295,10 @@ StationLesson OpenWorld::InteractAtStation()
                              "to provide teaching text and code pointers.";
     }
 
+    // Track the last-read lesson title for the quest HUD "last lesson" hint.
+    if (result.IsValid())
+        m_lastLessonTitle = result.lessonTitle;
+
     return result;
 }
 
@@ -312,6 +316,17 @@ void OpenWorld::NotifyEnemyKilled()
 void OpenWorld::NotifyItemCollected()
 {
     m_quests.NotifyItemCollected();
+}
+
+void OpenWorld::NotifyChallengePassed()
+{
+    // TEACHING NOTE — Forwarding pattern for DemoQuestManager events
+    // ─────────────────────────────────────────────────────────────────
+    // All quest-manager events flow through OpenWorld so that demo_main.cpp
+    // (the UI/input layer) never holds a direct reference to DemoQuestManager.
+    // This mirrors the Command pattern: the UI issues a high-level "challenge
+    // passed" command; OpenWorld decides which quest-manager method to call.
+    m_quests.NotifyChallengePassed();
 }
 
 // ---------------------------------------------------------------------------
@@ -700,6 +715,20 @@ bool OpenWorld::TryLoadLessonsFromJSON(const std::string& jsonPath)
             {
                 for (const auto& rel : obj["relatedStations"])
                     lesson.relatedStations.push_back(rel.get<std::string>());
+            }
+
+            // TEACHING NOTE — Optional combo-challenge fields
+            // ─────────────────────────────────────────────────
+            // challengeTitle and challengeKeys are optional extensions defined
+            // in station_lessons.schema.json.  We load them only when both are
+            // present, so stations without a challenge need no extra JSON fields.
+            if (obj.contains("challengeTitle") && obj["challengeTitle"].is_string())
+                lesson.challengeTitle = obj["challengeTitle"].get<std::string>();
+
+            if (obj.contains("challengeKeys") && obj["challengeKeys"].is_array())
+            {
+                for (const auto& key : obj["challengeKeys"])
+                    lesson.challengeKeys.push_back(key.get<std::string>());
             }
 
             if (!lesson.stationID.empty() && lesson.IsValid())

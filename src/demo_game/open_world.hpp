@@ -125,9 +125,24 @@ struct StationLesson
     std::vector<std::string> codePointers;  ///< File paths / class names to inspect.
     std::vector<std::string> relatedStations; ///< Optional cross-references.
 
+    // ── Combo-practice mini-game (optional) ──────────────────────────────────
+    // TEACHING NOTE — Extending StationLesson for gameplay
+    // When a station lesson also defines a short combo challenge (see
+    // station_lessons.json — "challengeTitle" + "challengeKeys"), the lesson
+    // panel shows a "[Space] Start Combo Challenge" prompt at the bottom.
+    // The player then inputs the key sequence displayed on-screen, exercising
+    // the same key-handling logic that the ComboSystem uses in gameplay.
+    // This makes the teaching content interactive without changing the tour flow.
+    std::string              challengeTitle; ///< Heading for the combo challenge panel.
+    std::vector<std::string> challengeKeys;  ///< Ordered key sequence (e.g. {"1","2","3"}).
+
     /// Returns true when this lesson has content (non-empty title + text).
     bool IsValid() const noexcept
     { return !lessonTitle.empty() && !lessonText.empty(); }
+
+    /// Returns true when a combo challenge is defined for this station.
+    bool HasChallenge() const noexcept
+    { return !challengeTitle.empty() && !challengeKeys.empty(); }
 };
 
 // ===========================================================================
@@ -328,6 +343,31 @@ public:
     const StationLesson* GetStationLesson(const std::string& stationID) const noexcept;
 
     /**
+     * @brief Forward a challenge-passed event to the DemoQuestManager.
+     *
+     * Called by demo_main.cpp when the player successfully completes the
+     * combo-practice mini-game at a station.  Advances the "Combo Challenger"
+     * side activity.
+     *
+     * TEACHING NOTE — Forwarding events through OpenWorld
+     * ─────────────────────────────────────────────────────
+     * demo_main.cpp reaches DemoQuestManager through OpenWorld rather than
+     * holding a direct reference to it.  This keeps the UI code decoupled from
+     * the quest logic — the same "thin shell" pattern used for NotifyEnemyKilled
+     * and NotifyItemCollected.
+     */
+    void NotifyChallengePassed();
+
+    /**
+     * @brief Return the title of the most recently read lesson.
+     *
+     * Empty if the player has not yet interacted at any station.
+     * Updated by InteractAtStation() each time a valid lesson is returned.
+     * Used by the quest HUD to show the student what they last studied.
+     */
+    const std::string& GetLastLessonTitle() const noexcept { return m_lastLessonTitle; }
+
+    /**
      * @brief Forward an enemy-kill event to the DemoQuestManager.
      *
      * Called by demo_main.cpp when the player defeats an enemy (e.g., via
@@ -403,6 +443,7 @@ private:
     float       m_playerX          = 0.f;   ///< Player world X.
     float       m_playerZ          = 0.f;   ///< Player world Z.
     std::string m_nearestStationID;          ///< Station within interact range (if any).
+    std::string m_lastLessonTitle;           ///< Title of the most recently read lesson.
 
     // ---- Quest / activity tracker ----
     DemoQuestManager m_quests; ///< Tracks main quest + 3 side activities.

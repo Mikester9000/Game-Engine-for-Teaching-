@@ -19,7 +19,7 @@ simultaneous purposes:
 demo_game.exe
  └── demo_main.cpp        ← entry point (boot menu + windowed loop + headless CI)
      └── OpenWorld         ← state machine (BOOT_MENU → LOADING → PLAYING)
-         ├── DemoQuestManager ← main quest + 3 side activities (M-DG9)
+         ├── DemoQuestManager ← main quest + 4 side activities (M-DG9/10)
          └── GameRuntime   ← all M8 gameplay systems (combat, AI, quests, …)
              └── D3D11Renderer ← existing rendering backend (PBR, shadows, …)
 ```
@@ -75,15 +75,17 @@ Expected output:
 
 ```
 [demo_game] Starting headless validation ...
-[DemoQuestManager] Initialised — main quest "Tour of the Engine" (3 objectives), 3 side activities.
+[DemoQuestManager] Initialised — main quest "Tour of the Engine" (3 objectives), 4 side activities.
 [OK] demo_world/1: Init — 12 stations registered.
 [OK] demo_world/2: Initial state = BOOT_MENU.
 [OK] demo_world/3: All biomes visited; headless done at frame 124.
 [OK] demo_world/4: 12 teaching stations registered; all have non-empty id, displayName, and sceneHint.
 [OK] demo_world/5: Teleport to rendering_pbr → biome = GRASSLAND.
 [OK] demo_world/6: JSON fallback safe — 12 stations retained after missing-file load.
-[OK] demo_world/7: DemoQuestManager — 4 defined (1 main quest, 3 activities); quest completes on station visits; Scanner advances.
-[PASS] demo_world: 7 acceptance tests passed (init, boot_menu, biome_cycle, stations, teleport, json_fallback, quest_manager).
+[OK] demo_world/7: DemoQuestManager — 5 defined (1 main quest, 4 activities); quest completes on station visits; Scanner advances.
+[OK] demo_world/8: lesson data valid — combat lesson has text + 3 code pointer(s) + combo challenge (3 keys: 1 → 3).
+[OK] demo_world/9: combo challenge — Teleport+Interact+NotifyChallengePassed → COMBO_PRACTICE complete.
+[PASS] demo_world: 9 acceptance tests passed (init, boot_menu, biome_cycle, stations, teleport, json_fallback, quest_manager_interact, lesson_data, combo_challenge).
 ```
 
 ---
@@ -173,13 +175,16 @@ advance quest objectives — only pressing E at the station does.
 
 ### Side Activities (teaching-oriented)
 
-All three activities are triggered by pressing **E** (Interact) at teaching stations:
+All three interact-based activities are triggered by pressing **E** (Interact) at
+teaching stations.  The fourth activity (Combo Challenger) additionally requires
+completing the interactive combo mini-game:
 
 | Activity | Goal | How to complete |
 |----------|------|----------------|
 | **Lesson Reader** | Interact at 3 distinct stations | Press E at any 3 different stations |
 | **Code Explorer: Combat** | Read the Combat lesson | Press E at the Action Combat station |
 | **Code Explorer: Rendering** | Read the Rendering lesson | Press E at the PBR Rendering station |
+| **Combo Challenger** | Complete the combo practice at Combat station | Read the combat lesson, press **[Space]**, then input the 3-key combo sequence |
 
 ### Interact Flow
 
@@ -193,14 +198,59 @@ Player presses E
   • Lesson panel opens (lessonTitle + lessonText + codePointers)
   • Quest objective advances (if station matches current objective)
   • STATION_INTERACT activities advance
+  • If station has a combo challenge → "[Space] Start Combo Challenge" shown
          ↓
 Player presses ESC or Enter → lesson panel closes
+         OR
+Player presses Space (when challenge available) → combo challenge mini-game starts
 ```
+
+---
+
+### Combo Challenge Mini-Game
+
+The **Combo Challenger** is an optional gameplay loop available at stations that
+define a `challengeTitle` and `challengeKeys` in `station_lessons.json`.  It
+makes the ComboSystem lesson interactive rather than purely text-based.
+
+**How to play:**
+
+1. Press **E** at the **Action Combat** station to open the lesson panel.
+2. Read the lesson about the ComboSystem FSM (IDLE → BUILDING → COOLDOWN).
+3. Press **[Space]** to start the Combo Challenge.
+4. The challenge overlay shows:
+   - The challenge title.
+   - The full key sequence (e.g., `[1] → [2] → [3]`).
+   - Which key to press next (highlighted).
+5. Press **[1]**, **[2]**, **[3]** in order.
+6. On success: "Combo Complete! BUILDING state fired" is shown for 2 seconds.
+7. The **Combo Challenger** side activity is marked complete.
+
+**What it teaches:**
+
+Each keypress corresponds to a combo input arriving at the `ComboSystem`'s
+`BUILDING` state.  The student physically walks the FSM:
+- [1] = first input arrives → state IDLE → BUILDING.
+- [2] = second input; prefix still matches → stay BUILDING.
+- [3] = third input; exact match fires → combo executes → COOLDOWN.
+
+```
+ComboSystem (src/engine/combat/combo_system.hpp)
+  IDLE ──[1]──► BUILDING ──[2]──► BUILDING ──[3]──► COOLDOWN ──► IDLE
+```
+
+**Controls during challenge:**
+
+| Key | Action |
+|-----|--------|
+| **[1] [2] [3]** | Input combo keys (press in order shown) |
+| **ESC** | Exit challenge (activity not awarded) |
 
 ### Quest HUD Overlay
 
-While in the **PLAYING** state (and not in the F1 menu or lesson panel), the
-bottom-left of the screen shows a persistent quest progress panel:
+While in the **PLAYING** state (and not in the F1 menu, lesson panel, or
+challenge overlay), the bottom-left of the screen shows a persistent quest
+progress panel:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -208,13 +258,16 @@ bottom-left of the screen shows a persistent quest progress panel:
 │   [ ] Lesson Reader              [0/3]                       │
 │   [ ] Code Explorer: Combat      [0/1]                       │
 │   [ ] Code Explorer: Rendering   [0/1]                       │
-│   Activities: 0/3 complete                                   │
+│   [ ] Combo Challenger           [0/1]                       │
+│   Activities: 0/4 complete                                   │
+│   Last lesson: Action Combat — ComboSystem FSM & Damage…     │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 - Gold text = active main quest objective
 - Green text = completed item/activity
 - Grey text = in-progress activity
+- Dim text = **Last lesson** hint (shows the title of the most recently read lesson for teaching continuity)
 
 ### Lesson Panel
 
@@ -240,13 +293,19 @@ screen and shows:
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+When the station has a **combo challenge** defined, an additional prompt appears:
+
+```
+│  [Space] Start Combo Challenge  |  ESC or ENTER to close        │
+```
+
 ### Data Files
 
-| File | Purpose |
-|------|---------|
-| `Content/World/demo_activities.json` | Main quest + activities (loaded by `DemoQuestManager::TryLoadFromJSON`). Uses string `stationID` + `specificStationID` fields. |
-| `Content/World/station_lessons.json` | Per-station lesson content (loaded by `OpenWorld::TryLoadLessonsFromJSON`). Fields: `lessonTitle`, `lessonText`, `codePointers`, `relatedStations`. |
-| `Content/quest_bank.json` | QuestSystem definitions (IDs 10–13: Tour, Lesson Reader, Code Explorer activities). |
+| File | Purpose | Schema |
+|------|---------|--------|
+| `Content/World/demo_activities.json` | Main quest + activities (loaded by `DemoQuestManager::TryLoadFromJSON`). Uses string `stationID` + `specificStationID` fields. | `shared/schemas/demo_activities.schema.json` |
+| `Content/World/station_lessons.json` | Per-station lesson content (loaded by `OpenWorld::TryLoadLessonsFromJSON`). Fields: `lessonTitle`, `lessonText`, `codePointers`, `relatedStations`, optional `challengeTitle` + `challengeKeys`. | `shared/schemas/station_lessons.schema.json` |
+| `Content/quest_bank.json` | QuestSystem definitions (IDs 10–13: Tour, Lesson Reader, Code Explorer activities). | `shared/schemas/quest_bank.schema.json` |
 
 > **Note — Two quest systems:** `quest_bank.json` uses numeric `targetID` values (QuestSystem schema) while `demo_activities.json` uses string `stationID` values (DemoQuestManager). See `src/demo_game/demo_quest_manager.hpp` for the dual-system design rationale.
 
@@ -255,10 +314,12 @@ screen and shows:
 | Key | Action |
 |-----|--------|
 | **E** | Interact at nearest teaching station (advances quest, opens lesson panel) |
+| **Space** | Start combo challenge (when lesson panel is open at a challenge station) |
+| **[1] [2] [3]** | Combo challenge inputs (while challenge overlay is active) |
 | **F1** | Open station selector overlay (navigation aid — does NOT advance quest) |
 | **↑ / ↓** | Move selection in F1 overlay |
 | **Enter** | Teleport to selected station (in F1 menu); dismiss lesson panel (in lesson panel) |
-| **ESC** | Close F1 overlay; dismiss lesson panel |
+| **ESC** | Close F1 overlay; dismiss lesson panel; exit challenge |
 | **D** | Toggle biome + FPS debug strip |
 
 ---
@@ -271,7 +332,8 @@ Station lessons are data-driven: you can add or update them without recompiling.
 
 ```json
 {
-  "version": "1.0.0",
+  "$schema": "../../shared/schemas/station_lessons.schema.json",
+  "version": "1.1.0",
   "lessons": [
     {
       "stationID":   "my_station_id",
@@ -287,6 +349,34 @@ Station lessons are data-driven: you can add or update them without recompiling.
 }
 ```
 
+### Adding a combo challenge to a lesson
+
+Add `challengeTitle` and `challengeKeys` to the lesson entry:
+
+```json
+{
+  "stationID":     "my_station_id",
+  "lessonTitle":   "My Subsystem — Key Concepts",
+  "lessonText":    "... explanation ...",
+  "codePointers":  ["src/engine/my_subsystem/my_class.hpp"],
+  "challengeTitle": "Challenge — Name three FSM states",
+  "challengeKeys":  ["1", "2", "3"]
+}
+```
+
+- `challengeTitle`: heading shown at the top of the challenge overlay.
+- `challengeKeys`: ordered sequence of single character keys the player must
+  press in order.  Currently **[1], [2], [3]** are the recognized inputs.
+  Keep the list to 2–4 keys for a smooth classroom demo.
+
+When both fields are present, the lesson panel shows:
+
+```
+│  [Space] Start Combo Challenge  |  ESC or ENTER to close        │
+```
+
+And pressing **Space** transitions to the challenge overlay.
+
 ### Authoring tips
 
 1. **lessonText** — aim for 5–10 lines max.  Use bullet points (•) for lists.
@@ -297,6 +387,37 @@ Station lessons are data-driven: you can add or update them without recompiling.
    Not currently rendered but reserved for future cross-link UI.
 4. **Safe fallback** — if `station_lessons.json` is missing or malformed, the
    game shows a stub message and continues normally.  No crash.
+5. **$schema** — keep the `"$schema"` field pointing at
+   `shared/schemas/station_lessons.schema.json` so editors like VS Code can
+   validate your JSON in-place.
+
+### Extending activities in `demo_activities.json`
+
+To add a new activity, append to the `"activities"` array:
+
+```json
+{
+  "id":               "my_new_activity",
+  "title":            "My Activity",
+  "description":      "Complete this optional teaching task.",
+  "type":             "combo_practice",
+  "specificStationID": "my_station_id",
+  "required":          1
+}
+```
+
+Valid `"type"` values:
+
+| Type | Triggered by |
+|------|-------------|
+| `station_interact` | Pressing E at a station (`NotifyStationVisited`) |
+| `combo_practice`   | Completing the combo challenge (`NotifyChallengePassed`) |
+| `combat_challenge` | Enemy kill (`NotifyEnemyKilled`) — future use |
+| `item_collection`  | Item pickup (`NotifyItemCollected`) — future use |
+
+After adding a new activity, also update `DemoQuestManager::kExpectedActivities`
+in `src/demo_game/demo_quest_manager.hpp` and add the matching C++ default in
+`RegisterDefaults()` so the headless tests still pass.
 
 ### Extending stations in C++ (no JSON required)
 
@@ -305,10 +426,13 @@ If `ENGINE_ENABLE_JSON` is OFF, edit `OpenWorld::RegisterDefaultStations()` in
 
 ```cpp
 StationLesson l;
-l.stationID   = "my_station_id";
-l.lessonTitle = "My Lesson";
-l.lessonText  = "My explanation.\nSecond line.";
+l.stationID       = "my_station_id";
+l.lessonTitle     = "My Lesson";
+l.lessonText      = "My explanation.\nSecond line.";
 l.codePointers.push_back("src/engine/my_module/my_file.hpp");
+// Optional challenge:
+l.challengeTitle  = "Practice the FSM";
+l.challengeKeys   = {"1", "2", "3"};
 m_lessons[l.stationID] = l;
 ```
 
@@ -383,9 +507,11 @@ To wire it into the `DemoQuestManager` quest HUD:
 1. Add a new main quest objective in `demo_activities.json` (or extend an
    existing one), **or**
 2. Add a new side activity entry to `demo_activities.json` with the appropriate
-   `type` (`station_scan`, `combat_challenge`, or `item_collection`).
+   `type` (`station_interact`, `combo_practice`, `combat_challenge`, or
+   `item_collection`).
 3. The built-in C++ defaults in `DemoQuestManager::RegisterDefaults()` remain
    as the fallback; update them if you want the quest visible in headless mode.
+4. Update `DemoQuestManager::kExpectedActivities` and the headless test count.
 
 ---
 
@@ -400,14 +526,14 @@ The `demo_world` scene is validated in every CI run as part of the primary
 ```
 
 A dedicated `build-windows-demo` CI job builds `demo_game.exe` and runs its
-headless path (7 acceptance tests):
+headless path (9 acceptance tests):
 
 ```yaml
 - name: Run Demo_Game headless acceptance test (demo_main path)
   run: .\build\windows-ninja-debug-demo\demo_game.exe --headless
 ```
 
-The 7 acceptance tests are:
+The 9 acceptance tests are:
 
 | Test | Name | What is verified |
 |------|------|-----------------|
@@ -417,7 +543,12 @@ The 7 acceptance tests are:
 | 4 | `stations` | Every station has non-empty id, displayName, sceneHint |
 | 5 | `teleport` | `TeleportToStation("rendering_pbr")` sets biome=GRASSLAND + nearestStationID (navigation only) |
 | 6 | `json_fallback` | Missing JSON file leaves station list intact |
-| 7 | `quest_manager_interact` | `DemoQuestManager`: 4 defined; quest completes on Teleport+Interact; Lesson Reader advances on unique interacts |
+| 7 | `quest_manager_interact` | `DemoQuestManager`: 5 defined (1 main + 4 activities); quest completes on Teleport+Interact; Lesson Reader advances on unique interacts |
+| 8 | `lesson_data` | Combat station lesson has non-empty text + code pointers + a combo challenge defined (soft-OK when JSON absent) |
+| 9 | `combo_challenge` | Deterministic simulation: `TeleportToStation + InteractAtStation + NotifyChallengePassed` → `COMBO_PRACTICE` activity complete; `GetLastLessonTitle()` non-empty |
+
+The same tests 8 and 9 are also run as part of `--scene demo_world` in the
+`engine_sandbox` (`build-windows` CI job).
 
 ---
 
@@ -434,7 +565,8 @@ The 7 acceptance tests are:
 | **M-DG7** | F1 debug overlay (station list, teleport, debug info toggle) | ✅ Done (GDI overlay) |
 | **M-DG8** | Data-driven station loading from `teaching_stations.json` | ✅ Done (`TryLoadStationsFromJSON`, ENGINE_ENABLE_JSON gated) |
 | **M-DG9** | Quest & activity skeleton (tour main quest + 3 teaching activities + interact-based HUD + lesson panel) | ✅ Done (interact-first redesign: E key, lesson panel, station_lessons.json) |
-| **M-DG10**| Full open-world biome traversal with real streaming cells | ⬜ Pending content population |
+| **M-DG10-ext** | Combo-practice mini-game, 4th activity (Combo Challenger), schema files, HUD last-lesson hint, headless tests 8–9 | ✅ Done |
+| **M-DG11**| Full open-world biome traversal with real streaming cells | ⬜ Pending content population |
 | **M-DG11**| NPC vendors, interactable camp sites, extended activities | ⬜ Pending |
 | **M-DG12**| Settings menu (resolution, volume, key bindings) | ⬜ Pending |
 | **M-DG13**| Performance / LOD pass (Intel HD 4000 baseline) | ⬜ Pending |
@@ -448,8 +580,10 @@ The 7 acceptance tests are:
 - `src/demo_game/demo_main.cpp` — Standalone entry point, GDI overlays (lesson panel, interact prompt)
 - `src/sandbox/game_runtime.hpp/.cpp` — Reused M8 gameplay systems
 - `samples/vertical_slice_project/Content/World/` — Content JSON files
-- `samples/vertical_slice_project/Content/World/station_lessons.json` — Per-station lesson content
-- `samples/vertical_slice_project/Content/World/demo_activities.json` — Quest + activity authoring
+- `samples/vertical_slice_project/Content/World/station_lessons.json` — Per-station lesson content (+ challenge definitions)
+- `samples/vertical_slice_project/Content/World/demo_activities.json` — Quest + activity authoring (+ combo_practice type)
+- `shared/schemas/station_lessons.schema.json` — JSON Schema for station lessons (draft-07)
+- `shared/schemas/demo_activities.schema.json` — JSON Schema for demo activities (draft-07)
 - `samples/vertical_slice_project/Content/quest_bank.json` — Quest definitions (IDs 1–13)
 - `docs/FF15_REQUIREMENTS_BLUEPRINT.md` — Full requirements reference
 
