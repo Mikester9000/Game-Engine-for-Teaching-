@@ -93,6 +93,9 @@ enum class DemoActivityType : uint8_t
                            ///<  specificStationID is empty; only that specific station otherwise.
     COMBAT_CHALLENGE,      ///< Defeat N enemies in the open world.
     ITEM_COLLECTION,       ///< Collect N items (Engine Crystals) at stations.
+    COMBO_PRACTICE,        ///< Complete the combo-practice mini-game at a station.
+                           ///< Triggered by NotifyChallengePassed() after the player inputs
+                           ///< the correct key sequence shown in the challenge overlay.
 };
 
 // ===========================================================================
@@ -295,6 +298,23 @@ public:
      */
     void NotifyItemCollected();
 
+    /**
+     * @brief Notify that the player completed the combo-practice mini-game.
+     *
+     * Advances the "Combo Challenger" side activity (type COMBO_PRACTICE).
+     * Called by OpenWorld::NotifyChallengePassed() when demo_main confirms
+     * the player pressed the challenge key sequence in full.
+     *
+     * TEACHING NOTE — Mini-game → quest tracking decoupling
+     * ──────────────────────────────────────────────────────
+     * The combo challenge input logic lives in demo_main.cpp (UI layer) and
+     * the activity tracking lives here (quest layer).  Neither knows about the
+     * other's internals — they communicate only through this single Notify
+     * method.  This mirrors the EventBus<T> subscriber/publisher contract used
+     * in the production QuestSystem.
+     */
+    void NotifyChallengePassed();
+
     // =========================================================================
     // Queries
     // =========================================================================
@@ -319,7 +339,7 @@ public:
     // Constants
     // =========================================================================
 
-    static constexpr int kExpectedActivities = 3; ///< Three side activities in the demo.
+    static constexpr int kExpectedActivities = 4; ///< Four side activities in the demo.
 
 private:
     // ---- Runtime state ----

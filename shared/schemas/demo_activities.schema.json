@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Demo Activities",
+  "description": "Demo_Game main quest and side-activity definitions. Loaded at runtime by DemoQuestManager::TryLoadFromJSON. See docs/DEMO_GAME.md for authoring instructions.",
+  "type": "object",
+  "required": ["mainQuest", "activities"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "SemVer string. Bump the major version on breaking field changes."
+    },
+    "_comment": {
+      "type": "string",
+      "description": "Optional free-text comment — ignored by the runtime."
+    },
+    "mainQuest": {
+      "type": "object",
+      "required": ["id", "title", "description", "objectives"],
+      "description": "Definition of the Demo_Game main quest (Tour of the Engine).",
+      "properties": {
+        "id":          { "type": "string" },
+        "title":       { "type": "string" },
+        "description": { "type": "string" },
+        "xpReward":    { "type": "integer", "minimum": 0 },
+        "gilReward":   { "type": "integer", "minimum": 0 },
+        "objectives": {
+          "type": "array",
+          "description": "Ordered list of quest objectives. Only the current objective is active at any time.",
+          "items": {
+            "type": "object",
+            "required": ["id", "description"],
+            "properties": {
+              "id":          { "type": "string" },
+              "description": { "type": "string", "description": "Text shown in the quest HUD while this objective is active." },
+              "stationID":   { "type": "string", "description": "Teaching station that completes this objective on Interact (E key)." }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "activities": {
+      "type": "array",
+      "description": "Side activities available alongside the main quest.",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "description", "type", "required"],
+        "properties": {
+          "id":               { "type": "string", "description": "Unique activity identifier." },
+          "title":            { "type": "string", "description": "Short label shown in the quest HUD." },
+          "description":      { "type": "string", "description": "Flavour text describing the task." },
+          "type": {
+            "type": "string",
+            "enum": ["station_interact", "station_scan", "combat_challenge", "item_collection", "combo_practice"],
+            "description": "Activity verb. station_scan is a legacy alias for station_interact."
+          },
+          "specificStationID": {
+            "type": "string",
+            "description": "For station_interact/combo_practice: only this station's interact counts. Empty = any station."
+          },
+          "required": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of events needed to complete the activity."
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

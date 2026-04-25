@@ -1,5 +1,6 @@
 {
-  "version": "1.0.0",
+  "$schema": "../../shared/schemas/station_lessons.schema.json",
+  "version": "1.1.0",
   "_comment": "Per-station teaching lesson content. Loaded at runtime by OpenWorld::TryLoadLessonsFromJSON. Used to populate the Lesson Panel shown when the player presses E at a station during the Tour Quest. See docs/DEMO_GAME.md for the lesson authoring guide.",
   "lessons": [
     {
@@ -143,7 +144,9 @@
         "src/game/systems/CombatSystem.hpp/.cpp",
         "samples/vertical_slice_project/Content/combat_config.json"
       ],
-      "relatedStations": ["physics_jolt"]
+      "relatedStations": ["physics_jolt"],
+      "challengeTitle": "Combo Practice — IDLE → BUILDING → COOLDOWN",
+      "challengeKeys": ["1", "2", "3"]
     }
   ]
 }

@@ -522,7 +522,8 @@ static void DrawHudBar(HWND hwnd, int clientW,
 // ─────────────────────────────────────────────────────────────────────────────
 
 static void DrawQuestHud(HWND hwnd, int clientW, int clientH,
-                         const DemoQuestManager& qm)
+                         const DemoQuestManager& qm,
+                         const std::string& lastLessonTitle)
 {
     const auto& quest      = qm.GetMainQuest();
     const auto& activities = qm.GetActivities();
@@ -540,7 +541,8 @@ static void DrawQuestHud(HWND hwnd, int clientW, int clientH,
     // Height: heading + quest line + separator + 3 activity lines + padding.
     const int numLines = 1            // main quest objective
                        + static_cast<int>(activities.size()) // activity lines
-                       + 1;          // "Activities: N/3" summary line
+                       + 1           // "Activities: N/3" summary line
+                       + (lastLessonTitle.empty() ? 0 : 1); // last-lesson hint
 
     const int panelH = kPadY * 2 + kLineH + 4 + numLines * kLineH;
     const int panelW = kPanelW;
@@ -605,6 +607,27 @@ static void DrawQuestHud(HWND hwnd, int clientW, int clientH,
                       qm.CompletedActivities(),
                       static_cast<int>(activities.size()));
         DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, summary, kColText);
+        cy += kLineH;
+    }
+
+    // ---- Last lesson hint (D.4 — show title of most recently read lesson) ──
+    // TEACHING NOTE — Last-lesson hint in the HUD
+    // ─────────────────────────────────────────────────────────────────────────
+    // After the student reads a lesson panel, the quest HUD shows a one-line
+    // hint: "Last lesson: <title>".  This provides continuity — the student
+    // can glance at the HUD to recall which lesson they just read and know
+    // which source files to look at next.
+    //
+    // The hint is blank on first launch (no lesson read yet) and updates each
+    // time the player presses E at a station.  It persists until a new lesson
+    // replaces it, even if the student teleports away from the station.
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!lastLessonTitle.empty())
+    {
+        char hint[128];
+        std::snprintf(hint, sizeof(hint),
+                      "  Last lesson: %s", lastLessonTitle.c_str());
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, hint, kColDim);
     }
 
     ::DeleteObject(fontHead);
@@ -685,7 +708,8 @@ static void DrawInteractPrompt(HWND hwnd, int clientW, int clientH,
 // ─────────────────────────────────────────────────────────────────────────────
 
 static void DrawLessonPanel(HWND hwnd, int clientW, int clientH,
-                            const StationLesson& lesson)
+                            const StationLesson& lesson,
+                            bool challengeAvailable)
 {
     GdiScope dc(hwnd);
     if (!dc.Valid()) return;
@@ -759,8 +783,24 @@ static void DrawLessonPanel(HWND hwnd, int clientW, int clientH,
 
     // ---- Footer ----
     cy += 8;
-    DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
-             "  Press ESC or ENTER to close", kColDim);
+    if (challengeAvailable)
+    {
+        // TEACHING NOTE — Challenge prompt in lesson panel
+        // ──────────────────────────────────────────────────
+        // When the station has a combo challenge defined (HasChallenge()), we
+        // show an extra "[Space] Start Combo Challenge" line so the student
+        // knows an interactive exercise is available.  The lesson panel's
+        // primary purpose (reading the teaching text) is not changed — the
+        // challenge is optional and purely additive.
+        DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
+                 "  [Space] Start Combo Challenge  |  ESC or ENTER to close",
+                 kColSelected);
+    }
+    else
+    {
+        DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
+                 "  Press ESC or ENTER to close", kColDim);
+    }
 
     ::DeleteObject(fontTitle);
     ::DeleteObject(fontBody);
@@ -771,9 +811,124 @@ static void DrawLessonPanel(HWND hwnd, int clientW, int clientH,
 } // namespace overlay
 
 // ===========================================================================
-// Forward-declare demo_quest_manager types (used by DrawQuestHud)
+// overlay::DrawChallengeOverlay — combo-practice mini-game panel
 // ===========================================================================
-// Already available via open_world.hpp → demo_quest_manager.hpp
+// TEACHING NOTE — Combo Practice as Interactive Teaching
+// ─────────────────────────────────────────────────────────────────────────────
+// The combo-challenge overlay turns the ComboSystem lesson into an interactive
+// exercise.  Instead of just reading about IDLE→BUILDING→COOLDOWN FSM state
+// transitions, the player *performs* them by pressing a sequence of digit keys.
+//
+// This mirrors how professional training uses "kinaesthetic learning":
+//   • Guitar Hero teaches rhythm by making you press buttons to music.
+//   • Demo_Game teaches the ComboSystem by making you input a combo sequence.
+//
+// The overlay shows:
+//   1. CHALLENGE TITLE — what the challenge tests.
+//   2. KEY SEQUENCE    — the full sequence to press (e.g. [1] → [2] → [3]).
+//   3. CURRENT STEP    — which key to press next, highlighted in gold.
+//   4. RESULT          — "Challenge Passed!" when all steps are done.
+//
+// Input: digit keys [1][2][3] advance through the sequence.  ESC exits.
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace overlay
+{
+
+static void DrawChallengeOverlay(HWND hwnd, int clientW, int clientH,
+                                 const StationLesson& lesson,
+                                 int  currentStep,
+                                 bool passed)
+{
+    GdiScope dc(hwnd);
+    if (!dc.Valid()) return;
+
+    HFONT fontTitle  = CreateOverlayFont(19);
+    HFONT fontKey    = CreateOverlayFont(21); // larger for the key display
+    HFONT fontBody   = CreateOverlayFont(15);
+    HFONT fontFooter = CreateOverlayFont(14);
+
+    const int numKeys    = static_cast<int>(lesson.challengeKeys.size());
+    const int panelH = kPadY * 2
+                     + kLineH + 6     // title
+                     + kLineH + 4     // subtitle / teaching note
+                     + kLineH + 8     // key sequence row
+                     + kLineH + 4     // "press next" row
+                     + (passed ? kLineH + 6 : 0) // result row
+                     + 8 + 16;        // footer
+
+    const int panelW = std::min(clientW - 80, 640);
+    const int panelX = (clientW - panelW) / 2;
+    const int panelY = (clientH - panelH) / 2;
+
+    DrawPanel(dc.Get(), panelX, panelY, panelW, panelH,
+              kColBackground, passed ? RGB(80, 230, 80) : kColHeading);
+
+    int cy = panelY + kPadY;
+
+    // ── Title ────────────────────────────────────────────────────────────────
+    DrawLine(dc.Get(), fontTitle, panelX + kPadX, cy,
+             lesson.challengeTitle.c_str(), kColHeading);
+    cy += kLineH + 6;
+
+    // ── Teaching hint ────────────────────────────────────────────────────────
+    DrawLine(dc.Get(), fontBody, panelX + kPadX, cy,
+             "Press the keys in order to walk the ComboSystem FSM transitions.",
+             kColDim);
+    cy += kLineH + 4;
+
+    // ── Key sequence row ─────────────────────────────────────────────────────
+    {
+        // Build a display string like  [1] -> [2] -> [3]
+        // Completed steps shown dim; current step shown gold; future steps dim.
+        std::string seq;
+        for (int i = 0; i < numKeys; ++i)
+        {
+            if (i > 0) seq += " -> "; // ASCII arrow for GDI compatibility
+            seq += "["; seq += lesson.challengeKeys[i]; seq += "]";
+        }
+        DrawLine(dc.Get(), fontKey, panelX + kPadX, cy,
+                 seq.c_str(), kColText);
+    }
+    cy += kLineH + 8;
+
+    // ── Current step ─────────────────────────────────────────────────────────
+    if (!passed)
+    {
+        if (currentStep < numKeys)
+        {
+            char nextPrompt[64];
+            std::snprintf(nextPrompt, sizeof(nextPrompt),
+                          "  Press key: [%s]   (%d of %d)",
+                          lesson.challengeKeys[currentStep].c_str(),
+                          currentStep + 1, numKeys);
+            DrawLine(dc.Get(), fontBody, panelX + kPadX, cy,
+                     nextPrompt, kColHeading);
+        }
+        cy += kLineH + 4;
+    }
+
+    // ── Result ───────────────────────────────────────────────────────────────
+    if (passed)
+    {
+        DrawLine(dc.Get(), fontBody, panelX + kPadX, cy,
+                 "  Combo Complete!  BUILDING state fired — activity advanced.",
+                 RGB(80, 230, 80));
+        cy += kLineH + 6;
+    }
+
+    // ── Footer ───────────────────────────────────────────────────────────────
+    cy += 8;
+    DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
+             passed ? "  (auto-closing)" : "  ESC: exit challenge", kColDim);
+
+    ::DeleteObject(fontTitle);
+    ::DeleteObject(fontKey);
+    ::DeleteObject(fontBody);
+    ::DeleteObject(fontFooter);
+}
+
+} // namespace overlay  // reopened for DrawChallengeOverlay
 
 // ===========================================================================
 // Headless validation path (CI — no window, no user input)
@@ -948,7 +1103,7 @@ static int RunHeadless()
     // The DemoQuestManager is accessible via OpenWorld::GetQuestManager().
     // We already called OpenWorld::Init() (test 1), which initialised the
     // quest manager with built-in defaults.  Here we:
-    //   a) Verify that TotalDefined() returns 1 main quest + 3 activities = 4.
+    //   a) Verify that TotalDefined() returns 1 main quest + 4 activities = 5.
     //   b) Verify the main quest has 3 objectives.
     //   c) Simulate Teleport+Interact for three station objectives in order
     //      and verify the main quest completes.
@@ -1043,11 +1198,172 @@ static int RunHeadless()
     }
 
     // -----------------------------------------------------------------------
-    // 8. Report PASS.
-    // -----------------------------------------------------------------------    world.Shutdown();
-    std::cout << "[PASS] demo_world: 7 acceptance tests passed "
+    // 8. Lesson data validation — verify all loaded lessons have content.
+    // TEACHING NOTE — Data integrity check for station_lessons.json
+    // ─────────────────────────────────────────────────────────────────────────
+    // This test confirms that:
+    //   a) station_lessons.json loaded correctly (lesson count >= 1).
+    //   b) Every loaded lesson has a non-empty lessonText.
+    //   c) At least one lesson has codePointers (teaches students where to look).
+    //   d) The combat station lesson defines a combo challenge (HasChallenge()).
+    // This guards against a broken JSON file silently causing the lesson panel
+    // to display stub "no content" text for all stations.
+    // ─────────────────────────────────────────────────────────────────────────
+    {
+        // Re-use 'world' which has already loaded lessons via Init().
+        const std::string combatID = "combat";
+        const StationLesson* combatLesson = world.GetStationLesson(combatID);
+
+        // a) Check that at least one lesson loaded.
+        // (If station_lessons.json was absent, GetStationLesson returns nullptr
+        //  for all stations — a fallback-stub lesson is synthesised in InteractAtStation.)
+        bool hasAnyLesson = (combatLesson != nullptr);
+
+        if (!hasAnyLesson)
+        {
+            // station_lessons.json absent — still not a failure in CI since the
+            // JSON file requires deployment, but report as a soft warning.
+            std::cout << "[OK] demo_world/8: station_lessons.json not deployed in "
+                         "this run — lesson content uses built-in fallback text "
+                         "(non-fatal; deploy Content/World/ to get full lessons).\n";
+        }
+        else
+        {
+            // b) Combat lesson must have non-empty lessonText.
+            if (!combatLesson->IsValid())
+            {
+                std::cout << "[FAIL] demo_world/8b: combat lesson has empty "
+                             "lessonTitle or lessonText.\n";
+                return 1;
+            }
+
+            // c) Combat lesson should have at least one code pointer.
+            if (combatLesson->codePointers.empty())
+            {
+                std::cout << "[FAIL] demo_world/8c: combat lesson has no "
+                             "codePointers (students won't know where to look).\n";
+                return 1;
+            }
+
+            // d) Combat lesson must define a combo challenge.
+            if (!combatLesson->HasChallenge())
+            {
+                std::cout << "[FAIL] demo_world/8d: combat station lesson does not "
+                             "define a combo challenge (challengeTitle + "
+                             "challengeKeys missing from station_lessons.json).\n";
+                return 1;
+            }
+
+            std::cout << "[OK] demo_world/8: lesson data valid — combat lesson "
+                         "has text + " << combatLesson->codePointers.size()
+                      << " code pointer(s) + combo challenge ("
+                      << combatLesson->challengeKeys.size() << " keys: "
+                      << (combatLesson->challengeKeys.empty()
+                              ? std::string{}
+                              : combatLesson->challengeKeys.front())
+                      << " -> "
+                      << (combatLesson->challengeKeys.empty()
+                              ? std::string{}
+                              : combatLesson->challengeKeys.back())
+                      << ").\n";
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 9. Combo challenge simulation — verify challenge flow end-to-end.
+    // TEACHING NOTE — Deterministic mini-game CI simulation
+    // ─────────────────────────────────────────────────────────────────────────
+    // In headless mode there is no keyboard, so we simulate the combo challenge
+    // by directly calling NotifyChallengePassed() on the world — the same
+    // method that demo_main.cpp calls after the player inputs the full key
+    // sequence.  This verifies the quest-manager wiring without needing real
+    // keyboard input.
+    //
+    // The test sequence:
+    //   1. Init a fresh OpenWorld.
+    //   2. Teleport to "combat" → sets m_nearestStationID.
+    //   3. InteractAtStation() → returns the combat lesson + GetLastLessonTitle().
+    //   4. Verify HasChallenge() on the returned lesson (or skip if no JSON).
+    //   5. Call NotifyChallengePassed() → combo_challenger activity advances.
+    //   6. Verify the COMBO_PRACTICE activity is now "complete".
+    // ─────────────────────────────────────────────────────────────────────────
+    {
+        OpenWorld cWorld;
+        if (!cWorld.Init())
+        {
+            std::cout << "[FAIL] demo_world/9: cWorld.Init() returned false.\n";
+            return 1;
+        }
+
+        // Navigate to the combat station.
+        cWorld.TeleportToStation("combat");
+
+        // Interact — returns the lesson and tracks lastLessonTitle.
+        StationLesson cLesson = cWorld.InteractAtStation();
+
+        // Verify the last-lesson title was updated.
+        if (cWorld.GetLastLessonTitle().empty())
+        {
+            std::cout << "[FAIL] demo_world/9: GetLastLessonTitle() is empty "
+                         "after InteractAtStation.\n";
+            return 1;
+        }
+
+        // If the lesson has a challenge, verify the challenge fields.
+        if (cLesson.HasChallenge())
+        {
+            if (cLesson.challengeKeys.empty())
+            {
+                std::cout << "[FAIL] demo_world/9: challenge has empty key sequence.\n";
+                return 1;
+            }
+        }
+
+        // Simulate the player completing the challenge.
+        cWorld.NotifyChallengePassed();
+
+        // Verify the COMBO_PRACTICE activity is now complete.
+        const auto& acts = cWorld.GetQuestManager().GetActivities();
+        bool comboOk = false;
+        for (const auto& a : acts)
+        {
+            if (a.type == DemoActivityType::COMBO_PRACTICE && a.completed)
+            {
+                comboOk = true;
+                break;
+            }
+        }
+        if (!comboOk)
+        {
+            std::cout << "[FAIL] demo_world/9: COMBO_PRACTICE activity did not "
+                         "complete after NotifyChallengePassed().\n";
+            return 1;
+        }
+
+        cWorld.Shutdown();
+        if (cLesson.HasChallenge() && !cLesson.challengeKeys.empty())
+        {
+            std::cout << "[OK] demo_world/9: Combo challenge simulation — "
+                         "TeleportToStation + InteractAtStation + NotifyChallengePassed "
+                         "-> COMBO_PRACTICE activity complete; lastLessonTitle = \""
+                      << cWorld.GetLastLessonTitle() << "\" "
+                      << "challengeKeys[0]='" << cLesson.challengeKeys.front()
+                      << "' last='" << cLesson.challengeKeys.back() << "'.\n";
+        }
+        else
+        {
+            std::cout << "[OK] demo_world/9: Combo challenge simulation complete "
+                         "(no challenge JSON loaded — fallback lesson used).\n";
+        }
+    } // end test 9
+
+    // -----------------------------------------------------------------------
+    // 10. Report PASS.
+    // -----------------------------------------------------------------------
+    world.Shutdown();
+    std::cout << "[PASS] demo_world: 9 acceptance tests passed "
                  "(init, boot_menu, biome_cycle, stations, teleport, json_fallback, "
-                 "quest_manager_interact).\n";
+                 "quest_manager_interact, lesson_data, combo_challenge).\n";
     return 0;
 }
 
@@ -1187,6 +1503,10 @@ static int RunWindowed(const DemoArgs& args)
     KeyEdge keyEnter(VK_RETURN);     // Enter → confirm selection / dismiss lesson panel
     KeyEdge keyD   ('D');            // D → toggle debug info strip
     KeyEdge keyE   ('E');            // E → Interact with nearest teaching station
+    KeyEdge keySpace(VK_SPACE);      // Space → start combo challenge (when lesson panel open)
+    KeyEdge key1   ('1');            // 1 → combo challenge input
+    KeyEdge key2   ('2');            // 2 → combo challenge input
+    KeyEdge key3   ('3');            // 3 → combo challenge input
 
     // --- Overlay state ---
     bool debugMenuOpen  = false; ///< F1 overlay visible
@@ -1195,6 +1515,20 @@ static int RunWindowed(const DemoArgs& args)
     int  stationSel     = 0;     ///< F1 overlay selected station index
     bool lessonPanelOpen = false; ///< Lesson panel visible (shown on E press)
     StationLesson currentLesson;  ///< Content of the currently displayed lesson
+    std::string lastLessonTitle;  ///< Title of the most recently read lesson (for HUD hint)
+
+    // --- Combo challenge mini-game state ---
+    // TEACHING NOTE — Local challenge state (UI layer only)
+    // ─────────────────────────────────────────────────────
+    // All challenge-input tracking lives in demo_main.cpp, not in OpenWorld.
+    // OpenWorld is notified only on completion (NotifyChallengePassed).
+    // This separation keeps game-logic state out of the UI layer's concerns
+    // and matches the Command pattern: UI issues a command; game logic reacts.
+    bool challengeActive  = false; ///< True while player is inputting combo keys
+    int  challengeStep    = 0;     ///< How many keys pressed correctly so far
+    bool challengePassed  = false; ///< True after all challenge keys entered
+    float challengeResultTimer = 0.f; ///< Countdown to auto-close the result panel
+    StationLesson challengeLesson;  ///< The lesson whose challenge is active
 
     // --- FPS tracking ---
     float fpsAccum  = 0.f;
@@ -1242,6 +1576,10 @@ static int RunWindowed(const DemoArgs& args)
         const bool pressedEnter = keyEnter.JustPressed();
         const bool pressedD     = keyD.JustPressed();
         const bool pressedE     = keyE.JustPressed();
+        const bool pressedSpace = keySpace.JustPressed();
+        const bool pressed1     = key1.JustPressed();
+        const bool pressed2     = key2.JustPressed();
+        const bool pressed3     = key3.JustPressed();
 
         // Toggle debug info bar with D (available in all states).
         if (pressedD)
@@ -1290,17 +1628,106 @@ static int RunWindowed(const DemoArgs& args)
                 }
             }
         }
+        else if (challengeActive)
+        {
+            // -----------------------------------------------------------------
+            // COMBO CHALLENGE input
+            // TEACHING NOTE — Challenge key-sequence validation
+            // ─────────────────────────────────────────────────────────────────
+            // The challenge asks the player to press a sequence of digit keys
+            // that matches challengeLesson.challengeKeys.  Each correct press
+            // advances challengeStep; when challengeStep reaches the end of the
+            // sequence the challenge is "passed" and NotifyChallengePassed() is
+            // called.
+            //
+            // Wrong-key presses are silently ignored — we don't reset progress,
+            // which would feel punishing for a teaching exercise.  An instructor
+            // running the demo for students can adjust this policy by changing
+            // the challengeKeys list in station_lessons.json without recompiling.
+            // -----------------------------------------------------------------
+            if (pressedESC && !challengePassed)
+            {
+                challengeActive = false;
+                challengeStep   = 0;
+                std::cout << "[demo_game] Combo challenge: EXITED.\n";
+            }
+            else if (!challengePassed)
+            {
+                // Determine which key was pressed (1/2/3).
+                char pressedChar = 0;
+                if (pressed1) pressedChar = '1';
+                else if (pressed2) pressedChar = '2';
+                else if (pressed3) pressedChar = '3';
+
+                if (pressedChar != 0)
+                {
+                    const int  numKeys     = static_cast<int>(challengeLesson.challengeKeys.size());
+                    const std::string expected = (challengeStep < numKeys)
+                                                  ? challengeLesson.challengeKeys[challengeStep]
+                                                  : "";
+                    const std::string pressed  = std::string(1, pressedChar);
+
+                    if (pressed == expected)
+                    {
+                        ++challengeStep;
+                        std::cout << "[demo_game] Combo challenge: step "
+                                  << challengeStep << "/" << numKeys
+                                  << " — [" << expected << "] ✓\n";
+
+                        if (challengeStep >= numKeys)
+                        {
+                            challengePassed       = true;
+                            challengeResultTimer  = 2.0f; // show "Passed!" for 2 s
+                            world.NotifyChallengePassed();
+                            std::cout << "[demo_game] Combo challenge: PASSED! "
+                                         "Combo Challenger activity advanced.\n";
+                        }
+                    }
+                    else
+                    {
+                        std::cout << "[demo_game] Combo challenge: key ["
+                                  << pressed << "] ignored — expected ["
+                                  << expected << "]. Try again.\n";
+                    }
+                }
+            }
+
+            // Auto-close after the result timer expires.
+            if (challengePassed)
+            {
+                challengeResultTimer -= dt;
+                if (challengeResultTimer <= 0.f)
+                {
+                    challengeActive  = false;
+                    challengePassed  = false;
+                    challengeStep    = 0;
+                }
+            }
+        }
         else if (lessonPanelOpen)
         {
             // -----------------------------------------------------------------
-            // LESSON PANEL input — ESC or Enter dismisses the panel.
+            // LESSON PANEL input — ESC or Enter dismisses the panel;
+            //                      Space starts the combo challenge (when available).
             // TEACHING NOTE — Modal dismiss pattern
             // The lesson panel is a soft modal: it doesn't block the world
             // update but intercepts input so other actions don't fire while
             // the student is reading.  ESC and Enter are standard dismiss keys
             // in UI systems (think "OK" button / "Press Enter to continue").
             // -----------------------------------------------------------------
-            if (pressedESC || pressedEnter)
+            if (pressedSpace && currentLesson.HasChallenge())
+            {
+                // Transition: lesson panel → challenge overlay.
+                lessonPanelOpen  = false;
+                challengeActive  = true;
+                challengeStep    = 0;
+                challengePassed  = false;
+                challengeLesson  = currentLesson;
+                currentLesson    = StationLesson{};
+                std::cout << "[demo_game] Combo challenge STARTED: \""
+                          << challengeLesson.challengeTitle << "\"\n";
+            }
+            else if (pressedESC || pressedEnter)
             {
                 lessonPanelOpen = false;
                 currentLesson   = StationLesson{};
@@ -1372,10 +1799,13 @@ static int RunWindowed(const DemoArgs& args)
                 StationLesson lesson = world.InteractAtStation();
                 if (lesson.IsValid())
                 {
+                    lastLessonTitle = lesson.lessonTitle; // update HUD hint
                     currentLesson   = std::move(lesson);
                     lessonPanelOpen = true;
                     std::cout << "[demo_game] Lesson panel OPEN: \""
-                              << currentLesson.lessonTitle << "\"\n";
+                              << currentLesson.lessonTitle << "\""
+                              << (currentLesson.HasChallenge() ? " [has challenge]" : "")
+                              << "\n";
                 }
                 else
                 {
@@ -1452,9 +1882,17 @@ static int RunWindowed(const DemoArgs& args)
         {
             overlay::DrawBootMenu(hwnd, winW, winH, bootMenuSel);
         }
+        else if (challengeActive)
+        {
+            overlay::DrawChallengeOverlay(hwnd, winW, winH,
+                                          challengeLesson,
+                                          challengeStep,
+                                          challengePassed);
+        }
         else if (lessonPanelOpen)
         {
-            overlay::DrawLessonPanel(hwnd, winW, winH, currentLesson);
+            overlay::DrawLessonPanel(hwnd, winW, winH, currentLesson,
+                                     currentLesson.HasChallenge());
         }
         else if (debugMenuOpen)
         {
@@ -1477,7 +1915,8 @@ static int RunWindowed(const DemoArgs& args)
         // The quest HUD is drawn on top of all other content when the player
         // is in the PLAYING state.  It does not interfere with the lesson panel
         // (DrawLessonPanel takes centre stage), the F1 overlay, or the boot menu.
-        if (world.GetState() == OpenWorldState::PLAYING && !debugMenuOpen && !lessonPanelOpen)
+        if (world.GetState() == OpenWorldState::PLAYING
+            && !debugMenuOpen && !lessonPanelOpen && !challengeActive)
         {
             // Show the interact prompt when the player is near a station.
             if (!world.GetNearestStationID().empty())
@@ -1486,7 +1925,8 @@ static int RunWindowed(const DemoArgs& args)
                                             world.GetNearestStationID(),
                                             world.GetStations());
             }
-            overlay::DrawQuestHud(hwnd, winW, winH, world.GetQuestManager());
+            overlay::DrawQuestHud(hwnd, winW, winH, world.GetQuestManager(),
+                                  lastLessonTitle);
         }
     }
 
