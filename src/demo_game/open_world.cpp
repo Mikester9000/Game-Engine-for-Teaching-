@@ -316,6 +316,10 @@ StationLesson OpenWorld::InteractAtStation()
                              "to provide teaching text and code pointers.";
     }
 
+    // Track the last-read lesson title for the quest HUD "last lesson" hint.
+    if (result.IsValid())
+        m_lastLessonTitle = result.lessonTitle;
+
     return result;
 }
 
@@ -333,6 +337,17 @@ void OpenWorld::NotifyEnemyKilled()
 void OpenWorld::NotifyItemCollected()
 {
     m_quests.NotifyItemCollected();
+}
+
+void OpenWorld::NotifyChallengePassed()
+{
+    // TEACHING NOTE — Forwarding pattern for DemoQuestManager events
+    // ─────────────────────────────────────────────────────────────────
+    // All quest-manager events flow through OpenWorld so that demo_main.cpp
+    // (the UI/input layer) never holds a direct reference to DemoQuestManager.
+    // This mirrors the Command pattern: the UI issues a high-level "challenge
+    // passed" command; OpenWorld decides which quest-manager method to call.
+    m_quests.NotifyChallengePassed();
 }
 
 // ---------------------------------------------------------------------------
@@ -721,6 +736,35 @@ bool OpenWorld::TryLoadLessonsFromJSON(const std::string& jsonPath)
             {
                 for (const auto& rel : obj["relatedStations"])
                     lesson.relatedStations.push_back(rel.get<std::string>());
+            }
+
+            // TEACHING NOTE — Optional combo-challenge fields
+            // ─────────────────────────────────────────────────
+            // challengeTitle and challengeKeys are optional extensions defined
+            // in station_lessons.schema.json.  We only apply them when *both*
+            // fields are present in the JSON — a lesson with only one of the two
+            // would produce a broken HasChallenge() state (title but no keys, or
+            // vice-versa).  Partial data is silently discarded so the lesson still
+            // displays normally without a challenge prompt.
+            const bool hasTitle = obj.contains("challengeTitle")
+                                   && obj["challengeTitle"].is_string()
+                                   && !obj["challengeTitle"].get<std::string>().empty();
+            const bool hasKeys  = obj.contains("challengeKeys")
+                                   && obj["challengeKeys"].is_array()
+                                   && !obj["challengeKeys"].empty();
+
+            if (hasTitle && hasKeys)
+            {
+                lesson.challengeTitle = obj["challengeTitle"].get<std::string>();
+                for (const auto& key : obj["challengeKeys"])
+                    lesson.challengeKeys.push_back(key.get<std::string>());
+            }
+            else if (hasTitle != hasKeys)
+            {
+                std::cout << "[OpenWorld] station_lessons.json: station \""
+                          << lesson.stationID
+                          << "\" has only one of challengeTitle/challengeKeys — "
+                             "both required together; challenge disabled for this station.\n";
             }
 
             if (!lesson.stationID.empty() && lesson.IsValid())

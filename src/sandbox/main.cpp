@@ -5133,6 +5133,109 @@ int main(int argc, char* argv[])
 
                 ow.Shutdown();
 
+                // ── Test 8: Lesson data validation ─────────────────────────────────
+                // TEACHING NOTE — Testing the lesson-data layer
+                // ──────────────────────────────────────────────────────────────────
+                // If station_lessons.json was deployed (CI with content), verify:
+                //   a) Combat station has a loaded lesson.
+                //   b) Lesson has non-empty lessonText and at least one codePointer.
+                //   c) Combat lesson defines a combo challenge (HasChallenge()).
+                // If the JSON is absent (CI without content), report as a soft OK.
+                // ──────────────────────────────────────────────────────────────────
+                {
+                    OpenWorld ow8;
+                    ow8.Init();
+
+                    const StationLesson* combatLesson = ow8.GetStationLesson("combat");
+                    if (combatLesson == nullptr)
+                    {
+                        // No JSON deployed — soft OK.
+                        std::cout << "[OK] demo_world/8: station_lessons.json not "
+                                     "deployed — fallback text in use (non-fatal).\n";
+                    }
+                    else
+                    {
+                        if (!combatLesson->IsValid())
+                        {
+                            std::cout << "[FAIL] demo_world/8: combat lesson is "
+                                         "invalid (empty title or text).\n";
+                            ++testsFailed;
+                        }
+                        else if (combatLesson->codePointers.empty())
+                        {
+                            std::cout << "[FAIL] demo_world/8: combat lesson has no "
+                                         "codePointers.\n";
+                            ++testsFailed;
+                        }
+                        else if (!combatLesson->HasChallenge())
+                        {
+                            std::cout << "[FAIL] demo_world/8: combat lesson does not "
+                                         "define a combo challenge.\n";
+                            ++testsFailed;
+                        }
+                        else
+                        {
+                            std::cout << "[OK] demo_world/8: combat lesson valid — "
+                                      << combatLesson->codePointers.size()
+                                      << " code pointer(s), challenge="
+                                      << combatLesson->challengeKeys.size()
+                                      << " keys.\n";
+                        }
+                    }
+
+                    ow8.Shutdown();
+                }
+
+                // ── Test 9: Combo challenge end-to-end simulation ───────────────────
+                // TEACHING NOTE — Headless combo challenge simulation
+                // ──────────────────────────────────────────────────────────────────
+                // Calls NotifyChallengePassed() directly (no keyboard needed) to
+                // verify the quest-manager wiring:
+                //   TeleportToStation → InteractAtStation → NotifyChallengePassed
+                //   → COMBO_PRACTICE activity completed.
+                // Also checks GetLastLessonTitle() is non-empty after interact.
+                // ──────────────────────────────────────────────────────────────────
+                {
+                    OpenWorld ow9;
+                    ow9.Init();
+
+                    ow9.TeleportToStation("combat");
+                    StationLesson cLesson = ow9.InteractAtStation();
+
+                    if (ow9.GetLastLessonTitle().empty())
+                    {
+                        std::cout << "[FAIL] demo_world/9: GetLastLessonTitle() "
+                                     "empty after InteractAtStation.\n";
+                        ++testsFailed;
+                    }
+                    else
+                    {
+                        ow9.NotifyChallengePassed();
+
+                        const auto& cActs = ow9.GetQuestManager().GetActivities();
+                        bool comboOk = false;
+                        for (const auto& a : cActs)
+                            if (a.type == DemoActivityType::COMBO_PRACTICE && a.completed)
+                                comboOk = true;
+
+                        if (!comboOk)
+                        {
+                            std::cout << "[FAIL] demo_world/9: COMBO_PRACTICE activity "
+                                         "not complete after NotifyChallengePassed().\n";
+                            ++testsFailed;
+                        }
+                        else
+                        {
+                            std::cout << "[OK] demo_world/9: combo challenge — "
+                                         "Teleport+Interact+NotifyChallengePassed → "
+                                         "COMBO_PRACTICE complete; lastLesson=\""
+                                      << ow9.GetLastLessonTitle() << "\".\n";
+                        }
+                    }
+
+                    ow9.Shutdown();
+                }
+
                 if (testsFailed > 0)
                 {
                     std::cout << "[FAIL] demo_world: " << testsFailed
@@ -5141,9 +5244,10 @@ int main(int argc, char* argv[])
                     window.Shutdown();
                     return 1;
                 }
-                std::cout << "[PASS] demo_world: 7 acceptance tests passed "
+                std::cout << "[PASS] demo_world: 9 acceptance tests passed "
                              "(init, boot_menu, biome_cycle, teleport_nav_only, station_data, "
-                             "json_fallback, quest_manager_interact).\n";
+                             "json_fallback, quest_manager_interact, lesson_data, "
+                             "combo_challenge).\n";
             }
             else
             {

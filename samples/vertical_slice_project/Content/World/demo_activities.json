@@ -1,5 +1,6 @@
 {
-  "version": "1.0.0",
+  "$schema": "../../shared/schemas/demo_activities.schema.json",
+  "version": "1.1.0",
   "_comment": "Demo_Game activity definitions — loaded at runtime by DemoQuestManager::TryLoadFromJSON. These override the C++ defaults in demo_quest_manager.cpp when ENGINE_ENABLE_JSON is active. See docs/DEMO_GAME.md for gameplay details.",
   "mainQuest": {
     "id": "demo_main_quest",
@@ -48,6 +49,14 @@
       "description": "Press E at the PBR Rendering station to read the BRDF pipeline lesson.",
       "type": "station_interact",
       "specificStationID": "rendering_pbr",
+      "required": 1
+    },
+    {
+      "id": "combo_challenger",
+      "title": "Combo Challenger",
+      "description": "Complete the Combo Practice mini-game at the Action Combat station. Press [Space] while the combat lesson panel is open, then enter the displayed key sequence.",
+      "type": "combo_practice",
+      "specificStationID": "combat",
       "required": 1
     }
   ]

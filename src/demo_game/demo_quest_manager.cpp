@@ -196,6 +196,21 @@ void DemoQuestManager::NotifyItemCollected()
         collect->Advance();
 }
 
+void DemoQuestManager::NotifyChallengePassed()
+{
+    // TEACHING NOTE — Finding activities by type
+    // ────────────────────────────────────────────
+    // FindActivity() returns the first registered activity of the given type.
+    // Since we only register one COMBO_PRACTICE activity ("combo_challenger"),
+    // this is unambiguous.  If we later added multiple combo challenges (one
+    // per station), we would extend FindActivity to accept an optional
+    // stationID filter — the same pattern used for STATION_INTERACT with
+    // specificStationID.
+    DemoActivity* combo = FindActivity(DemoActivityType::COMBO_PRACTICE);
+    if (combo)
+        combo->Advance();
+}
+
 // ===========================================================================
 // DemoQuestManager — queries
 // ===========================================================================
@@ -342,6 +357,39 @@ void DemoQuestManager::RegisterDefaults()
         a.required          = 1;
         m_activities.push_back(a);
     }
+
+    // ── Side activity 4 — Combo Challenger (gameplay mini-game) ──────────────
+    // TEACHING NOTE — Gameplay-loop integration with teaching content
+    // ──────────────────────────────────────────────────────────────────────────
+    // The "Combo Challenger" activity ties the ComboSystem lesson to a short
+    // interactive exercise:
+    //   1. Player presses E at the Combat station → reads the ComboSystem lesson.
+    //   2. Lesson panel shows "[Space] Start Combo Challenge".
+    //   3. Player presses Space → challenge overlay shows a 3-key sequence.
+    //   4. Player inputs [1] → [2] → [3] → NotifyChallengePassed() called.
+    //   5. Activity advances to "complete".
+    //
+    // This makes the teaching content experiential: the student doesn't just
+    // read about the IDLE→BUILDING→COOLDOWN FSM transitions — they trigger them
+    // with their own keypresses.  The keys are loaded from station_lessons.json
+    // (challengeKeys field), so an instructor can change the sequence without
+    // recompiling.
+    //
+    // Design choice: COMBO_PRACTICE type rather than STATION_INTERACT so the
+    // activity is only completable via the explicit challenge flow, not just
+    // by teleporting to the station.
+    {
+        DemoActivity a;
+        a.id                = "combo_challenger";
+        a.title             = "Combo Challenger";
+        a.description       = "Complete the Combo Practice at the Combat station. "
+                              "Read the lesson, press [Space] to start, then input "
+                              "the displayed key sequence.";
+        a.type              = DemoActivityType::COMBO_PRACTICE;
+        a.specificStationID = "combat"; // challenge is at the combat station
+        a.required          = 1;
+        m_activities.push_back(a);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -419,6 +467,7 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
             //   string is accepted so that any existing data files load cleanly.
             if (s == "combat_challenge") return DemoActivityType::COMBAT_CHALLENGE;
             if (s == "item_collection")  return DemoActivityType::ITEM_COLLECTION;
+            if (s == "combo_practice")   return DemoActivityType::COMBO_PRACTICE;
             // Unknown type → INVALID; the entry will be rejected below.
             return DemoActivityType::INVALID;
         };
