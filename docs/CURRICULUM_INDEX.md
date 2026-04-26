@@ -1689,9 +1689,9 @@ print(f'[OK] PHY1: {vc} verts, {ic} indices, {len(blob)} bytes')
 Three jobs validate the full Windows toolchain on every push/PR:
 
   build-windows-engine  — two builds in one job: D3D11-only + Jolt-only.
-                          Both build types link /STACK:8388608 (8 MB) so
-                          the MSVC Debug call stack depth never exhausts
-                          the runner's default 1 MB limit.
+                          engine_sandbox in both build types links with
+                          /STACK:8388608 (8 MB) so the MSVC Debug call
+                          stack depth never exhausts the 1 MB runner limit.
                           D3D11-only binary runs all rendering/streaming/
                           audio/save tests; Jolt binary runs only
                           physics_test/vehicle_test/terrain_test.
