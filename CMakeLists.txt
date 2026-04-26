@@ -1335,6 +1335,41 @@ message(STATUS "  pak target       : ON (always built)")
 
 
 
+# ---------------------------------------------------------------------------
+# cook_samples — convenience target to cook the vertical-slice sample project
+# ---------------------------------------------------------------------------
+# TEACHING NOTE — Custom build targets for developer ergonomics
+# ─────────────────────────────────────────────────────────────────────────────
+# New developers cloning the repository need cooked sample data before the
+# runtime can stream real level content.  The cook_samples target automates
+# this step: it runs cook.exe on the vertical-slice project and generates
+#   samples/vertical_slice_project/Cooked/assetdb.json
+#   samples/vertical_slice_project/Cooked/Levels/cells_manifest.json
+# (plus cooked copies of every asset in AssetRegistry.json).
+#
+# Usage:
+#   cmake --build <preset> --target cook_samples
+#
+# The target depends on the cook executable so CMake guarantees cook.exe is
+# up-to-date before running it.
+#
+# This target is NOT included in the default ALL build to avoid surprising
+# long cook times for headless CI jobs that provide pre-baked Cooked/ data.
+# Opt in explicitly with `--target cook_samples` whenever you need fresh data.
+# ─────────────────────────────────────────────────────────────────────────────
+add_custom_target(cook_samples
+    COMMAND $<TARGET_FILE:cook>
+            --project "${CMAKE_SOURCE_DIR}/samples/vertical_slice_project"
+    DEPENDS cook
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    COMMENT "Cooking vertical-slice sample assets (generates Cooked/ + cells_manifest.json)..."
+    VERBATIM
+)
+
+message(STATUS "  cook_samples     : add --target cook_samples to generate cooked sample data")
+
+
+
 message(STATUS "=== Build Configuration ===")
 message(STATUS "  CXX Standard     : C++${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build type       : ${CMAKE_BUILD_TYPE}")

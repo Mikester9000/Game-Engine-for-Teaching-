@@ -141,7 +141,68 @@ After TOC : Entry data blobs (concatenated)
 
 ---
 
-## Validating Assets
+## Streaming Cell GUID Manifest (`cells_manifest.json`)
+
+`cook.exe` generates a lightweight manifest alongside `assetdb.json` that maps
+each world-streaming cell to its stable asset GUID:
+
+```
+Cooked/Levels/cells_manifest.json
+```
+
+### Format
+
+```json
+{
+  "version": 1,
+  "cells": [
+    { "cx": 0, "cz": 0, "guid": "406ca23e-e0d3-4cee-9f81-ac75f9b3d35f" },
+    { "cx": 0, "cz": 1, "guid": "c7dfa7c7-7fa3-4f28-9697-57ebd15704cd" },
+    { "cx": 1, "cz": 0, "guid": "24d3e6ff-34a3-4e68-947e-6642cfbe28c7" },
+    { "cx": 1, "cz": 1, "guid": "dd64c02d-bafc-4453-b265-d8f14626dc19" }
+  ]
+}
+```
+
+- **`cx`, `cz`** — World-grid column and row of the streaming cell.  Derived
+  automatically from the source filename (`cell_<cx>_<cz>.cell.json`).
+- **`guid`** — The asset GUID from `AssetRegistry.json`.  Matches the `id`
+  field in `assetdb.json` for the corresponding `.level` cooked file.
+
+### Why this exists
+
+Previously the runtime (`GameRuntime::Init`) contained a hardcoded C++ array
+(`kCells[]`) with literal GUID strings.  Any GUID change in `AssetRegistry.json`
+required editing C++ source code.
+
+Now cook.exe is the single source of truth.  The runtime reads the manifest at
+startup and registers all cells dynamically — no code changes needed when GUIDs
+change.
+
+### How the runtime uses it
+
+`GameRuntime::Init` (see `src/sandbox/game_runtime.cpp`):
+
+1. Loads `Cooked/Levels/cells_manifest.json` (gated on `ENGINE_ENABLE_JSON`).
+2. For each entry, computes `cellId = CellIdFromCoord({cx, cz})`.
+3. Calls `GameStreamingManager::RegisterCellGuid(cellId, guid)`.
+
+If the manifest is absent (cook has not been run) or `ENGINE_ENABLE_JSON` is
+not defined, the runtime logs a clear message and continues — streaming will
+function with empty default cell data.
+
+### Generating cooked data for a new machine
+
+```bat
+# Option A — run cook.exe directly:
+.\build\windows-ninja-debug-engine-only\cook.exe ^
+    --project samples\vertical_slice_project
+
+# Option B — use the cook_samples CMake convenience target:
+cmake --build build\windows-ninja-debug-engine-only --target cook_samples
+```
+
+---
 
 ### 1. DDS magic check (authored_content scene)
 
