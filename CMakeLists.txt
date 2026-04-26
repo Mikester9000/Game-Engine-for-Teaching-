@@ -882,6 +882,27 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     endif()
 
     # -----------------------------------------------------------------------
+    # Stack size — engine_sandbox needs a larger-than-default stack.
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Why 8 MB instead of the Windows default 1 MB?
+    # Windows gives each thread 1 MB of stack space by default.  This is
+    # enough for most Win32 programs, but a game engine sandbox exe combines
+    # several subsystems with deep call chains at startup:
+    #   • D3D11 WARP software rasteriser (deep COM / kernel initialisation)
+    #   • LuaEngine startup (Lua 5.5 parser + VM init)
+    #   • ECS World construction (many component storage vectors)
+    #   • MSVC Debug frame overhead (no inlining → 3-5× larger frames)
+    # On GitHub-hosted Windows runners the combination exhausts the 1 MB
+    # stack and causes STATUS_STACK_OVERFLOW (0xC00000FD) before any scene
+    # code executes.  Setting /STACK:8388608 (8 MB) is the correct
+    # long-term fix — the same technique used by shipped AAA titles whose
+    # engine startup paths are equally deep.
+    # -----------------------------------------------------------------------
+    if(MSVC)
+        target_link_options(engine_sandbox PRIVATE /STACK:8388608)
+    endif()
+
+    # -----------------------------------------------------------------------
     # Link libraries.
     # -----------------------------------------------------------------------
     # TEACHING NOTE — d3d11.lib and dxgi.lib

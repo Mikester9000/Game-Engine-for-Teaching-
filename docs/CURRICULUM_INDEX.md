@@ -12,8 +12,8 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (83 lessons)
-- [ci/workflows](#ciworkflows) (30 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (84 lessons)
+- [ci/workflows](#ciworkflows) (29 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
 - [demo_game/demo_main.cpp](#demo_gamedemo_main.cpp) (46 lessons)
 - [demo_game/demo_quest_manager.cpp](#demo_gamedemo_quest_manager.cpp) (16 lessons)
@@ -876,9 +876,30 @@ demo_game inherits it automatically via DEMO_GAME_SOURCES derivation.
 src/demo_game/demo_quest_manager.cpp
 )
 
-### d3d11.lib and dxgi.lib
+### Why 8 MB instead of the Windows default 1 MB?
 
 **Source:** [`CMakeLists.txt`](CMakeLists.txt#L887) (line 887)
+
+Windows gives each thread 1 MB of stack space by default.  This is
+enough for most Win32 programs, but a game engine sandbox exe combines
+several subsystems with deep call chains at startup:
+  • D3D11 WARP software rasteriser (deep COM / kernel initialisation)
+  • LuaEngine startup (Lua 5.5 parser + VM init)
+  • ECS World construction (many component storage vectors)
+  • MSVC Debug frame overhead (no inlining → 3-5× larger frames)
+On GitHub-hosted Windows runners the combination exhausts the 1 MB
+stack and causes STATUS_STACK_OVERFLOW (0xC00000FD) before any scene
+code executes.  Setting /STACK:8388608 (8 MB) is the correct
+long-term fix — the same technique used by shipped AAA titles whose
+engine startup paths are equally deep.
+-----------------------------------------------------------------------
+if(MSVC)
+target_link_options(engine_sandbox PRIVATE /STACK:8388608)
+endif()
+
+### d3d11.lib and dxgi.lib
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L908) (line 908)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -890,7 +911,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L896) (line 896)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L917) (line 917)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -899,7 +920,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L906) (line 906)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L927) (line 927)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -911,7 +932,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L915) (line 915)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L936) (line 936)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -921,7 +942,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L925) (line 925)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L946) (line 946)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -930,7 +951,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L931) (line 931)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L952) (line 952)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -939,7 +960,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L936) (line 936)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L957) (line 957)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -951,7 +972,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L953) (line 953)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L974) (line 974)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -962,7 +983,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L961) (line 961)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L982) (line 982)
 
 Defined when nlohmann/json is available (via vcpkg OR the vendored
 third_party/nlohmann/json.hpp copy).  Because the vendored copy is
@@ -976,7 +997,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L977) (line 977)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L998) (line 998)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -1010,7 +1031,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1009) (line 1009)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1030) (line 1030)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -1025,7 +1046,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1024) (line 1024)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1045) (line 1045)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -1040,7 +1061,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1066) (line 1066)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1087) (line 1087)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -1063,7 +1084,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1087) (line 1087)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1108) (line 1108)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -1084,7 +1105,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1104) (line 1104)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1125) (line 1125)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -1094,7 +1115,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1110) (line 1110)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1131) (line 1131)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -1106,7 +1127,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1118) (line 1118)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1139) (line 1139)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -1118,7 +1139,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Post-M10: SDF text rendering HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1126) (line 1126)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1147) (line 1147)
 
 sdf_text.vs.hlsl transforms screen-space pixel quads to NDC.
 sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
@@ -1128,7 +1149,7 @@ sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
 
 ### M16: PBR + Image-Based Lighting (IBL) shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1132) (line 1132)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1153) (line 1153)
 
 pbr_ibl.vs.hlsl is structurally identical to pbr_mesh.vs.hlsl —
   it outputs worldPos, worldNrm, and UV to the pixel shader.
@@ -1145,7 +1166,7 @@ pbr_ibl.ps.hlsl adds the full split-sum IBL ambient:
 
 ### M17: Directional shadow map shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1146) (line 1146)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1167) (line 1167)
 
 shadow.vs.hlsl       — depth-only VS for the shadow pass (one matrix
   multiply, no PS output).  Identity world is baked into lightViewProj.
@@ -1159,7 +1180,7 @@ shadow_lit.ps.hlsl   — lit-pass PS: 3×3 PCF shadow lookup via
 
 ### M17: HDR bloom post-processing shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1157) (line 1157)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1178) (line 1178)
 
 All three passes reuse sky.vs.hlsl as the full-screen triangle VS
 (SV_VertexID → full-screen quad trick — no vertex buffer needed).
@@ -1177,7 +1198,7 @@ bloom_composite.ps.hlsl — adds bloom × g_bloomStrength to the scene,
 
 ### M25: Terrain heightmap shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1172) (line 1172)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1193) (line 1193)
 
 terrain.vs.hlsl transforms the CPU-generated heightmap grid vertices
   (pos, normal, uv) through world→view→clip matrices and passes
@@ -1191,7 +1212,7 @@ Both use a shared TerrainCB constant buffer bound to b0 in both stages.
 
 ### Demo_Game vs engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1198) (line 1198)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1219) (line 1219)
 
 ─────────────────────────────────────────────────────────────────────────────
 engine_sandbox is the internal test harness; demo_game is the player-facing
@@ -1213,7 +1234,7 @@ if(BUILD_DEMO_GAME AND WIN32 AND ENGINE_ENABLE_D3D11)
 
 ### Deriving DEMO_GAME_SOURCES from SANDBOX_SOURCES
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1217) (line 1217)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1238) (line 1238)
 
 ─────────────────────────────────────────────────────────────────
 Rather than maintaining a duplicate source list (which is easy to let
@@ -1237,7 +1258,7 @@ list(APPEND DEMO_GAME_SOURCES src/demo_game/demo_main.cpp)
 
 ### Status messages should distinguish "not requested"
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1278) (line 1278)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1299) (line 1299)
 
 from "requested but unavailable due to unmet platform/backend
 requirements" so configure-time output tells the user what to fix.
@@ -1252,7 +1273,7 @@ endif()
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1293) (line 1293)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1314) (line 1314)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -1274,7 +1295,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1312) (line 1312)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1333) (line 1333)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -1285,7 +1306,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1320) (line 1320)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1341) (line 1341)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -1295,7 +1316,7 @@ endif()
 
 ### PAK1 Packager Tool
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1334) (line 1334)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1355) (line 1355)
 
 ─────────────────────────────────────────────────────────────────────────────
 The pak tool bundles an input directory into a binary .pak archive
@@ -1320,7 +1341,7 @@ src/engine/core/Logger.cpp
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1360) (line 1360)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1381) (line 1381)
 
 Same reasoning as cook.exe: stdout/stderr must be visible in a terminal.
 if(MSVC)
@@ -1329,7 +1350,7 @@ endif()
 
 ### Custom build targets for developer ergonomics
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1373) (line 1373)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1394) (line 1394)
 
 ─────────────────────────────────────────────────────────────────────────────
 New developers cloning the repository need cooked sample data before the
@@ -1360,7 +1381,7 @@ VERBATIM
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1424) (line 1424)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1445) (line 1445)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -1369,7 +1390,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1431) (line 1431)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1452) (line 1452)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1385,7 +1406,7 @@ endif()
 
 ### CMake install()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1447) (line 1447)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1468) (line 1468)
 
 ─────────────────────────────────────────────────────────────────────────────
 Running `cmake --install <build-dir> --prefix dist/` copies all installed
@@ -1668,11 +1689,12 @@ print(f'[OK] PHY1: {vc} verts, {ic} indices, {len(blob)} bytes')
 Three jobs validate the full Windows toolchain on every push/PR:
 
   build-windows-engine  — two builds in one job: D3D11-only + Jolt-only.
+                          Both build types link /STACK:8388608 (8 MB) so
+                          the MSVC Debug call stack depth never exhausts
+                          the runner's default 1 MB limit.
                           D3D11-only binary runs all rendering/streaming/
-                          audio/save tests using --scene (never bare
-                          --headless, which crashes on the 1 MB CI stack).
-                          Jolt binary runs only physics_test/vehicle_test/
-                          terrain_test.
+                          audio/save tests; Jolt binary runs only
+                          physics_test/vehicle_test/terrain_test.
 
   build-windows-editor  — Dear ImGui creation-suite-editor; separate because
                           imgui adds ~2 min of vcpkg compile time.
@@ -1686,24 +1708,19 @@ correctly — it is just not exercised in CI at this time.
 
 ### Why two builds in one job?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L52) (line 52)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L53) (line 53)
 
-The MSVC Debug binary (engine_sandbox) crashes with STATUS_STACK_OVERFLOW
-(0xC00000FD) when run as bare `--headless` (no scene argument) on
-GitHub-hosted Windows runners.  The 1 MB default thread stack is exhausted
-by D3D11 WARP device init + LuaEngine startup + deep MSVC Debug frames
-before any scene code executes.  This happens with both the engine-only
-build (no Jolt) and the physics build (Jolt).
+engine_sandbox uses two CMake presets so the Jolt Physics startup cost
+(large per-frame stack frames from its constraint solver) does not affect
+the non-physics acceptance tests.  Both presets link /STACK:8388608 (8 MB)
+via CMakeLists.txt `target_link_options(engine_sandbox PRIVATE /STACK:8388608)`
+so the full MSVC Debug call depth (D3D11 WARP + LuaEngine + ECS) never
+exhausts the runner's stack.
 
-The solution used here:
-  1. NEVER run bare --headless.  All tests use --headless --scene <name>.
-     The textured_quad scene is the first to call renderer->Init() and
-     therefore implicitly validates D3D11 WARP device creation.
-  2. Use TWO engine_sandbox builds in one CI job:
-     • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
-       rendering / streaming / audio / animation / save-system tests.
-     • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
-       physics-specific tests (physics_test, vehicle_test, terrain_test).
+  • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
+    rendering / streaming / audio / animation / save-system tests.
+  • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
+    physics-specific tests (physics_test, vehicle_test, terrain_test).
 
 This is still exactly 3 CI jobs total (engine + editor + demo).
 ==========================================================================
@@ -1714,7 +1731,7 @@ continue-on-error: false
 
 ### Without vcvars, CMake may detect a GNU toolchain and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L84) (line 84)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L80) (line 80)
 
 fail to link Windows SDK libraries (xaudio2.lib, d3d11.lib, etc.).
 - name: Setup MSVC developer command prompt
@@ -1722,22 +1739,9 @@ uses: ilammy/msvc-dev-cmd@v1
 with:
 arch: x64
 
-### Why no bare --headless (M0) test?
-
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L122) (line 122)
-
-engine_sandbox.exe --headless (no scene) crashes with
-STATUS_STACK_OVERFLOW (0xC00000FD) on GitHub-hosted Windows runners
-regardless of whether Jolt Physics is compiled in.  The runner's 1 MB
-default stack is exhausted by the combination of D3D11 WARP device init,
-LuaEngine startup, and the deep MSVC Debug call frames.  D3D11 WARP
-device initialisation is fully covered by the textured_quad scene below
-(the first scene call that reaches renderer->Init()).
------------------------------------------------------------------------
-
 ### terrain_test detects ENGINE_ENABLE_PHYSICS at runtime.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L263) (line 263)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L256) (line 256)
 
 Subtest 3 (physics_collision via Jolt) auto-skips in the engine-only
 binary (no ENGINE_ENABLE_PHYSICS define) and prints "SKIP".
@@ -1748,7 +1752,7 @@ shell: cmd
 
 ### This build is kept separate (built last) because Jolt's
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L315) (line 315)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L308) (line 308)
 
 Debug build emits large stack frames that cause STATUS_STACK_OVERFLOW
 when the binary is used for non-physics scenes.  The engine-only binary
@@ -1763,7 +1767,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### terrain_test has 3 subtests:
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L359) (line 359)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L352) (line 352)
 
 1. renderer_init         — runs in both builds
   2. heightmap_displacement — runs in both builds
@@ -1777,7 +1781,7 @@ shell: cmd
 
 ### Editor job kept separate because imgui requires vcpkg and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L373) (line 373)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L366) (line 366)
 
 adds ~2 minutes of compile time.  Separating it avoids lengthening the
 critical path for engine PRs that do not touch editor code.
@@ -1789,7 +1793,7 @@ continue-on-error: false
 
 ### VCPKG_INSTALLED_DIR overrides the path so CMake finds
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L417) (line 417)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L410) (line 410)
 
 packages from the classic-mode install rather than manifest-mode default.
 - name: Configure CMake (D3D11 + Editor)
@@ -1802,7 +1806,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Validates demo_game.exe through the demo_main.cpp entry
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L440) (line 440)
 
 point (different code path from the sandbox demo_world test above).
 Uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON).

@@ -6,11 +6,12 @@ name: Build Windows (engine_sandbox + cook)
 # Three jobs validate the full Windows toolchain on every push/PR:
 #
 #   build-windows-engine  — two builds in one job: D3D11-only + Jolt-only.
+#                           Both build types link /STACK:8388608 (8 MB) so
+#                           the MSVC Debug call stack depth never exhausts
+#                           the runner's default 1 MB limit.
 #                           D3D11-only binary runs all rendering/streaming/
-#                           audio/save tests using --scene (never bare
-#                           --headless, which crashes on the 1 MB CI stack).
-#                           Jolt binary runs only physics_test/vehicle_test/
-#                           terrain_test.
+#                           audio/save tests; Jolt binary runs only
+#                           physics_test/vehicle_test/terrain_test.
 #
 #   build-windows-editor  — Dear ImGui creation-suite-editor; separate because
 #                           imgui adds ~2 min of vcpkg compile time.
@@ -50,22 +51,17 @@ jobs:
   # Job 1 — All engine subsystem tests (D3D11 rendering + Jolt Physics)
   # ==========================================================================
   # TEACHING NOTE — Why two builds in one job?
-  # The MSVC Debug binary (engine_sandbox) crashes with STATUS_STACK_OVERFLOW
-  # (0xC00000FD) when run as bare `--headless` (no scene argument) on
-  # GitHub-hosted Windows runners.  The 1 MB default thread stack is exhausted
-  # by D3D11 WARP device init + LuaEngine startup + deep MSVC Debug frames
-  # before any scene code executes.  This happens with both the engine-only
-  # build (no Jolt) and the physics build (Jolt).
+  # engine_sandbox uses two CMake presets so the Jolt Physics startup cost
+  # (large per-frame stack frames from its constraint solver) does not affect
+  # the non-physics acceptance tests.  Both presets link /STACK:8388608 (8 MB)
+  # via CMakeLists.txt `target_link_options(engine_sandbox PRIVATE /STACK:8388608)`
+  # so the full MSVC Debug call depth (D3D11 WARP + LuaEngine + ECS) never
+  # exhausts the runner's stack.
   #
-  # The solution used here:
-  #   1. NEVER run bare --headless.  All tests use --headless --scene <name>.
-  #      The textured_quad scene is the first to call renderer->Init() and
-  #      therefore implicitly validates D3D11 WARP device creation.
-  #   2. Use TWO engine_sandbox builds in one CI job:
-  #      • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
-  #        rendering / streaming / audio / animation / save-system tests.
-  #      • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
-  #        physics-specific tests (physics_test, vehicle_test, terrain_test).
+  #   • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
+  #     rendering / streaming / audio / animation / save-system tests.
+  #   • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
+  #     physics-specific tests (physics_test, vehicle_test, terrain_test).
   #
   # This is still exactly 3 CI jobs total (engine + editor + demo).
   # ==========================================================================
@@ -119,15 +115,12 @@ jobs:
       # -----------------------------------------------------------------------
       # Engine headless acceptance tests using the engine-only binary.
       # All run on D3D11 WARP (CPU software rasteriser) — no GPU required.
-      # TEACHING NOTE — Why no bare --headless (M0) test?
-      # engine_sandbox.exe --headless (no scene) crashes with
-      # STATUS_STACK_OVERFLOW (0xC00000FD) on GitHub-hosted Windows runners
-      # regardless of whether Jolt Physics is compiled in.  The runner's 1 MB
-      # default stack is exhausted by the combination of D3D11 WARP device init,
-      # LuaEngine startup, and the deep MSVC Debug call frames.  D3D11 WARP
-      # device initialisation is fully covered by the textured_quad scene below
-      # (the first scene call that reaches renderer->Init()).
       # -----------------------------------------------------------------------
+
+      # M0 — D3D11 device init (WARP baseline)
+      - name: Run headless validation (M0 - D3D11 WARP)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless
+        shell: cmd
 
       # M3 — Textures (D3D11 DDS pipeline)
       - name: Run headless validation (M3 - textured_quad)
