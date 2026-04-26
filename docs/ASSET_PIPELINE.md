@@ -187,9 +187,9 @@ change.
 2. For each entry, computes `cellId = CellIdFromCoord({cx, cz})`.
 3. Calls `GameStreamingManager::RegisterCellGuid(cellId, guid)`.
 
-If the manifest is absent (cook has not been run) or `ENGINE_ENABLE_JSON` is
-not defined, the runtime logs a clear message and continues — streaming will
-function with empty default cell data.
+If the manifest is absent (cook has not been run) the runtime logs a clear message and continues — streaming will
+function with empty default cell data.  `ENGINE_ENABLE_JSON` is always
+defined in normal builds via the vendored `third_party/nlohmann/json.hpp`.
 
 ### Generating cooked data for a new machine
 
@@ -214,12 +214,27 @@ engine_sandbox.exe --headless --scene authored_content
 set ENGINE_PROJECT_ROOT=samples\vertical_slice_project
 ```
 
-### 2. AssetDB round-trip (--validate-project)
+### 2. AssetDB + cells_manifest round-trip (--validate-project)
 
-Loads `Cooked/assetdb.json` and tries to open every cooked file path:
+Loads `Cooked/assetdb.json` and tries to open every cooked file path.
+Then loads `Cooked/Levels/cells_manifest.json` and verifies every GUID
+exists in the AssetDB and its cooked file is present on disk:
 
 ```bat
 engine_sandbox.exe --validate-project samples\vertical_slice_project
+```
+
+Expected output on a correctly cooked project:
+```
+[validate-project] AssetDB loaded: N asset(s).
+[PASS] AssetDB validated successfully.
+[PASS] cells_manifest.json validated: 4 cell(s) OK.
+```
+
+If `cells_manifest.json` is missing, the command prints a hint:
+```
+[validate-project] cells_manifest.json not found — run cook.exe --project ...
+  Hint: cmake --build <preset> --target cook_samples
 ```
 
 ### 3. PAK round-trip (CI-3)
