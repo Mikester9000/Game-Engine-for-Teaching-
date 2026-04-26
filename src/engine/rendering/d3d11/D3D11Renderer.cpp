@@ -709,10 +709,12 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     {
         // TEACHING NOTE — High-resolution timer for frame capping
         // QueryPerformanceCounter gives ~100 ns precision.  We track the
-        // frame start time in m_frameTick (updated at the top of DrawFrame)
-        // and compute how many milliseconds are left in the budget.
-        // We use the simpler but adequate std::this_thread::sleep_for here
-        // because frame-cap accuracy does not need to be sub-millisecond.
+        // frame start time in m_frameStartTick (updated at the end of
+        // DrawFrame, just before returning) and compute how many milliseconds
+        // remain in the current frame's budget.
+        // Win32 Sleep() is used (not std::this_thread::sleep_for) because it
+        // keeps the entire frame-cap path on a single Win32 API without
+        // requiring <thread>; the accuracy is identical (~1 ms) for our needs.
         static LARGE_INTEGER s_perfFreq = {};
         if (s_perfFreq.QuadPart == 0)
             ::QueryPerformanceFrequency(&s_perfFreq);
@@ -729,7 +731,7 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
         // the LARGE_INTEGER epoch, causing a huge overshoot.  We detect this by
         // checking whether the elapsed time is larger than one full second (i.e.
         // the perf counter frequency) and skip sleeping in that frame only.
-        const LONGLONG elapsed = now.QuadPart - m_frameStartTick;
+        const LONGLONG elapsed = now.QuadPart - m_frameStartTick.QuadPart;
         const bool firstFrame  = (m_frameStartTick.QuadPart == 0)
                                || (elapsed > s_perfFreq.QuadPart);
         if (!firstFrame && elapsed < budget)

@@ -76,7 +76,14 @@ bool EngineConfig::Load(const std::string& path)
         // Audio block.
         if (j.contains("audio"))
         {
-            audio.masterVolume = j["audio"].value("masterVolume", audio.masterVolume);
+            const float raw = j["audio"].value("masterVolume", audio.masterVolume);
+            // TEACHING NOTE — Clamping on load
+            // JSON files can contain out-of-range values (hand-edited, corrupted,
+            // or from a future tool that uses a wider range).  We clamp
+            // masterVolume to the documented [0.0, 1.0] interval so that
+            // downstream consumers (Settings UI, XAudio2 volume calls) never
+            // see invalid values without needing their own defensive clamps.
+            audio.masterVolume = std::max(0.0f, std::min(1.0f, raw));
         }
 
         // Key bindings block.

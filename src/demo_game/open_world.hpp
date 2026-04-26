@@ -212,13 +212,22 @@ struct DemoSaveState
     int  questObjectiveIndex = 0;  ///< Index into DemoMainQuest::objectives.
     bool questCompleted      = false;
 
+    // ---- Global visited stations ----
+    // TEACHING NOTE — Single global set (not per-activity)
+    // All STATION_INTERACT activities share one visited-station set
+    // (m_visitedStations in OpenWorld).  We persist it once here at the
+    // top level so the JSON mirrors the in-memory ownership model and
+    // avoids any redundancy between activities.
+    std::vector<std::string> globalVisitedStations;
+
     // ---- Side activities ----
     struct ActivitySave
     {
-        std::string id;                          ///< Must match DemoActivity::id.
+        std::string id;          ///< Must match DemoActivity::id.
         int         progress  = 0;
         bool        completed = false;
-        std::vector<std::string> visitedStations; ///< Stations already credited.
+        // Note: per-activity visitedStations are NOT stored here.
+        // The shared visited set is at globalVisitedStations above.
     };
     std::vector<ActivitySave> activities; ///< One entry per registered activity.
 };

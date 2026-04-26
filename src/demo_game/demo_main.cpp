@@ -1225,10 +1225,11 @@ static int RunHeadless()
     //   c) Create a fresh world, load from the temp file.
     //   d) Verify quest objective index survived the roundtrip.
     //
-    // On non-JSON builds (ENGINE_ENABLE_JSON not defined), SaveProgress()
-    // returns false.  We treat this as a graceful skip rather than a failure
-    // because the save system is deliberately guarded by ENGINE_ENABLE_JSON.
+    // The entire test is gated on ENGINE_ENABLE_JSON at compile time so that
+    // non-JSON builds (Linux terminal CI) skip it cleanly without treating a
+    // missing feature as a pass or a failure.
     // ─────────────────────────────────────────────────────────────────────────
+#ifdef ENGINE_ENABLE_JSON
     {
         OpenWorld saveWorld;
         if (!saveWorld.Init())
@@ -1253,55 +1254,62 @@ static int RunHeadless()
         }
         const int savedObjIdx = saveWorld.GetQuestManager().GetMainQuest().currentObjective;
 
-        // Save to /tmp so the file is not committed to the repository.
-        const std::string tmpPath = "C:\\Temp\\demo_save_test.json";
+        // TEACHING NOTE — Portable temp path for test artefacts
+        // We write the save file inside the process working directory under
+        // "SavedGames/" (relative path, valid on both Windows and Linux).
+        // The SaveProgress() implementation already calls CreateDirectoryA /
+        // mkdir to ensure the parent directory exists.  This avoids hard-coding
+        // system-specific paths such as "C:\Temp\" or "/tmp/".
+        const std::string tmpPath = "SavedGames/demo_save_test_roundtrip.json";
         const bool saved = saveWorld.SaveProgress(tmpPath);
 
         if (!saved)
         {
-            // ENGINE_ENABLE_JSON not defined — gracefully skip.
-            std::cout << "[OK] demo_world/8: Save/load skipped "
-                         "(ENGINE_ENABLE_JSON not active on this build).\n";
+            std::cout << "[FAIL] demo_world/8: SaveProgress returned false "
+                         "(check write permissions for '" << tmpPath << "').\n";
+            return 1;
         }
-        else
+
+        // Load into a fresh world.
+        OpenWorld loadWorld;
+        if (!loadWorld.Init())
         {
-            // Load into a fresh world.
-            OpenWorld loadWorld;
-            if (!loadWorld.Init())
-            {
-                std::cout << "[FAIL] demo_world/8: loadWorld.Init() returned false.\n";
-                return 1;
-            }
-
-            if (!loadWorld.LoadProgress(tmpPath))
-            {
-                std::cout << "[FAIL] demo_world/8: LoadProgress returned false.\n";
-                return 1;
-            }
-
-            // State should be PLAYING.
-            if (loadWorld.GetState() != OpenWorldState::PLAYING)
-            {
-                std::cout << "[FAIL] demo_world/8: state after LoadProgress is not PLAYING "
-                             "(got " << static_cast<int>(loadWorld.GetState()) << ").\n";
-                return 1;
-            }
-
-            // Quest objective index must survive the roundtrip.
-            const int loadedObjIdx =
-                loadWorld.GetQuestManager().GetMainQuest().currentObjective;
-            if (loadedObjIdx != savedObjIdx)
-            {
-                std::cout << "[FAIL] demo_world/8: quest objective index mismatch "
-                             "(saved=" << savedObjIdx
-                          << ", loaded=" << loadedObjIdx << ").\n";
-                return 1;
-            }
-
-            std::cout << "[OK] demo_world/8: Save/load roundtrip — "
-                         "state=PLAYING, questObj=" << loadedObjIdx << ".\n";
+            std::cout << "[FAIL] demo_world/8: loadWorld.Init() returned false.\n";
+            return 1;
         }
+
+        if (!loadWorld.LoadProgress(tmpPath))
+        {
+            std::cout << "[FAIL] demo_world/8: LoadProgress returned false.\n";
+            return 1;
+        }
+
+        // State should be PLAYING.
+        if (loadWorld.GetState() != OpenWorldState::PLAYING)
+        {
+            std::cout << "[FAIL] demo_world/8: state after LoadProgress is not PLAYING "
+                         "(got " << static_cast<int>(loadWorld.GetState()) << ").\n";
+            return 1;
+        }
+
+        // Quest objective index must survive the roundtrip.
+        const int loadedObjIdx =
+            loadWorld.GetQuestManager().GetMainQuest().currentObjective;
+        if (loadedObjIdx != savedObjIdx)
+        {
+            std::cout << "[FAIL] demo_world/8: quest objective index mismatch "
+                         "(saved=" << savedObjIdx
+                      << ", loaded=" << loadedObjIdx << ").\n";
+            return 1;
+        }
+
+        std::cout << "[OK] demo_world/8: Save/load roundtrip — "
+                     "state=PLAYING, questObj=" << loadedObjIdx << ".\n";
     }
+#else
+    std::cout << "[OK] demo_world/8: Save/load skipped "
+                 "(ENGINE_ENABLE_JSON not active on this build).\n";
+#endif // ENGINE_ENABLE_JSON
 
     // -----------------------------------------------------------------------
     // PASS report.

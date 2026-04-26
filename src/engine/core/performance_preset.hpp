@@ -57,6 +57,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>   // std::string — used by ParsePresetName()
 
 namespace engine::core {
 
