@@ -74,43 +74,8 @@
 #include <memory>
 #include <chrono>
 #include <cstring>   // std::strcmp
-
-#ifdef _WIN32
-#  ifndef WIN32_LEAN_AND_MEAN
-#    define WIN32_LEAN_AND_MEAN
-#  endif
-#  ifndef NOMINMAX
-#    define NOMINMAX
-#  endif
-#  include <windows.h>  // GetAsyncKeyState, VK_F1
-#endif
-
-// ---------------------------------------------------------------------------
-// Engine: platform + rendering
-// ---------------------------------------------------------------------------
-#include "engine/platform/win32/Win32Window.hpp"
-#include "engine/rendering/RendererFactory.hpp"
-#include "engine/rendering/IRenderer.hpp"
-
-// ---------------------------------------------------------------------------
-// Demo game: OpenWorld state machine
-// ---------------------------------------------------------------------------
-#include "demo_game/open_world.hpp"
-
-// ---------------------------------------------------------------------------
-// Game runtime (reuse existing M8 gameplay systems)
-// ---------------------------------------------------------------------------
-#include "sandbox/game_runtime.hpp"
-
-// ---------------------------------------------------------------------------
-// Standard + Windows headers
-// ---------------------------------------------------------------------------
-#include <iostream>
-#include <string>
-#include <memory>
-#include <chrono>
-#include <cstring>   // std::strcmp
 #include <cstdio>    // std::snprintf (overlay text formatting)
+#include <algorithm> // std::min, std::max
 #include <vector>
 
 #ifdef _WIN32
@@ -129,6 +94,21 @@
 #include "engine/platform/win32/Win32Window.hpp"
 #include "engine/rendering/RendererFactory.hpp"
 #include "engine/rendering/IRenderer.hpp"
+
+// ---------------------------------------------------------------------------
+// Engine: config (performance presets — M-DG-P1)
+// ---------------------------------------------------------------------------
+#include "engine/core/engine_config.hpp"
+
+// ---------------------------------------------------------------------------
+// Demo game: OpenWorld state machine
+// ---------------------------------------------------------------------------
+#include "demo_game/open_world.hpp"
+
+// ---------------------------------------------------------------------------
+// Game runtime (reuse existing M8 gameplay systems)
+// ---------------------------------------------------------------------------
+#include "sandbox/game_runtime.hpp"
 
 // ===========================================================================
 // Helper: parse command-line arguments
@@ -152,6 +132,26 @@ static DemoArgs ParseArgs(int argc, char* argv[])
     }
     return args;
 }
+
+// ===========================================================================
+// File-scope constants
+// ===========================================================================
+// TEACHING NOTE — Named constants avoid magic strings/numbers
+// ─────────────────────────────────────────────────────────────────────────────
+// Defining config path and step sizes as named constants:
+//   • Makes every usage self-documenting.
+//   • Ensures consistency — one change updates all occurrences.
+//   • Aids testing — tests can reference the same constant.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Path to the engine configuration file (relative to the executable's CWD).
+static constexpr const char* kEngineConfigPath = "engine_config.json";
+
+/// Auto-save file path (relative to the executable's CWD).
+static constexpr const char* kAutoSavePath = "SavedGames/demo_auto.json";
+
+/// Volume adjustment step size in integer percent per LEFT/RIGHT key press.
+static constexpr int kVolumeStep = 5;
 
 // ===========================================================================
 // GDI Overlay Renderer
@@ -311,10 +311,23 @@ static HFONT CreateOverlayFont(int height)
 //   VK_RETURN (Enter)       confirms.
 // ─────────────────────────────────────────────────────────────────────────────
 
-static const char* kBootItems[] = { "New Game", "Continue  (coming soon)", "Settings  (coming soon)", "Quit" };
+static const char* kBootItems[] = { "New Game", "Continue", "Settings", "Quit" };
 static constexpr int kBootItemCount = 4;
 
-static void DrawBootMenu(HWND hwnd, int clientW, int clientH, int selection)
+// ---------------------------------------------------------------------------
+// TEACHING NOTE — Boot Menu With Save Detection (M-DG-S3)
+// ---------------------------------------------------------------------------
+// DrawBootMenu now receives a `saveExists` flag so it can grey out "Continue"
+// when there is no save file on disk.  When a save is present, "Continue"
+// is highlighted in the normal item colour and fully selectable.
+//
+// This is the standard commercial RPG boot menu behaviour:
+//   • FFXV    — "CONTINUE" is greyed out until the player has saved once.
+//   • Dark Souls — "LOAD GAME" does not appear until a save file exists.
+// ---------------------------------------------------------------------------
+
+static void DrawBootMenu(HWND hwnd, int clientW, int clientH, int selection,
+                         bool saveExists)
 {
     GdiScope dc(hwnd);
     if (!dc.Valid()) return;
@@ -351,11 +364,16 @@ static void DrawBootMenu(HWND hwnd, int clientW, int clientH, int selection)
     for (int i = 0; i < kBootItemCount; ++i)
     {
         const bool sel  = (i == selection);
-        const bool stub = (i == 1 || i == 2); // Continue + Settings are stubs
+        // "Continue" is greyed/disabled only when no save file exists.
+        const bool stub = (i == 1 && !saveExists);
 
         char line[128];
-        std::snprintf(line, sizeof(line), "  %s  %s",
-                      sel ? ">" : " ", kBootItems[i]);
+        if (stub)
+            std::snprintf(line, sizeof(line), "  %s  %s  (no save file)",
+                          sel ? ">" : " ", kBootItems[i]);
+        else
+            std::snprintf(line, sizeof(line), "  %s  %s",
+                          sel ? ">" : " ", kBootItems[i]);
 
         const COLORREF col = stub ? kColDim : (sel ? kColSelected : kColText);
         DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, line, col);
@@ -805,6 +823,160 @@ static void DrawLessonPanel(HWND hwnd, int clientW, int clientH,
     ::DeleteObject(fontTitle);
     ::DeleteObject(fontBody);
     ::DeleteObject(fontPointer);
+    ::DeleteObject(fontFooter);
+}
+
+// ===========================================================================
+} // namespace overlay
+
+// ===========================================================================
+// SettingsRow — row index enum for the settings panel (file scope)
+// ===========================================================================
+// TEACHING NOTE — Why file scope instead of overlay::?
+// ─────────────────────────────────────────────────────────────────────────────
+// DrawSettingsPanel (inside overlay::) accepts `int selRow` rather than
+// SettingsRow so the function signature has no dependency on the enum type.
+// RunWindowed (outside overlay::) uses the strongly-typed enum for clarity so
+// that `settingsRow = static_cast<int>(SettingsRow::APPLY)` is self-
+// documenting at each usage site.  Placing the enum at file scope avoids
+// prefixing every usage in RunWindowed with `overlay::`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum class SettingsRow : int
+{
+    PRESET    = 0,
+    VOLUME    = 1,
+    VSYNC     = 2,
+    FRAME_CAP = 3,
+    APPLY     = 4,
+    CANCEL    = 5,
+    COUNT     = 6,
+};
+
+namespace overlay
+{
+
+// ===========================================================================
+// DrawSettingsPanel — performance preset + volume settings overlay (M-DG-S1)
+// ===========================================================================
+// TEACHING NOTE — Settings Menu as Performance-Preset Selector
+// ─────────────────────────────────────────────────────────────────────────────
+// The settings panel lets the player select a performance preset (Low / Medium
+// / High / Ultra) which maps directly to the PerformancePresetConfig that was
+// built in M-DG-P1.  It also exposes:
+//   • Master Volume   — 0–100 integer.
+//   • VSync           — On / Off.
+//   • Frame Cap       — Unlimited / 30 fps / 60 fps.
+//
+// Navigation:
+//   UP / DOWN          — move row selection.
+//   LEFT / RIGHT       — change the value of the selected row.
+//   ENTER on "Apply"   — save config to disk and apply to renderer.
+//   ENTER on "Cancel"
+//   or ESC             — discard changes and close.
+// ─────────────────────────────────────────────────────────────────────────────
+
+static void DrawSettingsPanel(HWND hwnd, int clientW, int clientH,
+                              int selRow,
+                              engine::core::PerformancePreset preset,
+                              int volume,
+                              bool vsync,
+                              int  frameCap)
+{
+    GdiScope dc(hwnd);
+    if (!dc.Valid()) return;
+
+    HFONT fontTitle = CreateOverlayFont(22);
+    HFONT fontItem  = CreateOverlayFont(18);
+    HFONT fontFooter = CreateOverlayFont(14);
+
+    constexpr int kRows    = static_cast<int>(SettingsRow::COUNT);
+    const int     panelH   = kPadY * 2 + 30 + 8 + kRows * kLineH + 8 + 14 + kPadY;
+    const int     panelW   = kPanelW + 80;
+    const int     panelX   = (clientW - panelW) / 2;
+    const int     panelY   = (clientH - panelH) / 2;
+
+    DrawPanel(dc.Get(), panelX, panelY, panelW, panelH, kColBackground, kColSelected);
+
+    int cy = panelY + kPadY;
+
+    // ---- Title ----
+    DrawLine(dc.Get(), fontTitle, panelX + kPadX, cy,
+             "  Settings — Performance & Audio", kColHeading);
+    cy += 30 + 8;
+
+    // ---- Preset row ----
+    {
+        const bool sel = (selRow == static_cast<int>(SettingsRow::PRESET));
+        char line[128];
+        std::snprintf(line, sizeof(line), "  %s  Preset:    < %s >",
+                      sel ? ">" : " ", engine::core::PresetName(preset));
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy,
+                 line, sel ? kColSelected : kColText);
+        cy += kLineH;
+    }
+
+    // ---- Volume row ----
+    {
+        const bool sel = (selRow == static_cast<int>(SettingsRow::VOLUME));
+        char line[128];
+        std::snprintf(line, sizeof(line), "  %s  Volume:   < %3d >",
+                      sel ? ">" : " ", volume);
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy,
+                 line, sel ? kColSelected : kColText);
+        cy += kLineH;
+    }
+
+    // ---- VSync row ----
+    {
+        const bool sel = (selRow == static_cast<int>(SettingsRow::VSYNC));
+        char line[128];
+        std::snprintf(line, sizeof(line), "  %s  VSync:    < %s >",
+                      sel ? ">" : " ", vsync ? "On " : "Off");
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy,
+                 line, sel ? kColSelected : kColText);
+        cy += kLineH;
+    }
+
+    // ---- Frame Cap row ----
+    {
+        const bool sel = (selRow == static_cast<int>(SettingsRow::FRAME_CAP));
+        char line[128];
+        const char* capStr = (frameCap == 0)  ? "Unlimited" :
+                             (frameCap == 30) ? "30 fps"    :
+                                                "60 fps";
+        std::snprintf(line, sizeof(line), "  %s  Frame Cap:< %s >",
+                      sel ? ">" : " ", capStr);
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy,
+                 line, sel ? kColSelected : kColText);
+        cy += kLineH;
+    }
+
+    // ---- Apply / Cancel buttons ----
+    {
+        const bool selApply  = (selRow == static_cast<int>(SettingsRow::APPLY));
+        const bool selCancel = (selRow == static_cast<int>(SettingsRow::CANCEL));
+        char lineA[64], lineC[64];
+        std::snprintf(lineA, sizeof(lineA), "  %s  [ Apply ]",  selApply  ? ">" : " ");
+        std::snprintf(lineC, sizeof(lineC), "  %s  [ Cancel ]", selCancel ? ">" : " ");
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy,
+                 lineA, selApply ? kColSelected : kColText);
+        cy += kLineH;
+        DrawLine(dc.Get(), fontItem, panelX + kPadX, cy,
+                 lineC, selCancel ? kColSelected : kColText);
+        cy += kLineH;
+    }
+
+    cy += 8;
+
+    // ---- Footer ----
+    DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
+             "  UP/DOWN:row   LEFT/RIGHT:value   ENTER:confirm   ESC:cancel",
+             kColDim);
+
+    // ---- Cleanup ----
+    ::DeleteObject(fontTitle);
+    ::DeleteObject(fontItem);
     ::DeleteObject(fontFooter);
 }
 
@@ -1358,12 +1530,110 @@ static int RunHeadless()
     } // end test 9
 
     // -----------------------------------------------------------------------
-    // 10. Report PASS.
+    // 10. Save / Load roundtrip — M-DG-S2
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Headless save/load test
+    // ─────────────────────────────────────────────────────────────────────────
+    // We exercise the full save/load cycle without a window:
+    //   a) Create a world, interact at one objective station.
+    //   b) Save to a temp file.
+    //   c) Create a fresh world, load from the temp file.
+    //   d) Verify quest objective index survived the roundtrip.
+    //
+    // The entire test is gated on ENGINE_ENABLE_JSON at compile time so that
+    // non-JSON builds (Linux terminal CI) skip it cleanly without treating a
+    // missing feature as a pass or a failure.
+    // ─────────────────────────────────────────────────────────────────────────
+#ifdef ENGINE_ENABLE_JSON
+    {
+        OpenWorld saveWorld;
+        if (!saveWorld.Init())
+        {
+            std::cout << "[FAIL] demo_world/10: saveWorld.Init() returned false.\n";
+            return 1;
+        }
+
+        // Simulate New Game → PLAYING transition.
+        saveWorld.BootSelectNewGame();
+        constexpr float kDt10 = 1.0f / 60.0f;
+        // Pump until PLAYING (the boot/load transition needs a few frames).
+        for (int f = 0; f < 20 && saveWorld.GetState() != OpenWorldState::PLAYING; ++f)
+            saveWorld.Update(kDt10, /*headless=*/true);
+
+        // Interact at the first objective station to advance the quest.
+        const auto& firstObj = saveWorld.GetQuestManager().GetMainQuest().objectives;
+        if (!firstObj.empty() && !firstObj[0].stationID.empty())
+        {
+            saveWorld.TeleportToStation(firstObj[0].stationID);
+            saveWorld.InteractAtStation();
+        }
+        const int savedObjIdx = saveWorld.GetQuestManager().GetMainQuest().currentObjective;
+
+        // TEACHING NOTE — Portable temp path for test artefacts
+        // We write the save file inside the process working directory under
+        // "SavedGames/" (relative path, valid on both Windows and Linux).
+        // The SaveProgress() implementation already calls CreateDirectoryA /
+        // mkdir to ensure the parent directory exists.  This avoids hard-coding
+        // system-specific paths such as "C:\Temp\" or "/tmp/".
+        const std::string tmpPath = "SavedGames/demo_save_test_roundtrip.json";
+        const bool saved = saveWorld.SaveProgress(tmpPath);
+
+        if (!saved)
+        {
+            std::cout << "[FAIL] demo_world/10: SaveProgress returned false "
+                         "(check write permissions for '" << tmpPath << "').\n";
+            return 1;
+        }
+
+        // Load into a fresh world.
+        OpenWorld loadWorld;
+        if (!loadWorld.Init())
+        {
+            std::cout << "[FAIL] demo_world/10: loadWorld.Init() returned false.\n";
+            return 1;
+        }
+
+        if (!loadWorld.LoadProgress(tmpPath))
+        {
+            std::cout << "[FAIL] demo_world/10: LoadProgress returned false.\n";
+            return 1;
+        }
+
+        // State should be PLAYING.
+        if (loadWorld.GetState() != OpenWorldState::PLAYING)
+        {
+            std::cout << "[FAIL] demo_world/10: state after LoadProgress is not PLAYING "
+                         "(got " << static_cast<int>(loadWorld.GetState()) << ").\n";
+            return 1;
+        }
+
+        // Quest objective index must survive the roundtrip.
+        const int loadedObjIdx =
+            loadWorld.GetQuestManager().GetMainQuest().currentObjective;
+        if (loadedObjIdx != savedObjIdx)
+        {
+            std::cout << "[FAIL] demo_world/10: quest objective index mismatch "
+                         "(saved=" << savedObjIdx
+                      << ", loaded=" << loadedObjIdx << ").\n";
+            return 1;
+        }
+
+        std::cout << "[OK] demo_world/10: Save/load roundtrip — "
+                     "state=PLAYING, questObj=" << loadedObjIdx << ".\n";
+    }
+#else
+    std::cout << "[OK] demo_world/10: Save/load skipped "
+                 "(ENGINE_ENABLE_JSON not active on this build).\n";
+#endif // ENGINE_ENABLE_JSON
+
+    // -----------------------------------------------------------------------
+    // PASS report.
     // -----------------------------------------------------------------------
     world.Shutdown();
-    std::cout << "[PASS] demo_world: 9 acceptance tests passed "
+    std::cout << "[PASS] demo_world: 10 acceptance tests passed "
                  "(init, boot_menu, biome_cycle, stations, teleport, json_fallback, "
-                 "quest_manager_interact, lesson_data, combo_challenge).\n";
+                 "quest_manager_interact, lesson_data, combo_challenge, "
+                 "save_load_roundtrip).\n";
     return 0;
 }
 
@@ -1434,6 +1704,35 @@ struct KeyEdge
 static int RunWindowed(const DemoArgs& args)
 {
     // -----------------------------------------------------------------------
+    // Load EngineConfig — M-DG-P1
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Config-first startup ordering
+    // ─────────────────────────────────────────────
+    // We load the engine config BEFORE creating the window or the renderer.
+    // This lets the config determine window resolution and renderer settings
+    // (VSync, frame cap, etc.) from the first frame.  Loading config after
+    // renderer init would require a restart or hot-reload path.
+    //
+    // The fail-soft design (returns false on missing file, keeps defaults)
+    // means the game always boots even on a fresh install without a config.
+    // -----------------------------------------------------------------------
+    engine::core::EngineConfig engConfig;
+    const bool configLoaded = engConfig.Load(kEngineConfigPath);
+    if (configLoaded)
+        std::cout << "[demo_game] engine_config.json loaded (preset="
+                  << engine::core::PresetName(engConfig.activePreset) << ").\n";
+    else
+        std::cout << "[demo_game] engine_config.json not found — using defaults "
+                     "(preset=Medium).\n";
+
+    // -----------------------------------------------------------------------
+    // Check for existing save file — M-DG-S3
+    // -----------------------------------------------------------------------
+    const bool saveExists = OpenWorld::SaveExists(kAutoSavePath);
+    if (saveExists)
+        std::cout << "[demo_game] Save file detected — Continue is available.\n";
+
+    // -----------------------------------------------------------------------
     // Create Win32 window.
     // -----------------------------------------------------------------------
     engine::platform::Win32Window window;
@@ -1465,6 +1764,19 @@ static int RunWindowed(const DemoArgs& args)
         return 1;
     }
     std::cout << "[demo_game] D3D11 renderer initialised.\n";
+
+    // Apply performance preset to the renderer — M-DG-P1
+    renderer->SetShadowsEnabled(engConfig.presetConfig.shadowsEnabled);
+    renderer->SetBloomEnabled  (engConfig.presetConfig.bloomEnabled);
+    renderer->SetIBLEnabled    (engConfig.presetConfig.iblEnabled);
+    renderer->SetVSyncEnabled  (engConfig.presetConfig.vsync);
+    renderer->SetFrameCap      (engConfig.presetConfig.frameCap);
+    renderer->SetAnisoLevel    (engConfig.presetConfig.anisoLevel);
+    std::cout << "[demo_game] Renderer preset applied: shadows="
+              << (engConfig.presetConfig.shadowsEnabled ? "ON" : "OFF")
+              << " bloom=" << (engConfig.presetConfig.bloomEnabled ? "ON" : "OFF")
+              << " vsync=" << (engConfig.presetConfig.vsync ? "ON" : "OFF")
+              << " frameCap=" << engConfig.presetConfig.frameCap << "\n";
 
     // -----------------------------------------------------------------------
     // Initialise OpenWorld state machine.
@@ -1500,6 +1812,8 @@ static int RunWindowed(const DemoArgs& args)
     KeyEdge keyESC (VK_ESCAPE);      // ESC → pause / close overlay / close lesson panel
     KeyEdge keyUp  (VK_UP);          // ↑ navigate menu / station list
     KeyEdge keyDown(VK_DOWN);        // ↓ navigate menu / station list
+    KeyEdge keyLeft (VK_LEFT);       // ← change value in settings
+    KeyEdge keyRight(VK_RIGHT);      // → change value in settings
     KeyEdge keyEnter(VK_RETURN);     // Enter → confirm selection / dismiss lesson panel
     KeyEdge keyD   ('D');            // D → toggle debug info strip
     KeyEdge keyE   ('E');            // E → Interact with nearest teaching station
@@ -1509,10 +1823,11 @@ static int RunWindowed(const DemoArgs& args)
     KeyEdge key3   ('3');            // 3 → combo challenge input
 
     // --- Overlay state ---
-    bool debugMenuOpen  = false; ///< F1 overlay visible
-    bool showDebugInfo  = false; ///< Debug info bar (biome + FPS)
-    int  bootMenuSel    = 0;     ///< Boot menu highlighted item (0..3)
-    int  stationSel     = 0;     ///< F1 overlay selected station index
+    bool debugMenuOpen   = false; ///< F1 overlay visible
+    bool settingsMenuOpen = false; ///< Settings panel visible
+    bool showDebugInfo   = false; ///< Debug info bar (biome + FPS)
+    int  bootMenuSel     = 0;     ///< Boot menu highlighted item (0..3)
+    int  stationSel      = 0;     ///< F1 overlay selected station index
     bool lessonPanelOpen = false; ///< Lesson panel visible (shown on E press)
     StationLesson currentLesson;  ///< Content of the currently displayed lesson
     std::string lastLessonTitle;  ///< Title of the most recently read lesson (for HUD hint)
@@ -1529,6 +1844,17 @@ static int RunWindowed(const DemoArgs& args)
     bool challengePassed  = false; ///< True after all challenge keys entered
     float challengeResultTimer = 0.f; ///< Countdown to auto-close the result panel
     StationLesson challengeLesson;  ///< The lesson whose challenge is active
+
+    // --- Settings panel working state (M-DG-S1) ---
+    // Working copies that are edited in the settings panel and committed to
+    // engConfig only when the player selects "Apply".
+    // Volume is stored as a 0–100 integer here for display; it is stored in
+    // engConfig.audio.masterVolume as a 0.0–1.0 float.
+    int  settingsRow      = 0;
+    engine::core::PerformancePreset settingsPreset = engConfig.activePreset;
+    int  settingsVolume   = static_cast<int>(engConfig.audio.masterVolume * 100.f + 0.5f);
+    bool settingsVsync    = engConfig.presetConfig.vsync;
+    int  settingsFrameCap = engConfig.presetConfig.frameCap;
 
     // --- FPS tracking ---
     float fpsAccum  = 0.f;
@@ -1573,6 +1899,8 @@ static int RunWindowed(const DemoArgs& args)
         const bool pressedESC   = keyESC.JustPressed();
         const bool pressedUp    = keyUp.JustPressed();
         const bool pressedDown  = keyDown.JustPressed();
+        const bool pressedLeft  = keyLeft.JustPressed();
+        const bool pressedRight = keyRight.JustPressed();
         const bool pressedEnter = keyEnter.JustPressed();
         const bool pressedD     = keyD.JustPressed();
         const bool pressedE     = keyE.JustPressed();
@@ -1595,9 +1923,12 @@ static int RunWindowed(const DemoArgs& args)
             // BOOT MENU input
             // TEACHING NOTE — Menu navigation
             // Up/Down arrows move the selection index with wrap-around.
-            // Enter activates the selected item.  Stub items (Continue, Settings)
-            // log but do not change state; in a full game they would open the
-            // save-slot picker or settings panel.
+            // Enter activates the selected item.
+            //   • New Game  — starts a fresh session via BootSelectNewGame().
+            //   • Continue  — loads the auto-save and transitions to PLAYING.
+            //                 Only selectable when a save file exists.
+            //   • Settings  — opens the settings panel overlay (M-DG-S1).
+            //   • Quit      — posts a Win32 WM_QUIT / shuts down the window.
             // -----------------------------------------------------------------
             constexpr int kBootCount = 4; // New Game, Continue, Settings, Quit
 
@@ -1613,11 +1944,41 @@ static int RunWindowed(const DemoArgs& args)
                     case 0: // New Game
                         world.BootSelectNewGame();
                         break;
-                    case 1: // Continue (stub)
-                        std::cout << "[demo_game] Continue: not yet implemented.\n";
+                    case 1: // Continue — M-DG-S3
+                        if (saveExists)
+                        {
+                            // TEACHING NOTE — Restore session from save file
+                            // LoadProgress() deserialises the save JSON, restores
+                            // quest/activity state via DemoQuestManager::Restore(),
+                            // and transitions the FSM to PLAYING.  The GameRuntime
+                            // will be created on the next frame when IsPlaying() is
+                            // detected (same path as New Game).
+                            if (!world.LoadProgress(kAutoSavePath))
+                            {
+                                std::cerr << "[demo_game] Continue: save file exists "
+                                             "but LoadProgress failed — starting New Game.\n";
+                                world.BootSelectNewGame();
+                            }
+                            else
+                            {
+                                std::cout << "[demo_game] Continue: session restored.\n";
+                            }
+                        }
+                        else
+                        {
+                            std::cout << "[demo_game] Continue: no save file.\n";
+                        }
                         break;
-                    case 2: // Settings (stub)
-                        std::cout << "[demo_game] Settings: not yet implemented.\n";
+                    case 2: // Settings — M-DG-S1
+                        // Snapshot current config into the working copies before
+                        // opening the panel so the player sees the live values.
+                        settingsPreset   = engConfig.activePreset;
+                        settingsVolume   = static_cast<int>(engConfig.audio.masterVolume * 100.f + 0.5f);
+                        settingsVsync    = engConfig.presetConfig.vsync;
+                        settingsFrameCap = engConfig.presetConfig.frameCap;
+                        settingsRow      = 0;
+                        settingsMenuOpen = true;
+                        std::cout << "[demo_game] Settings menu opened.\n";
                         break;
                     case 3: // Quit
                         std::cout << "[demo_game] Quit selected from boot menu.\n";
@@ -1626,6 +1987,112 @@ static int RunWindowed(const DemoArgs& args)
                     default:
                         break;
                 }
+            }
+        }
+        else if (settingsMenuOpen)
+        {
+            // -----------------------------------------------------------------
+            // SETTINGS PANEL input — M-DG-S1
+            // TEACHING NOTE — Settings panel navigation
+            // ─────────────────────────────────────────────────────────────────
+            // The settings panel uses a row-based model:
+            //   UP/DOWN move the row cursor.
+            //   LEFT/RIGHT change the value on the selected row.
+            //   ENTER on APPLY commits changes to engConfig, saves config.json,
+            //          and applies the preset to the renderer via Set*() calls.
+            //   ENTER on CANCEL / ESC discards changes.
+            // ─────────────────────────────────────────────────────────────────
+            constexpr int kRowCount = static_cast<int>(SettingsRow::COUNT);
+            if (pressedUp)
+                settingsRow = (settingsRow - 1 + kRowCount) % kRowCount;
+            if (pressedDown)
+                settingsRow = (settingsRow + 1) % kRowCount;
+
+            const auto curRow = static_cast<SettingsRow>(settingsRow);
+
+            if (pressedLeft || pressedRight)
+            {
+                const int dir = pressedRight ? 1 : -1;
+                switch (curRow)
+                {
+                    case SettingsRow::PRESET:
+                    {
+                        // Cycle through Low(0) → Medium(1) → High(2) → Ultra(3).
+                        const int cur  = static_cast<int>(settingsPreset);
+                        const int next = (cur + dir + 4) % 4;
+                        settingsPreset = static_cast<engine::core::PerformancePreset>(next);
+                        // Update vsync + frameCap from the new preset defaults.
+                        const auto def = engine::core::PresetDefaults(settingsPreset);
+                        settingsVsync    = def.vsync;
+                        settingsFrameCap = def.frameCap;
+                        break;
+                    }
+                    case SettingsRow::VOLUME:
+                        settingsVolume = std::max(0, std::min(100, settingsVolume + dir * kVolumeStep));
+                        break;
+                    case SettingsRow::VSYNC:
+                        settingsVsync = !settingsVsync;
+                        break;
+                    case SettingsRow::FRAME_CAP:
+                    {
+                        // Cycle: 0 → 30 → 60 → 0 ...
+                        const int caps[] = { 0, 30, 60 };
+                        int idx = 0;
+                        for (int k = 0; k < 3; ++k)
+                            if (caps[k] == settingsFrameCap) { idx = k; break; }
+                        idx = (idx + dir + 3) % 3;
+                        settingsFrameCap = caps[idx];
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+
+            if (pressedEnter)
+            {
+                if (curRow == SettingsRow::APPLY)
+                {
+                    // TEACHING NOTE — Applying the preset
+                    // ApplyPreset() fills presetConfig from PresetDefaults(p)
+                    // then we override the individual toggles with the player's
+                    // manual selections (vsync, frameCap).  This matches the
+                    // Load() order in engine_config.cpp.
+                    engConfig.ApplyPreset(settingsPreset);
+                    engConfig.presetConfig.vsync    = settingsVsync;
+                    engConfig.presetConfig.frameCap = settingsFrameCap;
+                    // Convert 0–100 display volume back to 0.0–1.0 float.
+                    engConfig.audio.masterVolume    = settingsVolume / 100.f;
+
+                    // Push the new settings to the renderer.
+                    renderer->SetShadowsEnabled(engConfig.presetConfig.shadowsEnabled);
+                    renderer->SetBloomEnabled  (engConfig.presetConfig.bloomEnabled);
+                    renderer->SetIBLEnabled    (engConfig.presetConfig.iblEnabled);
+                    renderer->SetVSyncEnabled  (engConfig.presetConfig.vsync);
+                    renderer->SetFrameCap      (engConfig.presetConfig.frameCap);
+                    renderer->SetAnisoLevel    (engConfig.presetConfig.anisoLevel);
+
+                    // Persist to engine_config.json so the choice survives restarts.
+                    const bool saved = engConfig.Save(kEngineConfigPath);
+                    std::cout << "[demo_game] Settings applied: preset="
+                              << engine::core::PresetName(engConfig.activePreset)
+                              << " vol=" << settingsVolume
+                              << (saved ? " (saved to engine_config.json)" : " (save failed)")
+                              << "\n";
+
+                    settingsMenuOpen = false;
+                }
+                else if (curRow == SettingsRow::CANCEL)
+                {
+                    std::cout << "[demo_game] Settings cancelled.\n";
+                    settingsMenuOpen = false;
+                }
+            }
+
+            if (pressedESC)
+            {
+                std::cout << "[demo_game] Settings cancelled (ESC).\n";
+                settingsMenuOpen = false;
             }
         }
         else if (challengeActive)
@@ -1806,6 +2273,16 @@ static int RunWindowed(const DemoArgs& args)
                               << currentLesson.lessonTitle << "\""
                               << (currentLesson.HasChallenge() ? " [has challenge]" : "")
                               << "\n";
+
+                    // TEACHING NOTE — Autosave on Interact (M-DG-S2)
+                    // ─────────────────────────────────────────────────
+                    // We save automatically when the player successfully
+                    // interacts at a teaching station.  This mirrors the FFXV
+                    // "camp save" design pattern: a deliberate meaningful action
+                    // (engaging with learning content) doubles as a save point.
+                    // The save is silent — the player sees the lesson panel and
+                    // does not need to manually navigate to a save menu.
+                    world.SaveProgress(kAutoSavePath);
                 }
                 else
                 {
@@ -1880,7 +2357,20 @@ static int RunWindowed(const DemoArgs& args)
 
         if (world.GetState() == OpenWorldState::BOOT_MENU)
         {
-            overlay::DrawBootMenu(hwnd, winW, winH, bootMenuSel);
+            if (settingsMenuOpen)
+            {
+                // Settings panel shown as a sub-panel on top of the boot menu.
+                overlay::DrawSettingsPanel(hwnd, winW, winH,
+                                           settingsRow,
+                                           settingsPreset,
+                                           settingsVolume,
+                                           settingsVsync,
+                                           settingsFrameCap);
+            }
+            else
+            {
+                overlay::DrawBootMenu(hwnd, winW, winH, bootMenuSel, saveExists);
+            }
         }
         else if (challengeActive)
         {

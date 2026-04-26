@@ -336,6 +336,72 @@ public:
     int TotalDefined() const noexcept;
 
     // =========================================================================
+    // Save / Restore — M-DG-S2
+    // =========================================================================
+
+    /**
+     * @struct SaveSnapshot
+     * @brief Minimal POD snapshot of DemoQuestManager runtime state.
+     *
+     * TEACHING NOTE — Why Not Serialize Directly?
+     * ─────────────────────────────────────────────
+     * The JSON serialisation lives in OpenWorld::SaveProgress so it can be
+     * gated on ENGINE_ENABLE_JSON in one place.  DemoQuestManager exposes its
+     * state as this plain struct (no nlohmann dependency) and lets the caller
+     * serialize it however it wishes.  This keeps DemoQuestManager dependency-
+     * free and headless-safe.
+     */
+    struct SaveSnapshot
+    {
+        int  questObjectiveIndex = 0;
+        bool questCompleted      = false;
+
+        struct ActivityEntry
+        {
+            std::string id;
+            int         progress  = 0;
+            bool        completed = false;
+            // TEACHING NOTE — No per-activity visited-station list
+            // m_visitedStations is a *global* set shared by all STATION_INTERACT
+            // activities.  Visiting a station once deduplicates across ALL such
+            // activities simultaneously.  We therefore store the set once at the
+            // top-level snapshot (globalVisitedStations) rather than redundantly
+            // repeating it for every activity.
+        };
+        std::vector<ActivityEntry> activities;
+
+        // Global set of station IDs that have been visited (used by all
+        // STATION_INTERACT activities for deduplication).
+        std::vector<std::string>   globalVisitedStations;
+    };
+
+    /**
+     * @brief Capture the current runtime state as a SaveSnapshot.
+     *
+     * Called by OpenWorld::SaveProgress() before serialising to JSON.
+     */
+    SaveSnapshot Capture() const;
+
+    /**
+     * @brief Restore runtime state from a SaveSnapshot.
+     *
+     * Called by OpenWorld::LoadProgress() after deserialising from JSON.
+     * If the snapshot refers to activity IDs that no longer exist (e.g., the
+     * player has an old save from before a new activity was added), the unknown
+     * entries are silently skipped and the unmatched activities stay at zero.
+     *
+     * TEACHING NOTE — Defensive Restore
+     * ───────────────────────────────────
+     * Production save systems always restore defensively: a corrupted or
+     * forward-migrated save should degrade gracefully (possibly losing some
+     * progress) rather than crashing.  The priority is always: boot into a
+     * playable state.
+     *
+     * @param snap  Snapshot previously obtained from Capture().
+     */
+    void Restore(const SaveSnapshot& snap);
+
+    // =========================================================================
     // Constants
     // =========================================================================
 

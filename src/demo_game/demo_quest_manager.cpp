@@ -503,3 +503,73 @@ bool DemoQuestManager::TryLoadFromJSON(const std::string& jsonPath)
     return false;
 #endif // ENGINE_ENABLE_JSON
 }
+
+// ===========================================================================
+// Capture / Restore — M-DG-S2
+// ===========================================================================
+
+DemoQuestManager::SaveSnapshot DemoQuestManager::Capture() const
+{
+    SaveSnapshot snap;
+    snap.questObjectiveIndex = m_mainQuest.currentObjective;
+    snap.questCompleted      = m_mainQuest.completed;
+
+    // TEACHING NOTE — Global vs per-activity visited stations
+    // m_visitedStations is a single global set: visiting station A once
+    // deduplicates across ALL STATION_INTERACT activities simultaneously.
+    // We therefore save it once at the snapshot level, not once per activity.
+    snap.globalVisitedStations.assign(m_visitedStations.begin(),
+                                      m_visitedStations.end());
+
+    snap.activities.reserve(m_activities.size());
+    for (const auto& act : m_activities)
+    {
+        SaveSnapshot::ActivityEntry entry;
+        entry.id        = act.id;
+        entry.progress  = act.progress;
+        entry.completed = act.completed;
+        snap.activities.push_back(std::move(entry));
+    }
+
+    return snap;
+}
+
+void DemoQuestManager::Restore(const SaveSnapshot& snap)
+{
+    // TEACHING NOTE — Defensive Restore
+    // Clamp the restored objective index to the valid range so that a save
+    // file written before new objectives were added does not put the quest
+    // past the last objective.
+    const int maxObj = static_cast<int>(m_mainQuest.objectives.size());
+    m_mainQuest.currentObjective = (snap.questObjectiveIndex >= 0
+                                    && snap.questObjectiveIndex <= maxObj)
+                                   ? snap.questObjectiveIndex
+                                   : 0;
+    m_mainQuest.completed = snap.questCompleted;
+
+    // Mark past objectives as done so the HUD shows them correctly.
+    for (int i = 0; i < m_mainQuest.currentObjective; ++i)
+    {
+        if (i < maxObj)
+            m_mainQuest.objectives[i].done = true;
+    }
+
+    // Restore the global visited-station deduplication set.
+    m_visitedStations.clear();
+    for (const auto& sid : snap.globalVisitedStations)
+        m_visitedStations.insert(sid);
+
+    // Restore activity progress.  Unrecognised IDs in the snapshot are skipped.
+    for (const auto& entry : snap.activities)
+    {
+        for (auto& act : m_activities)
+        {
+            if (act.id == entry.id)
+            {
+                act.progress  = entry.progress;
+                act.completed = entry.completed;
+                break;
+            }
+        }
+    }
+}

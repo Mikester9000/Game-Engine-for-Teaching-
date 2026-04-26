@@ -47,6 +47,8 @@
 #include <cstdint>
 #include <string>
 
+#include "engine/core/performance_preset.hpp"
+
 namespace engine::core {
 
 // ---------------------------------------------------------------------------
@@ -102,6 +104,39 @@ struct EngineConfig
     ResolutionConfig resolution;  ///< Window dimensions.
     AudioConfig      audio;       ///< Audio settings.
     KeysConfig       keys;        ///< Key bindings.
+
+    // -------------------------------------------------------------------------
+    // TEACHING NOTE — Performance Preset (M-DG-P1)
+    // -------------------------------------------------------------------------
+    // activePreset records which tier the player last selected.  presetConfig
+    // holds the effective feature flags derived from that tier (and any JSON
+    // overrides).  ApplyPreset() fills presetConfig from PresetDefaults().
+    //
+    // Workflow:
+    //   1. Load()        — reads JSON, including "performance.preset" string.
+    //   2. ApplyPreset() — fills presetConfig with tier defaults.
+    //   3. Load() (cont) — applies any per-field JSON overrides on top.
+    //   4. Caller passes presetConfig fields to the renderer via Set*().
+    // -------------------------------------------------------------------------
+
+    PerformancePreset       activePreset  = PerformancePreset::MEDIUM; ///< Active quality tier.
+    PerformancePresetConfig presetConfig;                               ///< Effective toggles.
+
+    /**
+     * @brief Apply a preset tier: sets activePreset and fills presetConfig
+     *        from PresetDefaults(p).
+     *
+     * Call this after changing activePreset so presetConfig is in sync.
+     * JSON per-field overrides written by the settings menu are applied
+     * afterwards by Save()/Load().
+     *
+     * @param p  New performance tier to activate.
+     */
+    void ApplyPreset(PerformancePreset p) noexcept
+    {
+        activePreset = p;
+        presetConfig = PresetDefaults(p);
+    }
 
     /**
      * @brief Load configuration from a JSON file.

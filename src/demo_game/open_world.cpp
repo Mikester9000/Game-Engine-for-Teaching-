@@ -46,6 +46,27 @@
 #include <iostream>  // std::cout for headless CI log output
 
 // ---------------------------------------------------------------------------
+// TEACHING NOTE — Platform-conditional includes
+// ─────────────────────────────────────────────
+// open_world.cpp compiles on both Windows (D3D11 sandbox + demo_game) and
+// Linux (terminal game CI build).  Windows-specific headers are guarded by
+// _WIN32 so the Linux build does not fail.
+// SaveExists() uses <sys/stat.h> which is available on both Windows and Linux.
+// CreateDirectoryA() (in SaveProgress) is Windows-only and guarded below.
+// ---------------------------------------------------------------------------
+#include <sys/stat.h> // _stat (Win32) / stat (POSIX): file existence; mkdir (POSIX)
+
+#ifdef _WIN32
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  include <windows.h>  // CreateDirectoryA() for SaveProgress() directory creation
+#endif
+
+// ---------------------------------------------------------------------------
 // TEACHING NOTE — Conditional JSON dependency
 // ─────────────────────────────────────────────
 // ENGINE_ENABLE_JSON is defined by CMake when nlohmann/json is available via
@@ -762,6 +783,176 @@ bool OpenWorld::TryLoadLessonsFromJSON(const std::string& jsonPath)
 
 #else
     (void)jsonPath;
+    return false;
+#endif // ENGINE_ENABLE_JSON
+}
+
+// ===========================================================================
+// Save / Load — M-DG-S2
+// ===========================================================================
+
+// ---------------------------------------------------------------------------
+// SaveExists — check file existence without requiring ENGINE_ENABLE_JSON
+// ---------------------------------------------------------------------------
+/*static*/ bool OpenWorld::SaveExists(const std::string& path) noexcept
+{
+    // TEACHING NOTE — Portable file-existence check
+    // _stat() is available on both Windows (via <sys/stat.h>) and POSIX
+    // (via <sys/stat.h>).  On Windows the function is named _stat; on POSIX
+    // it is stat.  We use the preprocessor to call the right one.
+#ifdef _WIN32
+    struct _stat st{};
+    return ::_stat(path.c_str(), &st) == 0;
+#else
+    struct stat st{};
+    return ::stat(path.c_str(), &st) == 0;
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// SaveProgress — serialise current state to JSON (ENGINE_ENABLE_JSON required)
+// ---------------------------------------------------------------------------
+bool OpenWorld::SaveProgress(const std::string& path) const
+{
+#ifdef ENGINE_ENABLE_JSON
+    using nlohmann::json;
+
+    // Capture quest/activity state from the quest manager.
+    const auto snap = m_quests.Capture();
+
+    // Build the JSON document.
+    json j;
+    j["version"]            = 1;
+    j["playerX"]            = m_playerX;
+    j["playerZ"]            = m_playerZ;
+    j["currentBiome"]       = static_cast<int>(m_currentBiome);
+    j["questObjectiveIndex"]= snap.questObjectiveIndex;
+    j["questCompleted"]     = snap.questCompleted;
+
+    // TEACHING NOTE — Global visited stations at save-file level
+    // m_visitedStations is a single global set shared by all STATION_INTERACT
+    // activities.  We serialise it once here (not once per activity) to avoid
+    // redundant data and to correctly represent the shared ownership model.
+    j["visitedStations"] = snap.globalVisitedStations;
+
+    json acts = json::array();
+    for (const auto& entry : snap.activities)
+    {
+        json a;
+        a["id"]       = entry.id;
+        a["progress"] = entry.progress;
+        a["completed"]= entry.completed;
+        acts.push_back(std::move(a));
+    }
+    j["activities"] = std::move(acts);
+
+    // Create the directory if it does not exist.
+    // TEACHING NOTE — Creating the save directory
+    // On Windows we call CreateDirectoryA() which is a no-op if the
+    // directory already exists (returns FALSE, GetLastError()==ERROR_ALREADY_EXISTS).
+    // On Linux/POSIX we call mkdir() with permissions 0755.
+    const std::string::size_type slash = path.find_last_of("/\\");
+    if (slash != std::string::npos)
+    {
+        const std::string dir = path.substr(0, slash);
+#ifdef _WIN32
+        ::CreateDirectoryA(dir.c_str(), nullptr); // ignore return; dir may exist
+#else
+        ::mkdir(dir.c_str(), 0755); // ignore return; dir may exist
+#endif
+    }
+
+    std::ofstream ofs(path);
+    if (!ofs.is_open())
+    {
+        std::cout << "[OpenWorld] SaveProgress: cannot open '" << path << "' for writing.\n";
+        return false;
+    }
+    ofs << j.dump(2);
+    std::cout << "[OpenWorld] Progress saved to '" << path << "'.\n";
+    return true;
+
+#else
+    (void)path;
+    return false;
+#endif // ENGINE_ENABLE_JSON
+}
+
+// ---------------------------------------------------------------------------
+// LoadProgress — restore state from JSON save file
+// ---------------------------------------------------------------------------
+bool OpenWorld::LoadProgress(const std::string& path)
+{
+#ifdef ENGINE_ENABLE_JSON
+    using nlohmann::json;
+
+    std::ifstream ifs(path);
+    if (!ifs.is_open())
+    {
+        std::cout << "[OpenWorld] LoadProgress: save file '" << path << "' not found.\n";
+        return false;
+    }
+
+    json j;
+    try { j = json::parse(ifs); }
+    catch (const std::exception& ex)
+    {
+        std::cout << "[OpenWorld] LoadProgress: JSON parse error — " << ex.what() << "\n";
+        return false;
+    }
+
+    // TEACHING NOTE — Version guard
+    // Reject saves from incompatible future versions (version > 1) or clearly
+    // corrupted saves (version < 1).  Accept version == 1 exactly.
+    const int version = j.value("version", 0);
+    if (version != 1)
+    {
+        std::cout << "[OpenWorld] LoadProgress: unsupported save version "
+                  << version << " (expected 1).\n";
+        return false;
+    }
+
+    m_playerX      = j.value("playerX",      0.f);
+    m_playerZ      = j.value("playerZ",      0.f);
+    m_currentBiome = static_cast<BiomeType>(j.value("currentBiome",
+                                                     static_cast<int>(BiomeType::GRASSLAND)));
+
+    // Restore quest/activity state via DemoQuestManager::Restore().
+    DemoQuestManager::SaveSnapshot snap;
+    snap.questObjectiveIndex = j.value("questObjectiveIndex", 0);
+    snap.questCompleted      = j.value("questCompleted",      false);
+
+    // Restore global visited-station set (stored once at save-file level).
+    if (j.contains("visitedStations") && j["visitedStations"].is_array())
+    {
+        for (const auto& sid : j["visitedStations"])
+            snap.globalVisitedStations.push_back(sid.get<std::string>());
+    }
+
+    if (j.contains("activities") && j["activities"].is_array())
+    {
+        for (const auto& a : j["activities"])
+        {
+            DemoQuestManager::SaveSnapshot::ActivityEntry entry;
+            entry.id        = a.value("id",        "");
+            entry.progress  = a.value("progress",  0);
+            entry.completed = a.value("completed", false);
+            snap.activities.push_back(std::move(entry));
+        }
+    }
+    m_quests.Restore(snap);
+
+    // Transition to PLAYING so the caller doesn't need to drive the boot menu.
+    m_state     = OpenWorldState::PLAYING;
+    m_stateTime = 0.f;
+
+    std::cout << "[OpenWorld] Progress loaded from '" << path << "' "
+              << "(biome=" << static_cast<int>(m_currentBiome)
+              << ", questObj=" << snap.questObjectiveIndex << ").\n";
+    return true;
+
+#else
+    (void)path;
     return false;
 #endif // ENGINE_ENABLE_JSON
 }

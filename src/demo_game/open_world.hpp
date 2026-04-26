@@ -173,8 +173,81 @@ enum class OpenWorldState : uint8_t
 };
 
 // ===========================================================================
-// OpenWorld — manages the demo game open-world session
+// DemoSaveState — minimal persistent state for Demo_Game save/load (M-DG-S2)
 // ===========================================================================
+
+/**
+ * @struct DemoSaveState
+ * @brief Snapshot of the Demo_Game session that can be persisted to disk.
+ *
+ * ============================================================================
+ * TEACHING NOTE — What Goes Into a Save File?
+ * ============================================================================
+ * Every commercial game's save file answers: "what would a player lose if they
+ * quit without saving?"  For Demo_Game the answer is:
+ *
+ *   • Where they are in the world          → playerX / playerZ / currentBiome.
+ *   • How far they are through the quest   → questObjectiveIndex / questCompleted.
+ *   • Which side activities they finished  → activities[*].progress.
+ *
+ * We deliberately omit:
+ *   • Renderer state  — frame cap, preset, etc. are persisted in engine_config.json.
+ *   • GameRuntime ECS — the full ECS World is saved by the engine's SaveSystem
+ *                       (src/engine/save/save_system.hpp) which handles XP, Gil,
+ *                       equipment, etc.  DemoSaveState is the lighter overlay that
+ *                       the demo-specific quest/activity tracker needs.
+ *
+ * Format: a JSON file written to "SavedGames/demo_auto.json" (created on
+ *         first save; the directory is created if it does not exist).
+ *
+ * ============================================================================
+ * TEACHING NOTE — Versioned Save Files
+ * ============================================================================
+ * We embed a "version" integer so that future milestones can detect an old
+ * save file and migrate it:
+ *   • version == 1 → current layout.
+ *   • version  < 1 → reject or migrate (no fields are known-good).
+ *   • version  > 1 → forward-compatible unknown fields are ignored.
+ *
+ * This is the same pattern used by the engine's SaveSystem
+ * (src/engine/save/save_schema.hpp, "version" field) and by shared JSON schemas.
+ * ============================================================================
+ */
+struct DemoSaveState
+{
+    // ---- Schema version ----
+    int version = 1; ///< Save-file schema version.  Increment on breaking changes.
+
+    // ---- World position ----
+    float     playerX     = 0.f;                ///< Player world X.
+    float     playerZ     = 0.f;                ///< Player world Z.
+    BiomeType currentBiome = BiomeType::GRASSLAND; ///< Active biome.
+
+    // ---- Main quest ----
+    int  questObjectiveIndex = 0;  ///< Index into DemoMainQuest::objectives.
+    bool questCompleted      = false;
+
+    // ---- Global visited stations ----
+    // TEACHING NOTE — Single global set (not per-activity)
+    // All STATION_INTERACT activities share one visited-station set
+    // (m_visitedStations in OpenWorld).  We persist it once here at the
+    // top level so the JSON mirrors the in-memory ownership model and
+    // avoids any redundancy between activities.
+    std::vector<std::string> globalVisitedStations;
+
+    // ---- Side activities ----
+    struct ActivitySave
+    {
+        std::string id;          ///< Must match DemoActivity::id.
+        int         progress  = 0;
+        bool        completed = false;
+        // Note: per-activity visitedStations are NOT stored here.
+        // The shared visited set is at globalVisitedStations above.
+    };
+    std::vector<ActivitySave> activities; ///< One entry per registered activity.
+};
+
+
 
 /**
  * @class OpenWorld
@@ -413,6 +486,55 @@ public:
      *         false if the file was missing or contained a parse error.
      */
     bool TryLoadLessonsFromJSON(const std::string& jsonPath);
+
+    // =========================================================================
+    // Save / Load — M-DG-S2
+    // =========================================================================
+
+    /**
+     * @brief Persist the current session state to a JSON file.
+     *
+     * Compiled only when ENGINE_ENABLE_JSON is defined; is a no-op that
+     * returns false on non-JSON builds.
+     *
+     * TEACHING NOTE — Save as a Side Effect of Interact
+     * ──────────────────────────────────────────────────
+     * Demo_Game saves automatically every time the player successfully
+     * interacts at a teaching station.  This mirrors the "campfire save"
+     * pattern in FFXV (save at camp) and "bonfire save" in Dark Souls:
+     * the player trades a meaningful in-game action for a save point rather
+     * than having an always-available menu-save (which removes tension).
+     *
+     * @param path  Path to the save file (default = "SavedGames/demo_auto.json").
+     * @return true on success; false if the file could not be written.
+     */
+    bool SaveProgress(const std::string& path = "SavedGames/demo_auto.json") const;
+
+    /**
+     * @brief Restore session state from a JSON save file.
+     *
+     * Compiled only when ENGINE_ENABLE_JSON is defined; is a no-op that
+     * returns false on non-JSON builds.
+     *
+     * On success the player is placed at the saved world position, the
+     * DemoQuestManager is restored to the saved progress, and the state
+     * machine transitions to PLAYING.  On any parse error the world remains
+     * in the state it was in before the call.
+     *
+     * @param path  Path to the save file (default = "SavedGames/demo_auto.json").
+     * @return true if the save was loaded and state restored successfully.
+     */
+    bool LoadProgress(const std::string& path = "SavedGames/demo_auto.json");
+
+    /**
+     * @brief Return true if a save file exists at the given path.
+     *
+     * Used by the boot menu to decide whether to enable the "Continue" item.
+     * Works without ENGINE_ENABLE_JSON since it only checks file existence.
+     *
+     * @param path  Path to check (default = "SavedGames/demo_auto.json").
+     */
+    static bool SaveExists(const std::string& path = "SavedGames/demo_auto.json") noexcept;
 
     // =========================================================================
     // Constants

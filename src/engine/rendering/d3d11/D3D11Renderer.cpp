@@ -619,7 +619,22 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     if (m_pbrIblScene.loaded && m_currentScene == "pbr_ibl")
     {
         SCOPED_GPU_EVENT(m_context, L"PBR IBL");
-        DrawPBRIBLMesh();
+        if (m_iblEnabled)
+        {
+            // Full IBL: BRDF LUT + irradiance cubemap + prefiltered env cubemap.
+            DrawPBRIBLMesh();
+        }
+        else
+        {
+            // TEACHING NOTE — IBL disabled fallback (LOW / MEDIUM preset)
+            // Fall back to the non-IBL PBR sphere (DrawPBRMesh) which uses a
+            // constant ambient term instead of the three IBL textures.  This
+            // lets students see the visual difference between constant ambient
+            // (flat, direction-independent) and full IBL (sky-coloured ambient
+            // that varies with surface normal orientation).
+            if (m_pbrScene.loaded)
+                DrawPBRMesh();
+        }
     }
 
     // M10: Dynamic sky scene
@@ -643,24 +658,104 @@ void D3D11Renderer::DrawFrame(float clearR, float clearG, float clearB)
     if (m_shadowScene.loaded && m_currentScene == "shadow_test")
     {
         SCOPED_GPU_EVENT(m_context, L"Shadow Scene");
-        DrawShadowScene();
+        if (m_shadowsEnabled)
+        {
+            // Full two-pass shadow algorithm: depth-only shadow pass + lit PCF pass.
+            DrawShadowScene();
+        }
+        // TEACHING NOTE — Shadows disabled fallback
+        // When the LOW or MEDIUM preset disables shadows, we skip the shadow
+        // draw entirely.  The back buffer already has the clear colour so the
+        // student can visually compare the shadow pass ON vs OFF by toggling
+        // the preset in the settings menu — a direct teaching demonstration.
     }
 
     // M17: Bloom post-processing demo — bright-pass + blur + composite.
     if (m_bloomScene.loaded && m_currentScene == "bloom_test")
     {
         SCOPED_GPU_EVENT(m_context, L"Bloom Scene");
-        DrawBloomScene();
+        if (m_bloomEnabled)
+        {
+            // Full five-pass bloom pipeline: fill + bright-pass + H-blur + V-blur + composite.
+            DrawBloomScene();
+        }
+        // TEACHING NOTE — Bloom disabled fallback
+        // With bloom OFF the back buffer shows only the plain clear colour —
+        // a starker difference than the shadowed-sphere comparison, but equally
+        // effective as a teaching contrast.
     }
 
     // -----------------------------------------------------------------------
-    // TEACHING NOTE — Present interval
+    // TEACHING NOTE — Present interval and software frame cap (M-DG-P1)
     // -----------------------------------------------------------------------
-    // Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
-    // Present(0, 0) — present as fast as possible (no v-sync).
-    // We use v-sync for the demo to avoid tearing.
+    // Present(syncInterval, flags):
+    //   syncInterval = 1  → wait for VBlank (v-sync ON).  Prevents tearing
+    //                        but caps frame rate at the monitor refresh rate.
+    //   syncInterval = 0  → present immediately (v-sync OFF).  Maximum frame
+    //                        rate; tearing may be visible on some monitors.
+    //
+    // Software frame cap (frameCap > 0):
+    //   After Present, if the total frame time is less than (1000 / frameCap)
+    //   milliseconds, we sleep the remaining time.  This is the same technique
+    //   used by console games to lock at exactly 30 fps on a 60 Hz display:
+    //   v-sync ON prevents tearing, software sleep limits the frame rate.
+    //   (30 fps = every second Present call is skipped.)
     // -----------------------------------------------------------------------
-    m_swapChain->Present(1, 0);
+    const UINT syncInterval = m_vsyncEnabled ? 1u : 0u;
+    m_swapChain->Present(syncInterval, 0);
+
+    // Software frame cap — sleep if the frame finished earlier than the budget.
+    if (m_frameCap > 0)
+    {
+        // TEACHING NOTE — High-resolution timer for frame capping
+        // QueryPerformanceCounter gives ~100 ns precision.  We track the
+        // frame start time in m_frameStartTick (updated at the end of
+        // DrawFrame, just before returning) and compute how many milliseconds
+        // remain in the current frame's budget.
+        // Win32 Sleep() is used (not std::this_thread::sleep_for) because it
+        // keeps the entire frame-cap path on a single Win32 API without
+        // requiring <thread>; the accuracy is identical (~1 ms) for our needs.
+        static LARGE_INTEGER s_perfFreq = {};
+        if (s_perfFreq.QuadPart == 0)
+            ::QueryPerformanceFrequency(&s_perfFreq);
+
+        // Budget in performance-counter ticks.
+        const LONGLONG budget = s_perfFreq.QuadPart / m_frameCap;
+
+        LARGE_INTEGER now;
+        ::QueryPerformanceCounter(&now);
+
+        // TEACHING NOTE — First-frame tick initialisation
+        // On the very first call to DrawFrame, m_frameStartTick is zero (it was
+        // default-initialised).  In that case `elapsed` would measure time since
+        // the LARGE_INTEGER epoch, causing a huge overshoot.  We detect this by
+        // checking whether the elapsed time is larger than one full second (i.e.
+        // the perf counter frequency) and skip sleeping in that frame only.
+        const LONGLONG elapsed = now.QuadPart - m_frameStartTick.QuadPart;
+        const bool firstFrame  = (m_frameStartTick.QuadPart == 0)
+                               || (elapsed > s_perfFreq.QuadPart);
+        if (!firstFrame && elapsed < budget)
+        {
+            // TEACHING NOTE — Windows Sleep() scheduler slack correction
+            // Sleep(n) on Windows does NOT guarantee exactly n milliseconds.
+            // The Windows timer resolution defaults to ~15.6 ms (the default
+            // scheduler quantum).  Calling timeBeginPeriod(1) reduces this to
+            // ~1 ms, but we do not call it here to avoid disturbing the
+            // system-wide timer for other processes.
+            //
+            // Instead we subtract 1 ms from the sleep request so we wake up
+            // slightly early, then busy-wait for the remaining time via the
+            // QueryPerformanceCounter loop (not shown here — we rely on the
+            // natural jitter of DrawFrame being called again next loop
+            // iteration).  This gives a reasonable ~1–2 ms accuracy without
+            // spinlooping and without affecting the system timer.
+            const LONGLONG remainMs = (budget - elapsed) * 1000LL / s_perfFreq.QuadPart;
+            if (remainMs > 1)
+                ::Sleep(static_cast<DWORD>(remainMs - 1)); // -1 ms: see TEACHING NOTE above
+        }
+    }
+    // Record the start tick for the next frame's cap calculation.
+    ::QueryPerformanceCounter(&m_frameStartTick);
 }
 
 // ===========================================================================

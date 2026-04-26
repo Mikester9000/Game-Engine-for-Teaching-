@@ -6,18 +6,20 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 1965 across 58 subsystems.
+**Total lessons:** 2092 across 60 subsystems.
 
 ---
 
 ## Table of Contents
 
-- [CMakeLists.txt](#cmakelists.txt) (80 lessons)
+- [CMakeLists.txt](#cmakelists.txt) (81 lessons)
 - [ci/workflows](#ciworkflows) (73 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
-- [demo_game/demo_main.cpp](#demo_gamedemo_main.cpp) (11 lessons)
-- [demo_game/open_world.cpp](#demo_gameopen_world.cpp) (7 lessons)
-- [demo_game/open_world.hpp](#demo_gameopen_world.hpp) (6 lessons)
+- [demo_game/demo_main.cpp](#demo_gamedemo_main.cpp) (46 lessons)
+- [demo_game/demo_quest_manager.cpp](#demo_gamedemo_quest_manager.cpp) (16 lessons)
+- [demo_game/demo_quest_manager.hpp](#demo_gamedemo_quest_manager.hpp) (15 lessons)
+- [demo_game/open_world.cpp](#demo_gameopen_world.cpp) (26 lessons)
+- [demo_game/open_world.hpp](#demo_gameopen_world.hpp) (16 lessons)
 - [editor/CMakeLists.txt](#editorcmakelists.txt) (6 lessons)
 - [editor/src](#editorsrc) (104 lessons)
 - [engine/ai](#engineai) (49 lessons)
@@ -26,13 +28,13 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [engine/audio](#engineaudio) (42 lessons)
 - [engine/cinematics](#enginecinematics) (42 lessons)
 - [engine/combat](#enginecombat) (21 lessons)
-- [engine/core](#enginecore) (64 lessons)
+- [engine/core](#enginecore) (78 lessons)
 - [engine/ecs](#engineecs) (41 lessons)
 - [engine/input](#engineinput) (19 lessons)
 - [engine/math](#enginemath) (17 lessons)
 - [engine/physics](#enginephysics) (64 lessons)
 - [engine/platform](#engineplatform) (28 lessons)
-- [engine/rendering](#enginerendering) (378 lessons)
+- [engine/rendering](#enginerendering) (389 lessons)
 - [engine/save](#enginesave) (16 lessons)
 - [engine/scene](#enginescene) (14 lessons)
 - [engine/scripting](#enginescripting) (29 lessons)
@@ -48,7 +50,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (35 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (127 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (133 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -830,11 +832,21 @@ open_world.cpp is a pure C++17 module with no D3D11 or Win32
 dependency.  It is compiled into engine_sandbox so the headless
 --scene demo_world acceptance test is available in every CI build.
 src/demo_game/open_world.cpp
+
+### Demo_Game Quest & Activity Manager (M-DG9)
+
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L832) (line 832)
+
+demo_quest_manager.cpp is a pure C++17 module (no D3D11/Win32/ECS).
+It is compiled into engine_sandbox alongside open_world.cpp so the
+--scene demo_world acceptance test 7 (quest_manager) runs in CI.
+demo_game inherits it automatically via DEMO_GAME_SOURCES derivation.
+src/demo_game/demo_quest_manager.cpp
 )
 
 ### d3d11.lib and dxgi.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L853) (line 853)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L859) (line 859)
 
 These libraries ship with the Windows SDK (included in every Visual
 Studio installation).  They do NOT require a separate Vulkan-style SDK
@@ -846,7 +858,7 @@ endif()
 
 ### xaudio2.lib and ole32.lib
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L862) (line 862)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L868) (line 868)
 
 xaudio2.lib ships with the Windows SDK (alongside d3d11.lib).
 ole32.lib provides CoInitializeEx / CoUninitialize for the COM runtime
@@ -855,7 +867,7 @@ target_link_libraries(engine_sandbox PRIVATE xaudio2.lib ole32.lib)
 
 ### Jolt::Jolt
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L872) (line 872)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L878) (line 878)
 
 The vcpkg joltphysics package (v5+) provides an imported CMake target
 "Jolt::Jolt" that carries all include directories and link libraries
@@ -867,7 +879,7 @@ endif()
 
 ### nlohmann_json::nlohmann_json (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L881) (line 881)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L887) (line 887)
 
 Header-only library; linking the CMake imported target adds the vcpkg
 include path so #include <nlohmann/json.hpp> resolves in scene_serialiser.cpp.
@@ -877,7 +889,7 @@ endif()
 
 ### Compile-Time Feature Flags
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L891) (line 891)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L897) (line 897)
 
 ENGINE_ENABLE_D3D11 and ENGINE_ENABLE_VULKAN are passed as preprocessor
 macros so the RendererFactory.hpp can conditionally include the right
@@ -886,7 +898,7 @@ platform-specific code.
 
 ### UNICODE and _UNICODE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L897) (line 897)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L903) (line 903)
 
 Win32Window.cpp uses std::wstring / const wchar_t* for the window title.
 Without these macros MSVC maps CreateWindowEx → CreateWindowExA (narrow),
@@ -895,7 +907,7 @@ causing C2440/C2664 errors.
 
 ### Incremental compile definitions
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L902) (line 902)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L908) (line 908)
 
 We start with definitions that are always required (Win32 header trimming
 + Unicode), then conditionally append backend feature flags.
@@ -907,7 +919,7 @@ set(SANDBOX_DEFS WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE
 
 ### ENGINE_ENABLE_PHYSICS compile definition
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L919) (line 919)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L925) (line 925)
 
 Defined when Jolt Physics is available.  Physics .cpp files use
 #ifdef ENGINE_ENABLE_PHYSICS to gate Jolt headers/code.
@@ -918,7 +930,7 @@ endif()
 
 ### ENGINE_ENABLE_JSON compile definition (M6)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L927) (line 927)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L933) (line 933)
 
 Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
 gates all JSON parsing/writing code behind this macro.
@@ -928,7 +940,7 @@ endif()
 
 ### Lua in engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L939) (line 939)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L945) (line 945)
 
 ──────────────────────────────────────
 When LUA_BUNDLED=ON (Lua/lua-5.5.0/src/ exists), the lua55_static CMake
@@ -962,7 +974,7 @@ endif()
 
 ### SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L971) (line 971)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L977) (line 977)
 
 -----------------------------------------------------------------------
 By default MSVC creates a GUI app (WinMain entry, no console).
@@ -977,7 +989,7 @@ endif()
 
 ### Shader Compilation with glslc
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L986) (line 986)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L992) (line 992)
 
 GLSL shaders cannot be loaded directly by Vulkan — they must be compiled
 to SPIR-V first.  glslc ships with the Vulkan SDK.
@@ -992,7 +1004,7 @@ DOC   "glslc GLSL-to-SPIR-V compiler from the Vulkan SDK")
 
 ### $<TARGET_FILE_DIR:engine_sandbox>
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1028) (line 1028)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1034) (line 1034)
 
 This generator expression expands to the directory containing
 the built executable (e.g. build/Debug/ on MSVC).
@@ -1015,7 +1027,7 @@ endif() # ENGINE_ENABLE_VULKAN
 
 ### D3D11 HLSL Shaders: Copy to output directory
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1049) (line 1049)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1055) (line 1055)
 
 -----------------------------------------------------------------------
 D3D11Renderer compiles HLSL shaders at runtime using D3DCompileFromFile
@@ -1036,7 +1048,7 @@ set(HLSL_SHADERS
 
 ### M4b: GPU skinning HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1066) (line 1066)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1072) (line 1072)
 
 skinned_mesh.vs.hlsl implements linear blend skinning (LBS):
   worldPos = Σ weight[i] * (g_joints[boneIndex[i]] * bindPos)
@@ -1046,7 +1058,7 @@ skinned_mesh.ps.hlsl applies Lambertian lighting + color gradient.
 
 ### M9: PBR Cook-Torrance HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1072) (line 1072)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1078) (line 1078)
 
 pbr_mesh.vs.hlsl transforms vertices to world/clip space and
   computes world-space normals via the inverse-transpose matrix.
@@ -1058,7 +1070,7 @@ pbr_mesh.ps.hlsl implements the full Cook-Torrance BRDF:
 
 ### M10: Dynamic sky HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1080) (line 1080)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1086) (line 1086)
 
 sky.vs.hlsl generates a full-screen triangle using SV_VertexID
   (no vertex buffer required; 3 vertices cover the entire viewport).
@@ -1070,7 +1082,7 @@ sky.ps.hlsl implements the procedural sky:
 
 ### Post-M10: SDF text rendering HLSL shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1088) (line 1088)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1094) (line 1094)
 
 sdf_text.vs.hlsl transforms screen-space pixel quads to NDC.
 sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
@@ -1080,7 +1092,7 @@ sdf_text.ps.hlsl samples the SDF atlas and applies smoothstep
 
 ### M16: PBR + Image-Based Lighting (IBL) shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1094) (line 1094)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1100) (line 1100)
 
 pbr_ibl.vs.hlsl is structurally identical to pbr_mesh.vs.hlsl —
   it outputs worldPos, worldNrm, and UV to the pixel shader.
@@ -1097,7 +1109,7 @@ pbr_ibl.ps.hlsl adds the full split-sum IBL ambient:
 
 ### M17: Directional shadow map shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1108) (line 1108)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1114) (line 1114)
 
 shadow.vs.hlsl       — depth-only VS for the shadow pass (one matrix
   multiply, no PS output).  Identity world is baked into lightViewProj.
@@ -1111,7 +1123,7 @@ shadow_lit.ps.hlsl   — lit-pass PS: 3×3 PCF shadow lookup via
 
 ### M17: HDR bloom post-processing shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1119) (line 1119)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1125) (line 1125)
 
 All three passes reuse sky.vs.hlsl as the full-screen triangle VS
 (SV_VertexID → full-screen quad trick — no vertex buffer needed).
@@ -1129,7 +1141,7 @@ bloom_composite.ps.hlsl — adds bloom × g_bloomStrength to the scene,
 
 ### M25: Terrain heightmap shaders.
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1134) (line 1134)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1140) (line 1140)
 
 terrain.vs.hlsl transforms the CPU-generated heightmap grid vertices
   (pos, normal, uv) through world→view→clip matrices and passes
@@ -1143,7 +1155,7 @@ Both use a shared TerrainCB constant buffer bound to b0 in both stages.
 
 ### Demo_Game vs engine_sandbox
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1160) (line 1160)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1166) (line 1166)
 
 ─────────────────────────────────────────────────────────────────────────────
 engine_sandbox is the internal test harness; demo_game is the player-facing
@@ -1165,7 +1177,7 @@ if(BUILD_DEMO_GAME AND WIN32 AND ENGINE_ENABLE_D3D11)
 
 ### Deriving DEMO_GAME_SOURCES from SANDBOX_SOURCES
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1179) (line 1179)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1185) (line 1185)
 
 ─────────────────────────────────────────────────────────────────
 Rather than maintaining a duplicate source list (which is easy to let
@@ -1189,7 +1201,7 @@ list(APPEND DEMO_GAME_SOURCES src/demo_game/demo_main.cpp)
 
 ### Status messages should distinguish "not requested"
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1240) (line 1240)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1246) (line 1246)
 
 from "requested but unavailable due to unmet platform/backend
 requirements" so configure-time output tells the user what to fix.
@@ -1204,7 +1216,7 @@ endif()
 
 ### Standalone Tool Target
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1255) (line 1255)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1261) (line 1261)
 
 ─────────────────────────────────────────────────────────────────────────────
 The cook tool is a platform-independent C++ executable that:
@@ -1226,7 +1238,7 @@ src/engine/core/Logger.cpp
 
 ### target_include_directories (PRIVATE)
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1274) (line 1274)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1280) (line 1280)
 
 Only this target needs to see src/ for #include "engine/core/Logger.hpp".
 We use PRIVATE so the include path does not leak to anything that links
@@ -1237,7 +1249,7 @@ src/
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1282) (line 1282)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1288) (line 1288)
 
 Same reasoning as engine_sandbox: we want stdout/stderr visible in a
 terminal window on Windows.
@@ -1247,7 +1259,7 @@ endif()
 
 ### PAK1 Packager Tool
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1296) (line 1296)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1302) (line 1302)
 
 ─────────────────────────────────────────────────────────────────────────────
 The pak tool bundles an input directory into a binary .pak archive
@@ -1272,7 +1284,7 @@ src/engine/core/Logger.cpp
 
 ### MSVC /SUBSYSTEM:CONSOLE
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1322) (line 1322)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1328) (line 1328)
 
 Same reasoning as cook.exe: stdout/stderr must be visible in a terminal.
 if(MSVC)
@@ -1281,7 +1293,7 @@ endif()
 
 ### add_subdirectory()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1351) (line 1351)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1357) (line 1357)
 
 add_subdirectory(dir) tells CMake to also process dir/CMakeLists.txt.
 Each subdirectory is a self-contained "project" with its own targets and
@@ -1290,7 +1302,7 @@ C++ standard already set above).
 
 ### Dear ImGui Editor Subproject
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1358) (line 1358)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1364) (line 1364)
 
 The editor is a Dear ImGui (MIT) application that provides:
   * Content browser  -- file tree via std::filesystem
@@ -1306,7 +1318,7 @@ endif()
 
 ### CMake install()
 
-**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1374) (line 1374)
+**Source:** [`CMakeLists.txt`](CMakeLists.txt#L1380) (line 1380)
 
 ─────────────────────────────────────────────────────────────────────────────
 Running `cmake --install <build-dir> --prefix dist/` copies all installed
@@ -2813,9 +2825,279 @@ The F1 overlay is the "professor's remote control".  In a classroom session:
 C++ Standard: C++17
 Platform: Windows (D3D11 — Win32 window + WARP headless)
 
+### Named constants avoid magic strings/numbers
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L139) (line 139)
+
+─────────────────────────────────────────────────────────────────────────────
+Defining config path and step sizes as named constants:
+  • Makes every usage self-documenting.
+  • Ensures consistency — one change updates all occurrences.
+  • Aids testing — tests can reference the same constant.
+─────────────────────────────────────────────────────────────────────────────
+
+### GDI Text Overlay for Windowed D3D11
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L159) (line 159)
+
+─────────────────────────────────────────────────────────────────────────────
+In windowed D3D11 mode Windows DWM (Desktop Window Manager) composites the
+D3D11 surface and any GDI content drawn directly on the HWND.  This lets us
+draw a readable text-based UI overlay with zero extra GPU shader work or
+external library dependencies.
+
+How it works:
+  1. After D3D11's DrawFrame (which calls Present), the DWM composite
+     for this frame is already committed.  GDI drawing via GetDC(hwnd)
+     writes to a GDI-managed back buffer that is composited by DWM *on the
+     next DWM vsync*, so the overlay lags D3D11 content by at most one
+     compositor frame (imperceptible at 60 Hz, ≈ 16 ms).
+  2. We call GetDC(hwnd), draw with GDI primitives, then ReleaseDC.
+  3. We use TRANSPARENT background mode so only text and explicit fill
+     rectangles are drawn, avoiding full-window flicker.
+
+For a shipping game: replace GDI with the engine's SDF FontRenderer
+  (src/engine/ui/font_renderer.hpp) for GPU-accelerated, anti-aliased text.
+
+Headless CI note: GDI overlay functions are only ever called when a real
+  HWND exists.  The headless path (RunHeadless) never calls them.
+─────────────────────────────────────────────────────────────────────────────
+
+### RAII for OS resources
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L206) (line 206)
+
+OS handles (DC, brush, pen, font) must always be released.  RAII guarantees
+release even if we return early.  This mirrors the pattern used for D3D11
+COM pointers (ComPtr) and file handles (unique_ptr with custom deleter).
+---------------------------------------------------------------------------
+
+### HFONT lifetime
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L266) (line 266)
+
+CreateFont returns a GDI HFONT that must be deleted with DeleteObject when
+no longer needed.  We create it once per overlay draw call to keep the code
+simple; in a production overlay you would cache it and recreate only when
+the DPI changes.
+---------------------------------------------------------------------------
+
+### Boot Menu / Title Screen
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L296) (line 296)
+
+─────────────────────────────────────────────────────────────────────────────
+A title screen serves three purposes:
+  1. LOADING COVER   — gives the engine time to stream the first world cell.
+  2. PLAYER AGENCY   — "New Game / Continue" is a contract with the player.
+  3. SETTINGS HOOK   — key bindings and volume are set before gameplay.
+
+The four menu items map to OpenWorld state transitions:
+  New Game  → world.BootSelectNewGame() → LOADING → PLAYING
+  Continue  → (future) load slot 0 and go to PLAYING
+  Settings  → (future) show settings panel
+  Quit      → post WM_QUIT / set running = false
+
+Navigation:
+  VK_UP / VK_DOWN arrows move the selection.
+  VK_RETURN (Enter)       confirms.
+─────────────────────────────────────────────────────────────────────────────
+
+### Boot Menu With Save Detection (M-DG-S3)
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L318) (line 318)
+
+---------------------------------------------------------------------------
+DrawBootMenu now receives a `saveExists` flag so it can grey out "Continue"
+when there is no save file on disk.  When a save is present, "Continue"
+is highlighted in the normal item colour and fully selectable.
+
+This is the standard commercial RPG boot menu behaviour:
+  • FFXV    — "CONTINUE" is greyed out until the player has saved once.
+  • Dark Souls — "LOAD GAME" does not appear until a save file exists.
+---------------------------------------------------------------------------
+
+### F1 Debug / Teaching Station Menu
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L398) (line 398)
+
+─────────────────────────────────────────────────────────────────────────────
+The F1 overlay is the "professor's remote control" for classroom demos:
+  • The instructor presses F1, selects "PBR Rendering" (or any station),
+    presses Enter, and the player is instantly teleported to that station.
+  • Students can read this code to understand how UI overlays, station data
+    structures, and teleport hooks fit together.
+
+The overlay renders two sections:
+  1. Station list — scrollable list of TeachingStation entries from
+     OpenWorld::GetStations(), one per line.
+  2. Debug info bar — biome name + current FPS (toggled with key 'D').
+
+Navigation (while F1 overlay is open):
+  VK_UP / VK_DOWN    — move station selection
+  VK_RETURN (Enter)  — teleport to selected station
+  F1 again           — close the overlay
+  D key              — toggle the debug info strip
+─────────────────────────────────────────────────────────────────────────────
+
+### Quest HUD as Persistent Overlay
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L527) (line 527)
+
+─────────────────────────────────────────────────────────────────────────────
+The quest HUD is drawn in the bottom-left corner whenever the game is in
+PLAYING state.  It shows:
+  • The current main quest objective (one line, gold colour).
+  • The three side-activity progress bars / counts (three lines, dim colour
+    for in-progress, green for complete).
+
+This is the minimal HUD that every commercial RPG ships: the player always
+knows their current objective at a glance.  (Witcher 3 pins the active
+quest in the top-right; FFXV shows it in the bottom-left — we follow FFXV.)
+
+GDI note: we render the HUD AFTER DrawFrame (same as the other overlays).
+─────────────────────────────────────────────────────────────────────────────
+
+### Last-lesson hint in the HUD
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L632) (line 632)
+
+─────────────────────────────────────────────────────────────────────────
+After the student reads a lesson panel, the quest HUD shows a one-line
+hint: "Last lesson: <title>".  This provides continuity — the student
+can glance at the HUD to recall which lesson they just read and know
+which source files to look at next.
+
+The hint is blank on first launch (no lesson read yet) and updates each
+time the player presses E at a station.  It persists until a new lesson
+replaces it, even if the student teleports away from the station.
+─────────────────────────────────────────────────────────────────────────
+if (!lastLessonTitle.empty())
+{
+char hint[128];
+std::snprintf(hint, sizeof(hint),
+"  Last lesson: %s", lastLessonTitle.c_str());
+DrawLine(dc.Get(), fontItem, panelX + kPadX, cy, hint, kColDim);
+}
+
+### Interact Prompt UX Pattern
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L658) (line 658)
+
+─────────────────────────────────────────────────────────────────────────────
+A brief contextual prompt tells the player that an action is available.
+This pattern is used in nearly every modern action/RPG:
+  • FFXV   — "X: Interact" appears near interactable objects.
+  • Witcher 3 — "E: Talk / Examine" near NPCs / items.
+  • Dark Souls — "Y: Light Bonfire" near bonfires.
+
+The prompt:
+  • Appears at the bottom-centre of the screen — visible but unobtrusive.
+  • Shows the station name and the Interact key binding.
+  • Disappears as soon as the player is no longer near any station.
+─────────────────────────────────────────────────────────────────────────────
+
+### Lesson Panel as in-game documentation
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L708) (line 708)
+
+─────────────────────────────────────────────────────────────────────────────
+The lesson panel is the teaching-game equivalent of a "codex" or "lore book"
+in a commercial RPG.  It appears when the player deliberately interacts with
+a teaching station (E key) and shows:
+
+  1. LESSON TITLE    — what subsystem this station demonstrates.
+  2. LESSON TEXT     — multi-line prose explanation (may include \n).
+  3. CODE POINTERS   — file paths / class names to inspect in VS Code.
+  4. DISMISS HINT    — "Press ESC or Enter to close".
+
+The lesson text is loaded from Content/World/station_lessons.json at runtime
+(see OpenWorld::TryLoadLessonsFromJSON).  Instructors can update lessons
+without recompiling the engine.
+
+GDI newline handling:
+GDI TextOut does not interpret "\n"; we split the text on '\n' manually and
+call DrawLine once per line.
+─────────────────────────────────────────────────────────────────────────────
+
+### Challenge prompt in lesson panel
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L806) (line 806)
+
+──────────────────────────────────────────────────
+When the station has a combo challenge defined (HasChallenge()), we
+show an extra "[Space] Start Combo Challenge" line so the student
+knows an interactive exercise is available.  The lesson panel's
+primary purpose (reading the teaching text) is not changed — the
+challenge is optional and purely additive.
+DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
+"  [Space] Start Combo Challenge  |  ESC or ENTER to close",
+kColSelected);
+}
+else
+{
+DrawLine(dc.Get(), fontFooter, panelX + kPadX, cy,
+"  Press ESC or ENTER to close", kColDim);
+}
+
+### Why file scope instead of overlay::?
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L835) (line 835)
+
+─────────────────────────────────────────────────────────────────────────────
+DrawSettingsPanel (inside overlay::) accepts `int selRow` rather than
+SettingsRow so the function signature has no dependency on the enum type.
+RunWindowed (outside overlay::) uses the strongly-typed enum for clarity so
+that `settingsRow = static_cast<int>(SettingsRow::APPLY)` is self-
+documenting at each usage site.  Placing the enum at file scope avoids
+prefixing every usage in RunWindowed with `overlay::`.
+─────────────────────────────────────────────────────────────────────────────
+
+### Settings Menu as Performance-Preset Selector
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L862) (line 862)
+
+─────────────────────────────────────────────────────────────────────────────
+The settings panel lets the player select a performance preset (Low / Medium
+/ High / Ultra) which maps directly to the PerformancePresetConfig that was
+built in M-DG-P1.  It also exposes:
+  • Master Volume   — 0–100 integer.
+  • VSync           — On / Off.
+  • Frame Cap       — Unlimited / 30 fps / 60 fps.
+
+Navigation:
+  UP / DOWN          — move row selection.
+  LEFT / RIGHT       — change the value of the selected row.
+  ENTER on "Apply"   — save config to disk and apply to renderer.
+  ENTER on "Cancel"
+  or ESC             — discard changes and close.
+─────────────────────────────────────────────────────────────────────────────
+
+### Combo Practice as Interactive Teaching
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L988) (line 988)
+
+─────────────────────────────────────────────────────────────────────────────
+The combo-challenge overlay turns the ComboSystem lesson into an interactive
+exercise.  Instead of just reading about IDLE→BUILDING→COOLDOWN FSM state
+transitions, the player *performs* them by pressing a sequence of digit keys.
+
+This mirrors how professional training uses "kinaesthetic learning":
+  • Guitar Hero teaches rhythm by making you press buttons to music.
+  • Demo_Game teaches the ComboSystem by making you input a combo sequence.
+
+The overlay shows:
+  1. CHALLENGE TITLE — what the challenge tests.
+  2. KEY SEQUENCE    — the full sequence to press (e.g. [1] → [2] → [3]).
+  3. CURRENT STEP    — which key to press next, highlighted in gold.
+  4. RESULT          — "Challenge Passed!" when all steps are done.
+
+Input: digit keys [1][2][3] advance through the sequence.  ESC exits.
+─────────────────────────────────────────────────────────────────────────────
+
 ### Headless Demo_Game CI
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L131) (line 131)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1108) (line 1108)
 
 ─────────────────────────────────────
 When --headless is passed, demo_main skips the Win32 window and runs the
@@ -2831,7 +3113,7 @@ OpenWorld state machine for kHeadlessFrames frames.  Acceptance criteria:
 
 ### Extra guard frames
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L173) (line 173)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1150) (line 1150)
 
 We allow kHeadlessFrames + kExtraGuardFrames iterations so the
 BOOT_MENU auto-advance (2 frames) and LOADING phase (about 6 frames
@@ -2852,7 +3134,7 @@ break;
 
 ### Fail explicitly on empty station list
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L207) (line 207)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1184) (line 1184)
 
 An empty list is a test failure, not a vacuous success.  We check the
 count first (not just the per-field loop) so the error message tells
@@ -2864,9 +3146,186 @@ std::cout << "[FAIL] demo_world/4: Expected >= " << kExpectedStations
 return 1;
 }
 
+### Verifying teleport is navigation-only
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1217) (line 1217)
+
+─────────────────────────────────────────────────────────────────────────
+After this change teleport updates biome + sets nearestStationID but
+does NOT advance the quest.  We verify the biome change (still works)
+and that the nearest station ID was set correctly.
+-----------------------------------------------------------------------
+world.TeleportToStation("rendering_pbr");
+if (world.GetCurrentBiome() != BiomeType::GRASSLAND)
+{
+std::cout << "[FAIL] demo_world/5: TeleportToStation(\"rendering_pbr\") "
+"did not set biome to GRASSLAND.\n";
+return 1;
+}
+if (world.GetNearestStationID() != "rendering_pbr")
+{
+std::cout << "[FAIL] demo_world/5: TeleportToStation(\"rendering_pbr\") "
+"did not set nearestStationID to \"rendering_pbr\".\n";
+return 1;
+}
+std::cout << "[OK] demo_world/5: Teleport to rendering_pbr → "
+"biome=GRASSLAND, nearestStation=rendering_pbr (navigation only).\n";
+
+### Testing the fallback path
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1241) (line 1241)
+
+─────────────────────────────────────────────────────────────────────────
+We call TryLoadStationsFromJSON with a path that does not exist to
+verify the fallback behaviour: stations remain from RegisterDefault-
+Stations() and the count stays >= kExpectedStations.
+In a full CI run with the content deployed, OpenWorld::Init() will have
+already exercised the JSON-found path; here we exercise the not-found
+path explicitly.
+─────────────────────────────────────────────────────────────────────────
+{
+OpenWorld world2;
+if (!world2.Init())
+{
+std::cout << "[FAIL] demo_world/6: second OpenWorld::Init() failed.\n";
+return 1;
+}
+Force the fallback path by using a non-existent path.
+world2.TryLoadStationsFromJSON("/nonexistent/path/teaching_stations.json");
+const int count6 = static_cast<int>(world2.GetStations().size());
+if (count6 < kExpectedStations)
+{
+std::cout << "[FAIL] demo_world/6: station count after bad JSON path = "
+<< count6 << " (expected >= " << kExpectedStations << ").\n";
+return 1;
+}
+std::cout << "[OK] demo_world/6: JSON fallback safe — "
+<< count6 << " stations retained after missing-file load.\n";
+}
+
+### Testing the quest/activity layer independently
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1273) (line 1273)
+
+─────────────────────────────────────────────────────────────────────────
+The DemoQuestManager is accessible via OpenWorld::GetQuestManager().
+We already called OpenWorld::Init() (test 1), which initialised the
+quest manager with built-in defaults.  Here we:
+  a) Verify that TotalDefined() returns 1 main quest + 4 activities = 5.
+  b) Verify the main quest has 3 objectives.
+  c) Simulate Teleport+Interact for three station objectives in order
+     and verify the main quest completes.
+  d) Verify the Lesson Reader activity advances on unique interacts.
+─────────────────────────────────────────────────────────────────────────
+{
+Use 'world' (already past PLAYING after test 3) — its quest manager
+was initialised in world.Init() with built-in defaults.
+const DemoQuestManager& qm = world.GetQuestManager();
+
+### Simulating Interact in headless CI
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1318) (line 1318)
+
+─────────────────────────────────────────────────────
+In headless mode there is no keyboard, so we cannot literally press E.
+Instead we call TeleportToStation() (which sets m_nearestStationID)
+followed immediately by InteractAtStation() — the same sequence the
+player would perform: arrive at the station (teleport) then press E.
+This is deterministic and reproducible in CI without any UI.
+const auto& questRef = qWorld.GetQuestManager().GetMainQuest();
+for (const auto& obj : questRef.objectives)
+{
+if (!obj.stationID.empty())
+{
+qWorld.TeleportToStation(obj.stationID);  // navigate to station
+qWorld.InteractAtStation();               // press E at station
+}
+}
+
+### Data integrity check for station_lessons.json
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1374) (line 1374)
+
+─────────────────────────────────────────────────────────────────────────
+This test confirms that:
+  a) station_lessons.json loaded correctly (lesson count >= 1).
+  b) Every loaded lesson has a non-empty lessonText.
+  c) At least one lesson has codePointers (teaches students where to look).
+  d) The combat station lesson defines a combo challenge (HasChallenge()).
+This guards against a broken JSON file silently causing the lesson panel
+to display stub "no content" text for all stations.
+─────────────────────────────────────────────────────────────────────────
+{
+Re-use 'world' which has already loaded lessons via Init().
+const std::string combatID = "combat";
+const StationLesson* combatLesson = world.GetStationLesson(combatID);
+
+### Deterministic mini-game CI simulation
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1446) (line 1446)
+
+─────────────────────────────────────────────────────────────────────────
+In headless mode there is no keyboard, so we simulate the combo challenge
+by directly calling NotifyChallengePassed() on the world — the same
+method that demo_main.cpp calls after the player inputs the full key
+sequence.  This verifies the quest-manager wiring without needing real
+keyboard input.
+
+The test sequence:
+  1. Init a fresh OpenWorld.
+  2. Teleport to "combat" → sets m_nearestStationID.
+  3. InteractAtStation() → returns the combat lesson + GetLastLessonTitle().
+  4. Verify HasChallenge() on the returned lesson (or skip if no JSON).
+  5. Call NotifyChallengePassed() → combo_challenger activity advances.
+  6. Verify the COMBO_PRACTICE activity is now "complete".
+─────────────────────────────────────────────────────────────────────────
+{
+OpenWorld cWorld;
+if (!cWorld.Init())
+{
+std::cout << "[FAIL] demo_world/9: cWorld.Init() returned false.\n";
+return 1;
+}
+
+### Headless save/load test
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1535) (line 1535)
+
+─────────────────────────────────────────────────────────────────────────
+We exercise the full save/load cycle without a window:
+  a) Create a world, interact at one objective station.
+  b) Save to a temp file.
+  c) Create a fresh world, load from the temp file.
+  d) Verify quest objective index survived the roundtrip.
+
+The entire test is gated on ENGINE_ENABLE_JSON at compile time so that
+non-JSON builds (Linux terminal CI) skip it cleanly without treating a
+missing feature as a pass or a failure.
+─────────────────────────────────────────────────────────────────────────
+ifdef ENGINE_ENABLE_JSON
+{
+OpenWorld saveWorld;
+if (!saveWorld.Init())
+{
+std::cout << "[FAIL] demo_world/10: saveWorld.Init() returned false.\n";
+return 1;
+}
+
+### Portable temp path for test artefacts
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1572) (line 1572)
+
+We write the save file inside the process working directory under
+"SavedGames/" (relative path, valid on both Windows and Linux).
+The SaveProgress() implementation already calls CreateDirectoryA /
+mkdir to ensure the parent directory exists.  This avoids hard-coding
+system-specific paths such as "C:\Temp\" or "/tmp/".
+const std::string tmpPath = "SavedGames/demo_save_test_roundtrip.json";
+const bool saved = saveWorld.SaveProgress(tmpPath);
+
 ### Windowed Demo_Game
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L262) (line 262)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1643) (line 1643)
 
 ─────────────────────────────────────────────────────────────────────────────
 The windowed path mirrors engine_sandbox's main loop (Win32 window + D3D11
@@ -2877,11 +3336,54 @@ Key differences from engine_sandbox:
   • Boot menu is shown first (OpenWorld FSM state BOOT_MENU).
   • F1 key toggles the developer station overlay (DemoDebugMenu).
   • ESC pauses the game (PAUSED state) rather than quitting immediately.
+
+Input handling pattern — rising-edge detection:
+  We track each key's previous-frame state to detect "just pressed" (rising
+  edge).  This prevents a single key press from triggering multiple actions.
+  A production engine routes input through an EventBus or InputMapper
+  (src/game/systems/input_mapper.hpp) so all systems react to the same event.
 ─────────────────────────────────────────────────────────────────────────────
+
+### Rising-edge detection
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1680) (line 1680)
+
+─────────────────────────────────────────────────────────────────────────────
+GetAsyncKeyState's 0x8000 bit is 1 while the key is held.  To fire an
+action only ONCE per press we XOR with the previous state:
+  pressed = isDown && !wasDown
+This is the same "edge trigger" pattern used in digital circuits.
+─────────────────────────────────────────────────────────────────────────────
+struct KeyEdge
+{
+int  vk      = 0;
+bool wasDown = false;
+
+### Config-first startup ordering
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1709) (line 1709)
+
+─────────────────────────────────────────────
+We load the engine config BEFORE creating the window or the renderer.
+This lets the config determine window resolution and renderer settings
+(VSync, frame cap, etc.) from the first frame.  Loading config after
+renderer init would require a restart or hot-reload path.
+
+The fail-soft design (returns false on missing file, keeps defaults)
+means the game always boots even on a fresh install without a config.
+-----------------------------------------------------------------------
+engine::core::EngineConfig engConfig;
+const bool configLoaded = engConfig.Load(kEngineConfigPath);
+if (configLoaded)
+std::cout << "[demo_game] engine_config.json loaded (preset="
+<< engine::core::PresetName(engConfig.activePreset) << ").\n";
+else
+std::cout << "[demo_game] engine_config.json not found — using defaults "
+"(preset=Medium).\n";
 
 ### Reusing GameRuntime from engine_sandbox (M8)
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L323) (line 323)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1795) (line 1795)
 
 ─────────────────────────────────────────────────────────────
 Demo_Game reuses the same GameRuntime that engine_sandbox uses for its
@@ -2892,40 +3394,310 @@ initialisation code.  The only difference is the entry path:
 -----------------------------------------------------------------------
 std::unique_ptr<sandbox::GameRuntime> gameRuntime;
 
-### F1 key state tracking (windowed mode)
+### Local challenge state (UI layer only)
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L336) (line 336)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1836) (line 1836)
 
-We track whether F1 was down in the previous frame to detect a rising
-edge (key just pressed).  Using a local bool avoids static state inside
-the loop body.  In a full implementation this would live in InputMapper
-or an InputSystem component so multiple systems can react.
------------------------------------------------------------------------
-bool debugMenuOpen = false; // F1 overlay toggle
-bool f1WasDown     = false; // previous-frame F1 state for rising-edge detect
+─────────────────────────────────────────────────────
+All challenge-input tracking lives in demo_main.cpp, not in OpenWorld.
+OpenWorld is notified only on completion (NotifyChallengePassed).
+This separation keeps game-logic state out of the UI layer's concerns
+and matches the Command pattern: UI issues a command; game logic reacts.
+bool challengeActive  = false; ///< True while player is inputting combo keys
+int  challengeStep    = 0;     ///< How many keys pressed correctly so far
+bool challengePassed  = false; ///< True after all challenge keys entered
+float challengeResultTimer = 0.f; ///< Countdown to auto-close the result panel
+StationLesson challengeLesson;  ///< The lesson whose challenge is active
 
-### Key-State Polling (Win32)
+### Menu navigation
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L361) (line 361)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1924) (line 1924)
 
-GetAsyncKeyState returns the real-time physical key state;
-0x8000 is the "currently held down" bit.  We track the previous
-frame state in f1WasDown to detect a rising edge (just pressed).
-In a full engine this would be routed through EventBus so multiple
-systems can react without each polling the Win32 API directly.
+Up/Down arrows move the selection index with wrap-around.
+Enter activates the selected item.
+  • New Game  — starts a fresh session via BootSelectNewGame().
+  • Continue  — loads the auto-save and transitions to PLAYING.
+                Only selectable when a save file exists.
+  • Settings  — opens the settings panel overlay (M-DG-S1).
+  • Quit      — posts a Win32 WM_QUIT / shuts down the window.
 -----------------------------------------------------------------
-const bool f1IsDown = (::GetAsyncKeyState(VK_F1) & 0x8000) != 0;
-if (f1IsDown && !f1WasDown)
+constexpr int kBootCount = 4; // New Game, Continue, Settings, Quit
+
+### Restore session from save file
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1950) (line 1950)
+
+LoadProgress() deserialises the save JSON, restores
+quest/activity state via DemoQuestManager::Restore(),
+and transitions the FSM to PLAYING.  The GameRuntime
+will be created on the next frame when IsPlaying() is
+detected (same path as New Game).
+if (!world.LoadProgress(kAutoSavePath))
 {
-debugMenuOpen = !debugMenuOpen;
-std::cout << "[demo_game] F1 debug menu: "
-<< (debugMenuOpen ? "OPEN" : "CLOSED") << "\n";
+std::cerr << "[demo_game] Continue: save file exists "
+"but LoadProgress failed — starting New Game.\n";
+world.BootSelectNewGame();
 }
-f1WasDown = f1IsDown;
+else
+{
+std::cout << "[demo_game] Continue: session restored.\n";
+}
+}
+else
+{
+std::cout << "[demo_game] Continue: no save file.\n";
+}
+break;
+case 2: // Settings — M-DG-S1
+Snapshot current config into the working copies before
+opening the panel so the player sees the live values.
+settingsPreset   = engConfig.activePreset;
+settingsVolume   = static_cast<int>(engConfig.audio.masterVolume * 100.f + 0.5f);
+settingsVsync    = engConfig.presetConfig.vsync;
+settingsFrameCap = engConfig.presetConfig.frameCap;
+settingsRow      = 0;
+settingsMenuOpen = true;
+std::cout << "[demo_game] Settings menu opened.\n";
+break;
+case 3: // Quit
+std::cout << "[demo_game] Quit selected from boot menu.\n";
+window.Shutdown();
+break;
+default:
+break;
+}
+}
+}
+else if (settingsMenuOpen)
+{
+-----------------------------------------------------------------
+SETTINGS PANEL input — M-DG-S1
+
+### Settings panel navigation
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L1996) (line 1996)
+
+─────────────────────────────────────────────────────────────────
+The settings panel uses a row-based model:
+  UP/DOWN move the row cursor.
+  LEFT/RIGHT change the value on the selected row.
+  ENTER on APPLY commits changes to engConfig, saves config.json,
+         and applies the preset to the renderer via Set*() calls.
+  ENTER on CANCEL / ESC discards changes.
+─────────────────────────────────────────────────────────────────
+constexpr int kRowCount = static_cast<int>(SettingsRow::COUNT);
+if (pressedUp)
+settingsRow = (settingsRow - 1 + kRowCount) % kRowCount;
+if (pressedDown)
+settingsRow = (settingsRow + 1) % kRowCount;
+
+### Applying the preset
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2056) (line 2056)
+
+ApplyPreset() fills presetConfig from PresetDefaults(p)
+then we override the individual toggles with the player's
+manual selections (vsync, frameCap).  This matches the
+Load() order in engine_config.cpp.
+engConfig.ApplyPreset(settingsPreset);
+engConfig.presetConfig.vsync    = settingsVsync;
+engConfig.presetConfig.frameCap = settingsFrameCap;
+Convert 0–100 display volume back to 0.0–1.0 float.
+engConfig.audio.masterVolume    = settingsVolume / 100.f;
+
+### Challenge key-sequence validation
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2102) (line 2102)
+
+─────────────────────────────────────────────────────────────────
+The challenge asks the player to press a sequence of digit keys
+that matches challengeLesson.challengeKeys.  Each correct press
+advances challengeStep; when challengeStep reaches the end of the
+sequence the challenge is "passed" and NotifyChallengePassed() is
+called.
+
+Wrong-key presses are silently ignored — we don't reset progress,
+which would feel punishing for a teaching exercise.  An instructor
+running the demo for students can adjust this policy by changing
+the challengeKeys list in station_lessons.json without recompiling.
+-----------------------------------------------------------------
+if (pressedESC && !challengePassed)
+{
+challengeActive = false;
+challengeStep   = 0;
+std::cout << "[demo_game] Combo challenge: EXITED.\n";
+}
+else if (!challengePassed)
+{
+Determine which key was pressed (1/2/3).
+char pressedChar = 0;
+if (pressed1) pressedChar = '1';
+else if (pressed2) pressedChar = '2';
+else if (pressed3) pressedChar = '3';
+
+### Modal dismiss pattern
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2179) (line 2179)
+
+The lesson panel is a soft modal: it doesn't block the world
+update but intercepts input so other actions don't fire while
+the student is reading.  ESC and Enter are standard dismiss keys
+in UI systems (think "OK" button / "Press Enter to continue").
+-----------------------------------------------------------------
+if (pressedSpace && currentLesson.HasChallenge())
+{
+Transition: lesson panel → challenge overlay.
+lessonPanelOpen  = false;
+challengeActive  = true;
+challengeStep    = 0;
+challengePassed  = false;
+challengeLesson  = currentLesson;
+currentLesson    = StationLesson{};
+std::cout << "[demo_game] Combo challenge STARTED: \""
+<< challengeLesson.challengeTitle << "\"\n";
+}
+else if (pressedESC || pressedEnter)
+{
+lessonPanelOpen = false;
+currentLesson   = StationLesson{};
+std::cout << "[demo_game] Lesson panel: CLOSED\n";
+}
+}
+else if (debugMenuOpen)
+{
+-----------------------------------------------------------------
+F1 OVERLAY input
+
+### Teleport is navigation only
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2208) (line 2208)
+
+Teleporting via the F1 menu brings the player to a station so
+they can press E to interact.  The teleport itself does NOT
+advance the quest or trigger a lesson panel.
+-----------------------------------------------------------------
+if (pressedF1 || pressedESC)
+{
+debugMenuOpen = false;
+std::cout << "[demo_game] F1 debug menu: CLOSED\n";
+}
+else if (pressedUp && numStations > 0)
+{
+stationSel = (stationSel - 1 + numStations) % numStations;
+}
+else if (pressedDown && numStations > 0)
+{
+stationSel = (stationSel + 1) % numStations;
+}
+else if (pressedEnter && numStations > 0)
+{
+const auto& s = world.GetStations()[stationSel];
+std::cout << "[demo_game] Teleporting to station: "
+<< s.displayName << "\n";
+world.TeleportToStation(s.id);
+Close the F1 menu so the prompt "[E] Interact" is visible
+and the player can press E without the overlay in the way.
+debugMenuOpen = false;
+std::cout << "[demo_game] Press E to interact with \""
+<< s.displayName << "\"\n";
+}
+}
+else
+{
+-----------------------------------------------------------------
+PLAYING / PAUSED input
+-----------------------------------------------------------------
+if (pressedF1 && state == OpenWorldState::PLAYING)
+{
+debugMenuOpen = true;
+Clamp station index in case station list changed.
+if (numStations > 0 && stationSel >= numStations)
+stationSel = 0;
+std::cout << "[demo_game] F1 debug menu: OPEN ("
+<< numStations << " stations)\n";
+}
+
+### Interact key (E) at a station
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2254) (line 2254)
+
+─────────────────────────────────────────────────────────────────
+When the player presses E, OpenWorld::InteractAtStation() checks
+whether the player is near a station (m_nearestStationID).
+If so it:
+  1. Advances the main quest objective (if this station matches).
+  2. Advances STATION_INTERACT side activities.
+  3. Returns the StationLesson for the lesson panel.
+The F1 menu teleport sets m_nearestStationID so that the next E
+press at the correct location triggers the lesson correctly.
+if (pressedE && state == OpenWorldState::PLAYING)
+{
+StationLesson lesson = world.InteractAtStation();
+if (lesson.IsValid())
+{
+lastLessonTitle = lesson.lessonTitle; // update HUD hint
+currentLesson   = std::move(lesson);
+lessonPanelOpen = true;
+std::cout << "[demo_game] Lesson panel OPEN: \""
+<< currentLesson.lessonTitle << "\""
+<< (currentLesson.HasChallenge() ? " [has challenge]" : "")
+<< "\n";
+
+### Autosave on Interact (M-DG-S2)
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2277) (line 2277)
+
+─────────────────────────────────────────────────
+We save automatically when the player successfully
+interacts at a teaching station.  This mirrors the FFXV
+"camp save" design pattern: a deliberate meaningful action
+(engaging with learning content) doubles as a save point.
+The save is silent — the player sees the lesson panel and
+does not need to manually navigate to a save menu.
+world.SaveProgress(kAutoSavePath);
+}
+else
+{
+std::cout << "[demo_game] E pressed — not near a station.\n";
+}
+}
+
+### Overlay draw order
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2350) (line 2350)
+
+We draw overlays AFTER DrawFrame so the D3D11 colour fills the
+background and GDI text appears on top.  In windowed mode DWM
+composites both surfaces before the final screen display.
+-----------------------------------------------------------------
+const int winW = static_cast<int>(window.GetWidth());
+const int winH = static_cast<int>(window.GetHeight());
+
+### Persistent quest overlay
+
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2404) (line 2404)
+
+The quest HUD is drawn on top of all other content when the player
+is in the PLAYING state.  It does not interfere with the lesson panel
+(DrawLessonPanel takes centre stage), the F1 overlay, or the boot menu.
+if (world.GetState() == OpenWorldState::PLAYING
+&& !debugMenuOpen && !lessonPanelOpen && !challengeActive)
+{
+Show the interact prompt when the player is near a station.
+if (!world.GetNearestStationID().empty())
+{
+overlay::DrawInteractPrompt(hwnd, winW, winH,
+world.GetNearestStationID(),
+world.GetStations());
+}
+overlay::DrawQuestHud(hwnd, winW, winH, world.GetQuestManager(),
+lastLessonTitle);
+}
+}
 
 ### Entry Point Design
 
-**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L434) (line 434)
+**Source:** [`src/demo_game/demo_main.cpp`](src/demo_game/demo_main.cpp#L2438) (line 2438)
 
 ─────────────────────────────────────────────────────────────────────────────
 We keep main() minimal: parse args, dispatch to headless or windowed path.
@@ -2937,6 +3709,514 @@ means you can add a new subsystem (VR, network, analytics) without touching
 the others — the Hollywood Principle ("don't call us, we'll call you") in
 action via the renderer independence already established by IRenderer.
 ─────────────────────────────────────────────────────────────────────────────
+
+---
+
+## demo_game/demo_quest_manager.cpp
+
+### Data-Driven Defaults + JSON Override
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L6) (line 6)
+
+============================================================================
+RegisterDefaults() establishes a valid game state in pure C++.  The
+optional TryLoadFromJSON() call in Init() can then replace those defaults
+with content-authored JSON data.  This "safe fallback" pattern means:
+
+  • The game always launches (no crash if JSON is absent).
+  • Designers iterate on quests by editing JSON, not recompiling.
+  • CI headless tests always have data to validate.
+
+The same pattern is used in open_world.cpp (RegisterDefaultStations /
+TryLoadStationsFromJSON) and combo_system.cpp (inline defaults /
+LoadConfig).
+
+============================================================================
+
+### Observer Pattern Without EventBus
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L21) (line 21)
+
+============================================================================
+DemoQuestManager is notified via direct method calls from OpenWorld:
+
+  OpenWorld::TeleportToStation()  → DemoQuestManager::NotifyStationVisited()
+  OpenWorld::NotifyEnemyKilled()  → DemoQuestManager::NotifyEnemyKilled()
+  OpenWorld::NotifyItemCollected()→ DemoQuestManager::NotifyItemCollected()
+
+For teaching purposes the direct call is clearer than an EventBus<T>
+subscription.  In a production engine you would use EventBus so that any
+number of systems (QuestSystem, AchievementSystem, AnalyticsSystem) can
+all react to the same event without coupling to OpenWorld.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2026
+C++ Standard: C++17
+
+### Sequential objective advance
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L135) (line 135)
+
+We only advance the CURRENT objective, not all matching ones.  This
+forces the player to visit stations in order, which gives the designer
+full control over the narrative flow.
+-----------------------------------------------------------------------
+if (!m_mainQuest.completed)
+{
+const DemoQuestObjective* obj = m_mainQuest.CurrentObjective();
+if (obj && !obj->stationID.empty() && obj->stationID == stationID)
+{
+m_mainQuest.AdvanceObjective();
+}
+}
+
+### Set-based deduplication + specificStationID filter
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L152) (line 152)
+
+─────────────────────────────────────────────────────────────────────
+For activities with an empty specificStationID we count unique stations
+using m_visitedStations (same "set membership" pattern as before).
+For activities with a non-empty specificStationID we only count when
+the interacted station matches that ID — a simple equality check.
+We still use m_visitedStations for the "any unique station" activities
+so one station can only count once per such activity.
+-----------------------------------------------------------------------
+const bool wasInserted = m_visitedStations.insert(stationID).second;
+
+### Finding activities by type
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L201) (line 201)
+
+────────────────────────────────────────────
+FindActivity() returns the first registered activity of the given type.
+Since we only register one COMBO_PRACTICE activity ("combo_challenger"),
+this is unambiguous.  If we later added multiple combo challenges (one
+per station), we would extend FindActivity to accept an optional
+stationID filter — the same pattern used for STATION_INTERACT with
+specificStationID.
+DemoActivity* combo = FindActivity(DemoActivityType::COMBO_PRACTICE);
+if (combo)
+combo->Advance();
+}
+
+### Guard against INVALID sentinel
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L237) (line 237)
+
+We never register activities with type INVALID, but the early-return here
+prevents a hypothetical caller from accidentally matching an uninitialised
+activity (which would have type INVALID from zero-initialisation).
+if (type == DemoActivityType::INVALID)
+return nullptr;    for (auto& a : m_activities)
+if (a.type == type)
+return &a;
+return nullptr;
+}
+
+### Inline Default Content
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L251) (line 251)
+
+─────────────────────────────────────────────────────────────────────────────
+Hard-coding content in C++ defaults serves the same purpose as the built-in
+default stations in open_world.cpp: the game ships in a valid, playable
+state without any runtime content files.  Students can immediately run the
+demo and see quest progress without needing a cook step.
+
+The quest "Tour of the Engine" uses station visits as objectives so that:
+  1. Students can trigger the objectives from the F1 menu (teleport).
+  2. No enemy/inventory systems are required to *complete* the main quest.
+  3. Each objective routes the player to a visually distinct engine feature.
+─────────────────────────────────────────────────────────────────────────────
+
+### Tour quest as interactive tutorial
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L271) (line 271)
+
+─────────────────────────────────────────────────────────────────────────
+A "tour quest" is a guided walkthrough masquerading as gameplay.  The
+player follows a sequence of stations, pressing E at each one to read
+the teaching explanation.  This is the same pattern used in:
+  • FFXV  — Ignis' cooking tutorial chains several in-world prompts.
+  • Zelda:BotW — the plateau shrines force the player to interact with
+    core mechanics before entering the open world.
+  • DOOM Eternal — the "Doom Slayer's Fortress" doubles as a tutorial.
+
+Key design rule: the objective ONLY advances on Interact (E key).
+Teleporting via F1 is navigation only — it does not advance the quest.
+─────────────────────────────────────────────────────────────────────────
+m_mainQuest.id          = "demo_main_quest";
+m_mainQuest.title       = "Tour of the Engine";
+m_mainQuest.description =
+"Walk up to each teaching station and press E to read the lesson. "
+"Use the F1 overlay to teleport to stations if needed, "
+"then press E when you arrive to continue the tour.";
+
+### Generic teaching activity
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L314) (line 314)
+
+Pressing E at any 3 distinct stations forces the player to read three
+different engine lessons — breadth-first orientation before going deep.
+{
+DemoActivity a;
+a.id                = "lesson_reader";
+a.title             = "Lesson Reader";
+a.description       = "Press E at 3 different teaching stations to read their lessons.";
+a.type              = DemoActivityType::STATION_INTERACT;
+a.specificStationID = ""; // any unique station counts
+a.required          = 3;
+m_activities.push_back(a);
+}
+
+### Targeted station activity
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L329) (line 329)
+
+Specifically visiting the Combat station via Interact ensures the player
+reads the ComboSystem lesson — the most complex action-game subsystem.
+specificStationID restricts progress to ONLY the combat station.
+{
+DemoActivity a;
+a.id                = "code_explorer_combat";
+a.title             = "Code Explorer: Combat";
+a.description       = "Press E at the Action Combat station to study the ComboSystem.";
+a.type              = DemoActivityType::STATION_INTERACT;
+a.specificStationID = "combat"; // only combat station counts
+a.required          = 1;
+m_activities.push_back(a);
+}
+
+### Targeted station activity (second variant)
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L345) (line 345)
+
+Specifically visiting the PBR Rendering station ensures the player reads
+the BRDF / IBL lesson — the most visually impressive subsystem.
+Pairing two "code explorer" activities for different stations teaches the
+breadth of the engine's rendering capabilities.
+{
+DemoActivity a;
+a.id                = "code_explorer_rendering";
+a.title             = "Code Explorer: Rendering";
+a.description       = "Press E at the PBR Rendering station to study the BRDF pipeline.";
+a.type              = DemoActivityType::STATION_INTERACT;
+a.specificStationID = "rendering_pbr"; // only rendering_pbr counts
+a.required          = 1;
+m_activities.push_back(a);
+}
+
+### Gameplay-loop integration with teaching content
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L362) (line 362)
+
+──────────────────────────────────────────────────────────────────────────
+The "Combo Challenger" activity ties the ComboSystem lesson to a short
+interactive exercise:
+  1. Player presses E at the Combat station → reads the ComboSystem lesson.
+  2. Lesson panel shows "[Space] Start Combo Challenge".
+  3. Player presses Space → challenge overlay shows a 3-key sequence.
+  4. Player inputs [1] → [2] → [3] → NotifyChallengePassed() called.
+  5. Activity advances to "complete".
+
+This makes the teaching content experiential: the student doesn't just
+read about the IDLE→BUILDING→COOLDOWN FSM transitions — they trigger them
+with their own keypresses.  The keys are loaded from station_lessons.json
+(challengeKeys field), so an instructor can change the sequence without
+recompiling.
+
+Design choice: COMBO_PRACTICE type rather than STATION_INTERACT so the
+activity is only completable via the explicit challenge flow, not just
+by teleporting to the station.
+{
+DemoActivity a;
+a.id                = "combo_challenger";
+a.title             = "Combo Challenger";
+a.description       = "Complete the Combo Practice at the Combat station. "
+"Read the lesson, press [Space] to start, then input "
+"the displayed key sequence.";
+a.type              = DemoActivityType::COMBO_PRACTICE;
+a.specificStationID = "combat"; // challenge is at the combat station
+a.required          = 1;
+m_activities.push_back(a);
+}
+}
+
+### JSON Override for Activity Definitions
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L398) (line 398)
+
+─────────────────────────────────────────────────────────────────────────────
+When ENGINE_ENABLE_JSON is active, this method reads demo_activities.json
+and replaces the in-code defaults with content-authored data.
+
+The format is defined in
+  samples/vertical_slice_project/Content/World/demo_activities.json.
+
+If any field is missing or malformed, the C++ defaults are retained —
+the same "fail gracefully" rule used throughout the engine.
+─────────────────────────────────────────────────────────────────────────────
+
+### Explicit string-to-enum mapping
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L457) (line 457)
+
+A separate static helper makes the dependency on DemoActivityType
+explicit, prevents silent fallback for typos, and is easy to extend
+when a new type is added (the compiler will warn on non-exhaustive
+switches if all enum values are not handled).
+auto parseType = [](const std::string& s) -> DemoActivityType
+{
+if (s == "station_interact") return DemoActivityType::STATION_INTERACT;
+if (s == "station_scan")    return DemoActivityType::STATION_INTERACT;
+↑ Legacy alias: authored JSON that still uses the old "station_scan" string
+  string is accepted so that any existing data files load cleanly.
+if (s == "combat_challenge") return DemoActivityType::COMBAT_CHALLENGE;
+if (s == "item_collection")  return DemoActivityType::ITEM_COLLECTION;
+if (s == "combo_practice")   return DemoActivityType::COMBO_PRACTICE;
+Unknown type → INVALID; the entry will be rejected below.
+return DemoActivityType::INVALID;
+};
+
+### Global vs per-activity visited stations
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L517) (line 517)
+
+m_visitedStations is a single global set: visiting station A once
+deduplicates across ALL STATION_INTERACT activities simultaneously.
+We therefore save it once at the snapshot level, not once per activity.
+snap.globalVisitedStations.assign(m_visitedStations.begin(),
+m_visitedStations.end());
+
+### Defensive Restore
+
+**Source:** [`src/demo_game/demo_quest_manager.cpp`](src/demo_game/demo_quest_manager.cpp#L539) (line 539)
+
+Clamp the restored objective index to the valid range so that a save
+file written before new objectives were added does not put the quest
+past the last objective.
+const int maxObj = static_cast<int>(m_mainQuest.objectives.size());
+m_mainQuest.currentObjective = (snap.questObjectiveIndex >= 0
+&& snap.questObjectiveIndex <= maxObj)
+? snap.questObjectiveIndex
+: 0;
+m_mainQuest.completed = snap.questCompleted;
+
+---
+
+## demo_game/demo_quest_manager.hpp
+
+### Two Quest Systems, One Game
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L6) (line 6)
+
+============================================================================
+Demo_Game has two quest systems operating side-by-side:
+
+  1. QuestSystem (src/game/systems/QuestSystem.hpp/.cpp) — the full ECS-
+     driven production quest system inside GameRuntime.  It reads
+     quest_bank.json at startup, awards XP/Gil rewards, fires Lua callbacks,
+     and drives NPC dialogue.  It is available only when the GameRuntime is
+     active (windowed PLAYING state).
+
+  2. DemoQuestManager (this file) — a thin, headless-safe overlay tracker
+     that exposes the demo-specific main quest and three side activities to
+     the GDI HUD overlay and to the CI acceptance test (test 7).  It has
+     zero D3D11 / Win32 / ECS dependency, so it runs in headless mode too.
+
+The two systems are connected by DemoQuestManager listening to the same
+conceptual events (station visited, enemy killed, item collected) that
+OpenWorld forwards via its public Notify*() methods.  The production
+QuestSystem independently handles the same events through the EventBus.
+
+### Observer Pattern
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L26) (line 26)
+
+──────────────────────────────────
+DemoQuestManager is an Observer; OpenWorld is the Subject.  When the
+player teleports to a station, OpenWorld calls:
+
+  m_quests.NotifyStationVisited(stationID);
+
+Both DemoQuestManager and (indirectly) QuestSystem react to the same event.
+In a production engine all observers subscribe through an EventBus<T>
+(see src/engine/core/EventBus.hpp); here a direct method call is used for
+clarity.
+
+============================================================================
+
+### Data-Driven Activity Definitions
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L39) (line 39)
+
+============================================================================
+Activities are defined in C++ defaults (RegisterDefaults) that are always
+valid, plus an optional JSON override from
+Content/World/demo_activities.json (loaded via TryLoadFromJSON, available
+when ENGINE_ENABLE_JSON is defined).  The same fallback pattern is used
+everywhere in the engine (see open_world.cpp TryLoadStationsFromJSON).
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2026
+C++ Standard: C++17
+Platform: Windows (demo_game) / headless CI (ENGINE_ENABLE_D3D11 not required)
+
+### Typed Activity Verbs
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L71) (line 71)
+
+──────────────────────────────────────
+Encoding the activity type as an enum (rather than a magic string) lets the
+compiler enforce exhaustive switch coverage and avoids typo bugs.  Each
+type maps to one Notify*() method on DemoQuestManager:
+
+  STATION_INTERACT → NotifyStationVisited()  (interact via E key; unique-station
+                      deduplicated unless specificStationID is set)
+  COMBAT_CHALLENGE → NotifyEnemyKilled()
+  ITEM_COLLECTION  → NotifyItemCollected()
+
+### Sentinel Value
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L82) (line 82)
+
+────────────────────────────────
+INVALID (= 0) is the first entry so that zero-initialised `DemoActivityType`
+variables produce a detectable, obviously-wrong value rather than silently
+falling through to STATION_INTERACT.  The pattern matches other engine enums
+(e.g., BiomeType::NONE in open_world.hpp).
+
+### Definition vs Instance
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L109) (line 109)
+
+────────────────────────────────────────
+Storing both definition (title, required) and runtime state (progress,
+completed) in one struct is the simplest approach for a demo-scale system.
+
+A production system separates "ActivityDefinition" (immutable, loaded from
+a database once) from "ActivityInstance" (mutable, one per player, stored
+in the save slot).  We collapse them here so students can see the whole
+picture without flipping between files.
+
+### Linear Objective Chains
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L152) (line 152)
+
+─────────────────────────────────────────
+The main quest uses a simple ordered list.  Only the CURRENT objective is
+active at any time.  This "funnel" design (Witcher 3, FFXV, God of War) is
+the most common commercial pattern for story quests: clear progress,
+minimal UI cognitive load.
+
+Branching objectives would use a DAG; for a teaching demo the linear chain
+is unambiguous and teaches the same API surface.
+
+### Main Quest as Tutorial
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L180) (line 180)
+
+─────────────────────────────────────────
+A tutorial disguised as a quest is a commercial design technique: the player
+feels in control ("I'm on a quest") while the designer ensures they visit
+the key content points.  The objectives route the player past the most
+visually impactful teaching stations: Quests & Dialogue → Combat → PBR.
+
+### Single Responsibility
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L225) (line 225)
+
+───────────────────────────────────────
+DemoQuestManager has one job: track the demo quest and activity state.
+It does NOT:
+  • render anything   — rendering is handled by demo_main.cpp overlays
+  • tick time         — OpenWorld calls Notify*() at the right moments
+  • reward XP/Gil     — the production QuestSystem does this via ECS
+
+This separation keeps each class small enough to understand at a glance —
+an important teaching goal.
+
+### Interact-only quest advancement
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L267) (line 267)
+
+─────────────────────────────────────────────────
+This method is called ONLY from OpenWorld::InteractAtStation() — i.e.,
+only when the player deliberately presses E while near a station.
+TeleportToStation() (navigation via F1 menu) does NOT call this method.
+
+This enforces the teaching-design principle: the player must engage with
+a station intentionally, not just teleport to it.
+
+For STATION_INTERACT activities:
+  • If specificStationID is empty  → any unique station interact counts.
+  • If specificStationID is set    → only that station counts.
+Unique-station deduplication is performed via m_visitedStations.
+
+@param stationID  Station identifier (must match a TeachingStation::id).
+
+### Mini-game → quest tracking decoupling
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L308) (line 308)
+
+──────────────────────────────────────────────────────
+The combo challenge input logic lives in demo_main.cpp (UI layer) and
+the activity tracking lives here (quest layer).  Neither knows about the
+other's internals — they communicate only through this single Notify
+method.  This mirrors the EventBus<T> subscriber/publisher contract used
+in the production QuestSystem.
+
+### Why Not Serialize Directly?
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L346) (line 346)
+
+─────────────────────────────────────────────
+The JSON serialisation lives in OpenWorld::SaveProgress so it can be
+gated on ENGINE_ENABLE_JSON in one place.  DemoQuestManager exposes its
+state as this plain struct (no nlohmann dependency) and lets the caller
+serialize it however it wishes.  This keeps DemoQuestManager dependency-
+free and headless-safe.
+
+### No per-activity visited-station list
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L364) (line 364)
+
+m_visitedStations is a *global* set shared by all STATION_INTERACT
+activities.  Visiting a station once deduplicates across ALL such
+activities simultaneously.  We therefore store the set once at the
+top-level snapshot (globalVisitedStations) rather than redundantly
+repeating it for every activity.
+};
+std::vector<ActivityEntry> activities;
+
+### Defensive Restore
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L393) (line 393)
+
+───────────────────────────────────
+Production save systems always restore defensively: a corrupted or
+forward-migrated save should degrade gracefully (possibly losing some
+progress) rather than crashing.  The priority is always: boot into a
+playable state.
+
+@param snap  Snapshot previously obtained from Capture().
+
+### Hard-coded fallback
+
+**Source:** [`src/demo_game/demo_quest_manager.hpp`](src/demo_game/demo_quest_manager.hpp#L421) (line 421)
+
+─────────────────────────────────────
+Built-in defaults guarantee the game is always in a valid state, even
+if Content/World/demo_activities.json is missing (e.g., first run, or
+before the cook step has been run).  This is the same "safe defaults +
+optional override" pattern used in open_world.cpp.
 
 ---
 
@@ -2985,9 +4265,73 @@ exercises the entire flow without user input.
 @date    2026
 C++ Standard: C++17
 
+### Platform-conditional includes
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L49) (line 49)
+
+─────────────────────────────────────────────
+open_world.cpp compiles on both Windows (D3D11 sandbox + demo_game) and
+Linux (terminal game CI build).  Windows-specific headers are guarded by
+_WIN32 so the Linux build does not fail.
+SaveExists() uses <sys/stat.h> which is available on both Windows and Linux.
+CreateDirectoryA() (in SaveProgress) is Windows-only and guarded below.
+---------------------------------------------------------------------------
+include <sys/stat.h> // _stat (Win32) / stat (POSIX): file existence; mkdir (POSIX)
+
+### Conditional JSON dependency
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L70) (line 70)
+
+─────────────────────────────────────────────
+ENGINE_ENABLE_JSON is defined by CMake when nlohmann/json is available via
+vcpkg (see CMakeLists.txt: if(nlohmann_json_FOUND) … ENGINE_ENABLE_JSON).
+We guard the JSON include so open_world.cpp also compiles cleanly without
+vcpkg (e.g., the headless CI preset that does not install nlohmann-json).
+---------------------------------------------------------------------------
+ifdef ENGINE_ENABLE_JSON
+ include <fstream>
+ include <nlohmann/json.hpp>
+endif
+
+### Overlay stations from JSON (when available)
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L110) (line 110)
+
+─────────────────────────────────────────────────────────────
+TryLoadStationsFromJSON() replaces the C++ default station list with
+data from the content file.  If the file is missing (e.g., first run
+without content deployed) the C++ defaults from RegisterDefaultStations()
+are kept intact.  This is the AAA "fallback data" pattern: ship sane
+defaults in code; let external files override at runtime.
+TryLoadStationsFromJSON(
+"samples/vertical_slice_project/Content/World/teaching_stations.json");
+
+### Load station lesson content
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L120) (line 120)
+
+─────────────────────────────────────────────
+station_lessons.json holds the per-station teaching explanations shown
+when the player presses E (Interact) at a station.  Failure to load is
+non-fatal — stations are still fully usable, just without lesson text.
+TryLoadLessonsFromJSON(
+"samples/vertical_slice_project/Content/World/station_lessons.json");
+
+### Chained data-driven initialisation
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L129) (line 129)
+
+DemoQuestManager uses the same fallback pattern as stations:
+  1. RegisterDefaults() builds valid in-code quest/activity definitions.
+  2. TryLoadFromJSON() (inside Init) overlays content-authored data.
+The JSON path is passed here so the quest manager can overlay from
+demo_activities.json when ENGINE_ENABLE_JSON is active.
+m_quests.Init(
+"samples/vertical_slice_project/Content/World/demo_activities.json");
+
 ### Biome Colour Palettes
 
-**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L108) (line 108)
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L171) (line 171)
 
 ─────────────────────────────────────────────────────────────────────────────
 Each biome maps to a distinctive sky colour so even the clear colour alone
@@ -2996,9 +4340,86 @@ values would be read from the biome's SkyRenderer config (M10 SkyRenderer
 already has a time-of-day clock; here we use a static palette for simplicity).
 ─────────────────────────────────────────────────────────────────────────────
 
+### Teleport is navigation only; no quest progress
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L235) (line 235)
+
+────────────────────────────────────────────────────────────────
+Teleporting brings the player close to a station but does NOT
+advance the quest or count as an "interact".  The player must
+press E (Interact) after teleporting to trigger the lesson panel
+and advance the current quest objective.
+
+This separates "navigation" (getting there) from "engagement"
+(choosing to read the lesson) — a deliberate teaching-design
+decision matching Issue #83's updated direction.
+
+We record the player's new world position and the nearest station
+so the subsequent InteractAtStation() call can act on it.
+m_playerX          = s.worldX;
+m_playerZ          = s.worldZ;
+m_nearestStationID = stationID; // within interact range by definition
+return;
+}
+}
+std::cout << "[OpenWorld] Warning: station \"" << stationID << "\" not found.\n";
+}
+
+### Interact gate: player must be near a station
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L259) (line 259)
+
+─────────────────────────────────────────────────────────────
+In a real engine with continuous movement this check would compute
+distance from the player's live transform to each station's world
+position each frame.  Here, m_nearestStationID is set by
+TeleportToStation() (navigation) and cleared after a successful interact
+so repeated presses on the same station don't spam the quest manager.
+if (m_nearestStationID.empty())
+{
+std::cout << "[OpenWorld] Interact: not near any station.\n";
+return StationLesson{}; // empty lesson = panel should not open
+}
+
+### Single point of quest advancement
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L283) (line 283)
+
+───────────────────────────────────────────────────
+DemoQuestManager::NotifyStationVisited() is called ONLY from here, not
+from TeleportToStation().  This guarantees that quest objectives advance
+only when the player deliberately interacts with a station via E key.
+m_quests.NotifyStationVisited(interactedID);
+
+### One interact per visit
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L291) (line 291)
+
+─────────────────────────────────────────
+We clear m_nearestStationID so that pressing E a second time at the same
+station does NOT call NotifyStationVisited() again.  The player must
+teleport (or walk) back to the station to trigger another interact.
+This prevents accidental quest-spam from keyboard repeat events.
+Note: the quest manager's m_visitedStations set already deduplicates
+STATION_INTERACT activities, but clearing here is an extra safeguard and
+matches the real-game pattern where a station "completes" on first touch.
+m_nearestStationID.clear();
+
+### Forwarding pattern for DemoQuestManager events
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L344) (line 344)
+
+─────────────────────────────────────────────────────────────────
+All quest-manager events flow through OpenWorld so that demo_main.cpp
+(the UI/input layer) never holds a direct reference to DemoQuestManager.
+This mirrors the Command pattern: the UI issues a high-level "challenge
+passed" command; OpenWorld decides which quest-manager method to call.
+m_quests.NotifyChallengePassed();
+}
+
 ### Headless Auto-Advance
 
-**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L183) (line 183)
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L359) (line 359)
 
 ──────────────────────────────────────
 In CI (headless) mode there is no keyboard, so we automatically select
@@ -3013,7 +4434,7 @@ BootSelectNewGame();
 
 ### Simulated Loading Stall
 
-**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L197) (line 197)
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L373) (line 373)
 
 ─────────────────────────────────────────
 In a real engine this state waits for the async streaming system (M7)
@@ -3027,7 +4448,7 @@ const float waitTime = headless ? kHeadlessLoadTimeSeconds
 
 ### Biome Simulation
 
-**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L219) (line 219)
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L395) (line 395)
 
 ──────────────────────────────────
 In a real implementation the biome is determined by the player's world
@@ -3042,9 +4463,54 @@ static constexpr int kFramesPerBiome = kHeadlessFrames / kBiomeCount;
 const int biomeIdx = (m_frameCount / kFramesPerBiome) % kBiomeCount;
 m_currentBiome = static_cast<BiomeType>(biomeIdx);
 
+### JSON Data Override Pattern
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L431) (line 431)
+
+─────────────────────────────────────────────────────────────────────────────
+This method replaces the C++ station list with data from a JSON content
+file.  It follows the "try-and-fallback" pattern common in AAA engines:
+
+  1. C++ code registers safe defaults (RegisterDefaultStations).
+  2. Runtime code attempts to load the content-authored overrides.
+  3. If the override file is missing or malformed, the defaults remain.
+
+ENGINE_ENABLE_JSON guards the entire implementation so the file compiles
+cleanly even when nlohmann/json is not installed (e.g., CI presets that
+skip vcpkg).
+─────────────────────────────────────────────────────────────────────────────
+
+### Silent fallback
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L452) (line 452)
+
+We do NOT print an error here; a missing content file is a normal
+condition during early development (the cook step may not have run
+yet).  RegisterDefaultStations() already populated m_stations, so
+the game is in a valid state.
+return false;
+}
+
+### String→Enum mapping
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L474) (line 474)
+
+JSON stores biome names as human-readable strings ("grassland",
+"forest", …).  The runtime uses the BiomeType enum for efficiency.
+A small lambda (or free function) centralises the mapping so it is
+easy to extend when new biomes are added.
+auto parseBiome = [](const std::string& s) -> BiomeType
+{
+if (s == "forest")    return BiomeType::FOREST;
+if (s == "snow")      return BiomeType::SNOW;
+if (s == "desert")    return BiomeType::DESERT;
+if (s == "coast")     return BiomeType::COAST;
+return BiomeType::GRASSLAND; // default for unknown strings
+};
+
 ### Inline Default Station Data
 
-**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L255) (line 255)
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L543) (line 543)
 
 ─────────────────────────────────────────────
 We register the canonical teaching stations here so that Demo_Game works
@@ -3054,6 +4520,98 @@ missing.  Students can override or extend these by editing the JSON.
 Station coordinate convention: X increases East, Z increases North.
 The world is 1024 × 1024 world-units; spawn is at (512, 512).
 ─────────────────────────────────────────────────────────────────────────────
+
+### Per-station lesson content loading
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L681) (line 681)
+
+─────────────────────────────────────────────────────────────────────────────
+station_lessons.json stores the multi-line teaching text and code pointers
+shown in the Lesson Panel when the player presses E (Interact) at a station.
+
+The format is intentionally simple — a flat array of lesson objects keyed
+by stationID.  This makes it easy for course authors to add / edit lessons
+without touching C++ code.
+
+Same safe-fallback pattern as TryLoadStationsFromJSON:
+  • Missing file → silent fallback (built-in stub lesson in InteractAtStation).
+  • Malformed JSON → log + keep existing lessons map empty.
+─────────────────────────────────────────────────────────────────────────────
+
+### Optional combo-challenge fields
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L741) (line 741)
+
+─────────────────────────────────────────────────
+challengeTitle and challengeKeys are optional extensions defined
+in station_lessons.schema.json.  We only apply them when *both*
+fields are present in the JSON — a lesson with only one of the two
+would produce a broken HasChallenge() state (title but no keys, or
+vice-versa).  Partial data is silently discarded so the lesson still
+displays normally without a challenge prompt.
+const bool hasTitle = obj.contains("challengeTitle")
+&& obj["challengeTitle"].is_string()
+&& !obj["challengeTitle"].get<std::string>().empty();
+const bool hasKeys  = obj.contains("challengeKeys")
+&& obj["challengeKeys"].is_array()
+&& !obj["challengeKeys"].empty();
+
+### Portable file-existence check
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L799) (line 799)
+
+_stat() is available on both Windows (via <sys/stat.h>) and POSIX
+(via <sys/stat.h>).  On Windows the function is named _stat; on POSIX
+it is stat.  We use the preprocessor to call the right one.
+ifdef _WIN32
+struct _stat st{};
+return ::_stat(path.c_str(), &st) == 0;
+else
+struct stat st{};
+return ::stat(path.c_str(), &st) == 0;
+endif
+}
+
+### Global visited stations at save-file level
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L832) (line 832)
+
+m_visitedStations is a single global set shared by all STATION_INTERACT
+activities.  We serialise it once here (not once per activity) to avoid
+redundant data and to correctly represent the shared ownership model.
+j["visitedStations"] = snap.globalVisitedStations;
+
+### Creating the save directory
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L850) (line 850)
+
+On Windows we call CreateDirectoryA() which is a no-op if the
+directory already exists (returns FALSE, GetLastError()==ERROR_ALREADY_EXISTS).
+On Linux/POSIX we call mkdir() with permissions 0755.
+const std::string::size_type slash = path.find_last_of("/\\");
+if (slash != std::string::npos)
+{
+const std::string dir = path.substr(0, slash);
+ifdef _WIN32
+::CreateDirectoryA(dir.c_str(), nullptr); // ignore return; dir may exist
+else
+::mkdir(dir.c_str(), 0755); // ignore return; dir may exist
+endif
+}
+
+### Version guard
+
+**Source:** [`src/demo_game/open_world.cpp`](src/demo_game/open_world.cpp#L904) (line 904)
+
+Reject saves from incompatible future versions (version > 1) or clearly
+corrupted saves (version < 1).  Accept version == 1 exactly.
+const int version = j.value("version", 0);
+if (version != 1)
+{
+std::cout << "[OpenWorld] LoadProgress: unsupported save version "
+<< version << " (expected 1).\n";
+return false;
+}
 
 ---
 
@@ -3089,7 +4647,7 @@ Platform: Windows (demo_game) / headless CI
 
 ### Biomes as Enum Values
 
-**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L46) (line 46)
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L49) (line 49)
 
 ──────────────────────────────────────
 Each enum value maps to a distinct area in the open world with its own:
@@ -3100,7 +4658,7 @@ Each enum value maps to a distinct area in the open world with its own:
 
 ### Teaching Stations as Data-Shaped Records
 
-**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L74) (line 74)
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L77) (line 77)
 
 ─────────────────────────────────────────────────────────
 The current demo registers a small set of built-in teaching stations in
@@ -3112,9 +4670,38 @@ external-data loader in the future.
 The file Content/World/teaching_stations.json is the planned authoring
 format for a fully data-driven version of the demo station list.
 
+### Data-Driven Lesson Content
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L107) (line 107)
+
+───────────────────────────────────────────
+Storing lesson content in JSON (station_lessons.json) rather than hard-coded
+strings allows course instructors to update the explanations, add code
+pointers, and extend lessons without recompiling the engine.
+
+This is the same "authoring-time data, runtime consumption" pattern used
+throughout the engine:
+  • quest_bank.json    → QuestSystem
+  • teaching_stations.json → OpenWorld
+  • combat_config.json → ComboSystem
+  • station_lessons.json  → OpenWorld (this struct)
+
+### Extending StationLesson for gameplay
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L129) (line 129)
+
+When a station lesson also defines a short combo challenge (see
+station_lessons.json — "challengeTitle" + "challengeKeys"), the lesson
+panel shows a "[Space] Start Combo Challenge" prompt at the bottom.
+The player then inputs the key sequence displayed on-screen, exercising
+the same key-handling logic that the ComboSystem uses in gameplay.
+This makes the teaching content interactive without changing the tour flow.
+std::string              challengeTitle; ///< Heading for the combo challenge panel.
+std::vector<std::string> challengeKeys;  ///< Ordered key sequence (e.g. {"1","2","3"}).
+
 ### State Machines for Game Flow
 
-**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L104) (line 104)
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L156) (line 156)
 
 ─────────────────────────────────────────────
 Every game needs a clear flow: title screen → loading → gameplay → paused.
@@ -3125,9 +4712,58 @@ More complex games use a class hierarchy (State pattern) or a pushdown
 automaton (same as MenuStack).  For the demo we use the plain enum approach
 because students can see the entire flow in one switch block.
 
+### What Goes Into a Save File?
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L184) (line 184)
+
+============================================================================
+Every commercial game's save file answers: "what would a player lose if they
+quit without saving?"  For Demo_Game the answer is:
+
+  • Where they are in the world          → playerX / playerZ / currentBiome.
+  • How far they are through the quest   → questObjectiveIndex / questCompleted.
+  • Which side activities they finished  → activities[*].progress.
+
+We deliberately omit:
+  • Renderer state  — frame cap, preset, etc. are persisted in engine_config.json.
+  • GameRuntime ECS — the full ECS World is saved by the engine's SaveSystem
+                      (src/engine/save/save_system.hpp) which handles XP, Gil,
+                      equipment, etc.  DemoSaveState is the lighter overlay that
+                      the demo-specific quest/activity tracker needs.
+
+Format: a JSON file written to "SavedGames/demo_auto.json" (created on
+        first save; the directory is created if it does not exist).
+
+============================================================================
+
+### Versioned Save Files
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L204) (line 204)
+
+============================================================================
+We embed a "version" integer so that future milestones can detect an old
+save file and migrate it:
+  • version == 1 → current layout.
+  • version  < 1 → reject or migrate (no fields are known-good).
+  • version  > 1 → forward-compatible unknown fields are ignored.
+
+This is the same pattern used by the engine's SaveSystem
+(src/engine/save/save_schema.hpp, "version" field) and by shared JSON schemas.
+============================================================================
+
+### Single global set (not per-activity)
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L231) (line 231)
+
+All STATION_INTERACT activities share one visited-station set
+(m_visitedStations in OpenWorld).  We persist it once here at the
+top level so the JSON mirrors the in-memory ownership model and
+avoids any redundancy between activities.
+std::vector<std::string> globalVisitedStations;
+
 ### Headless Safety
 
-**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L138) (line 138)
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L263) (line 263)
 
 ────────────────────────────────
 OpenWorld does NOT call any Win32 or D3D11 API directly.  All rendering
@@ -3137,7 +4773,7 @@ game logic testable without a GPU.
 
 ### Biome-Driven Sky Colours
 
-**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L191) (line 191)
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L316) (line 316)
 
 ──────────────────────────────────────────
 Each biome has a characteristic sky colour that reinforces its identity:
@@ -3146,6 +4782,74 @@ Each biome has a characteristic sky colour that reinforces its identity:
   Snow      → pale icy blue.
   Desert    → hot orange-amber.
   Coast     → deep sea-blue cyan.
+
+### Separation of navigation and quest progression
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L368) (line 368)
+
+──────────────────────────────────────────────────────────────
+Teleporting is a convenience shortcut (professor's remote control).
+It must NOT auto-complete quest objectives, because that would remove the
+player's agency and devalue the teaching experience.  Only an explicit
+Interact action (E key) at the station counts as "visited" for the quest.
+
+@param stationID  Station identifier string (must match a registered station id).
+
+### Interact vs Teleport
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L386) (line 386)
+
+─────────────────────────────────────
+Teleport brings the player to a station; Interact is the deliberate act
+of engaging with it.  This mirrors commercial game design where proximity
+is necessary but not sufficient — the player must also choose to interact.
+(Compare: Dark Souls bonfires require pressing a button even when standing
+on top of them; FFXV quest markers require pressing X to talk to NPCs.)
+
+@return The StationLesson for the nearest station, or an empty lesson
+        if the player is not close enough to any station.
+
+### Forwarding events through OpenWorld
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L425) (line 425)
+
+─────────────────────────────────────────────────────
+demo_main.cpp reaches DemoQuestManager through OpenWorld rather than
+holding a direct reference to it.  This keeps the UI code decoupled from
+the quest logic — the same "thin shell" pattern used for NotifyEnemyKilled
+and NotifyItemCollected.
+
+### Data-Driven Station Loading
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L462) (line 462)
+
+─────────────────────────────────────────────
+This method merges station data from the JSON content file on top of the
+C++ defaults registered by RegisterDefaultStations().  It is compiled in
+only when ENGINE_ENABLE_JSON is defined (nlohmann/json is available via
+vcpkg).  When the JSON file is absent or malformed, the C++ defaults are
+retained so the game always boots regardless of content file status.
+
+Exposed as public so headless acceptance tests can exercise the fallback
+path with an intentionally bad file path.
+
+@param jsonPath  Absolute or relative path to teaching_stations.json.
+@return true  if the JSON was parsed and stations updated,
+        false if the file was missing or contained a parse error.
+
+### Save as a Side Effect of Interact
+
+**Source:** [`src/demo_game/open_world.hpp`](src/demo_game/open_world.hpp#L500) (line 500)
+
+──────────────────────────────────────────────────
+Demo_Game saves automatically every time the player successfully
+interacts at a teaching station.  This mirrors the "campfire save"
+pattern in FFXV (save at camp) and "bonfire save" in Dark Souls:
+the player trades a meaningful in-game action for a save point rather
+than having an always-available menu-save (which removes tension).
+
+@param path  Path to the save file (default = "SavedGames/demo_auto.json").
+@return true on success; false if the file could not be written.
 
 ---
 
@@ -10311,9 +12015,16 @@ nlohmann/json's value() method returns a default when a key is missing:
 This makes forward-compatible deserialization trivial: old config files
 without a new field still produce correct defaults.
 
+### engine_config.cpp includes performance_preset.hpp indirectly
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L32) (line 32)
+
+via engine_config.hpp, which already pulls in the header.  No extra include
+is needed here.
+
 ### std::ifstream text mode on Windows
 
-**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L42) (line 42)
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L46) (line 46)
 
 We use the default (text) mode here — std::ifstream without std::ios::binary.
 On Windows, text mode translates "\r\n" to "\n" on read.  For JSON, this
@@ -10328,7 +12039,7 @@ return false;
 
 ### Read raw JSON integers as int first, then clamp to
 
-**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L60) (line 60)
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L64) (line 64)
 
 [kMinDim, kMaxDim] before storing in the uint32_t fields.  This prevents
 a negative or zero JSON value from wrapping to a huge unsigned number
@@ -10341,9 +12052,33 @@ resolution.width  = static_cast<uint32_t>(std::max(kResolutionMinDim, std::min(k
 resolution.height = static_cast<uint32_t>(std::max(kResolutionMinDim, std::min(kResolutionMaxDim, rawH)));
 }
 
+### Clamping on load
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L80) (line 80)
+
+JSON files can contain out-of-range values (hand-edited, corrupted,
+or from a future tool that uses a wider range).  We clamp
+masterVolume to the documented [0.0, 1.0] interval so that
+downstream consumers (Settings UI, XAudio2 volume calls) never
+see invalid values without needing their own defensive clamps.
+audio.masterVolume = std::max(0.0f, std::min(1.0f, raw));
+}
+
+### Preset load order
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L101) (line 101)
+
+We first apply the named preset (which fills all fields from
+PresetDefaults), then apply any per-field overrides from JSON.
+This means a user can select "Low" preset but manually turn
+shadows back ON — the override takes precedence.
+if (j.contains("performance"))
+{
+const auto& p = j["performance"];
+
 ### EngineConfig::Load() is intentionally silent.
 
-**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L89) (line 89)
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L140) (line 140)
 
 Diagnostics are surfaced via the bool return value so the caller can
 route them through the engine Logger, ensuring they appear in the
@@ -10355,7 +12090,7 @@ catch (const std::exception&)
 
 ### Parse errors are recoverable user-data problems.
 
-**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L97) (line 97)
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L148) (line 148)
 
 We keep EngineConfig free of direct console I/O; higher-level startup
 code can decide how to surface the failure through the active logger.
@@ -10369,9 +12104,24 @@ return false;
 endif
 }
 
+### Saving the performance preset
+
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L174) (line 174)
+
+We write both the named preset tier AND each individual toggle.
+The individual toggles allow users to override the preset without
+changing the tier name.  Load() applies them in the correct order.
+j["performance"]["preset"]         = PresetName(activePreset);
+j["performance"]["shadowsEnabled"] = presetConfig.shadowsEnabled;
+j["performance"]["bloomEnabled"]   = presetConfig.bloomEnabled;
+j["performance"]["iblEnabled"]     = presetConfig.iblEnabled;
+j["performance"]["vsync"]          = presetConfig.vsync;
+j["performance"]["frameCap"]       = presetConfig.frameCap;
+j["performance"]["anisoLevel"]     = presetConfig.anisoLevel;
+
 ### dump(4) formats the JSON with 4-space indentation,
 
-**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L127) (line 127)
+**Source:** [`src/engine/core/engine_config.cpp`](src/engine/core/engine_config.cpp#L190) (line 190)
 
 making it easy for users to read and edit in any text editor.
 f << j.dump(4) << "\n";
@@ -10433,7 +12183,7 @@ This ensures the config system compiles even on minimal builds.
 
 ### uint32_t for pixel dimensions
 
-**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L55) (line 55)
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L57) (line 57)
 
 Window APIs (Win32, D3D11 swap-chain) all use unsigned types for width and
 height.  Storing them as uint32_t here eliminates the sign-to-unsigned
@@ -10449,7 +12199,7 @@ static constexpr int kResolutionMaxDim = 16384;  ///< Maximum window dimension i
 
 ### Key names are stored as single-character strings ("Z") or
 
-**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L85) (line 85)
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L87) (line 87)
 
 named keys ("Space", "Escape").  InputMapper converts them to Win32 VK codes
 at startup.
@@ -10462,9 +12212,25 @@ std::string menu   = "Escape";  ///< Open main menu.
 std::string interact = "F";     ///< Interact / talk.
 };
 
+### Performance Preset (M-DG-P1)
+
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L109) (line 109)
+
+-------------------------------------------------------------------------
+activePreset records which tier the player last selected.  presetConfig
+holds the effective feature flags derived from that tier (and any JSON
+overrides).  ApplyPreset() fills presetConfig from PresetDefaults().
+
+Workflow:
+  1. Load()        — reads JSON, including "performance.preset" string.
+  2. ApplyPreset() — fills presetConfig with tier defaults.
+  3. Load() (cont) — applies any per-field JSON overrides on top.
+  4. Caller passes presetConfig fields to the renderer via Set*().
+-------------------------------------------------------------------------
+
 ### Fail-soft loading
 
-**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L114) (line 114)
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L149) (line 149)
 
 The function intentionally returns false without throwing so the engine
 can start with defaults if no config file is present.  A missing config
@@ -10473,12 +12239,183 @@ should be reported but not crash the engine.
 
 ### Silent Load()
 
-**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L120) (line 120)
+**Source:** [`src/engine/core/engine_config.hpp`](src/engine/core/engine_config.hpp#L155) (line 155)
 
 EngineConfig::Load() does not write to stdout or stderr.  All success /
 failure diagnostics are returned via the bool result so the caller can
 route them through the engine Logger, ensuring they appear in the
 Saved/Logs/*.log file rather than bypassing it via direct console I/O.
+
+### Performance Presets (Scalability Settings)
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L6) (line 6)
+
+============================================================================
+Commercial games ship on a huge range of hardware: from Intel HD 4000 IGPs
+in 2012 laptops to RTX 4090s in 2024 desktops.  The same binary must run
+acceptably on all of them.
+
+The standard industry solution is a PRESET SYSTEM:
+  • LOW    — every expensive feature OFF.  30 fps is acceptable.
+  • MEDIUM — balanced quality/performance.  60 fps target.
+  • HIGH   — full features at 60 fps on a mid-range GPU (GTX 1060 / RX 580).
+  • ULTRA  — everything ON, uncapped frame rate for high-end machines.
+
+Examples:
+  • Final Fantasy XV PC — uses Quality / Lite / Standard / High-Quality presets.
+  • Cyberpunk 2077      — Low / Medium / High / Ultra / Ray Tracing tiers.
+  • Unreal Engine       — Scalability settings r.Shadow.Quality 0–3, etc.
+
+─── How Presets Work in This Engine ────────────────────────────────────────
+
+  1. EngineConfig holds the active preset (activePreset) plus the effective
+     per-feature config (presetConfig).
+  2. EngineConfig::ApplyPreset(p) fills presetConfig from PresetDefaults(p).
+     Individual fields can be overridden in the JSON config after the fact.
+  3. At startup, demo_main.cpp calls the renderer's Set*() methods to
+     enforce the config.  IRenderer::Set*() methods are no-ops by default
+     so the Vulkan backend silently ignores toggles it does not support yet.
+
+─── Toggle Descriptions ─────────────────────────────────────────────────────
+
+  shadowsEnabled — directional shadow map pass (512×512 depth, PCF 3×3).
+                   OFF saves the most GPU time on shadow-heavy scenes.
+  bloomEnabled   — post-process bloom pipeline (bright-pass + Gaussian blur
+                   + composite).  OFF removes 4 full-screen passes per frame.
+  iblEnabled     — image-based lighting (BRDF LUT, irradiance cubemap,
+                   prefiltered env cubemap).  OFF falls back to a simple
+                   constant ambient term.
+  vsync          — swap-chain sync interval.  OFF allows frames beyond
+                   monitor refresh rate (useful for benchmarking).
+  frameCap       — software sleep-based frame limiter in ms.
+                   0 = unlimited, 30 = 30 fps cap, 60 = 60 fps cap.
+  anisoLevel     — anisotropic filter max level for texture samplers.
+                   1 = bilinear (no aniso), up to 16× for max quality.
+
+============================================================================
+
+@author  Educational Game Engine Project
+@version 1.0
+@date    2026
+C++ Standard: C++17
+
+### Why Enum over Raw Integers?
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L72) (line 72)
+
+─────────────────────────────────────────────
+Using an enum prevents passing the integer `3` when you mean LOW (0).
+The compiler rejects invalid preset values at compile time.  The `uint8_t`
+underlying type keeps the value 1 byte, which matters when persisted in the
+EngineConfig JSON or transmitted in a network packet.
+
+### Default Member Initializers (C++11+)
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L98) (line 98)
+
+──────────────────────────────────────────────────────
+Initializing struct members at declaration (= true, = 60, etc.) means a
+zero-argument constructor is not needed — the compiler generates a default
+constructor that sets all fields to these values.  This reduces boilerplate
+and makes the intended "safe default" explicit at the declaration site.
+
+### Data Table Pattern
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L122) (line 122)
+
+─────────────────────────────────────
+Using a function (rather than a global array) keeps the values next to
+descriptive comments.  A switch statement makes it clear what changes
+between tiers and is impossible to accidentally index out-of-bounds (unlike
+an array looked up with an unchecked integer).
+
+@param p  The desired performance tier.
+@return   Default feature configuration for that tier.
+
+### LOW preset design intent
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L138) (line 138)
+
+Target: Intel HD 4000 (2012), GT 610, or any D3D11 FL 10_0 GPU.
+All expensive post-processing is OFF.  30 fps cap gives extra
+headroom so the GPU never thermal-throttles on this hardware.
+PerformancePresetConfig cfg;
+cfg.shadowsEnabled = false;
+cfg.bloomEnabled   = false;
+cfg.iblEnabled     = false;
+cfg.vsync          = true;
+cfg.frameCap       = 30;
+cfg.anisoLevel     = 1;
+return cfg;
+}
+case PerformancePreset::MEDIUM:
+{
+
+### MEDIUM preset design intent
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L153) (line 153)
+
+Target: GT 1030 / RX 460 class (~2016 budget GPU).
+Shadows ON (most visually impactful feature).
+Bloom and IBL OFF to keep 60 fps on this tier.
+PerformancePresetConfig cfg;
+cfg.shadowsEnabled = true;
+cfg.bloomEnabled   = false;
+cfg.iblEnabled     = false;
+cfg.vsync          = true;
+cfg.frameCap       = 60;
+cfg.anisoLevel     = 4;
+return cfg;
+}
+case PerformancePreset::HIGH:
+{
+
+### HIGH preset design intent
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L168) (line 168)
+
+Target: GTX 1060 / RX 580 (~2017 mainstream GPU).
+All features ON at 60 fps.
+PerformancePresetConfig cfg;
+cfg.shadowsEnabled = true;
+cfg.bloomEnabled   = true;
+cfg.iblEnabled     = true;
+cfg.vsync          = true;
+cfg.frameCap       = 60;
+cfg.anisoLevel     = 8;
+return cfg;
+}
+case PerformancePreset::ULTRA:
+default:
+{
+
+### ULTRA preset design intent
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L183) (line 183)
+
+Target: RTX 2060+ / RX 6700+.
+Everything ON; frame cap OFF so players with high-refresh monitors
+benefit from all available GPU headroom.
+PerformancePresetConfig cfg;
+cfg.shadowsEnabled = true;
+cfg.bloomEnabled   = true;
+cfg.iblEnabled     = true;
+cfg.vsync          = false; // Uncapped — let the monitor run free.
+cfg.frameCap       = 0;
+cfg.anisoLevel     = 16;
+return cfg;
+}
+}
+}
+
+### Parsing Enum Names
+
+**Source:** [`src/engine/core/performance_preset.hpp`](src/engine/core/performance_preset.hpp#L225) (line 225)
+
+─────────────────────────────────────
+We do not use C++17 std::from_chars or a map here because the set of
+valid values is tiny and fixed at compile time.  The simple if-chain is
+the most readable and debuggable approach.
 
 ---
 
@@ -13636,6 +15573,55 @@ class IRenderer
 public:
 virtual ~IRenderer() = default;
 
+### Default No-Op Virtual Methods
+
+**Source:** [`src/engine/rendering/IRenderer.hpp`](src/engine/rendering/IRenderer.hpp#L163) (line 163)
+
+──────────────────────────────────────────────
+These methods are intentionally NOT pure virtual.  Instead they provide
+empty default implementations so that:
+  1. VulkanRenderer (which has not yet implemented these features) still
+     compiles without change — the Vulkan backend silently ignores the
+     toggling until Vulkan feature parity is implemented (M14).
+  2. New renderer backends (e.g., a future Metal backend) start with
+     safe no-op behaviour.
+
+The D3D11Renderer overrides all of them to honour the preset.
+-----------------------------------------------------------------------
+
+### VSync and Frame Pacing
+
+**Source:** [`src/engine/rendering/IRenderer.hpp`](src/engine/rendering/IRenderer.hpp#L218) (line 218)
+
+─────────────────────────────────────────
+V-sync reduces tearing but introduces "frame-drop" artefacts if the GPU
+cannot render faster than the monitor refresh.  A common compromise is
+"G-Sync / FreeSync": the monitor adapts its refresh rate to the GPU
+frame rate.  We don't implement that here — VSync ON/OFF is the
+classic two-state toggle used since the early 2000s.
+
+### Software vs Hardware Frame Cap
+
+**Source:** [`src/engine/rendering/IRenderer.hpp`](src/engine/rendering/IRenderer.hpp#L236) (line 236)
+
+─────────────────────────────────────────────────
+Hardware VSync caps the frame rate at the monitor refresh frequency.
+A software frame cap is a `Sleep()` call at the end of each frame that
+burns any remaining budget.  The two can combine: v-sync ON + 30 fps cap
+means "lock to 30 fps on a 60 Hz monitor" (half refresh rate).  This is
+how console games achieve a rock-solid 30 fps without tearing.
+
+### Anisotropic Filtering
+
+**Source:** [`src/engine/rendering/IRenderer.hpp`](src/engine/rendering/IRenderer.hpp#L252) (line 252)
+
+──────────────────────────────────────
+Bilinear filtering looks blurry on surfaces viewed at a steep angle
+(e.g., a floor receding into the distance).  Anisotropic filtering
+samples the texture in an elongated "footprint" aligned with the angle
+of view.  16× anisotropy is essentially indistinguishable from perfect
+but is ~2× the memory bandwidth of 1× on modern GPUs.
+
 ### Translation Units
 
 **Source:** [`src/engine/rendering/Renderer.cpp`](src/engine/rendering/Renderer.cpp#L6) (line 6)
@@ -14871,9 +16857,23 @@ We advance it unconditionally so LoadScene("skinned_mesh") can start
 animating immediately.
 m_sceneTime += 1.0f / 60.0f;   // TEACHING NOTE: approx 60fps fixed step
 
+### IBL disabled fallback (LOW / MEDIUM preset)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L629) (line 629)
+
+Fall back to the non-IBL PBR sphere (DrawPBRMesh) which uses a
+constant ambient term instead of the three IBL textures.  This
+lets students see the visual difference between constant ambient
+(flat, direction-independent) and full IBL (sky-coloured ambient
+that varies with surface normal orientation).
+if (m_pbrScene.loaded)
+DrawPBRMesh();
+}
+}
+
 ### Sky Draw Order
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L626) (line 626)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L641) (line 641)
 
 The sky is drawn AFTER clearing the back buffer but could optionally be
 drawn first since it uses depth 0.9999 (behind everything).  In a full
@@ -14890,21 +16890,104 @@ m_skyRenderer.Update(1.0f / 60.0f);
 DrawSky();
 }
 
-### Present interval
+### Shadows disabled fallback
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L657) (line 657)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L666) (line 666)
+
+When the LOW or MEDIUM preset disables shadows, we skip the shadow
+draw entirely.  The back buffer already has the clear colour so the
+student can visually compare the shadow pass ON vs OFF by toggling
+the preset in the settings menu — a direct teaching demonstration.
+}
+
+### Bloom disabled fallback
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L682) (line 682)
+
+With bloom OFF the back buffer shows only the plain clear colour —
+a starker difference than the shadowed-sphere comparison, but equally
+effective as a teaching contrast.
+}
+
+### Present interval and software frame cap (M-DG-P1)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L689) (line 689)
 
 -----------------------------------------------------------------------
-Present(1, 0) — sync to VBlank (v-sync on), 60fps cap on 60Hz monitors.
-Present(0, 0) — present as fast as possible (no v-sync).
-We use v-sync for the demo to avoid tearing.
+Present(syncInterval, flags):
+  syncInterval = 1  → wait for VBlank (v-sync ON).  Prevents tearing
+                       but caps frame rate at the monitor refresh rate.
+  syncInterval = 0  → present immediately (v-sync OFF).  Maximum frame
+                       rate; tearing may be visible on some monitors.
+
+Software frame cap (frameCap > 0):
+  After Present, if the total frame time is less than (1000 / frameCap)
+  milliseconds, we sleep the remaining time.  This is the same technique
+  used by console games to lock at exactly 30 fps on a 60 Hz display:
+  v-sync ON prevents tearing, software sleep limits the frame rate.
+  (30 fps = every second Present call is skipped.)
 -----------------------------------------------------------------------
-m_swapChain->Present(1, 0);
+const UINT syncInterval = m_vsyncEnabled ? 1u : 0u;
+m_swapChain->Present(syncInterval, 0);
+
+### High-resolution timer for frame capping
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L710) (line 710)
+
+QueryPerformanceCounter gives ~100 ns precision.  We track the
+frame start time in m_frameStartTick (updated at the end of
+DrawFrame, just before returning) and compute how many milliseconds
+remain in the current frame's budget.
+Win32 Sleep() is used (not std::this_thread::sleep_for) because it
+keeps the entire frame-cap path on a single Win32 API without
+requiring <thread>; the accuracy is identical (~1 ms) for our needs.
+static LARGE_INTEGER s_perfFreq = {};
+if (s_perfFreq.QuadPart == 0)
+::QueryPerformanceFrequency(&s_perfFreq);
+
+### First-frame tick initialisation
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L728) (line 728)
+
+On the very first call to DrawFrame, m_frameStartTick is zero (it was
+default-initialised).  In that case `elapsed` would measure time since
+the LARGE_INTEGER epoch, causing a huge overshoot.  We detect this by
+checking whether the elapsed time is larger than one full second (i.e.
+the perf counter frequency) and skip sleeping in that frame only.
+const LONGLONG elapsed = now.QuadPart - m_frameStartTick.QuadPart;
+const bool firstFrame  = (m_frameStartTick.QuadPart == 0)
+|| (elapsed > s_perfFreq.QuadPart);
+if (!firstFrame && elapsed < budget)
+{
+
+### Windows Sleep() scheduler slack correction
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L739) (line 739)
+
+Sleep(n) on Windows does NOT guarantee exactly n milliseconds.
+The Windows timer resolution defaults to ~15.6 ms (the default
+scheduler quantum).  Calling timeBeginPeriod(1) reduces this to
+~1 ms, but we do not call it here to avoid disturbing the
+system-wide timer for other processes.
+
+Instead we subtract 1 ms from the sleep request so we wake up
+slightly early, then busy-wait for the remaining time via the
+QueryPerformanceCounter loop (not shown here — we rely on the
+natural jitter of DrawFrame being called again next loop
+iteration).  This gives a reasonable ~1–2 ms accuracy without
+spinlooping and without affecting the system timer.
+const LONGLONG remainMs = (budget - elapsed) * 1000LL / s_perfFreq.QuadPart;
+if (remainMs > 1)
+::Sleep(static_cast<DWORD>(remainMs - 1)); // -1 ms: see TEACHING NOTE above
+}
+}
+Record the start tick for the next frame's cap calculation.
+::QueryPerformanceCounter(&m_frameStartTick);
 }
 
 ### Swap Chain Resize Sequence (D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L675) (line 675)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L770) (line 770)
 
 1. Release the render-target view (it references the old back buffer).
 2. Call IDXGISwapChain::ResizeBuffers — the swap chain resizes in place.
@@ -14913,7 +16996,7 @@ Missing step 1 causes E_INVALIDARG because the buffer is still bound.
 
 ### Recreate the depth buffer to match the new back-buffer size.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L716) (line 716)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L811) (line 811)
 
 The depth buffer must always be the same width×height as the back buffer.
 Release the old DSV + DST and create new ones at the new dimensions.
@@ -14923,7 +17006,7 @@ CreateDepthStencilBuffer(width, height);
 
 ### Off-Screen Validation for Headless CI
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L730) (line 730)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L825) (line 825)
 
 -----------------------------------------------------------------------
 In headless mode the swap chain does not exist (no HWND surface).
@@ -14948,7 +17031,7 @@ return false;
 
 ### COM Reference Counting
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L779) (line 779)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L874) (line 874)
 
 COM objects are reference-counted.  CreateRenderTargetView internally
 calls AddRef on the texture, so the texture stays alive even after we
@@ -14963,7 +17046,7 @@ return false;
 
 ### Validating the Scene Pipeline in Headless Mode (M3+)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L796) (line 796)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L891) (line 891)
 
 -----------------------------------------------------------------------
 If a scene has been loaded (e.g. "textured_quad"), we bind the offscreen
@@ -14982,7 +17065,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the GPU skinning scene (M4b).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L816) (line 816)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L911) (line 911)
 
 We bind the off-screen RTV, set a matching 64×64 viewport, and call
 DrawSkinnedMesh() once.  This validates that the skinned mesh pipeline
@@ -14998,7 +17081,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the PBR scene (M9).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L833) (line 833)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L928) (line 928)
 
 Same pattern as skinned_mesh: bind the 64×64 off-screen RTV, set the
 matching viewport, and call DrawPBRMesh() once.  This validates that
@@ -15016,7 +17099,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the PBR + IBL scene (M16).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L852) (line 852)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L947) (line 947)
 
 Same 64×64 offscreen RTV pattern.  DrawPBRIBLMesh() validates that:
   • pbr_ibl.vs.hlsl + pbr_ibl.ps.hlsl compile under WARP.
@@ -15036,7 +17119,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the dynamic sky scene (M10).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L873) (line 873)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L968) (line 968)
 
 Bind the 64×64 off-screen RTV and call DrawSky() once.  This validates
 that the sky shaders (sky.vs.hlsl + sky.ps.hlsl), the sky constant
@@ -15052,7 +17135,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the shadow map scene (M17).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L891) (line 891)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L986) (line 986)
 
 -----------------------------------------------------------------------
 DrawShadowScene() executes two passes:
@@ -15077,7 +17160,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### Headless validation for the bloom scene (M17).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L919) (line 919)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1014) (line 1014)
 
 -----------------------------------------------------------------------
 DrawBloomScene() executes four full-screen triangle passes:
@@ -15101,7 +17184,7 @@ m_context->RSSetViewports(1, &vp);
 
 ### C++ requires functions to be declared before use.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L956) (line 956)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1051) (line 1051)
 
 LoadSkinnedMeshScene is a file-scope static helper defined later in this
 translation unit.  Rather than move the entire 300-line function above
@@ -15113,7 +17196,7 @@ D3D11Renderer::SkinnedMeshScene& scene);
 
 ### Runtime HLSL Compilation with D3DCompileFromFile
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1101) (line 1101)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1196) (line 1196)
 
 -----------------------------------------------------------------------
 D3D11 shaders are written in HLSL and can be compiled either:
@@ -15136,7 +17219,7 @@ Windows filesystem API uses UTF-16 internally.
 
 ### Embedded Fallback HLSL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1127) (line 1127)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1222) (line 1222)
 
 -----------------------------------------------------------------------
 If the .hlsl files are not present on disk (e.g. a minimal CI run that
@@ -15154,7 +17237,7 @@ static const char* kVsFallback =
 
 ### std::wstring for Win32 wide-char path
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1161) (line 1161)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1256) (line 1256)
 
 D3DCompileFromFile requires a LPCWSTR (wide string) path.
 std::filesystem::path::wstring() gives us that on MSVC.
@@ -15174,7 +17257,7 @@ D3DCOMPILE_ENABLE_STRICTNESS,   // catch undeclared variables
 
 ### Creating Shader Objects
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1241) (line 1241)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1336) (line 1336)
 
 -----------------------------------------------------------------------
 D3D11 separates shader compilation (→ bytecode blob) from shader object
@@ -15188,7 +17271,7 @@ nullptr, &m_quadScene.vs);
 
 ### Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1273) (line 1273)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1368) (line 1368)
 
 -----------------------------------------------------------------------
 The Input Assembler (IA) stage needs to know how the raw bytes in the
@@ -15211,7 +17294,7 @@ D3D11_INPUT_PER_VERTEX_DATA, 0 },
 
 ### Vertex and Index Buffers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1309) (line 1309)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1404) (line 1404)
 
 -----------------------------------------------------------------------
 D3D11_BUFFER_DESC describes the buffer's purpose and access pattern:
@@ -15232,7 +17315,7 @@ bd.BindFlags          = D3D11_BIND_VERTEX_BUFFER;
 
 ### Texture Loading vs Fallback
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1358) (line 1358)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1453) (line 1453)
 
 -----------------------------------------------------------------------
 We look for a test DDS texture in the shaderDir's parent (project root)
@@ -15251,7 +17334,7 @@ ddsPath = ddsPath.lexically_normal();
 
 ### Procedural 1×1 White Fallback Texture
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1384) (line 1384)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1479) (line 1479)
 
 -----------------------------------------------------------------------
 When no DDS file is present we create a 1×1 RGBA8 white texture
@@ -15262,7 +17345,7 @@ std::cout << "[D3D11Renderer] No DDS found; using 1×1 white fallback texture.\n
 
 ### LoadScene_SkinnedMesh (private helper — inlined in LoadScene)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1464) (line 1464)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1559) (line 1559)
 
 We use a local lambda at file scope to keep the main LoadScene() readable.
 All resource creation follows the same pattern as the textured quad:
@@ -15270,7 +17353,7 @@ All resource creation follows the same pattern as the textured quad:
 
 ### Fallback HLSL for the skinned mesh vertex shader.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1477) (line 1477)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1572) (line 1572)
 
 -----------------------------------------------------------------------
 This is a minimal version of skinned_mesh.vs.hlsl that performs linear
@@ -15295,7 +17378,7 @@ static const char* kSkinnedVsFallback =
 
 ### SkinnedVertex Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1584) (line 1584)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1679) (line 1679)
 
 The D3D11_INPUT_ELEMENT_DESC array must exactly match the SkinnedVertex
 struct defined at the top of this file (field order and byte offsets).
@@ -15318,7 +17401,7 @@ D3D11_INPUT_ELEMENT_DESC layout[] =
 
 ### Why cull-none for the skinning demo?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1657) (line 1657)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1752) (line 1752)
 
 The strip starts facing the camera but rotates 360° as bone 1 oscillates.
 With the default back-face culling the strip disappears every 180°.
@@ -15341,7 +17424,7 @@ return false;
 
 ### The D3D11 Draw Call Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1689) (line 1689)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1784) (line 1784)
 
 -----------------------------------------------------------------------
 Every draw call in D3D11 requires the full pipeline state to be set:
@@ -15356,7 +17439,7 @@ We set IA, VS, and PS here for the quad draw call.
 
 ### PSSetShaderResources / PSSetSamplers
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1701) (line 1701)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1796) (line 1796)
 
 These calls bind texture resources and sampler states to HLSL registers.
 register(t0) in HLSL ↔ slot 0 of PSSetShaderResources.
@@ -15365,7 +17448,7 @@ register(s0) in HLSL ↔ slot 0 of PSSetSamplers.
 
 ### Constructing the Skin Matrices for the 2-Joint Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1757) (line 1757)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1852) (line 1852)
 
 -----------------------------------------------------------------------
 The demo skeleton has two joints:
@@ -15391,7 +17474,7 @@ const float angle = std::sin(m_sceneTime * 1.5f) * (kPi * 0.25f);  // ±45°
 
 ### Input Assembler (IA) Stage Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1792) (line 1792)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1887) (line 1887)
 
 -----------------------------------------------------------------------
 We set the same four IA parameters as any other draw call:
@@ -15405,7 +17488,7 @@ m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 ### DrawIndexed
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1816) (line 1816)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1911) (line 1911)
 
 -----------------------------------------------------------------------
 DrawIndexed(indexCount, startIndex, baseVertex):
@@ -15417,7 +17500,7 @@ m_context->DrawIndexed(static_cast<UINT>(m_skinnedScene.indexCount), 0, 0);
 
 ### Release Order (LIFO vs Creation Order)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1838) (line 1838)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1933) (line 1933)
 
 COM objects must be released in reverse-creation order when one object
 holds a reference to another.  For independent scene objects (shaders,
@@ -15426,7 +17509,7 @@ reverse makes intent clear.
 
 ### Release order: state objects first (they don't depend on
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1868) (line 1868)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1963) (line 1963)
 
 shaders), then shaders, then geometry buffers, then the CB.
 if (m_skinnedScene.rastState)   { m_skinnedScene.rastState->Release();   m_skinnedScene.rastState   = nullptr; }
@@ -15438,7 +17521,7 @@ if (m_skinnedScene.vertexBuf)   { m_skinnedScene.vertexBuf->Release();   m_skinn
 
 ### Release in reverse creation order (LIFO):
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1882) (line 1882)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1977) (line 1977)
 
 state objects first (no dependents), then shaders, then buffers.
 if (m_pbrScene.rastState)   { m_pbrScene.rastState->Release();   m_pbrScene.rastState   = nullptr; }
@@ -15455,7 +17538,7 @@ m_pbrScene.loaded     = false;
 
 ### The sky scene only has three objects: VS, PS, and the
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1897) (line 1897)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1992) (line 1992)
 
 sky constant buffer.  No vertex buffer or input layout to release (the
 full-screen triangle uses SV_VertexID — no IA stage resources needed).
@@ -15466,7 +17549,7 @@ m_skyScene.loaded = false;
 
 ### Release IBL textures.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1906) (line 1906)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2001) (line 2001)
 
 The raw ID3D11Texture2D* objects must be released separately from the
 SRVs.  When CreateShaderResourceView() was called, the SRV got its own
@@ -15506,7 +17589,7 @@ m_pbrIblScene.loaded     = false;
 
 ### Release Order for Shadow Resources
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1944) (line 1944)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2039) (line 2039)
 
 The shadow map SRV and DSV both reference the same underlying texture
 (shadowTex).  The SRV and DSV each add a COM reference when created, so
@@ -15534,7 +17617,7 @@ m_shadowScene.loaded     = false;
 
 ### Releasing Render Targets
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L1970) (line 1970)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2065) (line 2065)
 
 Each offscreen RT consists of three objects: the ID3D11Texture2D (raw
 GPU memory), an ID3D11RenderTargetView (write access), and an
@@ -15572,7 +17655,7 @@ m_bloomScene.loaded = false;
 
 ### PBR Per-Frame Constant Buffer Update
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2018) (line 2018)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2113) (line 2113)
 
 -----------------------------------------------------------------------
 The world matrix changes every frame (the sphere rotates slowly around
@@ -15591,7 +17674,7 @@ Proj matrix: FovY=60°, aspect from current back-buffer, near=0.1, far=100.
 
 ### LookAt matrix (Right-Handed, row-major D3D11)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2041) (line 2041)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2136) (line 2136)
 
 -----------------------------------------------------------------------
 We build the view matrix manually to show the derivation:
@@ -15611,7 +17694,7 @@ Vec3 up     = { 0.0f, 1.0f, 0.0f };
 
 ### Perspective Projection (Right-Handed, D3D11 Z=[0,1])
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2069) (line 2069)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2164) (line 2164)
 
 -----------------------------------------------------------------------
 D3D11 maps view-space z ∈ [-near, -far] to NDC z ∈ [0, 1].
@@ -15636,7 +17719,7 @@ float f      = 1.0f / std::tan(kFovY * 0.5f);   // cot(FovY/2)
 
 ### Map / Unmap for DYNAMIC buffers.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2102) (line 2102)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2197) (line 2197)
 
 D3D11_MAP_WRITE_DISCARD tells the driver "discard the old contents and
 give me a new pointer to write into".  This avoids GPU/CPU stalls: the
@@ -15657,7 +17740,7 @@ std::memcpy(pfData.proj,         projMat.Data(),  64);
 
 ### Input Assembler (IA) stage setup.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2131) (line 2131)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2226) (line 2226)
 
 We must set:
   1. The primitive topology (triangles, lines, etc.).
@@ -15675,7 +17758,7 @@ m_context->IASetInputLayout(m_pbrScene.inputLayout);
 
 ### Updating the Sky Constant Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2175) (line 2175)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2270) (line 2270)
 
 -----------------------------------------------------------------------
 m_skyRenderer.Update(dt) is called by DrawFrame each frame to advance
@@ -15693,7 +17776,7 @@ engine::rendering::SkyShaderConstants constants = m_skyRenderer.GetShaderConstan
 
 ### Sky Pipeline State
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2200) (line 2200)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2295) (line 2295)
 
 -----------------------------------------------------------------------
 The sky draw uses the absolute minimum pipeline state:
@@ -15718,7 +17801,7 @@ The sky draw uses the absolute minimum pipeline state:
 
 ### The sky VS does not use any constant buffers.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2230) (line 2230)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2325) (line 2325)
 
 Explicitly clear b0 of the VS stage so no stale matrix CB from a
 previous draw call bleeds into the sky VS's register space.
@@ -15727,7 +17810,7 @@ m_context->VSSetConstantBuffers(0, 1, &nullCB);
 
 ### Draw(3, 0): Full-Screen Triangle, No Vertex Buffer
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2241) (line 2241)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2336) (line 2336)
 
 -----------------------------------------------------------------------
 Draw(vertexCount, startVertexLocation):
@@ -15743,7 +17826,7 @@ m_context->Draw(3, 0);
 
 ### Embedded PBR Shader Fallbacks
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2274) (line 2274)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2369) (line 2369)
 
 -----------------------------------------------------------------------
 As with the textured_quad and skinned_mesh scenes, we include minimal
@@ -15768,7 +17851,7 @@ static const char* kPBRVsFallback =
 
 ### kPi for the UV sphere generation inside LoadPBRMeshScene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2308) (line 2308)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2403) (line 2403)
 
 math_types.hpp defines engine::math::kPi, but that name requires the
 engine::math namespace which is not open at file scope here.  We declare a
@@ -15779,7 +17862,7 @@ static constexpr float kPi = 3.14159265358979323846f;
 
 ### M23 authored material ingestion (JSON-lite parser)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2317) (line 2317)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2412) (line 2412)
 
 -----------------------------------------------------------------------
 The first M23 runtime step is reading authored PBR material parameters from
@@ -15805,7 +17888,7 @@ std::string loadedFromPath;
 
 ### A material key may appear multiple times in different
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2352) (line 2352)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2447) (line 2447)
 
 JSON scopes (for example "ao" as scalar and "ao" texture slot).
 We keep scanning until we find a numeric value instead of trusting the
@@ -15821,7 +17904,7 @@ return false;
 
 ### Same compile helper pattern as the skinned mesh scene.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2749) (line 2749)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2844) (line 2844)
 
 We attempt to compile from the .hlsl file on disk; if that fails (file
 missing, syntax error) we fall back to the embedded string.  This
@@ -15836,7 +17919,7 @@ HRESULT   hr     = E_FAIL;
 
 ### D3D11 Input Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2817) (line 2817)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2912) (line 2912)
 
 The input layout maps each field of the C++ vertex struct to a
 semantic name in the HLSL VSInput struct.  We have three fields:
@@ -15868,7 +17951,7 @@ return false;
 
 ### UV Sphere Parametric Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2849) (line 2849)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2944) (line 2944)
 
 A UV sphere is generated by sweeping a circle (latitude) around the
 Y axis (longitude).  Parameters:
@@ -15900,7 +17983,7 @@ constexpr int N_SLICES = 16;
 
 ### Triangle winding (clockwise from outside of sphere).
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2923) (line 2923)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3018) (line 3018)
 
 Triangle 1: top-left, bottom-left, top-right
 Triangle 2: top-right, bottom-left, bottom-right
@@ -15911,7 +17994,7 @@ indices[iIdx++] = v1;
 
 ### IMMUTABLE vs DYNAMIC buffers for geometry.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2941) (line 2941)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3036) (line 3036)
 
 The sphere geometry never changes, so we use D3D11_USAGE_IMMUTABLE:
   • GPU-only access (no CPU write after creation).
@@ -15936,7 +18019,7 @@ return false;
 
 ### D3D11 Constant Buffer Size Rules.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L2982) (line 2982)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3077) (line 3077)
 
 A D3D11 constant buffer must be a MULTIPLE of 16 bytes.
 The perFrameCB holds four 4×4 float matrices = 4 × 64 = 256 bytes. ✓
@@ -15963,7 +18046,7 @@ return buf;
 
 ### Uploading data to a DYNAMIC constant buffer at init.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3018) (line 3018)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3113) (line 3113)
 
 For the very first upload we use D3D11_MAP_WRITE_DISCARD (same as the
 per-frame update).  The resource has never been used by the GPU, so
@@ -15972,7 +18055,7 @@ per-frame update).  The resource has never been used by the GPU, so
 
 ### Light direction points TOWARD the light (toward the source),
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3025) (line 3025)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3120) (line 3120)
 
 so the dot product N·L is positive for surfaces facing the light.
 struct alignas(16) LightData {
@@ -16000,7 +18083,7 @@ lightData.padL2           = 0.0f;
 
 ### Workaround: use device->GetImmediateContext to get
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3056) (line 3056)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3151) (line 3151)
 
 a context pointer for the one-time init upload.  In a production
 engine the context would be passed as a parameter.
@@ -16019,7 +18102,7 @@ ctx->Release();
 
 ### Material Parameters for a Gold-like Surface:
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3073) (line 3073)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3168) (line 3168)
 
 albedo   = warm orange-gold (reflected tint for metals = albedo)
   metallic = 0.9  (mostly metallic; a small dielectric contribution
@@ -16040,7 +18123,7 @@ matData.matPad[0] = matData.matPad[1] = 0.0f;
 
 ### Cull-None for the PBR Demo Sphere.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3122) (line 3122)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3217) (line 3217)
 
 The default D3D11 rasterizer state back-face culls (removes triangles
 whose vertices wind clockwise from the camera's perspective).  For a
@@ -16064,7 +18147,7 @@ device->CreateRasterizerState(&rd, &scene.rastState);
 
 ### Minimal Pipeline for a Sky Scene
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3160) (line 3160)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3255) (line 3255)
 
 ──────────────────────────────────────────────────
 The sky is the simplest possible D3D11 pipeline:
@@ -16081,7 +18164,7 @@ This simplicity makes the sky scene a perfect study example for D3D11 basics:
 
 ### Embedded Sky Shader Fallbacks
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3175) (line 3175)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3270) (line 3270)
 
 -----------------------------------------------------------------------
 As with all other scenes, we include minimal inline HLSL strings as
@@ -16104,7 +18187,7 @@ static const char* kSkyVsFallback =
 
 ### compile helper (same pattern as all other scene loaders)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3216) (line 3216)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3311) (line 3311)
 
 -----------------------------------------------------------------------
 auto compile = [&](const fs::path& path, const char* fallback,
@@ -16116,7 +18199,7 @@ HRESULT   hr     = E_FAIL;
 
 ### Sky Constant Buffer Size
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3301) (line 3301)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3396) (line 3396)
 
 SkyShaderConstants is 80 bytes (5 × float4 = 5 × 16 bytes).
 D3D11 requires constant buffers to be multiples of 16 bytes.
@@ -16131,7 +18214,7 @@ static_assert(sizeof(engine::rendering::SkyShaderConstants) % 16 == 0,
 
 ### Depth Buffer Creation in D3D11
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3335) (line 3335)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3430) (line 3430)
 
 ===========================================================================
 Creating a D3D11 depth buffer requires three steps:
@@ -16167,7 +18250,7 @@ sized and are recreated on every resize.
 
 ### D3D11_DEPTH_STENCIL_VIEW_DESC
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3399) (line 3399)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3494) (line 3494)
 
 ViewDimension = TEXTURE2D means we bind the entire 2D texture as depth.
 MipSlice = 0 selects the single mip level we created above.
@@ -16179,7 +18262,7 @@ dsvDesc.Texture2D.MipSlice = 0;
 
 ### Why create the state here and not in Init()?
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3421) (line 3421)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3516) (line 3516)
 
 The state is logically part of the depth buffer setup.  Keeping all
 three objects together makes the initialisation sequence obvious and
@@ -16196,7 +18279,7 @@ dsStateDesc.StencilEnable  = FALSE;   // Not used yet
 
 ### We do NOT release m_depthStencilState here because it is
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3454) (line 3454)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3549) (line 3549)
 
 device-level and not swap-chain-sized.  Releasing it on resize would
 force an unnecessary CreateDepthStencilState() round-trip.  It is
@@ -16207,7 +18290,7 @@ if (m_depthStencilTex)  { m_depthStencilTex->Release();  m_depthStencilTex  = nu
 
 ### Image-Based Lighting (IBL) Procedural Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3465) (line 3465)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3560) (line 3560)
 
 ===========================================================================
 A production engine loads IBL textures from pre-cooked HDR cubemap files.
@@ -16236,7 +18319,7 @@ fills the data — no further updates are needed.
 
 ### Hammersley Quasi-Random Sequence
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3494) (line 3494)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3589) (line 3589)
 
 ---------------------------------------------------------------------------
 The Hammersley sequence gives a well-distributed set of 2D sample points
@@ -16259,7 +18342,7 @@ return static_cast<float>(bits) * 2.3283064365386963e-10f; // 1/2^32
 
 ### GGX Importance Sampling (Tangent Space)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3521) (line 3521)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3616) (line 3616)
 
 ---------------------------------------------------------------------------
 Given two uniform random numbers (xi1, xi2) and a roughness α, this
@@ -16281,7 +18364,7 @@ float phi      = 2.0f * kPi * xi1;
 
 ### epsilon placement: add to the full denominator expression
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3539) (line 3539)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3634) (line 3634)
 
 so the protection is clearly outside the main formula term.
 float cosTheta = std::sqrt((1.0f - xi2) /
@@ -16294,7 +18377,7 @@ cosTheta };
 
 ### Smith-Schlick-GGX Geometry (IBL variant)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3550) (line 3550)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3645) (line 3645)
 
 ---------------------------------------------------------------------------
 For the BRDF LUT precomputation we use the IBL variant of k:
@@ -16312,7 +18395,7 @@ return NdotV / (NdotV * (1.0f - k) + k + 1e-7f);
 
 ### Integrate BRDF for one (NoV, roughness) sample
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3571) (line 3571)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3666) (line 3666)
 
 ---------------------------------------------------------------------------
 This computes the two components of the split-sum BRDF LUT for a single
@@ -16337,7 +18420,7 @@ float Vz = NdotV;
 
 ### Procedural Sky Environment Colour
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3628) (line 3628)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3723) (line 3723)
 
 ---------------------------------------------------------------------------
 Returns a physically plausible sky colour for a given world-space direction.
@@ -16357,7 +18440,7 @@ float ny = dy / len;   // normalised elevation component
 
 ### Cubemap Face Direction (D3D11 convention)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3662) (line 3662)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3757) (line 3757)
 
 ---------------------------------------------------------------------------
 D3D11 cubemaps use a left-handed coordinate system per face:
@@ -16387,7 +18470,7 @@ default: dx = -u; dy = -v;  dz = -1;  break;   // -Z (face 5)
 
 ### Orthonormal Basis from a Normal Vector
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3690) (line 3690)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3785) (line 3785)
 
 ---------------------------------------------------------------------------
 To integrate over a hemisphere aligned with a surface normal N, we need
@@ -16407,7 +18490,7 @@ if (std::abs(ny) > 0.999f) { ux = 0.0f; uy = 0.0f; uz = 1.0f; }
 
 ### BRDF LUT Layout
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3729) (line 3729)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3824) (line 3824)
 
 The LUT is a 2D texture indexed by (NoV = U, roughness = V).
 Row 0 = roughness 0, row (size-1) = roughness 1.
@@ -16416,7 +18499,7 @@ pixels.resize(size * size * 2);   // 2 bytes per texel (RG8)
 
 ### Hemisphere Integration for Irradiance
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3763) (line 3763)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3858) (line 3858)
 
 For each texel on the cubemap face, we find the world-space direction
 (the surface normal N), build a tangent basis, and sum cosine-weighted
@@ -16433,7 +18516,7 @@ float fu = (static_cast<float>(col) + 0.5f) / static_cast<float>(size)
 
 ### Prefiltered Environment Map Generation
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3824) (line 3824)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3919) (line 3919)
 
 For each texel (= reflection direction R), we importance-sample the
 GGX NDF to generate a set of half-vectors H.  We reflect R around each
@@ -16445,7 +18528,7 @@ At roughness=1 (mip 4) we sample a broad hemisphere → blurry env.
 
 ### Roughness clamping
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3833) (line 3833)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L3928) (line 3928)
 
 roughness=0 (perfect mirror) causes ImportanceSampleGGX to produce all
 samples concentrated at the mirror direction.  For the very first mip we
@@ -16454,7 +18537,7 @@ float eff_roughness = std::max(roughness, 0.04f);
 
 ### Input Layout for PBR+IBL
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4046) (line 4046)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4141) (line 4141)
 
 Same layout as pbr_mesh: POSITION (float3) + NORMAL (float3) + TEXCOORD0 (float2).
 Each vertex is 32 bytes.  The layout must match the vertex shader's
@@ -16468,7 +18551,7 @@ D3D11_INPUT_ELEMENT_DESC inputElems[] = {
 
 ### UV Sphere vs Icosphere
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4072) (line 4072)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4167) (line 4167)
 
 A UV sphere divides the sphere into stacks (latitudinal rings) and
 slices (longitudinal strips).  It is simple to generate and gives clean
@@ -16484,7 +18567,7 @@ std::string authoredMeshPath;
 
 ### Constant Buffer Sizes must be multiples of 16 bytes.
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4148) (line 4148)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4243) (line 4243)
 
 PerFrameCB: 4 × float4x4 = 256 bytes.
 LightCB:    2 × float4 + float3 + float = 48 bytes → pad to 48.
@@ -16504,7 +18587,7 @@ return buf;
 
 ### We use an immediate DeviceContext write via Map/Unmap
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4179) (line 4179)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4274) (line 4274)
 
 instead of UpdateSubresource because the CB is DYNAMIC.  UpdateSubresource
 on a DYNAMIC buffer is slower than Map/Unmap on some drivers.
@@ -16520,7 +18603,7 @@ device->GetImmediateContext(&ctx);
 
 ### Fallback map conventions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4250) (line 4250)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4345) (line 4345)
 
 Albedo fallback:              white (1,1,1)
   Normal fallback:              +Z tangent normal (0.5,0.5,1.0)
@@ -16547,7 +18630,7 @@ const uint8_t kDefaultAO[4]      = {255, 255, 255, 255};
 
 ### DXGI_FORMAT_R8G8_UNORM
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4309) (line 4309)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4404) (line 4404)
 
 Two 8-bit channels (R=scale, G=bias).  UNORM means values are
 interpreted as [0.0, 1.0] in the shader.  The LUT encodes values in
@@ -16561,7 +18644,7 @@ GenerateBRDFLUT(lutPixels, kLUTSize, 128);
 
 ### D3D11_RESOURCE_MISC_TEXTURECUBE
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4342) (line 4342)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4437) (line 4437)
 
 Setting MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE on a Texture2D
 with ArraySize = 6 tells D3D11 that the six array slices are the six
@@ -16577,7 +18660,7 @@ GenerateIrradianceFace(face, kCubeSize, 64, allFaces);
 
 ### RGBA8 vs RGB8
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4374) (line 4374)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4469) (line 4469)
 
 D3D11 does not support RGB8 (24-bit) textures natively.  The
 closest supported format is RGBA8 (32-bit).  We must convert our
@@ -16593,7 +18676,7 @@ rgba[i*4+3] = 255;
 
 ### Multi-Mip Cubemap Upload
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4409) (line 4409)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4504) (line 4504)
 
 Each mip level of each face is a separate D3D11_SUBRESOURCE_DATA.
 The total number of subresources = 6 faces × 5 mip levels = 30.
@@ -16607,7 +18690,7 @@ std::cout << "[IBL] Generating prefiltered env cubemap ("
 
 ### Sampler State for IBL Textures
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4494) (line 4494)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4589) (line 4589)
 
 All three IBL textures use a linear filter sampler with CLAMP address
 mode.  CLAMP is important for the BRDF LUT (NoV and roughness are both
@@ -16630,7 +18713,7 @@ if (FAILED(hr)) { std::cerr << "[IBL] CreateSamplerState failed.\n"; return fals
 
 ### Per-Frame Constant Buffer Update (PBR + IBL)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4543) (line 4543)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4638) (line 4638)
 
 -----------------------------------------------------------------------
 The per-frame CB holds the world, worldInvTrans, view, and proj matrices.
@@ -16643,7 +18726,7 @@ Mat4 worldMat = Mat4::Rotation(Quat::FromAxisAngle(Vec3::Up(), angle));
 
 ### Binding IBL Textures
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4617) (line 4617)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4712) (line 4712)
 
 -----------------------------------------------------------------------
 The PS declares:
@@ -16675,7 +18758,7 @@ m_context->PSSetSamplers(0, 1, &m_pbrIblScene.linearSampler);
 
 ### Two-Pass Shadow Rendering Setup
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4658) (line 4658)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4753) (line 4753)
 
 Shadow map rendering requires:
   (a) A depth texture that the GPU can WRITE to (DepthStencilView).
@@ -16692,7 +18775,7 @@ shadow_lit.ps.hlsl — lit PS: 3×3 PCF shadow comparison + Lambert diffuse.
 
 ### Shadow Map Texture Format
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4696) (line 4696)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4791) (line 4791)
 
 -----------------------------------------------------------------------
 DXGI_FORMAT_R32_TYPELESS lets us create BOTH a DSV (write-only depth)
@@ -16708,7 +18791,7 @@ be used as an SRV format; TYPELESS is the bridge.
 
 ### Compile Helper Lambda (same pattern as other scenes)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4759) (line 4759)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4854) (line 4854)
 
 Try the .hlsl file from shaderDir first; return failure if not found.
 The shadow shaders have no embedded fallback string — they require the
@@ -16744,7 +18827,7 @@ return code;
 
 ### Shared Input Layout for Shadow and Lit Passes
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4812) (line 4812)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4907) (line 4907)
 
 Both the shadow VS and the lit VS accept the same vertex layout
 (position + normal + UV).  We create ONE input layout using the shadow
@@ -16774,7 +18857,7 @@ return false;
 
 ### Shadow CB (64 bytes, b0 of shadow VS)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4889) (line 4889)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4984) (line 4984)
 
 The shadow pass only needs the combined lightViewProj matrix (one float4x4
 = 64 bytes).  We upload it once at the start of each shadow draw call.
@@ -16802,7 +18885,7 @@ return false;
 
 ### Lit CB (272 bytes, b0 of lit VS + lit PS)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4914) (line 4914)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5009) (line 5009)
 
 Contains: world, view, proj, lightViewProj, lightDir.
 Both stages share the same CB object — we bind it to VS slot 0 and
@@ -16830,7 +18913,7 @@ return false;
 
 ### Depth Bias for Shadow Maps
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L4965) (line 4965)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5060) (line 5060)
 
 Shadow acne arises because the shadow map depth and the re-computed
 surface depth differ by a tiny floating-point error.  The rasterizer
@@ -16875,7 +18958,7 @@ return false;
 
 ### SamplerComparisonState (hardware PCF)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5010) (line 5010)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5105) (line 5105)
 
 D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT enables bilinear PCF:
   • Takes a 2×2 neighbourhood, compares each texel, and bilinearly
@@ -16916,7 +18999,7 @@ return false;
 
 ### Reuse the UV Sphere for the Shadow Demo
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5051) (line 5051)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5146) (line 5146)
 
 The same sphere geometry used in the PBR scenes (M9, M16) serves as
 both the shadow caster and the lit object in this demo.  Using a sphere
@@ -16934,7 +19017,7 @@ std::vector<uint16_t> idx(static_cast<size_t>(nIndices));
 
 ### Orthographic Projection for Directional Lights
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5167) (line 5167)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5262) (line 5262)
 
 A directional light has parallel rays (infinite distance), so it uses
 an ORTHOGRAPHIC projection — no perspective foreshortening.
@@ -16946,7 +19029,7 @@ const float eyeZ = -kLightDirZ * 5.0f;
 
 ### Row-Major Matrix Multiply
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5203) (line 5203)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5298) (line 5298)
 
 In row-vector × matrix convention, the chain is:
   clipPos = pos_model × world × lightView × lightProj
@@ -16963,7 +19046,7 @@ lightVP.m[r][c] += lightView.m[r][k] * lightProj.m[k][c];
 
 ### No Colour Output
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5220) (line 5220)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5315) (line 5315)
 
 We bind the shadow DSV but NO colour RTV (first argument = 0, second =
 nullptr).  The rasteriser will still write depth — only colour output
@@ -16973,7 +19056,7 @@ compared to a dummy colour target.
 
 ### OMGetRenderTargets increments the COM ref count of the
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5228) (line 5228)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5323) (line 5323)
 
 returned pointers.  We MUST call Release() on them after restoring.
 ID3D11RenderTargetView* prevRTV = nullptr;
@@ -16982,7 +19065,7 @@ m_context->OMGetRenderTargets(1, &prevRTV, &prevDSV);
 
 ### DSV ↔ SRV Mutual Exclusion
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5275) (line 5275)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5370) (line 5370)
 
 D3D11 does not allow the same sub-resource to be bound simultaneously
 as a DSV (write) and an SRV (read).  We must unbind the DSV first by
@@ -16994,7 +19077,7 @@ m_context->RSSetState(nullptr);
 
 ### Offscreen Render Target Pattern
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5356) (line 5356)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5451) (line 5451)
 
 Bloom requires rendering to TEXTURES that are not the swap-chain back buffer.
 Each bloom RT follows the same three-object pattern:
@@ -17010,7 +19093,7 @@ always alternates: write to tex A → read from tex A (write next tex B).
 
 ### Reusing sky.vs.hlsl as the Full-Screen VS
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5444) (line 5444)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5539) (line 5539)
 
 The full-screen triangle trick (SV_VertexID) generates 3 vertices that
 cover the entire viewport without any vertex buffer.  sky.vs.hlsl already
@@ -17048,7 +19131,7 @@ return code;
 
 ### Structured Cleanup via goto Labels
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5563) (line 5563)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5658) (line 5658)
 
 -----------------------------------------------------------------------
 Cascaded cleanup with goto mimics the RAII pattern in systems where
@@ -17086,7 +19169,7 @@ return false;
 
 ### Simulated Scene Content For Bloom
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5631) (line 5631)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5726) (line 5726)
 
 For the bloom demo we bypass a full scene render and simply clear the
 scene RT to a bright orange test colour stored in a UNORM render target.
@@ -17109,7 +19192,7 @@ m_context->ClearRenderTargetView(m_bloomScene.sceneRTV, bright);
 
 ### Restoring the Caller's Render Target
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5715) (line 5715)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.cpp`](src/engine/rendering/d3d11/D3D11Renderer.cpp#L5810) (line 5810)
 
 The final composite outputs to the render target that the CALLER set up
 (either the swap-chain back buffer in windowed mode, or the 64×64 off-
@@ -17231,7 +19314,7 @@ D3D11Renderer();
 
 ### DrawPBRIBLMesh (M16)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L163) (line 163)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L217) (line 217)
 
 -----------------------------------------------------------------------
 Renders the same UV sphere as DrawPBRMesh() but with a full IBL ambient
@@ -17246,7 +19329,7 @@ void DrawPBRIBLMesh();
 
 ### DrawSky (M10)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L176) (line 176)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L230) (line 230)
 
 -----------------------------------------------------------------------
 DrawSky() renders a full-screen procedural sky using SV_VertexID (no
@@ -17259,7 +19342,7 @@ void DrawSky();
 
 ### DrawShadowScene (M17)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L187) (line 187)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L241) (line 241)
 
 -----------------------------------------------------------------------
 DrawShadowScene() executes both shadow-rendering passes:
@@ -17277,7 +19360,7 @@ void DrawShadowScene();
 
 ### DrawBloomScene (M17)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L203) (line 203)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L257) (line 257)
 
 -----------------------------------------------------------------------
 DrawBloomScene() executes the four-pass bloom pipeline:
@@ -17296,7 +19379,7 @@ void DrawBloomScene();
 
 ### Depth Buffer Helpers (M16)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L220) (line 220)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L274) (line 274)
 
 -----------------------------------------------------------------------
 D3D11 does not automatically create a depth buffer when you create a
@@ -17316,14 +19399,14 @@ bool CreateDepthStencilBuffer(uint32_t width, uint32_t height);
 
 ### COM pointer naming convention
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L247) (line 247)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L301) (line 301)
 
 We prefix all COM interface pointers with m_ (member) and use the
 interface name as the type hint.  e.g. m_device is an ID3D11Device*.
 
 ### Depth-Stencil Buffer (M16)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L257) (line 257)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L311) (line 311)
 
 -----------------------------------------------------------------------
 Before M16 the renderer had no depth buffer.  All scenes rendered either
@@ -17354,7 +19437,7 @@ ID3D11DepthStencilState* m_depthStencilState = nullptr;
 
 ### Storing Back-Buffer Dimensions
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L288) (line 288)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L342) (line 342)
 
 -----------------------------------------------------------------------
 We cache the current back-buffer size so that DrawFrame can set the
@@ -17366,9 +19449,28 @@ across hardware and WARP.
 uint32_t                m_width         = 0;
 uint32_t                m_height        = 0;
 
+### Performance Preset Feature Flags (M-DG-P1)
+
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L357) (line 357)
+
+-----------------------------------------------------------------------
+These flags mirror the active PerformancePresetConfig and are set via
+the IRenderer Set*() override methods.  They are checked in DrawFrame()
+and RecordHeadlessFrame() to skip expensive passes on low-end presets.
+
+All flags default to true so that the renderer behaves identically to
+the original (all features ON) when no preset is applied.
+-----------------------------------------------------------------------
+bool m_shadowsEnabled = true;  ///< Honour shadow pass in shadow_test scene.
+bool m_bloomEnabled   = true;  ///< Honour bloom pipeline in bloom_test scene.
+bool m_iblEnabled     = true;  ///< Use IBL in pbr_ibl scene (false → PBR only).
+bool m_vsyncEnabled   = true;  ///< Swap-chain sync interval (true=1, false=0).
+int  m_frameCap       = 0;     ///< Software frame cap fps; 0 = uncapped.
+int  m_anisoLevel     = 4;     ///< Anisotropic filter level for future samplers.
+
 ### Public Scene-Resource Structs
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L304) (line 304)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L378) (line 378)
 
 -----------------------------------------------------------------------
 These inner structs are public to allow static helper functions in the
@@ -17382,7 +19484,7 @@ SkinnedMeshScene  (M4b): resources for the GPU-skinned strip.
 
 ### PBRScene (M9: Physically Based Rendering)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L348) (line 348)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L422) (line 422)
 
 -----------------------------------------------------------------------
 PBRScene holds every Direct3D 11 resource required to render a
@@ -17421,7 +19523,7 @@ bool                   loaded      = false;
 
 ### PBRIBLScene (M16: Image-Based Lighting)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L385) (line 385)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L459) (line 459)
 
 -----------------------------------------------------------------------
 PBRIBLScene extends PBRScene with three IBL textures that implement
@@ -17469,7 +19571,7 @@ ID3D11Buffer*             materialCB     = nullptr;  ///< b2 (PS): material para
 
 ### SkyScene (M10: Dynamic Sky + Weather VFX)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L462) (line 462)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L536) (line 536)
 
 -----------------------------------------------------------------------
 SkyScene is the simplest scene struct: it only needs a VS, PS, and a
@@ -17500,7 +19602,7 @@ bool                loaded         = false;
 
 ### ShadowScene (M17: Directional Shadow Maps)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L491) (line 491)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L565) (line 565)
 
 -----------------------------------------------------------------------
 ShadowScene implements a classic two-pass shadow algorithm:
@@ -17534,7 +19636,7 @@ ID3D11ShaderResourceView* shadowSRV    = nullptr;  ///< SRV: lit PS samples this
 
 ### BloomScene (M17: HDR Bloom Post-Processing)
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L544) (line 544)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L618) (line 618)
 
 -----------------------------------------------------------------------
 BloomScene implements a standard four-pass HDR bloom pipeline:
@@ -17564,7 +19666,7 @@ static constexpr uint32_t kRTSize = 256;  ///< Bloom RT dimensions (256×256)
 
 ### SkyRenderer member
 
-**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L618) (line 618)
+**Source:** [`src/engine/rendering/d3d11/D3D11Renderer.hpp`](src/engine/rendering/d3d11/D3D11Renderer.hpp#L692) (line 692)
 
 m_skyRenderer owns the CPU-side procedural sky simulation (time-of-day,
 weather state, colour math).  It is updated each frame in DrawSky()
@@ -30720,9 +32822,35 @@ std::cout << "[OK] demo_world/3: PLAYING state; all biomes visited "
 "at frame " << ow.GetFrameCount() << ".\n";
 }
 
+### Teleport sets nearestStationID but NOT quest
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4959) (line 4959)
+
+Verifies that TeleportToStation sets the biome (navigation) and
+m_nearestStationID (for subsequent E interact) but does NOT
+advance the quest.
+ow.TeleportToStation("rendering_pbr");
+if (ow.GetCurrentBiome() != BiomeType::GRASSLAND)
+{
+std::cout << "[FAIL] demo_world/4: TeleportToStation(\"rendering_pbr\") "
+"did not set biome to GRASSLAND.\n";
+++testsFailed;
+}
+else if (ow.GetNearestStationID() != "rendering_pbr")
+{
+std::cout << "[FAIL] demo_world/4: TeleportToStation(\"rendering_pbr\") "
+"did not set nearestStationID to \"rendering_pbr\".\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] demo_world/4: Teleport → rendering_pbr = GRASSLAND, "
+"nearestStationID = rendering_pbr (navigation only).\n";
+}
+
 ### An empty station list is a test failure, not
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4972) (line 4972)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4983) (line 4983)
 
 a vacuous success.  This acceptance test verifies that station
 registration happened AND that each station's required fields
@@ -30756,9 +32884,125 @@ std::cout << "[OK] demo_world/5: All " << stationsRef.size()
 << " stations have non-empty id + displayName + sceneHint.\n";
 }
 
+### Fallback data pattern validation
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5017) (line 5017)
+
+──────────────────────────────────────────────────────────────────
+TryLoadStationsFromJSON() must silently ignore a missing file and
+leave the C++ default station list intact.  We verify this by
+creating a fresh OpenWorld, calling TryLoadStationsFromJSON with
+an intentionally bad path, and asserting the station count is
+still >= kExpectedStations.
+──────────────────────────────────────────────────────────────────
+{
+OpenWorld ow2;
+ow2.Init();
+ow2.TryLoadStationsFromJSON("/nonexistent/path/teaching_stations.json");
+const int count6 = static_cast<int>(ow2.GetStations().size());
+if (count6 < kExpectedStations)
+{
+std::cout << "[FAIL] demo_world/6: after bad JSON path, station count = "
+<< count6 << " (expected >= " << kExpectedStations << ").\n";
+++testsFailed;
+}
+else
+{
+std::cout << "[OK] demo_world/6: JSON fallback safe — "
+<< count6 << " stations retained.\n";
+}
+ow2.Shutdown();
+}
+
+### Testing the quest/activity layer
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5045) (line 5045)
+
+──────────────────────────────────────────────────────────────────
+DemoQuestManager is initialised inside OpenWorld::Init(), so 'ow'
+already has a valid quest manager.  We verify:
+  a) TotalDefined() = 1 main quest + 3 activities = 4.
+  b) The main quest has >= 2 objectives.
+  c) Teleport+Interact at objective stations completes the quest.
+  d) Unique station interacts advance the Lesson Reader activity.
+──────────────────────────────────────────────────────────────────
+{
+a) Total definitions.
+constexpr int kExpectedTotal = 1 + DemoQuestManager::kExpectedActivities;
+if (ow.GetQuestManager().TotalDefined() != kExpectedTotal)
+{
+std::cout << "[FAIL] demo_world/7a: TotalDefined() = "
+<< ow.GetQuestManager().TotalDefined()
+<< " (expected " << kExpectedTotal << ").\n";
+++testsFailed;
+}
+else
+{
+b) Main quest objective count.
+const int objCount = static_cast<int>(
+ow.GetQuestManager().GetMainQuest().objectives.size());
+if (objCount < 2)
+{
+std::cout << "[FAIL] demo_world/7b: main quest has "
+<< objCount << " objectives (expected >= 2).\n";
+++testsFailed;
+}
+else
+{
+c) Complete the main quest by Teleport+Interact at objective stations.
+
+### Headless interact simulation
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5078) (line 5078)
+
+TeleportToStation sets m_nearestStationID; InteractAtStation
+checks it and triggers quest progress.  This is how CI exercises
+the E-key flow without real keyboard input.
+OpenWorld questWorld;
+questWorld.Init();
+const auto& mqRef = questWorld.GetQuestManager().GetMainQuest();
+for (const auto& obj : mqRef.objectives)
+{
+if (!obj.stationID.empty())
+{
+questWorld.TeleportToStation(obj.stationID);
+questWorld.InteractAtStation();
+}
+}
+
+### Testing the lesson-data layer
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5137) (line 5137)
+
+──────────────────────────────────────────────────────────────────
+If station_lessons.json was deployed (CI with content), verify:
+  a) Combat station has a loaded lesson.
+  b) Lesson has non-empty lessonText and at least one codePointer.
+  c) Combat lesson defines a combo challenge (HasChallenge()).
+If the JSON is absent (CI without content), report as a soft OK.
+──────────────────────────────────────────────────────────────────
+{
+OpenWorld ow8;
+ow8.Init();
+
+### Headless combo challenge simulation
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5190) (line 5190)
+
+──────────────────────────────────────────────────────────────────
+Calls NotifyChallengePassed() directly (no keyboard needed) to
+verify the quest-manager wiring:
+  TeleportToStation → InteractAtStation → NotifyChallengePassed
+  → COMBO_PRACTICE activity completed.
+Also checks GetLastLessonTitle() is non-empty after interact.
+──────────────────────────────────────────────────────────────────
+{
+OpenWorld ow9;
+ow9.Init();
+
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5034) (line 5034)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5268) (line 5268)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -30768,7 +33012,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5042) (line 5042)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5276) (line 5276)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -30798,7 +33042,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5070) (line 5070)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5304) (line 5304)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -30821,7 +33065,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5123) (line 5123)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5357) (line 5357)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -30834,7 +33078,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5139) (line 5139)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5373) (line 5373)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
