@@ -285,9 +285,11 @@ else()
         set(nlohmann_json_FOUND TRUE)
         message(STATUS "nlohmann/json vendored (third_party/nlohmann/json.hpp): ENGINE_ENABLE_JSON ENABLED.")
     else()
-        message(WARNING "nlohmann/json NOT found (vcpkg nor vendored). "
-                        "ENGINE_ENABLE_JSON will be DISABLED. "
-                        "Re-run with vcpkg toolchain or ensure third_party/nlohmann/json.hpp exists.")
+        message(WARNING "nlohmann/json NOT found (neither via vcpkg nor vendored at "
+                        "third_party/nlohmann/json.hpp).  This indicates a repository "
+                        "integrity issue — the vendored copy should always be present. "
+                        "Re-run with vcpkg toolchain or restore third_party/nlohmann/json.hpp "
+                        "from version control.  ENGINE_ENABLE_JSON will be DISABLED.")
     endif()
 endif()
 

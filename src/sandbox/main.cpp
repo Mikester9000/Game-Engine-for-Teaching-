@@ -810,13 +810,27 @@ int main(int argc, char* argv[])
                     try
                     {
                         const auto manifest = nlohmann::json::parse(mf);
-                        const auto& cells   = manifest.at("cells");
-                        int cellErrors      = 0;
-                        int cellCount       = 0;
+                        if (!manifest.contains("cells") || !manifest["cells"].is_array())
+                        {
+                            std::cout << "[FAIL] cells_manifest.json missing required "
+                                         "\"cells\" array.\n";
+                            return 1;
+                        }
+                        const auto& cells = manifest["cells"];
+                        int cellErrors    = 0;
+                        int cellCount     = 0;
                         for (const auto& cell : cells)
                         {
                             ++cellCount;
-                            const std::string guid = cell.at("guid").get<std::string>();
+                            if (!cell.contains("guid") || !cell["guid"].is_string())
+                            {
+                                std::cout << "[FAIL] cells_manifest.json cell #"
+                                          << cellCount
+                                          << " missing required \"guid\" field.\n";
+                                ++cellErrors;
+                                continue;
+                            }
+                            const std::string guid = cell["guid"].get<std::string>();
                             if (!db.Has(guid))
                             {
                                 std::cout << "[FAIL] cells_manifest GUID not in AssetDB: "

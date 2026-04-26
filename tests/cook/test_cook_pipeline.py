@@ -376,9 +376,16 @@ class TestCellsManifest:
         )
 
         for actual, expected in zip(actual_cells, golden_cells):
-            assert actual.get("cx") == expected.get("cx") and \
-                   actual.get("cz") == expected.get("cz") and \
-                   actual.get("guid") == expected.get("guid"), (
-                f"Cell mismatch: actual={actual} expected={expected}.  "
+            assert actual.get("cx") == expected.get("cx"), (
+                f"Cell cx mismatch: actual={actual.get('cx')} expected={expected.get('cx')} "
+                f"(entry: {actual}).  Update tests/golden/cells_manifest_expected.json if intentional."
+            )
+            assert actual.get("cz") == expected.get("cz"), (
+                f"Cell cz mismatch: actual={actual.get('cz')} expected={expected.get('cz')} "
+                f"(entry: {actual}).  Update tests/golden/cells_manifest_expected.json if intentional."
+            )
+            assert actual.get("guid") == expected.get("guid"), (
+                f"Cell guid mismatch: actual={actual.get('guid')!r} expected={expected.get('guid')!r} "
+                f"at ({actual.get('cx')},{actual.get('cz')}).  "
                 f"Update tests/golden/cells_manifest_expected.json if intentional."
             )
