@@ -255,8 +255,12 @@ jobs:
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene save_test
         shell: cmd
 
-      # M25 — Terrain renderer + heightmap (physics subtest skipped without Jolt)
-      - name: Run terrain acceptance tests (M25 - terrain_test, renderer+heightmap)
+      # M25 — Terrain: renderer init + heightmap displacement (subtests 1+2).
+      # TEACHING NOTE — terrain_test detects ENGINE_ENABLE_PHYSICS at runtime.
+      # Subtest 3 (physics_collision via Jolt) auto-skips in the engine-only
+      # binary (no ENGINE_ENABLE_PHYSICS define) and prints "SKIP".
+      # The physics build below re-runs the same scene to exercise subtest 3.
+      - name: Run terrain renderer+heightmap subtests (M25 - engine-only)
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
         shell: cmd
 
@@ -347,8 +351,15 @@ jobs:
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
         shell: cmd
 
-      # M25 — Terrain physics collision (Jolt subtest — requires physics build)
-      - name: Run terrain physics subtest (M25 - terrain_test with Jolt)
+      # M25 — Terrain physics collision (Jolt subtest 3).
+      # TEACHING NOTE — terrain_test has 3 subtests:
+      #   1. renderer_init         — runs in both builds
+      #   2. heightmap_displacement — runs in both builds
+      #   3. physics_collision      — only active when ENGINE_ENABLE_PHYSICS is
+      #                               defined (i.e. this physics build).
+      # The engine-only run above exercised subtests 1+2.  This run adds
+      # subtest 3 (Jolt rigid-body drop) without re-failing the earlier two.
+      - name: Run terrain physics collision subtest (M25 - physics build)
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene terrain_test
         shell: cmd
 

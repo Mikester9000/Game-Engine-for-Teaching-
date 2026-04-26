@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 2059 across 60 subsystems.
+**Total lessons:** 2061 across 60 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (83 lessons)
-- [ci/workflows](#ciworkflows) (27 lessons)
+- [ci/workflows](#ciworkflows) (29 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
 - [demo_game/demo_main.cpp](#demo_gamedemo_main.cpp) (46 lessons)
 - [demo_game/demo_quest_manager.cpp](#demo_gamedemo_quest_manager.cpp) (16 lessons)
@@ -1721,9 +1721,20 @@ uses: ilammy/msvc-dev-cmd@v1
 with:
 arch: x64
 
+### terrain_test detects ENGINE_ENABLE_PHYSICS at runtime.
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L259) (line 259)
+
+Subtest 3 (physics_collision via Jolt) auto-skips in the engine-only
+binary (no ENGINE_ENABLE_PHYSICS define) and prints "SKIP".
+The physics build below re-runs the same scene to exercise subtest 3.
+- name: Run terrain renderer+heightmap subtests (M25 - engine-only)
+run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
+shell: cmd
+
 ### This build is kept separate (built last) because Jolt's
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L307) (line 307)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L311) (line 311)
 
 Debug build emits large stack frames that cause STATUS_STACK_OVERFLOW
 when the binary is used for non-physics scenes.  The engine-only binary
@@ -1736,9 +1747,23 @@ with:
 path: C:\vcpkg\installed
 key: vcpkg-joltphysics-${{ runner.os }}-x64
 
+### terrain_test has 3 subtests:
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L355) (line 355)
+
+1. renderer_init         — runs in both builds
+  2. heightmap_displacement — runs in both builds
+  3. physics_collision      — only active when ENGINE_ENABLE_PHYSICS is
+                              defined (i.e. this physics build).
+The engine-only run above exercised subtests 1+2.  This run adds
+subtest 3 (Jolt rigid-body drop) without re-failing the earlier two.
+- name: Run terrain physics collision subtest (M25 - physics build)
+run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene terrain_test
+shell: cmd
+
 ### Editor job kept separate because imgui requires vcpkg and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L358) (line 358)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L369) (line 369)
 
 adds ~2 minutes of compile time.  Separating it avoids lengthening the
 critical path for engine PRs that do not touch editor code.
@@ -1750,7 +1775,7 @@ continue-on-error: false
 
 ### VCPKG_INSTALLED_DIR overrides the path so CMake finds
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L402) (line 402)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L413) (line 413)
 
 packages from the classic-mode install rather than manifest-mode default.
 - name: Configure CMake (D3D11 + Editor)
@@ -1763,7 +1788,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Validates demo_game.exe through the demo_main.cpp entry
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L432) (line 432)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L443) (line 443)
 
 point (different code path from the sandbox demo_world test above).
 Uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON).
