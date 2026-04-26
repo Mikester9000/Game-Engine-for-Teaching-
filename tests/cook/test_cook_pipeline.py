@@ -331,9 +331,11 @@ class TestCellsManifest:
     def test_manifest_cell_coords_are_non_negative(self, manifest: dict) -> None:
         """All cell coordinates must be non-negative integers."""
         for entry in manifest.get("cells", []):
-            assert isinstance(entry.get("cx"), int) and entry["cx"] >= 0, (
-                f"Cell 'cx' must be a non-negative int, got {entry.get('cx')}"
+            cx = entry.get("cx")
+            cz = entry.get("cz")
+            assert isinstance(cx, int) and cx >= 0, (
+                f"Cell 'cx' must be a non-negative int, got {cx!r}"
             )
-            assert isinstance(entry.get("cz"), int) and entry["cz"] >= 0, (
-                f"Cell 'cz' must be a non-negative int, got {entry.get('cz')}"
+            assert isinstance(cz, int) and cz >= 0, (
+                f"Cell 'cz' must be a non-negative int, got {cz!r}"
             )

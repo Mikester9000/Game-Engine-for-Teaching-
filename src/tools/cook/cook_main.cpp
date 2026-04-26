@@ -192,7 +192,9 @@ static bool parse_cell_coord(const std::string& source, int& out_cx, int& out_cz
     if (pos == cx_start || pos >= filename.size() || filename[pos] != '_')
         return false;
 
-    out_cx = std::stoi(filename.substr(cx_start, pos - cx_start));
+    try { out_cx = std::stoi(filename.substr(cx_start, pos - cx_start)); }
+    catch (...) { return false; }
+    if (out_cx < 0) return false;  // cell coordinates must be non-negative
     ++pos;  // skip the separator '_'
 
     // Parse cz (second integer).
@@ -202,7 +204,9 @@ static bool parse_cell_coord(const std::string& source, int& out_cx, int& out_cz
     if (pos == cz_start)
         return false;
 
-    out_cz = std::stoi(filename.substr(cz_start, pos - cz_start));
+    try { out_cz = std::stoi(filename.substr(cz_start, pos - cz_start)); }
+    catch (...) { return false; }
+    if (out_cz < 0) return false;  // cell coordinates must be non-negative
     return true;
 }
 

@@ -1970,7 +1970,10 @@ int main(int argc, char* argv[])
                             std::size_t cxPos = content.find(kCxKey, pos);
                             if (cxPos == std::string::npos) break;
 
-                            // Helper: read integer after ':' from pos.
+                            // Helper: read non-negative integer after ':' from pos.
+                            // Cell coordinates are non-negative by contract;
+                            // negative numbers are never valid so we don't handle them.
+                            // Returns npos on any error (malformed input or stoi exception).
                             auto readInt = [&](std::size_t from, int& out) -> std::size_t
                             {
                                 std::size_t p = content.find(':', from);
@@ -1979,14 +1982,12 @@ int main(int argc, char* argv[])
                                 while (p < content.size() && (content[p] == ' ' || content[p] == '\t' || content[p] == '\n' || content[p] == '\r'))
                                     ++p;
                                 if (p >= content.size()) return std::string::npos;
-                                bool neg = (content[p] == '-');
-                                if (neg) ++p;
                                 std::size_t start = p;
                                 while (p < content.size() && content[p] >= '0' && content[p] <= '9')
                                     ++p;
                                 if (p == start) return std::string::npos;
-                                out = std::stoi(content.substr(start, p - start));
-                                if (neg) out = -out;
+                                try { out = std::stoi(content.substr(start, p - start)); }
+                                catch (...) { return std::string::npos; }
                                 return p;
                             };
 
