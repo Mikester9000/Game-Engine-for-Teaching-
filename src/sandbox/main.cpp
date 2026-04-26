@@ -805,7 +805,18 @@ int main(int argc, char* argv[])
                 else
                 {
 #ifdef ENGINE_ENABLE_JSON
+                    // TEACHING NOTE — Always check that the file stream is open
+                    // before attempting to parse.  If the file exists but cannot
+                    // be opened (permissions, OS lock) JSON parsing will silently
+                    // produce a confusing parse-error message.  Checking is_open()
+                    // first gives a clear, actionable diagnostic.
                     std::ifstream mf(manifestPath);
+                    if (!mf.is_open())
+                    {
+                        std::cout << "[FAIL] cells_manifest.json could not be opened: "
+                                  << manifestPath.string() << "\n";
+                        return 1;
+                    }
                     bool manifestOk = true;
                     try
                     {
@@ -822,29 +833,62 @@ int main(int argc, char* argv[])
                         for (const auto& cell : cells)
                         {
                             ++cellCount;
+                            // TEACHING NOTE — Validate cx/cz before guid so that
+                            // coordinate errors are reported with the cell index
+                            // rather than a confusing GUID mismatch.
+                            if (!cell.contains("cx") || !cell["cx"].is_number_integer())
+                            {
+                                std::cout << "[FAIL] cells_manifest.json cell #"
+                                          << cellCount
+                                          << " missing or non-integer \"cx\" field.\n";
+                                ++cellErrors;
+                                continue;
+                            }
+                            if (!cell.contains("cz") || !cell["cz"].is_number_integer())
+                            {
+                                std::cout << "[FAIL] cells_manifest.json cell #"
+                                          << cellCount
+                                          << " missing or non-integer \"cz\" field.\n";
+                                ++cellErrors;
+                                continue;
+                            }
+                            const int cx = cell["cx"].get<int>();
+                            const int cz = cell["cz"].get<int>();
+                            if (cx < 0 || cz < 0)
+                            {
+                                std::cout << "[FAIL] cells_manifest.json cell #"
+                                          << cellCount
+                                          << " has negative coordinate ("
+                                          << cx << "," << cz << ").\n";
+                                ++cellErrors;
+                                continue;
+                            }
                             if (!cell.contains("guid") || !cell["guid"].is_string())
                             {
                                 std::cout << "[FAIL] cells_manifest.json cell #"
                                           << cellCount
-                                          << " missing required \"guid\" field.\n";
+                                          << " (" << cx << "," << cz
+                                          << ") missing required \"guid\" field.\n";
                                 ++cellErrors;
                                 continue;
                             }
                             const std::string guid = cell["guid"].get<std::string>();
                             if (!db.Has(guid))
                             {
-                                std::cout << "[FAIL] cells_manifest GUID not in AssetDB: "
+                                std::cout << "[FAIL] cells_manifest GUID not in AssetDB"
+                                          << " (" << cx << "," << cz << "): "
                                           << guid << "\n";
                                 ++cellErrors;
                                 continue;
                             }
-                            // Also verify the cooked file exists on disk.
-                            const std::string cookedRel = db.GetCookedPath(guid);
-                            const fs::path    cookedAbs = projectPath / cookedRel;
-                            if (!fs::exists(cookedAbs))
+                            // TEACHING NOTE — AssetDB::GetCookedPath() already returns
+                            // an absolute path resolved from the project root at Load()
+                            // time, so no further path-joining is needed.
+                            const fs::path cookedPath = db.GetCookedPath(guid);
+                            if (!fs::exists(cookedPath))
                             {
                                 std::cout << "[FAIL] cells_manifest cooked file missing: "
-                                          << cookedAbs.string() << "\n";
+                                          << cookedPath.string() << "\n";
                                 ++cellErrors;
                             }
                         }

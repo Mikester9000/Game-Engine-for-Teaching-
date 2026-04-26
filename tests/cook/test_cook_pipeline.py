@@ -352,16 +352,29 @@ class TestCellsManifest:
         updated deliberately and reviewed in the PR — preventing silent breakage
         of the streaming pipeline.
 
+        The golden file is committed to the repository and must always be present.
+        A missing golden file is a repository integrity regression, not a skip.
+
         Comparison is order-independent: we sort both sides by (cx, cz) so that
         cook.exe output order does not cause false failures.
         """
-        if not CELLS_MANIFEST_GOLDEN.exists():
-            pytest.skip(
-                f"Golden file not found: {CELLS_MANIFEST_GOLDEN} — "
-                "create it by running cook.exe and copying Cooked/Levels/cells_manifest.json"
-            )
+        # TEACHING NOTE — Committed golden files must always exist.
+        # Using assert rather than pytest.skip() ensures that accidental deletion
+        # of the golden file fails loudly in CI instead of silently passing.
+        assert CELLS_MANIFEST_GOLDEN.exists(), (
+            f"Golden file not found: {CELLS_MANIFEST_GOLDEN} — "
+            "this file is committed to the repository and must not be deleted. "
+            "Restore it from version control or regenerate by running cook.exe."
+        )
 
         golden = json.loads(CELLS_MANIFEST_GOLDEN.read_text(encoding="utf-8"))
+
+        # Check top-level version matches.
+        assert manifest.get("version") == golden.get("version"), (
+            f"cells_manifest.json version {manifest.get('version')!r} does not match "
+            f"golden version {golden.get('version')!r}.  "
+            f"Update tests/golden/cells_manifest_expected.json if a version bump is intentional."
+        )
 
         def sort_cells(cells: list) -> list:
             return sorted(cells, key=lambda c: (c.get("cx", 0), c.get("cz", 0)))

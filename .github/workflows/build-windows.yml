@@ -1,32 +1,22 @@
 name: Build Windows (engine_sandbox + cook)
 
 # ============================================================================
-# TEACHING NOTE — Windows CI Workflow Purpose
+# TEACHING NOTE — Windows CI Workflow Structure
 # ============================================================================
-# This workflow validates the Windows engine_sandbox (D3D11 default) and the
-# cross-platform cook.exe tool on every push and pull request.
+# Three jobs validate the full Windows toolchain on every push/PR:
 #
-# What it validates:
-#   1. CMake configure succeeds WITHOUT a Vulkan SDK (D3D11 path).
-#   2. engine_sandbox.exe compiles without errors (MSVC /W4).
-#   3. cook.exe compiles without errors.
-#   4. engine_sandbox.exe --headless exits 0 (D3D11 WARP, no GPU needed).
-#   5. cook.exe successfully cooks the vertical slice sample project.
-#   6. engine_sandbox.exe --validate-project loads the cooked AssetDB.
+#   build-windows-engine  — D3D11 + Jolt Physics; runs ALL engine acceptance
+#                           tests (M0 through M26+: save, physics, textures,
+#                           world streaming, audio, animation, etc.).
 #
-# ============================================================================
-# TEACHING NOTE — D3D11 vs Vulkan in CI
-# ============================================================================
-# The primary build job uses D3D11 (default backend) because:
-#   • d3d11.lib ships with the Windows SDK — no external download needed.
-#   • D3D11 WARP (software rasteriser) is bundled with Windows, so
-#     engine_sandbox.exe --headless works on any Windows runner regardless
-#     of whether a physical GPU or Vulkan driver is present.
-#   • GT610-era hardware (target baseline) supports D3D11 Feature Level 11_0.
+#   build-windows-editor  — Dear ImGui creation-suite-editor; separate because
+#                           imgui adds ~2 min of vcpkg compile time.
 #
-# A separate optional job (build-windows-vulkan) validates the Vulkan backend
-# when a Vulkan SDK is available.  It is allowed to fail initially to avoid
-# blocking D3D11 CI on Vulkan SDK availability.
+#   build-windows-demo    — demo_game.exe standalone executable.
+#
+# Vulkan is deferred: build-windows-vulkan is removed until a self-hosted GPU
+# runner with a real Vulkan ICD is available.  Vulkan source still compiles
+# correctly — it is just not exercised in CI at this time.
 # ============================================================================
 
 on:
@@ -38,6 +28,7 @@ on:
       - 'CMakePresets.json'
       - 'shaders/**'
       - 'shared/**'
+      - 'samples/**'
       - '.github/workflows/build-windows.yml'
   pull_request:
     paths:
@@ -47,763 +38,27 @@ on:
       - 'CMakePresets.json'
       - 'shaders/**'
       - 'shared/**'
+      - 'samples/**'
       - '.github/workflows/build-windows.yml'
 
 jobs:
-  # --------------------------------------------------------------------------
-  # Primary job: Build engine_sandbox (D3D11) + cook — no Vulkan SDK needed
-  # --------------------------------------------------------------------------
-  build-windows:
-    name: Build Windows D3D11 (MSVC x64)
+
+  # ==========================================================================
+  # Job 1 — All engine subsystem tests (D3D11 + Jolt Physics)
+  # ==========================================================================
+  # TEACHING NOTE — Why one merged engine job?
+  # Previously engine tests were spread across three separate jobs:
+  #   build-windows         — core D3D11 scenes
+  #   build-windows-physics — Jolt Physics + vehicle + terrain
+  #   build-windows-save-test — save system with nlohmann/json from vcpkg
+  # With nlohmann/json now vendored at third_party/nlohmann/json.hpp,
+  # ENGINE_ENABLE_JSON is always ON — no separate vcpkg install or job needed.
+  # All engine tests now share one build: D3D11 + Jolt Physics.
+  # ==========================================================================
+  build-windows-engine:
+    name: Build Windows - Engine (D3D11 + Physics + all engine tests)
     runs-on: windows-latest
-
-    # -------------------------------------------------------------------------
-    # TEACHING NOTE — Least-Privilege Permissions
-    # GitHub Actions tokens default to write access on the repository.
-    # Restricting to contents: read follows the principle of least privilege:
-    # a compromised action cannot push malicious commits to the repository.
-    # -------------------------------------------------------------------------
-    permissions:
-      contents: read
-
-    steps:
-      # -----------------------------------------------------------------------
-      # 1. Checkout the repository.
-      # -----------------------------------------------------------------------
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # -----------------------------------------------------------------------
-      # 1b. Enter an MSVC developer environment for Ninja + cl/link.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Ninja on Windows does not automatically pick MSVC.
-      # Without vcvars, CMake may detect a GNU toolchain (e.g. MinGW), which
-      # fails to link Windows SDK libraries such as xaudio2.lib.
-      # This step initialises cl.exe/link.exe + Windows SDK paths explicitly.
-      - name: Setup MSVC developer command prompt
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      # -----------------------------------------------------------------------
-      # 2. Configure CMake — D3D11 only, no Vulkan SDK required.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — CMake Presets in CI
-      # cmake --preset windows-debug-engine-only uses CMakePresets.json:
-      #   • Generator: Visual Studio 17 2022 (MSVC x64)
-      #   • ENGINE_ENABLE_D3D11=ON   (default, GT610-compatible)
-      #   • ENGINE_ENABLE_VULKAN=OFF (Vulkan SDK not installed on runner)
-      #   • BUILD_EDITOR=OFF         (Qt not installed on CI runner)
-      #
-      # No Vulkan SDK step is needed: d3d11.lib ships with the Windows SDK
-      # that is part of every Visual Studio installation on the runner.
-      # -----------------------------------------------------------------------
-      - name: Configure CMake (D3D11 engine-only, portable Ninja preset)
-        run: cmake --preset windows-ninja-debug-engine-only
-
-      # -----------------------------------------------------------------------
-      # 3. Build engine_sandbox and cook.
-      # -----------------------------------------------------------------------
-      - name: Build engine_sandbox
-        run: cmake --build --preset windows-ninja-debug-engine-only --target engine_sandbox
-
-      - name: Build cook
-        run: cmake --build --preset windows-ninja-debug-engine-only --target cook
-
-      - name: Build pak
-        run: cmake --build --preset windows-ninja-debug-engine-only --target pak
-
-      # -----------------------------------------------------------------------
-      # 4. Verify binaries exist.
-      # -----------------------------------------------------------------------
-      - name: Verify engine_sandbox.exe exists
-        run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\engine_sandbox.exe")) { throw "engine_sandbox.exe not found" }
-        shell: pwsh
-
-      - name: Verify cook.exe exists
-        run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\cook.exe")) { throw "cook.exe not found" }
-        shell: pwsh
-
-      - name: Verify pak.exe exists
-        run: if (-not (Test-Path "build\windows-ninja-debug-engine-only\pak.exe")) { throw "pak.exe not found" }
-        shell: pwsh
-
-      # -----------------------------------------------------------------------
-      # 5. Run engine_sandbox in headless mode — D3D11 WARP (M0 validation).
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — D3D11 WARP in Headless CI
-      # D3D11 WARP is Microsoft's CPU software rasteriser bundled with every
-      # Windows installation.  When --headless is passed, D3D11Renderer uses
-      # D3D_DRIVER_TYPE_WARP (no GPU or GPU driver needed) and skips swap chain
-      # creation.  This makes the headless check reliable on any Windows runner.
-      # Expected output: "[PASS] D3D11 device initialised..." followed by exit 0.
-      # -----------------------------------------------------------------------
-      - name: Run headless validation (M0 — D3D11 WARP)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M3 — Textured quad headless validation (D3D11 texture pipeline)
-      # -----------------------------------------------------------------------
-      - name: Run headless validation (M3 — textured_quad scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene textured_quad
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M4b — GPU skinning headless validation
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Skinned mesh headless validation.
-      # Loads the "skinned_mesh" scene which compiles skinned_mesh.vs.hlsl and
-      # skinned_mesh.ps.hlsl, creates the GpuSkinningBuffer constant buffer,
-      # uploads 2 joint matrices, and calls DrawIndexed(24).
-      # All of this executes on the WARP software rasteriser — no GPU needed.
-      # Expected output: "[PASS] skinned_mesh scene pipeline OK (WARP headless)."
-      # -----------------------------------------------------------------------
-      - name: Run headless validation (M4b — skinned_mesh scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene skinned_mesh
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M7 — World streaming acceptance tests (CPU-only, no GPU needed)
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M7 World Streaming CI
-      # The three streaming scenes exercise WorldStreamingManager, WorldPartition,
-      # and AsyncLoader without touching the D3D11 renderer.  They run on the
-      # WARP headless device (same binary as M3/M4b) because the renderer is
-      # initialised before scene dispatch and then immediately shut down after
-      # each streaming test.
-      #
-      #   streaming_load   — 9 cells load at radius-1; no duplicates.
-      #   streaming_evict  — cells evicted when camera moves 3× cell-width away.
-      #   streaming_async  — Update() < 2 ms per frame over 120 frames.
-      #
-      # No extra vcpkg packages are needed: world streaming uses only std::thread,
-      # std::mutex, std::condition_variable — all in the C++17 standard library.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M7 — streaming_load)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_load
-        shell: cmd
-
-      - name: Run headless acceptance test (M7 — streaming_evict)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_evict
-        shell: cmd
-
-      - name: Run headless acceptance test (M7 — streaming_async)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_async
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M8 — Gameplay Integration acceptance test
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M8.9 CI Acceptance Test
-      # This scene runs all gameplay systems (Combat, AI, Quest, Weather) in
-      # the headless D3D11 sandbox and asserts three conditions:
-      #   1. Player HP unchanged after 60 frames (enemies too far to reach).
-      #   2. At least 1 AI state transition (IDLE → WANDERING within 1 s).
-      #   3. Quest objective registered on the player entity.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M8 — m8_gameplay)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_gameplay
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M9 — PBR Cook-Torrance sphere headless validation
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M9 PBR CI Test
-      # This step validates the full PBR rendering pipeline against the WARP
-      # software rasteriser:
-      #   1. LoadScene("pbr_mesh") compiles pbr_mesh.vs.hlsl + pbr_mesh.ps.hlsl
-      #      at runtime via D3DCompileFromFile (SM 4.0, D3DCOMPILE_ENABLE_STRICTNESS).
-      #   2. A UV sphere (16×16 stacks/slices, 289 verts, 1536 indices) is
-      #      uploaded to an immutable VB + IB.
-      #   3. Three constant buffers are created and uploaded:
-      #        b0 perFrameCB (256 bytes) — world, worldInvTrans, view, proj
-      #        b1 lightCB   (48 bytes)  — directional light dir, color, intensity
-      #        b2 materialCB (32 bytes) — albedo, metallic, roughness, ao
-      #   4. RecordHeadlessFrame() binds a 64×64 off-screen RGBA8 RTV, renders
-      #      one frame through the Cook-Torrance BRDF, then flushes.
-      #   5. Exit 0 = pass.  Exit non-zero or "[FAIL]" in stdout = failure.
-      #
-      # No physical GPU required: WARP executes all SM 4.0 shader instructions.
-      # -----------------------------------------------------------------------
-      - name: Run headless validation (M9 — pbr_mesh scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_mesh
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M10 — Dynamic Sky + Weather VFX headless acceptance test.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M10 Acceptance Tests
-      # This step validates three criteria from FF15_REQUIREMENTS_BLUEPRINT §7:
-      #
-      #   Test 1 — GPU pipeline: RecordHeadlessFrame() draws the sky via the
-      #     SV_VertexID full-screen triangle + sky.vs.hlsl + sky.ps.hlsl.
-      #     This confirms the sky CB, VS, and PS are correct and execute on WARP.
-      #
-      #   Test 2 — Time-of-day: the SkyRenderer must report sunIntensity > 0.9
-      #     at noon (t=12 h) and sunIntensity < 0.01 at midnight (t=0 h).
-      #
-      #   Test 3 — Weather states: fog density in WeatherType::Storm must be
-      #     > 0.1 higher than fog density in WeatherType::Clear (after 60 s).
-      #
-      # No physical GPU required: the GPU path uses WARP; the CPU tests are
-      # pure arithmetic with no graphics API calls.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M10 — dynamic_sky scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dynamic_sky
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # 6. Cook the vertical slice sample project.
-      # -----------------------------------------------------------------------
-      - name: Cook vertical slice project
-        run: .\build\windows-ninja-debug-engine-only\cook.exe --project samples\vertical_slice_project --verbose
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # 6b. Verify cells_manifest.json was generated by cook.exe.
-      # -----------------------------------------------------------------------
-      - name: Verify cells_manifest.json exists
-        shell: pwsh
-        run: |
-          $manifest = "samples\vertical_slice_project\Cooked\Levels\cells_manifest.json"
-          if (-not (Test-Path $manifest)) {
-            Write-Error "cells_manifest.json not found at $manifest — cook.exe must generate it."
-            exit 1
-          }
-          $json = Get-Content $manifest | ConvertFrom-Json
-          if ($json.cells.Count -lt 1) {
-            Write-Error "cells_manifest.json has no entries — expected at least 1 level cell."
-            exit 1
-          }
-          Write-Host "cells_manifest.json OK: $($json.cells.Count) cell(s) registered."
-
-      # -----------------------------------------------------------------------
-      # 7. Validate the AssetDB via engine_sandbox.
-      # -----------------------------------------------------------------------
-      - name: Validate-project (M2 AssetDB)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project samples\vertical_slice_project
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # 8. M8.7 — Zone Streaming → D3D11 integration test.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M8.7 Streaming Integration Test
-      # This scene validates the complete M8.7 pipeline that wires the world
-      # streaming system into the D3D11 GameRuntime:
-      #
-      #   1. Loads assetdb.json produced by cook.exe (step 6 above).
-      #   2. Inits GameStreamingManager with the real AssetLoader.
-      #   3. Loads cells_manifest.json (also produced by cook.exe) and
-      #      registers cell GUIDs for all level entries in the registry.
-      #   4. Runs 200 Update() calls so the async worker can complete.
-      #   5. Asserts: at least 1 cell reached the LOADED state.
-      #
-      # Must run AFTER step 6 (Cook) because assetdb.json and
-      # cells_manifest.json must both exist.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M8.7 — m8_streaming)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_streaming
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # Post-M10 — Behaviour Tree AI acceptance tests (CPU-only, no GPU needed).
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — bt_test CI Gate
-      # This step validates the three new engine/ai/ subsystems:
-      #
-      #   Test 1 — BT Sequence short-circuit: a failing condition must cause
-      #     the Sequence to return FAILURE without running subsequent children.
-      #   Test 1b — BT Sequence RUNNING: a multi-frame action returns RUNNING
-      #     on tick 1 and SUCCESS on tick 2 (resuming from the same child).
-      #   Test 2a — BT Selector fallback: the Selector returns SUCCESS when
-      #     the SECOND child succeeds (first child failed).
-      #   Test 2b — Blackboard: an action writes an int key; the outer test
-      #     reads it back correctly.
-      #   Test 3 — Formation offsets: LINE, V_SHAPE, and CIRCLE each produce
-      #     4 non-zero slot offsets (followers not stacked on the leader).
-      #   Test 4a — NavMesh basic path: A* finds a path from {0,0} to {4,4}
-      #     on an all-walkable 5×5 grid.
-      #   Test 4b — NavMesh obstacle: A* routes around a blocked column.
-      #
-      # No D3D11 renderer needed — all four tests are pure C++17 CPU tests.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (Post-M10 — bt_test)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bt_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # Post-M10 — Cinematics acceptance tests (CPU-only, no GPU needed).
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — cinematic_test CI Gate
-      # This step validates the two new engine/cinematics/ subsystems:
-      #
-      #   Test 1a — CameraRig Duration(): 3-keyframe rig spanning 2 s must
-      #     report Duration() = 2.0 s.
-      #   Test 1b — CameraRig Evaluate(t=0): must return the first keyframe
-      #     (pos.x=0, fov=60) with no interpolation.
-      #   Test 1c — CameraRig Evaluate(t=0.5): must return Lerp midpoint
-      #     between kf[0] and kf[1] (pos.x=5, fov=55).
-      #   Test 1d — CameraRig Evaluate(t=duration): must clamp to the last
-      #     keyframe (pos.x=20, fov=40).
-      #   Test 2a — Sequencer Play(): CurrentShotIndex()==0, IsPlaying()==true.
-      #   Test 2b — Sequencer shot advance: Tick(0.15 s) on a 0.1 s shot
-      #     advances to shot 1 (carry-over).
-      #   Test 2c — Sequencer complete: second Tick(0.15 s) finishes the
-      #     sequence; IsComplete()==true.
-      #   Test 3a — OnShotChanged callback: fires twice with indices 0 and 1.
-      #   Test 3b — OnComplete callback: fires exactly once after all shots.
-      #   Test 4a — AddAudioEvent early: event NOT fired before declared time.
-      #   Test 4b — AddAudioEvent fired: event fires within ±1 frame (±dt/2).
-      #   Test 4c — AddAudioEvent once: event does not re-fire after shot ends.
-      #
-      # No D3D11 renderer needed — all tests are pure C++17 CPU tests.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (Post-M10 — cinematic_test)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene cinematic_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # UI Menu Stack acceptance tests (CPU-only, no GPU needed).
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — menu_stack_test CI Gate
-      # This step validates the MenuStack push/pop navigation subsystem:
-      #
-      #   Test 1 — Push / Top / Size: pushing 3 distinct screens produces
-      #     Size()=3 and Top()==INVENTORY.
-      #   Test 2 — Pop: popping once restores the previous screen; the
-      #     floor guard prevents popping below 1 screen.
-      #   Test 3 — PopToBase: a 4-deep stack collapses to Size()=1 (HUD).
-      #   Test 4 — Contains: true for a screen in the stack; false for one
-      #     that has never been pushed.
-      #   Test 5 — OnScreenChanged callback: fires on Push and Pop with the
-      #     correct new top-of-stack value.
-      #   Test 6 — Duplicate push guard: pushing the same screen that is
-      #     already on top is a no-op (Size() does not grow).
-      #
-      # No D3D11 renderer needed — all 6 tests are pure C++17 CPU tests.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (UI Menu Stack — menu_stack_test)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene menu_stack_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # SDF Font Renderer acceptance tests (D3D11 WARP, no GPU needed).
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Font Renderer CI Test
-      # This step validates the SDF FontRenderer subsystem (Post-M10):
-      #
-      #   Test 1 — Init: FontRenderer::Init() builds the CPU-side SDF atlas
-      #     (96 glyphs, signed distance field generation), uploads the R8_UNORM
-      #     D3D11 texture, compiles sdf_text.vs/ps.hlsl, and creates VB/IB/CB.
-      #   Test 2 — Render: RenderText("Hello, World! 0123456789") builds text
-      #     quads, maps the dynamic VB, and issues DrawIndexed — no crash.
-      #   Test 3 — Shutdown: all COM resources released; IsInitialised()==false.
-      #
-      # Runs on D3D11 WARP (CPU software renderer) so no GPU driver is needed.
-      # ENGINE_ENABLE_D3D11 must be defined — it is in windows-ninja-debug-engine-only.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (Font Renderer — font_test)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene font_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M16: PBR + IBL headless acceptance test
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M16 CI Gate
-      # This step validates the full PBR + Image-Based Lighting (IBL) pipeline:
-      #   Test 1 — LoadScene('pbr_ibl'):
-      #             BRDF LUT (64×64), irradiance cubemap (16×16×6), and
-      #             prefiltered environment cubemap (16×16×6 × 5 mips) are
-      #             generated on the CPU and uploaded to WARP without HRESULT
-      #             failures.
-      #   Test 2 — Depth buffer state check:
-      #             Graceful SKIP in headless mode (no swap chain → no DSV).
-      #   Test 3 — RecordHeadlessFrame():
-      #             The pbr_ibl draw call executes (IBL SRV binds, VS+PS run,
-      #             DrawIndexed completes) without crash or device-removed error.
-      #   Test 4 — Unload + reload:
-      #             UnloadScene() releases all IBL COM resources cleanly;
-      #             a second LoadScene('pbr_ibl') succeeds (no leaked refs).
-      #
-      # All tests run on WARP (no GPU required) so they pass on GitHub runners.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M16 — pbr_ibl scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_ibl
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M17: Directional shadow map headless acceptance test
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M17 Shadow Map CI Gate
-      # This step validates the two-pass directional shadow map pipeline:
-      #   Test 1 — LoadScene('shadow_test'):
-      #             Creates 512×512 DXGI_FORMAT_R32_TYPELESS depth texture,
-      #             DSV (D32_FLOAT) and SRV (R32_FLOAT), compiles shadow.vs.hlsl,
-      #             shadow_lit.vs.hlsl, shadow_lit.ps.hlsl, creates comparison
-      #             sampler (D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT +
-      #             D3D11_COMPARISON_LESS_EQUAL) and both constant buffers.
-      #   Test 2 — RecordHeadlessFrame():
-      #             Shadow pass: renders the sphere from the light's viewpoint
-      #             (no colour RTV, only DSV) using the shadow VS.
-      #             Lit pass:    renders from the camera, samples the shadow map
-      #             with PCF (SamplerComparisonState.SampleCmpLevelZero).
-      #             Both passes execute on WARP without a device-removed error.
-      #   Test 3 — Unload + reload:
-      #             UnloadScene() releases the DSV + SRV + texture and all other
-      #             COM objects; a second LoadScene('shadow_test') succeeds.
-      #
-      # All tests run on WARP — no GPU required.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M17 — shadow_test scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene shadow_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M17: HDR bloom post-processing headless acceptance test
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M17 Bloom CI Gate
-      # This step validates the four-pass HDR bloom pipeline:
-      #   Test 1 — LoadScene('bloom_test'):
-      #             Creates 4× RGBA8 UNORM 256×256 offscreen render targets,
-      #             each with RTV + SRV.  Compiles bloom_bright.ps.hlsl,
-      #             bloom_blur.ps.hlsl, bloom_composite.ps.hlsl, and sky.vs.hlsl
-      #             (reused as the full-screen SV_VertexID triangle VS).
-      #             Creates three 16-byte constant buffers (BloomCB, BlurCB,
-      #             CompCB) and a linear-clamp SamplerState.
-      #   Test 2 — RecordHeadlessFrame():
-      #             Pass 1: fills sceneRTV with a bright colour (simulated HDR).
-      #             Pass 2: bright-pass extracts luminance > 0.7 → brightRTV.
-      #             Pass 3: horizontal Gaussian blur → blurARTV (ping).
-      #             Pass 4: vertical   Gaussian blur → blurBRTV (pong).
-      #             Pass 5: composite blurBRTV + sceneRTV → 64×64 offscreen RT.
-      #             All five passes execute on WARP without crash.
-      #   Test 3 — Unload + reload:
-      #             UnloadScene() releases all 12 RT COM objects (4×Tex+RTV+SRV)
-      #             plus shaders and CBs cleanly.
-      #
-      # All tests run on WARP — no GPU required.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M17 — bloom_test scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bloom_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M18: X3DAudio 3D positional audio headless acceptance test
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M18 X3DAudio CI Gate
-      # This step validates the X3DAudio 3D positional audio subsystem (M18):
-      #   Test 1 — Init:
-      #             XAudio2Backend::Init() is called.  On headless Windows runners
-      #             with no audio device, XAudio2 may fail (returns false), but
-      #             the backend continues — Compute3DVolume() falls back to the
-      #             linear rolloff formula, which is CPU-only and always works.
-      #   Test 2 — At-listener volume:
-      #             Emitter at distance 0 from the listener must return volume
-      #             >= 0.95 from Compute3DVolume().  Validates the near-unity
-      #             result of the rolloff curve at zero distance.
-      #   Test 3 — At-maxDistance volume:
-      #             Emitter placed at exactly maxDistance from the listener must
-      #             return volume <= 0.05.  Satisfies the M18 acceptance criterion:
-      #             "assert volume <= 0.05 at maxDistance".
-      #   Test 4 — Half-distance volume:
-      #             Emitter at maxDist/2 must return volume <= 0.5.  Confirms
-      #             the rolloff is monotonically decreasing (linear or X3DAudio).
-      #
-      # All tests are purely CPU-side math — no audio hardware or GPU required.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M18 -- audio_3d_test scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene audio_3d_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M19 — Action combat completion acceptance test (CPU-only)
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M19 combat_test CI
-      # This step validates four M19 criteria without any rendering API calls:
-      #
-      #   Test 1 (combo_populate):
-      #     AddCombo() fills the ComboSystem in-memory (no JSON file needed).
-      #     ComboCount() == 3 and the first combo name == "Avalanche Chain".
-      #
-      #   Test 2 (combo_sequence):
-      #     Feed ATTACK, ATTACK, ATTACK via PressInput().  The FSM must stay
-      #     BUILDING after the first two inputs (prefix match) and return
-      #     "Avalanche Chain" on the third (exact match).  State = COOLDOWN.
-      #
-      #   Test 3 (window_expiry):
-      #     Feed one ATTACK, then call Update(1.0 s) to advance past the
-      #     0.5 s combo window.  State must revert to IDLE.  Validates the
-      #     combo window timer cancels a stale partial sequence.
-      #
-      #   Test 4 (damage_formula):
-      #     Create a minimal ECS World, call CombatSystem::CalculateDamage()
-      #     100 times, assert every result lies in [1, 100].  Confirms the
-      #     core damage formula (STR×2 − DEF with ±15% variance and ≤50%
-      #     crit multiplier) is bounded correctly.
-      #
-      # No GPU, audio hardware, or vcpkg packages are required — all tests
-      # exercise pure C++17 code paths.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M19 -- combat_test scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene combat_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M20 — Quest system acceptance test (CPU-only)
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M20 quest_test CI
-      # This step validates four M20 criteria without any rendering API calls:
-      #
-      #   Test 1 (quest_accept):
-      #     AcceptQuest(player, 1) returns true and the quest appears in
-      #     GetActiveQuests().  Validates the GameDatabase lookup,
-      #     prerequisite check, and QuestEntry allocation path.
-      #
-      #   Test 2 (quest_objective):
-      #     OnEnemyKilled(player, 1) x3 triggers auto-complete for quest 1
-      #     (requires 3 goblin kills).  IsQuestComplete() returns true and
-      #     the quest's xpReward is banked into LevelComponent::pendingXP
-      #     (equivalently, total accrued XP is currentXP + pendingXP until
-      #     camp rest applies the banked amount).  Validates the event-driven
-      #     objective hook and auto-complete path.
-      #
-      #   Test 3 (quest_prereq):
-      #     Quest 6 has prereqQuestIDs=[1].  CanAcceptQuest(player, 6) is
-      #     false for a fresh player and true after quest 1 is complete.
-      #     Validates the prerequisite gate that enables quest chaining.
-      #
-      #   Test 4 (quest_fail):
-      #     FailQuest() sets isFailed on the QuestEntry.  IsQuestActive()
-      #     and IsQuestComplete() both return false afterwards.
-      #     Validates that failed quests are distinct from active and complete.
-      #
-      # No GPU, audio hardware, or vcpkg packages are required.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M20 -- quest_test scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene quest_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M20 — Dialogue system acceptance test (CPU-only)
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M20 dialogue_test CI
-      # This step validates three M20 criteria without any rendering API calls:
-      #
-      #   Test 1 (dialogue_out_of_range):
-      #     NPC placed at (100, 0, 100), player at origin, interactRange=5.
-      #     After DialogueSystem::Update() isInteractable must be false.
-      #     Validates the XZ-plane proximity check for the "too far" case.
-      #
-      #   Test 2 (dialogue_in_range):
-      #     Player moved to (99, 0, 99) — XZ distance ≈ 1.4 < interactRange=5.
-      #     After Update() isInteractable must be true.
-      #     Validates the proximity check for the "in range" case.
-      #
-      #   Test 3 (dialogue_begin_and_advance):
-      #     BeginDialogue() opens the stub conversation (IsActive()=true).
-      #     AdvanceDialogue() on the terminal node closes it (IsActive()=false).
-      #     Validates the full open → advance → close dialogue lifecycle.
-      #
-      # No GPU, audio hardware, or vcpkg packages are required.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M20 -- dialogue_test scene)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dialogue_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M26 — Save system acceptance test (PR1 plumbing stub, CPU-only)
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — save_test CI Gate (engine-only build, M26)
-      # This step runs the save_test scene against the engine-only build
-      # (windows-ninja-debug-engine-only) which has NO nlohmann/json.
-      #
-      # Without ENGINE_ENABLE_JSON the scene emits [SKIP] for each sub-test
-      # and exits 0.  This keeps the engine-only job green while signalling
-      # that the full test suite is only exercised in the dedicated
-      # build-windows-save-test job (which installs nlohmann-json via vcpkg).
-      #
-      # No GPU, audio hardware, or vcpkg packages are required — the [SKIP]
-      # path exercises only the #ifndef ENGINE_ENABLE_JSON branch.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M26 save_test — engine-only skip)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene save_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M25 — Terrain heightmap renderer + collision acceptance tests
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — terrain_test CI Gate (M25 implementation)
-      # Runs the three M25 acceptance subtests defined in src/sandbox/main.cpp:
-      #
-      #   Test 1 (renderer_init):
-      #     TerrainRenderer::CreateDeviceResources() succeeds on WARP D3D11 device.
-      #     Verifies: terrain.vs/ps.hlsl compile, VB/IB/CB created without error.
-      #
-      #   Test 2 (heightmap_displacement):
-      #     CPU-side vertices for a flat 4×4 heightmap (all Y=2.0) must have
-      #     pos[1]==2.0.  Verifies the GenerateMesh() height-sample path.
-      #
-      #   Test 3 (physics_collision):
-      #     Available only in the physics build job (ENGINE_ENABLE_PHYSICS).
-      #     In this job (engine-only build, no Jolt) the test is gracefully skipped.
-      #     The build-windows-physics job runs the full physics collision subtest.
-      # -----------------------------------------------------------------------
-      - name: Run headless acceptance test (M25 — terrain_test)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # M24 — Cook pipeline verification + authored_content acceptance test
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — M24 Cook Verification CI Gate
-      # =============================================
-      # These two steps close the M24 "cook pipeline completeness" gap:
-      #
-      #   Step 1: Run cook_assets.py
-      #     Converts all PNGs in Content/Textures/ to DDS RGBA8 .tex files,
-      #     processes WAV audio, and bakes animation data.  Requires Python 3.9+
-      #     and Pillow (installed via pip in the "Set up Python" step above).
-      #     A non-zero exit code means the cook script itself is broken.
-      #
-      #   Step 2: authored_content scene
-      #     A pure filesystem acceptance test (no GPU required):
-      #       Test 1 — At least 10 .tex files exist under Cooked/Textures/.
-      #       Test 2 — Every .tex file starts with the 4-byte DDS magic 'DDS '.
-      #       Test 3 — Every DDS_HEADER.dwSize field equals 124 (spec requirement).
-      #     If any .tex file lacks DDS magic the test fails with a clear message,
-      #     rather than silently using the 1×1 white fallback SRV at runtime.
-      #
-      # Why separate from the physics job?
-      #   cook_assets.py is a pure Python step; it runs in the engine-only job
-      #   (no Jolt SDK needed) and is checked before PAK packaging so the pak
-      #   archive always contains freshly cooked DDS textures.
-      # -----------------------------------------------------------------------
-      - name: Set up Python for cook_assets.py (M24)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Pillow for cook_assets.py (M24)
-        run: python -m pip install "Pillow>=11.1.0"
-        shell: cmd
-
-      - name: Run cook_assets.py (M24 — produce DDS RGBA8 cooked textures)
-        run: python samples\vertical_slice_project\cook_assets.py
-        shell: cmd
-
-      - name: Run authored_content acceptance test (M24 — DDS magic verification)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene authored_content
-        shell: cmd
-        env:
-          ENGINE_PROJECT_ROOT: samples\vertical_slice_project
-
-      # -----------------------------------------------------------------------
-      # PAK packager acceptance test
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — PAK Packager CI Test
-      # This step validates pak.exe by packing the vertical_slice_project Cooked/
-      # directory into a PAK1 archive.  A non-zero exit code (file-not-found,
-      # HRESULT error, etc.) will fail the CI job.
-      # pak.exe is built alongside cook.exe in the windows-ninja-debug-engine-only
-      # preset because it has no platform or renderer dependencies.
-      # -----------------------------------------------------------------------
-      - name: Run PAK packager acceptance test
-        run: .\build\windows-ninja-debug-engine-only\pak.exe --input samples\vertical_slice_project\Cooked\ --output samples\vertical_slice_project\Cooked\test_output.pak
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # CI-3: PAK round-trip test — extract + validate-project
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — PAK Round-Trip Validation (CI-3)
-      # Packing is only useful if extracting works too.  This step:
-      #   1. Extracts the PAK archive to a temp directory.
-      #   2. Runs engine_sandbox --validate-project on the extracted content.
-      # If pak.exe --extract is broken or the extracted AssetDB is corrupted,
-      # this gate catches it before the bug reaches a release build.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Extract PAK content into a Cooked/ subdirectory (CI-3)
-      # The PAK archive contains the Cooked/ directory contents (built from
-      # samples\vertical_slice_project\Cooked\).  We extract into
-      # %TEMP%\pak_extracted\Cooked so that the next step can run
-      # --validate-project %TEMP%\pak_extracted — which appends \Cooked\ when
-      # looking for assetdb.json, matching the extracted layout exactly.
-      - name: Extract PAK archive (CI-3)
-        run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted\Cooked
-        shell: cmd
-
-      # TEACHING NOTE — Validate extracted PAK content (CI-3)
-      # engine_sandbox --validate-project reads the AssetDB from the extracted
-      # directory and verifies every registered asset can be opened.  A non-zero
-      # exit code means the PAK round-trip corrupted the AssetDB or a cooked
-      # asset — this gate catches extraction bugs before they reach a release build.
-      - name: Validate extracted PAK content (CI-3)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project %TEMP%\pak_extracted
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # CI-1: Run Python tool tests on Windows
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Windows Python Tests (CI-1)
-      # The Python tool tests (tools/tests/, tests/) normally run only in the
-      # Linux job.  Running them on Windows catches Windows-specific regressions
-      # such as path separator bugs (backslash vs forward slash) in cook_assets.py
-      # or struct.pack byte-order assumptions in the baker tools.
-      # -----------------------------------------------------------------------
-      - name: Install Python dev dependencies (CI-1)
-        run: python -m pip install -r requirements-dev.txt --quiet
-        shell: cmd
-
-      - name: Run Python tool tests on Windows (CI-1)
-        run: python -m pytest tools/tests/ tests/ -q --tb=short
-        shell: cmd
-
-      # -----------------------------------------------------------------------
-      # Demo_Game — OpenWorld headless acceptance test (Epic: Demo_Game)
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — demo_world Headless CI Test
-      # ─────────────────────────────────────────────
-      # The --scene demo_world flag exercises the OpenWorld state machine that
-      # powers Demo_Game.  It runs inside engine_sandbox (no separate binary
-      # needed for CI) because engine_sandbox compiles open_world.cpp alongside
-      # its own sources.
-      #
-      # 5 acceptance tests are run:
-      #   1. Init:          12+ teaching stations registered.
-      #   2. Boot:          initial state = BOOT_MENU.
-      #   3. Biome cycle:   auto-advance through LOADING → PLAYING; all biomes.
-      #   4. Teleport:      TeleportToStation("rendering_pbr") → GRASSLAND biome.
-      #   5. Station data:  every station has non-empty id, displayName, sceneHint.
-      # -----------------------------------------------------------------------
-      - name: Run Demo_Game acceptance test (demo_world — OpenWorld state machine)
-        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene demo_world
-        shell: cmd
-
-  # --------------------------------------------------------------------------
-  # M5 Physics job: Build with Jolt Physics + run physics acceptance tests
-  # --------------------------------------------------------------------------
-  # TEACHING NOTE — M5 Physics CI Job
-  # ============================================================================
-  # This job validates the Jolt Physics integration (M5).  It:
-  #   1. Installs joltphysics via the system vcpkg at C:\vcpkg (classic mode).
-  #   2. Configures engine_sandbox with the windows-ninja-debug-physics preset
-  #      (ENGINE_ENABLE_PHYSICS=ON, D3D11 only, no Vulkan SDK needed).
-  #   3. Builds engine_sandbox.
-  #   4. Runs the M5 headless physics acceptance test:
-  #         engine_sandbox.exe --headless --scene physics_test
-  #      Three CPU-only tests are run:
-  #        Test 1 — Drop sphere: gravity simulation accuracy.
-  #        Test 2 — Character step-up: CharacterController ledge traverse.
-  #        Test 3 — Raycast: terrain query distance accuracy.
-  #
-  # continue-on-error: false — Physics acceptance tests are a hard M5 CI gate.
-  # The vcpkg install uses classic mode (see below) to avoid manifest-mode
-  # failures on other dependencies such as imgui[docking].
-  # ============================================================================
-  build-windows-physics:
-    name: Build Windows + Jolt Physics (M5)
-    runs-on: windows-latest
-    continue-on-error: false  # TEACHING NOTE — hard M5 CI gate
+    continue-on-error: false
 
     permissions:
       contents: read
@@ -812,147 +67,273 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------------------------
-      # Enter MSVC developer environment (same as primary job).
-      # -----------------------------------------------------------------------
+      # TEACHING NOTE — Without vcvars, CMake may detect a GNU toolchain and
+      # fail to link Windows SDK libraries (xaudio2.lib, d3d11.lib, etc.).
       - name: Setup MSVC developer command prompt
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
       # -----------------------------------------------------------------------
-      # TEACHING NOTE — Classic-mode vcpkg install (physics job only)
+      # Install Jolt Physics via vcpkg classic mode.
+      # nlohmann/json is vendored so only joltphysics needs vcpkg.
       # -----------------------------------------------------------------------
-      # The project's vcpkg.json lists ALL engine dependencies, including
-      # imgui[docking,dx11-binding,win32-binding] for the editor.  Running
-      # `vcpkg install` from the workspace in "manifest mode" would try to
-      # install every entry — and a specific imgui snapshot on the CI runner
-      # may not carry the docking feature, causing the install to fail even
-      # though this build doesn't need imgui at all.
-      #
-      # Fix: run the install from a neutral temp directory (no vcpkg.json)
-      # so vcpkg falls back to "classic mode", where individual packages are
-      # accepted.  We use the system-wide vcpkg at C:\vcpkg (always present
-      # on windows-latest runners).  Packages land in C:\vcpkg\installed\ and
-      # are found by CMake via the C:\vcpkg toolchain file below.
-      #
-      # Cache key: package name + OS (joltphysics version rarely changes).
-      # -----------------------------------------------------------------------
-      - name: Cache vcpkg packages
+      - name: Cache vcpkg packages (joltphysics)
         uses: actions/cache@v4
         with:
           path: C:\vcpkg\installed
           key: vcpkg-joltphysics-${{ runner.os }}-x64
 
       - name: Install joltphysics via vcpkg (classic mode)
+        shell: pwsh
         run: |
           Set-Location "$env:TEMP"
           C:\vcpkg\vcpkg.exe install joltphysics:x64-windows
-        shell: pwsh
 
       # -----------------------------------------------------------------------
-      # Configure CMake with the physics-enabled preset.
-      # Pass the system vcpkg toolchain file (C:\vcpkg) so CMake finds the
-      # joltphysics package installed in the step above.
-      #
-      # TEACHING NOTE — VCPKG_MANIFEST_INSTALL=OFF
-      # The vcpkg CMake toolchain detects vcpkg.json in the project root and
-      # would automatically re-run `vcpkg install` in manifest mode during
-      # cmake configure.  This fails because imgui@1.92.7 on the CI runner
-      # does not carry the "docking" feature required by vcpkg.json, even
-      # though this build doesn't use imgui at all.
-      #
-      # Setting VCPKG_MANIFEST_INSTALL=OFF tells the toolchain to skip the
-      # auto-install.  CMake then uses the packages already installed in the
-      # previous classic-mode step (C:\vcpkg\installed\x64-windows\).
+      # Configure with the physics preset (D3D11 + Jolt).
+      # VCPKG_MANIFEST_INSTALL=OFF prevents manifest-mode re-install of all
+      # vcpkg.json deps (including imgui[docking] which may not be on the runner).
       # -----------------------------------------------------------------------
-      - name: Configure CMake (D3D11 + Jolt Physics)
+      - name: Configure CMake (D3D11 + Physics)
+        shell: pwsh
         run: >
           cmake --preset windows-ninja-debug-physics
           -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
           -DVCPKG_MANIFEST_INSTALL=OFF
-        shell: pwsh
 
-      - name: Build engine_sandbox (with Physics)
+      - name: Build engine_sandbox
         run: cmake --build --preset windows-ninja-debug-physics --target engine_sandbox
 
+      - name: Build cook
+        run: cmake --build --preset windows-ninja-debug-physics --target cook
+
+      - name: Build pak
+        run: cmake --build --preset windows-ninja-debug-physics --target pak
+
+      - name: Verify engine_sandbox.exe exists
+        shell: pwsh
+        run: if (-not (Test-Path "build\windows-ninja-debug-physics\engine_sandbox.exe")) { throw "engine_sandbox.exe not found" }
+
+      - name: Verify cook.exe exists
+        shell: pwsh
+        run: if (-not (Test-Path "build\windows-ninja-debug-physics\cook.exe")) { throw "cook.exe not found" }
+
+      - name: Verify pak.exe exists
+        shell: pwsh
+        run: if (-not (Test-Path "build\windows-ninja-debug-physics\pak.exe")) { throw "pak.exe not found" }
+
       # -----------------------------------------------------------------------
-      # M5 — Physics acceptance tests (CPU-only, no WARP/GPU needed).
+      # Engine headless acceptance tests.
+      # All run on D3D11 WARP (CPU software rasteriser) — no GPU required.
       # -----------------------------------------------------------------------
-      # TEACHING NOTE — Physics is CPU-only
-      # Unlike M3 (textured quad) and M4b (GPU skinning), the physics_test
-      # scene does not touch the D3D11 renderer at all.  It initialises
-      # Jolt Physics, runs three simulations, and exits.  This means it
-      # works on any runner regardless of GPU driver availability.
+
+      # M0 — D3D11 device init
+      - name: Run headless validation (M0 - D3D11 WARP)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless
+        shell: cmd
+
+      # M3 — Textures (D3D11 DDS pipeline)
+      - name: Run headless validation (M3 - textured_quad)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene textured_quad
+        shell: cmd
+
+      # M4b — Animation / GPU skinning
+      - name: Run headless validation (M4b - skinned_mesh)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene skinned_mesh
+        shell: cmd
+
+      # M7 — World streaming
+      - name: Run headless acceptance test (M7 - streaming_load)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene streaming_load
+        shell: cmd
+
+      - name: Run headless acceptance test (M7 - streaming_evict)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene streaming_evict
+        shell: cmd
+
+      - name: Run headless acceptance test (M7 - streaming_async)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene streaming_async
+        shell: cmd
+
+      # M8 — Gameplay integration (all ECS systems, 60 frames)
+      - name: Run headless acceptance test (M8 - m8_gameplay)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene m8_gameplay
+        shell: cmd
+
+      # M9 — PBR rendering (Cook-Torrance BRDF on WARP)
+      - name: Run headless validation (M9 - pbr_mesh)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene pbr_mesh
+        shell: cmd
+
+      # M10 — Dynamic sky + weather VFX
+      - name: Run headless acceptance test (M10 - dynamic_sky)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene dynamic_sky
+        shell: cmd
+
       # -----------------------------------------------------------------------
-      - name: Run physics acceptance tests (M5)
+      # Cook vertical slice then run asset-dependent tests.
+      # -----------------------------------------------------------------------
+      - name: Cook vertical slice project
+        run: .\build\windows-ninja-debug-physics\cook.exe --project samples\vertical_slice_project --verbose
+        shell: cmd
+
+      - name: Verify cells_manifest.json was generated
+        shell: pwsh
+        run: |
+          $manifest = "samples\vertical_slice_project\Cooked\Levels\cells_manifest.json"
+          if (-not (Test-Path $manifest)) {
+            Write-Error "cells_manifest.json not found at $manifest"
+            exit 1
+          }
+          $json = Get-Content $manifest | ConvertFrom-Json
+          if ($json.cells.Count -lt 1) {
+            Write-Error "cells_manifest.json has no entries"
+            exit 1
+          }
+          Write-Host "cells_manifest.json OK: $($json.cells.Count) cell(s)."
+
+      - name: Validate-project (AssetDB + cells_manifest)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --validate-project samples\vertical_slice_project
+        shell: cmd
+
+      # M8.7 — Zone streaming into D3D11 (requires cooked assets)
+      - name: Run headless acceptance test (M8.7 - m8_streaming)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene m8_streaming
+        shell: cmd
+
+      # Post-M10 — Behaviour tree AI (BtTree, FormationSystem, NavMesh)
+      - name: Run headless acceptance test (Post-M10 - bt_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene bt_test
+        shell: cmd
+
+      # Post-M10 — Cinematics (CinematicSequencer, CameraRig, audio events)
+      - name: Run headless acceptance test (Post-M10 - cinematic_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene cinematic_test
+        shell: cmd
+
+      # UI — Menu stack navigation
+      - name: Run headless acceptance test (UI - menu_stack_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene menu_stack_test
+        shell: cmd
+
+      # UI — SDF font renderer
+      - name: Run headless acceptance test (Font - font_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene font_test
+        shell: cmd
+
+      # M16 — PBR + IBL (BRDF LUT, irradiance + prefiltered env cubemaps)
+      - name: Run headless acceptance test (M16 - pbr_ibl)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene pbr_ibl
+        shell: cmd
+
+      # M17 — Directional shadow maps (PCF, depth bias)
+      - name: Run headless acceptance test (M17 - shadow_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene shadow_test
+        shell: cmd
+
+      # M17 — HDR bloom post-processing
+      - name: Run headless acceptance test (M17 - bloom_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene bloom_test
+        shell: cmd
+
+      # M18 — X3DAudio 3D positional audio
+      - name: Run headless acceptance test (M18 - audio_3d_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene audio_3d_test
+        shell: cmd
+
+      # M19 — Action combat combo FSM
+      - name: Run headless acceptance test (M19 - combat_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene combat_test
+        shell: cmd
+
+      # M20 — Quest + dialogue systems
+      - name: Run headless acceptance test (M20 - quest_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene quest_test
+        shell: cmd
+
+      - name: Run headless acceptance test (M20 - dialogue_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene dialogue_test
+        shell: cmd
+
+      # M26 — Save system (slot round-trip, migration, autosave).
+      # TEACHING NOTE: ENGINE_ENABLE_JSON is always ON via vendored json.hpp so
+      # this test runs the full suite without any vcpkg install.
+      - name: Run headless save-system acceptance tests (M26 - save_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene save_test
+        shell: cmd
+
+      # M5 — Jolt Physics (rigid body, character controller, raycast)
+      - name: Run physics acceptance tests (M5 - physics_test)
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
         shell: cmd
 
-      # -----------------------------------------------------------------------
-      # Post-M10 — Vehicle Physics acceptance tests (CPU-only, no GPU needed).
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — VehicleSystem CI Gate
-      # Like physics_test, vehicle_test runs entirely on the CPU: it
-      # initialises Jolt Physics, creates a flat ground body and a vehicle
-      # entity, ticks VehicleSystem for 120 frames, and validates:
-      #   Test 1 — Suspension: vehicle stays above floor (Y > -0.5 m).
-      #   Test 2 — Throttle:   vehicle travels ≥ 1 m forward in 2 s.
-      #   Test 3 — Grounding:  ≥ 2 of 4 wheels detect the floor.
-      # -----------------------------------------------------------------------
-      - name: Run vehicle physics acceptance tests (Post-M10)
+      # Post-M10 — Vehicle physics (suspension, throttle, grounding)
+      - name: Run vehicle physics acceptance tests (Post-M10 - vehicle_test)
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
         shell: cmd
 
-      # -----------------------------------------------------------------------
-      # M25 terrain_test — full 3-subtest suite (with physics collision)
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — terrain_test in the physics job
-      # The engine-only job (no Jolt) skips test 3 (physics_collision) gracefully.
-      # This physics job has ENGINE_ENABLE_PHYSICS=ON, so all three subtests run:
-      #   Test 1 — renderer_init: TerrainRenderer GPU resources created on WARP.
-      #   Test 2 — heightmap_displacement: vertex Y equals the loaded height.
-      #   Test 3 — physics_collision: BakeTerrainCollider + sphere drop validation.
-      # -----------------------------------------------------------------------
-      - name: Run terrain acceptance tests (M25 — full suite with physics)
+      # M25 — Terrain (renderer, heightmap displacement, physics collision)
+      - name: Run terrain acceptance tests (M25 - terrain_test)
         run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene terrain_test
         shell: cmd
 
-  # --------------------------------------------------------------------------
-  # M6 Editor job: Build creation-suite-editor with Dear ImGui via vcpkg
-  # --------------------------------------------------------------------------
-  # TEACHING NOTE — M6 Editor CI Job
-  # ============================================================================
-  # This job validates the Dear ImGui editor build (M6).  It:
-  #   1. Clones vcpkg into the workspace and pins it to a known-good release tag
-  #      (2024.12.16).  At that tag the imgui feature is called
-  #      "docking-experimental" (not "docking").  We install
-  #      imgui[docking-experimental,...] to match the portfile.
-  #   2. Installs imgui[docking-experimental,dx11-binding,win32-binding] and
-  #      nlohmann-json via the workspace vcpkg in classic mode (from $env:TEMP
-  #      so no vcpkg.json is in scope).
-  #   3. Configures the build with the windows-ninja-debug-editor preset, which
-  #      sets BUILD_EDITOR=ON so CMake includes editor/CMakeLists.txt.
-  #   4. Builds creation-suite-editor.exe.
-  #   5. Runs the headless CLI mode to verify the editor initialises cleanly.
-  #
-  # Why separate from the main job?  The editor requires vcpkg imgui which
-  # takes ~2 minutes to compile.  Separating it keeps the main D3D11 build
-  # fast and avoids extending the critical path for engine PRs that don't
-  # touch editor code.
-  #
-  # Triggers: paths filter includes 'editor/**' so this job only runs when
-  # editor source files or editor CMakeLists.txt change.
-  # ============================================================================
+      # M24 — Authored content (DDS texture cook + magic-byte verification)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Pillow for cook_assets.py (M24)
+        run: python -m pip install "Pillow>=11.1.0"
+
+      - name: Run cook_assets.py (M24 - cook DDS textures)
+        run: python samples\vertical_slice_project\cook_assets.py
+        shell: cmd
+
+      - name: Run authored_content acceptance test (M24 - DDS magic)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene authored_content
+        shell: cmd
+
+      # PAK packager — pack, extract, validate
+      - name: Run PAK packager test
+        run: .\build\windows-ninja-debug-physics\pak.exe --input samples\vertical_slice_project\Cooked\ --output samples\vertical_slice_project\Cooked\test_output.pak
+        shell: cmd
+
+      - name: Extract PAK archive
+        run: .\build\windows-ninja-debug-physics\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted\Cooked
+        shell: cmd
+
+      - name: Validate extracted PAK content
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --validate-project %TEMP%\pak_extracted
+        shell: cmd
+
+      # Python tool tests (audio_authoring, anim_authoring, quest_baker, contracts)
+      - name: Install Python dev dependencies
+        run: python -m pip install -r requirements-dev.txt --quiet
+
+      - name: Run Python tool tests on Windows
+        run: python -m pytest tools/tests/ tests/ -q --tb=short
+
+      # Demo_world scene via engine_sandbox path
+      - name: Run Demo_Game acceptance test (demo_world - sandbox path)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene demo_world
+        shell: cmd
+
+  # ==========================================================================
+  # Job 2 — Editor Suite (Dear ImGui creation-suite-editor)
+  # ==========================================================================
+  # TEACHING NOTE — Editor job kept separate because imgui requires vcpkg and
+  # adds ~2 minutes of compile time.  Separating it avoids lengthening the
+  # critical path for engine PRs that do not touch editor code.
+  # ==========================================================================
   build-windows-editor:
-    name: Build Windows Editor — creation-suite-editor (M6)
+    name: Build Windows - Editor Suite (creation-suite-editor)
     runs-on: windows-latest
     continue-on-error: false
 
-    # TEACHING NOTE — Job-level env for pinned vcpkg version.
-    # Declaring the tag once here keeps the clone step, cache key, and restore
-    # key in sync automatically.  Update this single value when upgrading vcpkg.
     env:
+      # Pin to 2024.12.16 where the imgui feature is "docking-experimental".
       VCPKG_TAG: "2024.12.16"
 
     permissions:
@@ -962,34 +343,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -----------------------------------------------------------------------
-      # Enter MSVC developer environment (same as all other Windows jobs).
-      # -----------------------------------------------------------------------
       - name: Setup MSVC developer command prompt
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Pinned workspace vcpkg (editor job)
-      # -----------------------------------------------------------------------
-      # We clone a specific vcpkg release tag into the workspace instead of
-      # relying on the system C:\vcpkg snapshot baked into the runner image.
-      #
-      # At vcpkg tag 2024.12.16 the imgui docking feature is named
-      # "docking-experimental" — NOT "docking".  Using "docking" causes:
-      #   "imgui has no feature named docking."
-      #
-      # By pinning to tag 2024.12.16 we guarantee:
-      #   • imgui portfile defines the docking-experimental, dx11-binding and
-      #     win32-binding features that the editor depends on.
-      #   • The build is reproducible regardless of which runner image version
-      #     GitHub rolls out.
-      #
-      # The installed/ tree is cached keyed on editor/CMakeLists.txt so that
-      # a rebuild of imgui is only triggered when the editor's dependencies
-      # actually change.
-      # -----------------------------------------------------------------------
       - name: Clone and bootstrap vcpkg (pinned to ${{ env.VCPKG_TAG }})
         shell: pwsh
         run: |
@@ -1006,31 +364,11 @@ jobs:
       - name: Install imgui + nlohmann-json via vcpkg (classic mode)
         shell: pwsh
         run: |
-          # TEACHING NOTE — Classic-mode install
-          # Running vcpkg from $env:TEMP ensures no vcpkg.json is in scope so
-          # vcpkg uses classic mode and only installs the packages we request.
           Set-Location "$env:TEMP"
           & "$env:GITHUB_WORKSPACE\vcpkg\vcpkg.exe" install "imgui[docking-experimental,dx11-binding,win32-binding]:x64-windows" nlohmann-json:x64-windows
 
-      # -----------------------------------------------------------------------
-      # Configure CMake with the editor preset.
-      # Point CMAKE_TOOLCHAIN_FILE at the workspace vcpkg so CMake finds the
-      # imgui and nlohmann-json packages installed above.
-      # VCPKG_MANIFEST_INSTALL=OFF prevents the toolchain from re-running
-      # manifest-mode install during cmake configure (avoids re-downloading
-      # joltphysics and other vcpkg.json deps that this build doesn't need).
-      #
-      # TEACHING NOTE — VCPKG_INSTALLED_DIR (classic-mode vs manifest-mode)
-      # The workspace vcpkg (2024.12.16+) detects vcpkg.json in the project
-      # root and auto-switches to "manifest mode", where it expects packages
-      # in ${CMAKE_BINARY_DIR}/vcpkg_installed/<triplet>/.  But our classic-
-      # mode install (run from $env:TEMP) wrote packages to
-      # <workspace>/vcpkg/installed/<triplet>/ instead.  Without this override
-      # CMake silently fails to find imgui and nlohmann-json.
-      #
-      # Fix: explicitly set VCPKG_INSTALLED_DIR to the classic-mode install
-      # root so the toolchain appends the correct path to CMAKE_PREFIX_PATH.
-      # -----------------------------------------------------------------------
+      # TEACHING NOTE — VCPKG_INSTALLED_DIR overrides the path so CMake finds
+      # packages from the classic-mode install rather than manifest-mode default.
       - name: Configure CMake (D3D11 + Editor)
         shell: pwsh
         run: >
@@ -1042,16 +380,6 @@ jobs:
       - name: Build creation-suite-editor
         run: cmake --build --preset windows-ninja-debug-editor --target creation-suite-editor
 
-      # -----------------------------------------------------------------------
-      # M6 — Headless editor validation
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Headless editor test
-      # creation-suite-editor.exe --headless instantiates SceneEditorPanel and
-      # verifies it initialises cleanly (empty entity list, selectedIdx == -1).
-      # No D3D11 device, no GPU, no ImGui loop is created.  This validates that
-      # the editor's data model (panels, scene state) is correct regardless of
-      # the graphics backend — exactly the same pattern used by engine_sandbox.
-      # -----------------------------------------------------------------------
       - name: Verify creation-suite-editor.exe exists
         shell: pwsh
         run: if (-not (Test-Path "build\windows-ninja-debug-editor\creation-suite-editor.exe")) { throw "creation-suite-editor.exe not found" }
@@ -1066,213 +394,18 @@ jobs:
           .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless --create-scene "%TEMP%\ci_basic.scene.json"
           .\build\windows-ninja-debug-editor\creation-suite-editor.exe --headless --load-scene "%TEMP%\ci_basic.scene.json" --validate
 
-  # --------------------------------------------------------------------------
-  # Optional job: Build + validate Vulkan backend (requires Vulkan SDK)
-  # --------------------------------------------------------------------------
-  # TEACHING NOTE — Optional Vulkan CI Job
-  # This job validates the Vulkan backend when a Vulkan SDK is available.
-  # It is separated from the primary job so:
-  #   1. Vulkan SDK availability does not block the D3D11 main CI path.
-  #   2. Future hardware runners (self-hosted GPU) can run the full Vulkan test.
-  #
-  # continue-on-error: true — Vulkan job failures do not fail the overall CI.
-  # As the project matures (self-hosted GPU runner added), this can be changed
-  # to continue-on-error: false to make Vulkan a hard requirement.
-  # --------------------------------------------------------------------------
-  build-windows-vulkan:
-    name: Build Windows Vulkan (optional, MSVC x64)
-    runs-on: windows-latest
-    continue-on-error: true
-
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # -----------------------------------------------------------------------
-      # Enter an MSVC developer environment for Ninja + cl/link.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Keep toolchain consistent with primary Windows job.
-      # The Vulkan job also compiles Audio/XAudio2 code paths, so using MSVC
-      # avoids GNU-style -lxaudio2 lookup failures on windows-latest runners.
-      - name: Setup MSVC developer command prompt
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      # -----------------------------------------------------------------------
-      # Install the Vulkan SDK.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Why cache the Vulkan SDK?
-      # The Vulkan SDK is ~500 MB.  Without caching, every CI run would
-      # re-download it.  vulkan-use-cache: true stores the download in
-      # GitHub's action cache, keyed by the version string.
-      # -----------------------------------------------------------------------
-      - name: Install Vulkan SDK
-        uses: humbletim/setup-vulkan-sdk@v1.2.1
-        with:
-          vulkan-query-version: 1.3.250.0
-          vulkan-components: Vulkan-Headers, Vulkan-Loader
-          vulkan-use-cache: true
-
-      # Configure with both D3D11 and Vulkan enabled.
-      - name: Configure CMake (D3D11 + Vulkan, portable Ninja preset)
-        run: cmake --preset windows-ninja-debug-vulkan
-
-      - name: Build engine_sandbox (D3D11 + Vulkan)
-        run: cmake --build --preset windows-ninja-debug-vulkan --target engine_sandbox
-
-      # -----------------------------------------------------------------------
-      # Run headless with the Vulkan backend explicitly selected.
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Vulkan Headless Limitation
-      # GitHub-hosted runners install the Vulkan loader but NOT a software ICD
-      # (SwiftShader/lavapipe for Windows).  Running --renderer vulkan --headless
-      # may fail with VK_ERROR_INCOMPATIBLE_DRIVER on runners without a real GPU.
-      # This is expected and why this job has continue-on-error: true.
-      # On a self-hosted GPU runner this step will succeed.
-      # -----------------------------------------------------------------------
-      - name: Run Vulkan headless validation (optional)
-        run: .\build\windows-ninja-debug-vulkan\engine_sandbox.exe --renderer vulkan --headless
-        shell: cmd
-        continue-on-error: true
-
-  # ============================================================================
-  # M26 Save-System CI Hardening job
-  # ============================================================================
-  # TEACHING NOTE — M26 Save-System CI Job (build-windows-save-test)
-  # ============================================================================
-  # This job validates the full save-system acceptance suite (M26).  It:
-  #   1. Installs nlohmann-json via the system vcpkg at C:\vcpkg (classic mode).
-  #      Classic mode is used for the same reason as the physics job: the
-  #      project's vcpkg.json also requests imgui[docking] which may not be
-  #      available on the CI runner; running from $env:TEMP sidesteps the
-  #      manifest-mode install entirely.
-  #   2. Configures engine_sandbox with the windows-ninja-debug-save preset
-  #      (D3D11 only, no Vulkan SDK or Jolt Physics needed).  Passing the
-  #      vcpkg toolchain file allows CMake to find nlohmann/json and set
-  #      ENGINE_ENABLE_JSON, which unlocks the full JSON save/load path.
-  #   3. Builds engine_sandbox.
-  #   4. Runs the M26 three-part headless acceptance suite:
-  #         engine_sandbox.exe --headless --scene save_test
-  #      Tests exercised:
-  #        Test 1 (slot_roundtrip) — Save() + Load() round-trips HP, position,
-  #          and quest array with exact bit-equality.
-  #        Test 2 (migration)      — Load() of a "0.9.0" inline fixture migrates
-  #          to current version without crash; entity HP=99 restored.
-  #        Test 3 (autosave)       — AutoSave() (= CampSystem::Rest hook) writes
-  #          slot 'autosave', file is non-empty, Load() succeeds.
-  #
-  # continue-on-error: false — this is a hard M26 CI gate; save-system
-  # correctness is a load-bearing subsystem for player data persistence.
-  #
-  # No GPU, audio hardware, or Vulkan SDK are required — all three tests
-  # are pure C++17 CPU tests that touch only the filesystem and ECS.
-  # ============================================================================
-  build-windows-save-test:
-    name: Build Windows + Save-System Acceptance Tests (M26)
-    runs-on: windows-latest
-    continue-on-error: false  # TEACHING NOTE — hard M26 CI gate
-
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # -----------------------------------------------------------------------
-      # Enter MSVC developer environment (same as primary job).
-      # -----------------------------------------------------------------------
-      - name: Setup MSVC developer command prompt
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Classic-mode vcpkg install (save-test job)
-      # -----------------------------------------------------------------------
-      # We install nlohmann-json in classic mode from $env:TEMP (no vcpkg.json
-      # in scope) to avoid manifest-mode resolution of imgui[docking] which
-      # may not be available on the CI runner's vcpkg snapshot.
-      #
-      # nlohmann-json is a header-only library so installation is fast (<5 s).
-      # CMake detects it via find_package(nlohmann_json CONFIG QUIET) and sets
-      # ENGINE_ENABLE_JSON, which enables the full Save()/Load() code path.
-      # -----------------------------------------------------------------------
-      - name: Cache vcpkg packages (nlohmann-json)
-        uses: actions/cache@v4
-        with:
-          path: C:\vcpkg\installed
-          key: vcpkg-nlohmann-json-${{ runner.os }}-x64
-
-      - name: Install nlohmann-json via vcpkg (classic mode)
-        run: |
-          Set-Location "$env:TEMP"
-          C:\vcpkg\vcpkg.exe install nlohmann-json:x64-windows
-        shell: pwsh
-
-      # -----------------------------------------------------------------------
-      # Configure CMake with the save-test preset.
-      # Pass the system vcpkg toolchain so CMake finds nlohmann-json.
-      #
-      # TEACHING NOTE — VCPKG_MANIFEST_INSTALL=OFF
-      # Same reason as the physics job: the project vcpkg.json contains
-      # imgui[docking] which may not resolve on the CI runner's vcpkg
-      # snapshot.  VCPKG_MANIFEST_INSTALL=OFF tells the toolchain to skip
-      # the auto-install and use the packages from the previous classic-mode
-      # step instead.
-      # -----------------------------------------------------------------------
-      - name: Configure CMake (D3D11 + nlohmann/json)
-        run: >
-          cmake --preset windows-ninja-debug-save
-          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
-          -DVCPKG_MANIFEST_INSTALL=OFF
-        shell: pwsh
-
-      - name: Build engine_sandbox (with JSON)
-        run: cmake --build --preset windows-ninja-debug-save --target engine_sandbox
-
-      # -----------------------------------------------------------------------
-      # M26 — Save-system acceptance tests (CPU-only, no WARP/GPU needed).
-      # -----------------------------------------------------------------------
-      # TEACHING NOTE — Save tests are CPU-only
-      # All three tests exercise only the filesystem, ECS World, and
-      # nlohmann/json serialisation.  No D3D11 device is created and no
-      # GPU is required — the tests run cleanly even on a runner with no
-      # GPU driver.  The engine initialises its headless path and then
-      # immediately enters the save_test scene block without calling any
-      # D3D11 API.
-      # -----------------------------------------------------------------------
-      - name: Run headless save-system acceptance tests (M26)
-        run: .\build\windows-ninja-debug-save\engine_sandbox.exe --headless --scene save_test
-        shell: cmd
-
-  # --------------------------------------------------------------------------
-  # Demo_Game build job — BUILD_DEMO_GAME=ON (Epic: Demo_Game)
-  # --------------------------------------------------------------------------
-  # TEACHING NOTE — Demo_Game CI Build Job
-  # ============================================================================
-  # This job validates that the demo_game executable compiles successfully.
-  # It uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON,
-  # ENGINE_ENABLE_D3D11=ON).  No Vulkan SDK is needed.
-  #
-  # Steps:
-  #   1. Build engine_sandbox + demo_game + cook (same preset).
-  #   2. Verify demo_game.exe exists.
-  #   3. Run demo_game.exe --headless to exercise the full OpenWorld flow.
-  #
-  # The --headless flag runs the same 5 acceptance tests as
-  #   engine_sandbox --headless --scene demo_world
-  # but through the demo_main.cpp entry point (different code path).
-  #
-  # continue-on-error: false — Demo_Game is a first-class deliverable.
-  # ============================================================================
+  # ==========================================================================
+  # Job 3 — Demo_Game standalone executable
+  # ==========================================================================
+  # TEACHING NOTE — Validates demo_game.exe through the demo_main.cpp entry
+  # point (different code path from the sandbox demo_world test above).
+  # Uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON).
+  # nlohmann/json is now vendored so no vcpkg install is needed here.
+  # ==========================================================================
   build-windows-demo:
-    name: Build Windows — Demo_Game executable (Epic)
+    name: Build Windows - Demo_Game executable
     runs-on: windows-latest
+    continue-on-error: false
 
     permissions:
       contents: read
@@ -1302,7 +435,7 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path "build\windows-ninja-debug-demo\demo_game.exe")) {
-            throw "demo_game.exe not found — BUILD_DEMO_GAME build failed."
+            throw "demo_game.exe not found"
           }
           Write-Host "[OK] demo_game.exe found."
 
