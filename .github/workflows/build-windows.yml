@@ -5,12 +5,14 @@ name: Build Windows (engine_sandbox + cook)
 # ============================================================================
 # Three jobs validate the full Windows toolchain on every push/PR:
 #
-#   build-windows-engine  — D3D11 + Jolt Physics; runs ALL engine acceptance
-#                           tests (M3 through M26+: save, physics, textures,
-#                           world streaming, audio, animation, etc.).
-#                           Note: the M0 bare --headless test is intentionally
-#                           omitted — D3D11 WARP init is implicitly exercised
-#                           by every --scene test (M3+).
+#   build-windows-engine  — D3D11 (engine-only) + Jolt Physics (physics-only);
+#                           two builds in one job: the engine-only binary runs
+#                           all rendering/streaming/audio/save tests; the Jolt
+#                           binary runs only the three physics-specific tests
+#                           (physics_test, vehicle_test, terrain_test).
+#                           Keeps exactly 3 CI jobs while avoiding the Jolt
+#                           Debug stack-overflow that occurs when the physics
+#                           binary is used for non-physics scenes.
 #
 #   build-windows-editor  — Dear ImGui creation-suite-editor; separate because
 #                           imgui adds ~2 min of vcpkg compile time.
@@ -47,16 +49,24 @@ on:
 jobs:
 
   # ==========================================================================
-  # Job 1 — All engine subsystem tests (D3D11 + Jolt Physics)
+  # Job 1 — All engine subsystem tests (D3D11 rendering + Jolt Physics)
   # ==========================================================================
-  # TEACHING NOTE — Why one merged engine job?
-  # Previously engine tests were spread across three separate jobs:
-  #   build-windows         — core D3D11 scenes
-  #   build-windows-physics — Jolt Physics + vehicle + terrain
-  #   build-windows-save-test — save system with nlohmann/json from vcpkg
-  # With nlohmann/json now vendored at third_party/nlohmann/json.hpp,
-  # ENGINE_ENABLE_JSON is always ON — no separate vcpkg install or job needed.
-  # All engine tests now share one build: D3D11 + Jolt Physics.
+  # TEACHING NOTE — Why two builds in one job?
+  # The Jolt Physics Debug binary allocates large per-frame stack frames for
+  # Jolt's contact listener, narrow-phase, and constraint solver.  This causes
+  # STATUS_STACK_OVERFLOW (0xC00000FD) when the binary launches scenes that
+  # don't even use physics (e.g. textured_quad, PBR, streaming) because Jolt
+  # initialises its global thread pool on startup before any scene code runs.
+  #
+  # The solution is to use TWO engine_sandbox builds in one CI job:
+  #   • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
+  #     rendering / streaming / audio / animation / save-system tests.
+  #   • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
+  #     physics-specific tests (physics_test, vehicle_test, terrain_test).
+  #
+  # This is still exactly 3 CI jobs total (engine + editor + demo).
+  # The cook.exe / pak.exe tools are built from the engine-only preset since
+  # they never need Jolt.
   # ==========================================================================
   build-windows-engine:
     name: Build Windows - Engine (D3D11 + Physics + all engine tests)
@@ -78,110 +88,86 @@ jobs:
           arch: x64
 
       # -----------------------------------------------------------------------
-      # Install Jolt Physics via vcpkg classic mode.
-      # nlohmann/json is vendored so only joltphysics needs vcpkg.
+      # Build 1 of 2: engine-only (D3D11, no Jolt).
+      # Used for all rendering / streaming / audio / save-system tests.
+      # No vcpkg dependency — nlohmann/json is vendored, Jolt not needed.
       # -----------------------------------------------------------------------
-      - name: Cache vcpkg packages (joltphysics)
-        uses: actions/cache@v4
-        with:
-          path: C:\vcpkg\installed
-          key: vcpkg-joltphysics-${{ runner.os }}-x64
+      - name: Configure CMake (D3D11 engine-only — no Jolt)
+        run: cmake --preset windows-ninja-debug-engine-only
+        shell: cmd
 
-      - name: Install joltphysics via vcpkg (classic mode)
-        shell: pwsh
-        run: |
-          Set-Location "$env:TEMP"
-          C:\vcpkg\vcpkg.exe install joltphysics:x64-windows
-
-      # -----------------------------------------------------------------------
-      # Configure with the physics preset (D3D11 + Jolt).
-      # VCPKG_MANIFEST_INSTALL=OFF prevents manifest-mode re-install of all
-      # vcpkg.json deps (including imgui[docking] which may not be on the runner).
-      # -----------------------------------------------------------------------
-      - name: Configure CMake (D3D11 + Physics)
-        shell: pwsh
-        run: >
-          cmake --preset windows-ninja-debug-physics
-          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
-          -DVCPKG_MANIFEST_INSTALL=OFF
-
-      - name: Build engine_sandbox
-        run: cmake --build --preset windows-ninja-debug-physics --target engine_sandbox
+      - name: Build engine_sandbox (engine-only)
+        run: cmake --build --preset windows-ninja-debug-engine-only --target engine_sandbox
+        shell: cmd
 
       - name: Build cook
-        run: cmake --build --preset windows-ninja-debug-physics --target cook
+        run: cmake --build --preset windows-ninja-debug-engine-only --target cook
+        shell: cmd
 
       - name: Build pak
-        run: cmake --build --preset windows-ninja-debug-physics --target pak
+        run: cmake --build --preset windows-ninja-debug-engine-only --target pak
+        shell: cmd
 
-      - name: Verify engine_sandbox.exe exists
+      - name: Verify engine-only binaries exist
         shell: pwsh
-        run: if (-not (Test-Path "build\windows-ninja-debug-physics\engine_sandbox.exe")) { throw "engine_sandbox.exe not found" }
-
-      - name: Verify cook.exe exists
-        shell: pwsh
-        run: if (-not (Test-Path "build\windows-ninja-debug-physics\cook.exe")) { throw "cook.exe not found" }
-
-      - name: Verify pak.exe exists
-        shell: pwsh
-        run: if (-not (Test-Path "build\windows-ninja-debug-physics\pak.exe")) { throw "pak.exe not found" }
+        run: |
+          if (-not (Test-Path "build\windows-ninja-debug-engine-only\engine_sandbox.exe")) { throw "engine_sandbox.exe not found" }
+          if (-not (Test-Path "build\windows-ninja-debug-engine-only\cook.exe"))           { throw "cook.exe not found" }
+          if (-not (Test-Path "build\windows-ninja-debug-engine-only\pak.exe"))            { throw "pak.exe not found" }
 
       # -----------------------------------------------------------------------
-      # Engine headless acceptance tests.
+      # Engine headless acceptance tests using the engine-only binary.
       # All run on D3D11 WARP (CPU software rasteriser) — no GPU required.
-      # TEACHING NOTE — Why no plain --headless (M0) test here?
-      # The physics-enabled (Jolt) debug binary has a startup stack-frame
-      # profile that makes bare --headless (no scene) crash with
-      # STATUS_STACK_OVERFLOW on some CI runners.  D3D11 WARP device
-      # initialisation is implicitly validated by every --scene test below
-      # (each one calls renderer->Init(headless=true) before its scene code).
-      # Running a redundant M0 baseline that is known to fail with the physics
-      # build would block all subsequent scene tests.
       # -----------------------------------------------------------------------
+
+      # M0 — D3D11 device init (WARP baseline)
+      - name: Run headless validation (M0 - D3D11 WARP)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless
+        shell: cmd
 
       # M3 — Textures (D3D11 DDS pipeline)
       - name: Run headless validation (M3 - textured_quad)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene textured_quad
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene textured_quad
         shell: cmd
 
       # M4b — Animation / GPU skinning
       - name: Run headless validation (M4b - skinned_mesh)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene skinned_mesh
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene skinned_mesh
         shell: cmd
 
       # M7 — World streaming
       - name: Run headless acceptance test (M7 - streaming_load)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene streaming_load
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_load
         shell: cmd
 
       - name: Run headless acceptance test (M7 - streaming_evict)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene streaming_evict
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_evict
         shell: cmd
 
       - name: Run headless acceptance test (M7 - streaming_async)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene streaming_async
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene streaming_async
         shell: cmd
 
       # M8 — Gameplay integration (all ECS systems, 60 frames)
       - name: Run headless acceptance test (M8 - m8_gameplay)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene m8_gameplay
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_gameplay
         shell: cmd
 
       # M9 — PBR rendering (Cook-Torrance BRDF on WARP)
       - name: Run headless validation (M9 - pbr_mesh)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene pbr_mesh
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_mesh
         shell: cmd
 
       # M10 — Dynamic sky + weather VFX
       - name: Run headless acceptance test (M10 - dynamic_sky)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene dynamic_sky
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dynamic_sky
         shell: cmd
 
       # -----------------------------------------------------------------------
       # Cook vertical slice then run asset-dependent tests.
       # -----------------------------------------------------------------------
       - name: Cook vertical slice project
-        run: .\build\windows-ninja-debug-physics\cook.exe --project samples\vertical_slice_project --verbose
+        run: .\build\windows-ninja-debug-engine-only\cook.exe --project samples\vertical_slice_project --verbose
         shell: cmd
 
       - name: Verify cells_manifest.json was generated
@@ -200,88 +186,78 @@ jobs:
           Write-Host "cells_manifest.json OK: $($json.cells.Count) cell(s)."
 
       - name: Validate-project (AssetDB + cells_manifest)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --validate-project samples\vertical_slice_project
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project samples\vertical_slice_project
         shell: cmd
 
       # M8.7 — Zone streaming into D3D11 (requires cooked assets)
       - name: Run headless acceptance test (M8.7 - m8_streaming)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene m8_streaming
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene m8_streaming
         shell: cmd
 
       # Post-M10 — Behaviour tree AI (BtTree, FormationSystem, NavMesh)
       - name: Run headless acceptance test (Post-M10 - bt_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene bt_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bt_test
         shell: cmd
 
       # Post-M10 — Cinematics (CinematicSequencer, CameraRig, audio events)
       - name: Run headless acceptance test (Post-M10 - cinematic_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene cinematic_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene cinematic_test
         shell: cmd
 
       # UI — Menu stack navigation
       - name: Run headless acceptance test (UI - menu_stack_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene menu_stack_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene menu_stack_test
         shell: cmd
 
       # UI — SDF font renderer
       - name: Run headless acceptance test (Font - font_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene font_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene font_test
         shell: cmd
 
       # M16 — PBR + IBL (BRDF LUT, irradiance + prefiltered env cubemaps)
       - name: Run headless acceptance test (M16 - pbr_ibl)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene pbr_ibl
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene pbr_ibl
         shell: cmd
 
       # M17 — Directional shadow maps (PCF, depth bias)
       - name: Run headless acceptance test (M17 - shadow_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene shadow_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene shadow_test
         shell: cmd
 
       # M17 — HDR bloom post-processing
       - name: Run headless acceptance test (M17 - bloom_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene bloom_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene bloom_test
         shell: cmd
 
       # M18 — X3DAudio 3D positional audio
       - name: Run headless acceptance test (M18 - audio_3d_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene audio_3d_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene audio_3d_test
         shell: cmd
 
       # M19 — Action combat combo FSM
       - name: Run headless acceptance test (M19 - combat_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene combat_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene combat_test
         shell: cmd
 
       # M20 — Quest + dialogue systems
       - name: Run headless acceptance test (M20 - quest_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene quest_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene quest_test
         shell: cmd
 
       - name: Run headless acceptance test (M20 - dialogue_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene dialogue_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene dialogue_test
         shell: cmd
 
       # M26 — Save system (slot round-trip, migration, autosave).
       # TEACHING NOTE: ENGINE_ENABLE_JSON is always ON via vendored json.hpp so
-      # this test runs the full suite without any vcpkg install.
+      # this test runs the full suite without any separate vcpkg install.
       - name: Run headless save-system acceptance tests (M26 - save_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene save_test
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene save_test
         shell: cmd
 
-      # M5 — Jolt Physics (rigid body, character controller, raycast)
-      - name: Run physics acceptance tests (M5 - physics_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
-        shell: cmd
-
-      # Post-M10 — Vehicle physics (suspension, throttle, grounding)
-      - name: Run vehicle physics acceptance tests (Post-M10 - vehicle_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
-        shell: cmd
-
-      # M25 — Terrain (renderer, heightmap displacement, physics collision)
-      - name: Run terrain acceptance tests (M25 - terrain_test)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene terrain_test
+      # M25 — Terrain renderer + heightmap (physics subtest skipped without Jolt)
+      - name: Run terrain acceptance tests (M25 - terrain_test, renderer+heightmap)
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene terrain_test
         shell: cmd
 
       # M24 — Authored content (DDS texture cook + magic-byte verification)
@@ -298,20 +274,20 @@ jobs:
         shell: cmd
 
       - name: Run authored_content acceptance test (M24 - DDS magic)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene authored_content
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene authored_content
         shell: cmd
 
       # PAK packager — pack, extract, validate
       - name: Run PAK packager test
-        run: .\build\windows-ninja-debug-physics\pak.exe --input samples\vertical_slice_project\Cooked\ --output samples\vertical_slice_project\Cooked\test_output.pak
+        run: .\build\windows-ninja-debug-engine-only\pak.exe --input samples\vertical_slice_project\Cooked\ --output samples\vertical_slice_project\Cooked\test_output.pak
         shell: cmd
 
       - name: Extract PAK archive
-        run: .\build\windows-ninja-debug-physics\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted\Cooked
+        run: .\build\windows-ninja-debug-engine-only\pak.exe --extract samples\vertical_slice_project\Cooked\test_output.pak --output %TEMP%\pak_extracted\Cooked
         shell: cmd
 
       - name: Validate extracted PAK content
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --validate-project %TEMP%\pak_extracted
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --validate-project %TEMP%\pak_extracted
         shell: cmd
 
       # Python tool tests (audio_authoring, anim_authoring, quest_baker, contracts)
@@ -323,7 +299,57 @@ jobs:
 
       # Demo_world scene via engine_sandbox path
       - name: Run Demo_Game acceptance test (demo_world - sandbox path)
-        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene demo_world
+        run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene demo_world
+        shell: cmd
+
+      # -----------------------------------------------------------------------
+      # Build 2 of 2: physics-enabled (D3D11 + Jolt).
+      # TEACHING NOTE — This build is kept separate (built last) because Jolt's
+      # Debug build emits large stack frames that cause STATUS_STACK_OVERFLOW
+      # when the binary is used for non-physics scenes.  The engine-only binary
+      # runs all rendering/streaming/audio tests above; the physics binary runs
+      # only the three physics-specific acceptance tests below.
+      # -----------------------------------------------------------------------
+      - name: Cache vcpkg packages (joltphysics)
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-joltphysics-${{ runner.os }}-x64
+
+      - name: Install joltphysics via vcpkg (classic mode)
+        shell: pwsh
+        run: |
+          Set-Location "$env:TEMP"
+          C:\vcpkg\vcpkg.exe install joltphysics:x64-windows
+
+      - name: Configure CMake (D3D11 + Jolt Physics)
+        shell: pwsh
+        run: >
+          cmake --preset windows-ninja-debug-physics
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+          -DVCPKG_MANIFEST_INSTALL=OFF
+
+      - name: Build engine_sandbox (physics)
+        run: cmake --build --preset windows-ninja-debug-physics --target engine_sandbox
+        shell: cmd
+
+      - name: Verify physics engine_sandbox.exe exists
+        shell: pwsh
+        run: if (-not (Test-Path "build\windows-ninja-debug-physics\engine_sandbox.exe")) { throw "physics engine_sandbox.exe not found" }
+
+      # M5 — Jolt Physics (rigid body, character controller, raycast)
+      - name: Run physics acceptance tests (M5 - physics_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene physics_test
+        shell: cmd
+
+      # Post-M10 — Vehicle physics (suspension, throttle, grounding)
+      - name: Run vehicle physics acceptance tests (Post-M10 - vehicle_test)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene vehicle_test
+        shell: cmd
+
+      # M25 — Terrain physics collision (Jolt subtest — requires physics build)
+      - name: Run terrain physics subtest (M25 - terrain_test with Jolt)
+        run: .\build\windows-ninja-debug-physics\engine_sandbox.exe --headless --scene terrain_test
         shell: cmd
 
   # ==========================================================================

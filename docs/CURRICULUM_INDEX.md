@@ -1667,12 +1667,14 @@ print(f'[OK] PHY1: {vc} verts, {ic} indices, {len(blob)} bytes')
 ============================================================================
 Three jobs validate the full Windows toolchain on every push/PR:
 
-  build-windows-engine  — D3D11 + Jolt Physics; runs ALL engine acceptance
-                          tests (M3 through M26+: save, physics, textures,
-                          world streaming, audio, animation, etc.).
-                          Note: the M0 bare --headless test is intentionally
-                          omitted — D3D11 WARP init is implicitly exercised
-                          by every --scene test (M3+).
+  build-windows-engine  — D3D11 (engine-only) + Jolt Physics (physics-only);
+                          two builds in one job: the engine-only binary runs
+                          all rendering/streaming/audio/save tests; the Jolt
+                          binary runs only the three physics-specific tests
+                          (physics_test, vehicle_test, terrain_test).
+                          Keeps exactly 3 CI jobs while avoiding the Jolt
+                          Debug stack-overflow that occurs when the physics
+                          binary is used for non-physics scenes.
 
   build-windows-editor  — Dear ImGui creation-suite-editor; separate because
                           imgui adds ~2 min of vcpkg compile time.
@@ -1684,17 +1686,25 @@ runner with a real Vulkan ICD is available.  Vulkan source still compiles
 correctly — it is just not exercised in CI at this time.
 ============================================================================
 
-### Why one merged engine job?
+### Why two builds in one job?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L52) (line 52)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L54) (line 54)
 
-Previously engine tests were spread across three separate jobs:
-  build-windows         — core D3D11 scenes
-  build-windows-physics — Jolt Physics + vehicle + terrain
-  build-windows-save-test — save system with nlohmann/json from vcpkg
-With nlohmann/json now vendored at third_party/nlohmann/json.hpp,
-ENGINE_ENABLE_JSON is always ON — no separate vcpkg install or job needed.
-All engine tests now share one build: D3D11 + Jolt Physics.
+The Jolt Physics Debug binary allocates large per-frame stack frames for
+Jolt's contact listener, narrow-phase, and constraint solver.  This causes
+STATUS_STACK_OVERFLOW (0xC00000FD) when the binary launches scenes that
+don't even use physics (e.g. textured_quad, PBR, streaming) because Jolt
+initialises its global thread pool on startup before any scene code runs.
+
+The solution is to use TWO engine_sandbox builds in one CI job:
+  • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
+    rendering / streaming / audio / animation / save-system tests.
+  • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
+    physics-specific tests (physics_test, vehicle_test, terrain_test).
+
+This is still exactly 3 CI jobs total (engine + editor + demo).
+The cook.exe / pak.exe tools are built from the engine-only preset since
+they never need Jolt.
 ==========================================================================
 build-windows-engine:
 name: Build Windows - Engine (D3D11 + Physics + all engine tests)
@@ -1703,7 +1713,7 @@ continue-on-error: false
 
 ### Without vcvars, CMake may detect a GNU toolchain and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L73) (line 73)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L83) (line 83)
 
 fail to link Windows SDK libraries (xaudio2.lib, d3d11.lib, etc.).
 - name: Setup MSVC developer command prompt
@@ -1711,22 +1721,24 @@ uses: ilammy/msvc-dev-cmd@v1
 with:
 arch: x64
 
-### Why no plain --headless (M0) test here?
+### This build is kept separate (built last) because Jolt's
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L132) (line 132)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L307) (line 307)
 
-The physics-enabled (Jolt) debug binary has a startup stack-frame
-profile that makes bare --headless (no scene) crash with
-STATUS_STACK_OVERFLOW on some CI runners.  D3D11 WARP device
-initialisation is implicitly validated by every --scene test below
-(each one calls renderer->Init(headless=true) before its scene code).
-Running a redundant M0 baseline that is known to fail with the physics
-build would block all subsequent scene tests.
+Debug build emits large stack frames that cause STATUS_STACK_OVERFLOW
+when the binary is used for non-physics scenes.  The engine-only binary
+runs all rendering/streaming/audio tests above; the physics binary runs
+only the three physics-specific acceptance tests below.
 -----------------------------------------------------------------------
+- name: Cache vcpkg packages (joltphysics)
+uses: actions/cache@v4
+with:
+path: C:\vcpkg\installed
+key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### Editor job kept separate because imgui requires vcpkg and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L332) (line 332)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L358) (line 358)
 
 adds ~2 minutes of compile time.  Separating it avoids lengthening the
 critical path for engine PRs that do not touch editor code.
@@ -1738,7 +1750,7 @@ continue-on-error: false
 
 ### VCPKG_INSTALLED_DIR overrides the path so CMake finds
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L376) (line 376)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L402) (line 402)
 
 packages from the classic-mode install rather than manifest-mode default.
 - name: Configure CMake (D3D11 + Editor)
@@ -1751,7 +1763,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Validates demo_game.exe through the demo_main.cpp entry
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L406) (line 406)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L432) (line 432)
 
 point (different code path from the sandbox demo_world test above).
 Uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON).
