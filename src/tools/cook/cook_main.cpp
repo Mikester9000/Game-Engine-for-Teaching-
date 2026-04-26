@@ -162,6 +162,55 @@ static std::string to_lower_ascii(std::string s)
 }
 
 // ---------------------------------------------------------------------------
+// parse_cell_coord
+// ---------------------------------------------------------------------------
+// Extracts cell grid coordinates (cx, cz) from a level source path.
+//
+// TEACHING NOTE — Naming convention for streaming cells
+// Level source files follow the naming convention "cell_<cx>_<cz>.cell.json".
+// For example "Content/Levels/cell_0_0.cell.json" → cx=0, cz=0.
+// We extract cx and cz by finding the "cell_" prefix in the filename and
+// reading the two integer fields that follow.  Parsing stops at the first
+// non-digit so filenames like "cell_1_0.cell.json" work correctly.
+//
+// Returns true when the pattern is matched, false otherwise.
+// ---------------------------------------------------------------------------
+static bool parse_cell_coord(const std::string& source, int& out_cx, int& out_cz)
+{
+    const std::string filename = fs::path(source).filename().string();
+
+    const std::string prefix = "cell_";
+    if (filename.compare(0, prefix.size(), prefix) != 0)
+        return false;
+
+    std::size_t pos = prefix.size();
+
+    // Parse cx (first integer after "cell_").
+    const std::size_t cx_start = pos;
+    while (pos < filename.size() && std::isdigit(static_cast<unsigned char>(filename[pos])))
+        ++pos;
+    if (pos == cx_start || pos >= filename.size() || filename[pos] != '_')
+        return false;
+
+    try { out_cx = std::stoi(filename.substr(cx_start, pos - cx_start)); }
+    catch (...) { return false; }
+    if (out_cx < 0) return false;  // cell coordinates must be non-negative
+    ++pos;  // skip the separator '_'
+
+    // Parse cz (second integer).
+    const std::size_t cz_start = pos;
+    while (pos < filename.size() && std::isdigit(static_cast<unsigned char>(filename[pos])))
+        ++pos;
+    if (pos == cz_start)
+        return false;
+
+    try { out_cz = std::stoi(filename.substr(cz_start, pos - cz_start)); }
+    catch (...) { return false; }
+    if (out_cz < 0) return false;  // cell coordinates must be non-negative
+    return true;
+}
+
+// ---------------------------------------------------------------------------
 // extract_json_string_value
 // ---------------------------------------------------------------------------
 // Minimal JSON string-value extractor for reading AssetRegistry.json.
@@ -604,7 +653,98 @@ int main(int argc, char* argv[])
     }
 
     // -----------------------------------------------------------------------
-    // Step 6 — Print summary and return.
+    // Step 6 — Write cells_manifest.json.
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Data-driven cell GUID manifest
+    // ─────────────────────────────────────────────────────────────────────────
+    // The runtime (game_runtime.cpp) needs to know which GUID to use when
+    // loading each world-streaming cell.  Historically that mapping was
+    // hardcoded in C++; now cook.exe produces a small JSON file that the
+    // runtime reads at startup.
+    //
+    // Format (Cooked/Levels/cells_manifest.json):
+    //   {
+    //     "version": 1,
+    //     "cells": [
+    //       { "cx": 0, "cz": 0, "guid": "<uuid>" },
+    //       ...
+    //     ]
+    //   }
+    //
+    // The manifest is derived solely from AssetRegistry.json entries of
+    // type "level" whose source filename matches the "cell_<cx>_<cz>*"
+    // naming convention.  No manual edits are required; the mapping is
+    // always consistent with the registry.
+    // ─────────────────────────────────────────────────────────────────────────
+    struct CellManifestEntry { int cx; int cz; std::string guid; };
+    std::vector<CellManifestEntry> cellEntries;
+
+    for (const auto& entry : entries)
+    {
+        if (entry.type != "level")
+            continue;
+
+        int cx = 0, cz = 0;
+        if (!parse_cell_coord(entry.source, cx, cz))
+        {
+            std::cout << "[cook] WARNING: Cannot parse cell coordinates from level source '"
+                      << entry.source << "' — skipping in cells_manifest.json.\n";
+            continue;
+        }
+
+        cellEntries.push_back({ cx, cz, entry.id });
+    }
+
+    // Ensure the Levels sub-directory exists.
+    const fs::path levelsDir       = cookedDir / "Levels";
+    const fs::path manifestPath    = levelsDir  / "cells_manifest.json";
+
+    fs::create_directories(levelsDir, ec);
+    if (ec)
+    {
+        std::cerr << "[cook] WARNING: Cannot create Cooked/Levels/ directory: "
+                  << ec.message() << " — cells_manifest.json will not be written.\n";
+    }
+    else
+    {
+        if (cellEntries.empty())
+        {
+            std::cout << "[cook] WARNING: No level entries found in registry. "
+                         "cells_manifest.json will contain an empty cell list.\n";
+        }
+
+        std::ofstream mout(manifestPath);
+        if (!mout.is_open())
+        {
+            std::cerr << "[cook] WARNING: Cannot write cells_manifest.json: "
+                      << manifestPath.string() << "\n";
+        }
+        else
+        {
+            mout << "{\n";
+            mout << "  \"version\": 1,\n";
+            mout << "  \"cells\": [\n";
+
+            for (std::size_t i = 0; i < cellEntries.size(); ++i)
+            {
+                mout << "    { \"cx\": " << cellEntries[i].cx
+                     << ", \"cz\": "     << cellEntries[i].cz
+                     << ", \"guid\": \""  << json_escape(cellEntries[i].guid)
+                     << "\" }";
+                if (i + 1 < cellEntries.size()) mout << ",";
+                mout << "\n";
+            }
+
+            mout << "  ]\n";
+            mout << "}\n";
+
+            std::cout << "[cook] cells_manifest.json written ("
+                      << cellEntries.size() << " cell(s)).\n";
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 7 — Print summary and return.
     // -----------------------------------------------------------------------
     std::cout << "\n";
     std::cout << "============================================================\n";
@@ -614,6 +754,8 @@ int main(int argc, char* argv[])
     std::cout << "   Errors  : " << errors  << "\n";
     std::cout << "   AssetDB : " << assetDbPath.filename().string() << "  ("
               << dbEntries.size() << " entries)\n";
+    std::cout << "   Cells   : " << manifestPath.filename().string() << "  ("
+              << cellEntries.size() << " cell(s))\n";
     std::cout << "============================================================\n";
 
     return (errors > 0) ? 1 : 0;

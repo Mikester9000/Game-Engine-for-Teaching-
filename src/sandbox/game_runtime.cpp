@@ -13,9 +13,14 @@
 #include "engine/world/world_partition.hpp"  // CellIdFromCoord (M8.7)
 
 #include <algorithm> // std::min, std::max, std::move
+#include <fstream>   // std::ifstream (cells_manifest.json)
 #include <iostream>  // std::cout (CI acceptance output)
 #include <cmath>     // std::sin, std::cos
 #include <vector>    // std::vector (combat bridging)
+
+#ifdef ENGINE_ENABLE_JSON
+#include <nlohmann/json.hpp>  // JSON parsing for cells_manifest.json
+#endif
 
 namespace sandbox {
 
@@ -251,29 +256,77 @@ bool GameRuntime::Init()
         // Non-fatal: gameplay still works; streaming cells just won't load.
     }
 
-    // Register stable GUIDs for the four authored vertical-slice cells.
-    // These GUIDs match the 'id' fields in AssetRegistry.json.
-    // They correspond to the cells nearest the player's starting position:
-    //   cell_0_0 → world cell (1,1)  — player's home cell
-    //   cell_0_1 → world cell (0,1)
-    //   cell_1_0 → world cell (1,0)
-    //   cell_1_1 → world cell (0,0)
-    // TEACHING NOTE — Stable GUID mapping
-    // The GUID is the canonical cross-system identifier.  The CellId is a
-    // derived runtime hash that changes if cell coordinates change.  Always
-    // register by (GUID, cellId) so asset references survive grid renames.
-    struct CellReg { int cx; int cz; const char* guid; };
-    constexpr CellReg kCells[] = {
-        { 1, 1, "5db40c3b-a192-4a4c-a1aa-728775cd12fa" },  // cell_0_0
-        { 0, 1, "7e8f9a0b-1c2d-4e3f-b456-aabbcc110011" },  // cell_0_1
-        { 1, 0, "7e8f9a0b-1c2d-4e3f-b456-aabbcc220022" },  // cell_1_0
-        { 0, 0, "7e8f9a0b-1c2d-4e3f-b456-aabbcc330033" },  // cell_1_1
-    };
-    for (const auto& c : kCells)
+    // -----------------------------------------------------------------------
+    // TEACHING NOTE — Data-driven cell GUID registration (M8.7 / post-M27)
+    // ─────────────────────────────────────────────────────────────────────
+    // Previously this code contained a hardcoded C++ array (kCells[]) mapping
+    // each streaming cell to a GUID string.  That meant every GUID change in
+    // AssetRegistry.json required a C++ code edit.
+    //
+    // Now cook.exe generates Cooked/Levels/cells_manifest.json whenever it
+    // runs on a project (see tools/cook/cook_main.cpp).  The runtime simply
+    // loads that manifest and registers whatever cells it describes.  No
+    // source changes are needed when GUIDs change — just rerun cook.exe.
+    //
+    // Format of cells_manifest.json:
+    //   { "version": 1, "cells": [ { "cx": 0, "cz": 0, "guid": "..." }, ... ] }
+    //
+    // The path mirrors the AssetDB path: same project root, Cooked/ directory.
+    // If the manifest is absent (e.g. cook.exe has not been run yet) or
+    // ENGINE_ENABLE_JSON is not available, we log a clear message and continue.
+    // Streaming will still function — cells will just load with default empty
+    // data instead of real .level content.
+    // -----------------------------------------------------------------------
     {
-        const uint32_t cellId =
-            engine::world::CellIdFromCoord({ c.cx, c.cz });
-        m_streamingMgr.RegisterCellGuid(cellId, c.guid);
+        const std::string kManifestPath =
+            "samples/vertical_slice_project/Cooked/Levels/cells_manifest.json";
+
+#ifdef ENGINE_ENABLE_JSON
+        std::ifstream manifestFile(kManifestPath);
+        if (!manifestFile.is_open())
+        {
+            LOG_INFO("GameRuntime: cells_manifest.json not found at '"
+                     << kManifestPath
+                     << "' — no cell GUIDs registered "
+                        "(run cook.exe --project samples/vertical_slice_project).");
+        }
+        else
+        {
+            try
+            {
+                const nlohmann::json j = nlohmann::json::parse(manifestFile);
+                const auto& cells = j.at("cells");
+                int registeredCount = 0;
+                for (const auto& cell : cells)
+                {
+                    const int         cx   = cell.at("cx").get<int>();
+                    const int         cz   = cell.at("cz").get<int>();
+                    const std::string guid = cell.at("guid").get<std::string>();
+
+                    const uint32_t cellId =
+                        engine::world::CellIdFromCoord({ cx, cz });
+                    m_streamingMgr.RegisterCellGuid(cellId, guid);
+                    ++registeredCount;
+                }
+                LOG_INFO("GameRuntime: registered " << registeredCount
+                         << " cell GUID(s) from cells_manifest.json.");
+            }
+            catch (const std::exception& ex)
+            {
+                LOG_ERROR("GameRuntime: Failed to parse cells_manifest.json: "
+                          << ex.what()
+                          << " — no cell GUIDs registered.");
+            }
+        }
+#else
+        // ENGINE_ENABLE_JSON is not defined — cannot load the manifest.
+        // This is expected when building without vcpkg (e.g. some CI configs).
+        // Streaming will use default empty cell data.
+        LOG_INFO("GameRuntime: ENGINE_ENABLE_JSON not defined — "
+                 "cannot load cells_manifest.json. "
+                 "No cell GUIDs registered (streaming will use default empty cell data).");
+        (void)kManifestPath;
+#endif  // ENGINE_ENABLE_JSON
     }
 
     // Kick off the first streaming update so cells around the player's
