@@ -6,14 +6,14 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 2061 across 60 subsystems.
+**Total lessons:** 2062 across 60 subsystems.
 
 ---
 
 ## Table of Contents
 
 - [CMakeLists.txt](#cmakelists.txt) (83 lessons)
-- [ci/workflows](#ciworkflows) (29 lessons)
+- [ci/workflows](#ciworkflows) (30 lessons)
 - [conftest.py](#conftest.py) (1 lesson)
 - [demo_game/demo_main.cpp](#demo_gamedemo_main.cpp) (46 lessons)
 - [demo_game/demo_quest_manager.cpp](#demo_gamedemo_quest_manager.cpp) (16 lessons)
@@ -1667,14 +1667,12 @@ print(f'[OK] PHY1: {vc} verts, {ic} indices, {len(blob)} bytes')
 ============================================================================
 Three jobs validate the full Windows toolchain on every push/PR:
 
-  build-windows-engine  — D3D11 (engine-only) + Jolt Physics (physics-only);
-                          two builds in one job: the engine-only binary runs
-                          all rendering/streaming/audio/save tests; the Jolt
-                          binary runs only the three physics-specific tests
-                          (physics_test, vehicle_test, terrain_test).
-                          Keeps exactly 3 CI jobs while avoiding the Jolt
-                          Debug stack-overflow that occurs when the physics
-                          binary is used for non-physics scenes.
+  build-windows-engine  — two builds in one job: D3D11-only + Jolt-only.
+                          D3D11-only binary runs all rendering/streaming/
+                          audio/save tests using --scene (never bare
+                          --headless, which crashes on the 1 MB CI stack).
+                          Jolt binary runs only physics_test/vehicle_test/
+                          terrain_test.
 
   build-windows-editor  — Dear ImGui creation-suite-editor; separate because
                           imgui adds ~2 min of vcpkg compile time.
@@ -1688,23 +1686,26 @@ correctly — it is just not exercised in CI at this time.
 
 ### Why two builds in one job?
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L54) (line 54)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L52) (line 52)
 
-The Jolt Physics Debug binary allocates large per-frame stack frames for
-Jolt's contact listener, narrow-phase, and constraint solver.  This causes
-STATUS_STACK_OVERFLOW (0xC00000FD) when the binary launches scenes that
-don't even use physics (e.g. textured_quad, PBR, streaming) because Jolt
-initialises its global thread pool on startup before any scene code runs.
+The MSVC Debug binary (engine_sandbox) crashes with STATUS_STACK_OVERFLOW
+(0xC00000FD) when run as bare `--headless` (no scene argument) on
+GitHub-hosted Windows runners.  The 1 MB default thread stack is exhausted
+by D3D11 WARP device init + LuaEngine startup + deep MSVC Debug frames
+before any scene code executes.  This happens with both the engine-only
+build (no Jolt) and the physics build (Jolt).
 
-The solution is to use TWO engine_sandbox builds in one CI job:
-  • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
-    rendering / streaming / audio / animation / save-system tests.
-  • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
-    physics-specific tests (physics_test, vehicle_test, terrain_test).
+The solution used here:
+  1. NEVER run bare --headless.  All tests use --headless --scene <name>.
+     The textured_quad scene is the first to call renderer->Init() and
+     therefore implicitly validates D3D11 WARP device creation.
+  2. Use TWO engine_sandbox builds in one CI job:
+     • windows-ninja-debug-engine-only  — D3D11 only, no Jolt; runs all
+       rendering / streaming / audio / animation / save-system tests.
+     • windows-ninja-debug-physics      — D3D11 + Jolt; runs ONLY the three
+       physics-specific tests (physics_test, vehicle_test, terrain_test).
 
 This is still exactly 3 CI jobs total (engine + editor + demo).
-The cook.exe / pak.exe tools are built from the engine-only preset since
-they never need Jolt.
 ==========================================================================
 build-windows-engine:
 name: Build Windows - Engine (D3D11 + Physics + all engine tests)
@@ -1713,7 +1714,7 @@ continue-on-error: false
 
 ### Without vcvars, CMake may detect a GNU toolchain and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L83) (line 83)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L84) (line 84)
 
 fail to link Windows SDK libraries (xaudio2.lib, d3d11.lib, etc.).
 - name: Setup MSVC developer command prompt
@@ -1721,9 +1722,22 @@ uses: ilammy/msvc-dev-cmd@v1
 with:
 arch: x64
 
+### Why no bare --headless (M0) test?
+
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L122) (line 122)
+
+engine_sandbox.exe --headless (no scene) crashes with
+STATUS_STACK_OVERFLOW (0xC00000FD) on GitHub-hosted Windows runners
+regardless of whether Jolt Physics is compiled in.  The runner's 1 MB
+default stack is exhausted by the combination of D3D11 WARP device init,
+LuaEngine startup, and the deep MSVC Debug call frames.  D3D11 WARP
+device initialisation is fully covered by the textured_quad scene below
+(the first scene call that reaches renderer->Init()).
+-----------------------------------------------------------------------
+
 ### terrain_test detects ENGINE_ENABLE_PHYSICS at runtime.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L259) (line 259)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L263) (line 263)
 
 Subtest 3 (physics_collision via Jolt) auto-skips in the engine-only
 binary (no ENGINE_ENABLE_PHYSICS define) and prints "SKIP".
@@ -1734,7 +1748,7 @@ shell: cmd
 
 ### This build is kept separate (built last) because Jolt's
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L311) (line 311)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L315) (line 315)
 
 Debug build emits large stack frames that cause STATUS_STACK_OVERFLOW
 when the binary is used for non-physics scenes.  The engine-only binary
@@ -1749,7 +1763,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### terrain_test has 3 subtests:
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L355) (line 355)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L359) (line 359)
 
 1. renderer_init         — runs in both builds
   2. heightmap_displacement — runs in both builds
@@ -1763,7 +1777,7 @@ shell: cmd
 
 ### Editor job kept separate because imgui requires vcpkg and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L369) (line 369)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L373) (line 373)
 
 adds ~2 minutes of compile time.  Separating it avoids lengthening the
 critical path for engine PRs that do not touch editor code.
@@ -1775,7 +1789,7 @@ continue-on-error: false
 
 ### VCPKG_INSTALLED_DIR overrides the path so CMake finds
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L413) (line 413)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L417) (line 417)
 
 packages from the classic-mode install rather than manifest-mode default.
 - name: Configure CMake (D3D11 + Editor)
@@ -1788,7 +1802,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Validates demo_game.exe through the demo_main.cpp entry
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L443) (line 443)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L447) (line 447)
 
 point (different code path from the sandbox demo_world test above).
 Uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON).
