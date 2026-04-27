@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "cells": [
+    { "cx": 0, "cz": 0, "guid": "406ca23e-e0d3-4cee-9f81-ac75f9b3d35f" },
+    { "cx": 0, "cz": 1, "guid": "c7dfa7c7-7fa3-4f28-9697-57ebd15704cd" },
+    { "cx": 1, "cz": 0, "guid": "24d3e6ff-34a3-4e68-947e-6642cfbe28c7" },
+    { "cx": 1, "cz": 1, "guid": "dd64c02d-bafc-4453-b265-d8f14626dc19" }
+  ]
+}

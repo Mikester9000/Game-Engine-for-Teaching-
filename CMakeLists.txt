@@ -245,24 +245,52 @@ if(ENGINE_ENABLE_PHYSICS)
 endif()
 
 # ---------------------------------------------------------------------------
-# nlohmann/json — optional for engine_sandbox (M6 scene serialiser)
+# nlohmann/json — required for engine_sandbox (M6 scene serialiser, M8 streaming)
 # ---------------------------------------------------------------------------
-# TEACHING NOTE — nlohmann/json in the engine
-# nlohmann-json is already in vcpkg.json (required by cook.exe and the editor).
-# When the vcpkg toolchain is active, find_package(nlohmann_json) will find it
-# automatically.  We use QUIET so a missing package is not an error — the
-# scene_serialiser will compile out its JSON code via #ifdef ENGINE_ENABLE_JSON.
+# TEACHING NOTE — Vendored vs vcpkg JSON library
+# ──────────────────────────────────────────────────────────────────────────
+# nlohmann/json is a MIT-licensed single-header library (json.hpp ~24k lines).
+# We vendor it at third_party/nlohmann/json.hpp so that a clean clone can
+# configure and build WITHOUT vcpkg or any external toolchain.
 #
-# Why not REQUIRED?  The engine_sandbox must build on any Windows machine, even
-# without a vcpkg toolchain configured.  nlohmann/json is a "nice to have" for
-# runtime scene loading; the engine works without it.
-# ---------------------------------------------------------------------------
+# Resolution order:
+#   1. vcpkg (if CMAKE_TOOLCHAIN_FILE points to vcpkg) — preferred in CI and
+#      on developer machines with vcpkg set up, provides the proper imported
+#      target nlohmann_json::nlohmann_json.
+#   2. Vendored third_party/nlohmann/json.hpp — always present in the repo,
+#      used as a guaranteed fallback so ENGINE_ENABLE_JSON is ALWAYS defined.
+#
+# This means the "JSON code compiled out" path is eliminated for normal builds.
+# The vendored copy is nlohmann/json 3.11.3 (MIT licence).
+# ──────────────────────────────────────────────────────────────────────────
 find_package(nlohmann_json CONFIG QUIET)
 if(nlohmann_json_FOUND)
-    message(STATUS "nlohmann/json found: ENGINE_ENABLE_JSON ENABLED (M6 scene serialiser).")
+    message(STATUS "nlohmann/json found via vcpkg: ENGINE_ENABLE_JSON ENABLED.")
 else()
-    message(STATUS "nlohmann/json NOT found — scene_serialiser JSON code compiled out. "
-                   "Install via vcpkg or pass -DCMAKE_TOOLCHAIN_FILE=<vcpkg>/scripts/buildsystems/vcpkg.cmake")
+    # Fall back to vendored single-header copy so that builds without vcpkg
+    # still get full JSON support (no "compiled out" fallback).
+    set(NLOHMANN_JSON_VENDORED_DIR "${CMAKE_SOURCE_DIR}/third_party")
+    if(EXISTS "${NLOHMANN_JSON_VENDORED_DIR}/nlohmann/json.hpp")
+        # TEACHING NOTE — INTERFACE library for header-only dependencies
+        # An INTERFACE library has no compiled sources of its own; it only
+        # carries usage requirements (include paths, compile definitions) that
+        # propagate to any target that links against it.  This is the standard
+        # CMake pattern for header-only libraries.
+        add_library(nlohmann_json_vendored INTERFACE)
+        target_include_directories(nlohmann_json_vendored INTERFACE
+            "${NLOHMANN_JSON_VENDORED_DIR}")
+        # Create an alias that matches the vcpkg imported-target name so the
+        # rest of CMakeLists.txt can use the same name regardless of source.
+        add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json_vendored)
+        set(nlohmann_json_FOUND TRUE)
+        message(STATUS "nlohmann/json vendored (third_party/nlohmann/json.hpp): ENGINE_ENABLE_JSON ENABLED.")
+    else()
+        message(WARNING "nlohmann/json NOT found (neither via vcpkg nor vendored at "
+                        "third_party/nlohmann/json.hpp).  This indicates a repository "
+                        "integrity issue — the vendored copy should always be present. "
+                        "Re-run with vcpkg toolchain or restore third_party/nlohmann/json.hpp "
+                        "from version control.  ENGINE_ENABLE_JSON will be DISABLED.")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -854,6 +882,27 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     endif()
 
     # -----------------------------------------------------------------------
+    # Stack size — engine_sandbox needs a larger-than-default stack.
+    # -----------------------------------------------------------------------
+    # TEACHING NOTE — Why 8 MB instead of the Windows default 1 MB?
+    # Windows gives each thread 1 MB of stack space by default.  This is
+    # enough for most Win32 programs, but a game engine sandbox exe combines
+    # several subsystems with deep call chains at startup:
+    #   • D3D11 WARP software rasteriser (deep COM / kernel initialisation)
+    #   • LuaEngine startup (Lua 5.5 parser + VM init)
+    #   • ECS World construction (many component storage vectors)
+    #   • MSVC Debug frame overhead (no inlining → 3-5× larger frames)
+    # On GitHub-hosted Windows runners the combination exhausts the 1 MB
+    # stack and causes STATUS_STACK_OVERFLOW (0xC00000FD) before any scene
+    # code executes.  Setting /STACK:8388608 (8 MB) is the correct
+    # long-term fix — the same technique used by shipped AAA titles whose
+    # engine startup paths are equally deep.
+    # -----------------------------------------------------------------------
+    if(MSVC)
+        target_link_options(engine_sandbox PRIVATE /STACK:8388608)
+    endif()
+
+    # -----------------------------------------------------------------------
     # Link libraries.
     # -----------------------------------------------------------------------
     # TEACHING NOTE — d3d11.lib and dxgi.lib
@@ -931,8 +980,12 @@ if(WIN32 AND (ENGINE_ENABLE_D3D11 OR ENGINE_ENABLE_VULKAN))
     endif()
 
     # TEACHING NOTE — ENGINE_ENABLE_JSON compile definition (M6)
-    # Defined when nlohmann/json is available via vcpkg.  The scene_serialiser
-    # gates all JSON parsing/writing code behind this macro.
+    # Defined when nlohmann/json is available (via vcpkg OR the vendored
+    # third_party/nlohmann/json.hpp copy).  Because the vendored copy is
+    # committed to the repository, ENGINE_ENABLE_JSON is enabled on all
+    # normal builds — even without a vcpkg toolchain configured.
+    # The scene_serialiser and game_runtime use this guard to activate JSON
+    # parsing/writing code.
     if(nlohmann_json_FOUND)
         list(APPEND SANDBOX_DEFS ENGINE_ENABLE_JSON)
     endif()

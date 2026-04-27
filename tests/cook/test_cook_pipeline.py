@@ -41,6 +41,7 @@ COOKED_DIR   = SAMPLE_DIR / "Cooked"
 COOK_SCRIPT  = SAMPLE_DIR / "cook_assets.py"
 SCHEMA_FILE  = REPO_ROOT / "shared" / "schemas" / "asset_registry.schema.json"
 CELLS_MANIFEST_FILE = COOKED_DIR / "Levels" / "cells_manifest.json"
+CELLS_MANIFEST_GOLDEN = REPO_ROOT / "tests" / "golden" / "cells_manifest_expected.json"
 
 
 # ---------------------------------------------------------------------------
@@ -338,4 +339,66 @@ class TestCellsManifest:
             )
             assert isinstance(cz, int) and cz >= 0, (
                 f"Cell 'cz' must be a non-negative int, got {cz!r}"
+            )
+
+    def test_manifest_matches_golden_file(self, manifest: dict) -> None:
+        """cells_manifest.json must match tests/golden/cells_manifest_expected.json.
+
+        TEACHING NOTE — Golden File Comparison
+        The golden file (tests/golden/cells_manifest_expected.json) records the
+        expected set of level-cell GUIDs for the vertical-slice project.  This
+        test catches accidental GUID changes: if AssetRegistry.json is modified
+        (e.g. an asset is re-imported with a new GUID) the golden file must be
+        updated deliberately and reviewed in the PR — preventing silent breakage
+        of the streaming pipeline.
+
+        The golden file is committed to the repository and must always be present.
+        A missing golden file is a repository integrity regression, not a skip.
+
+        Comparison is order-independent: we sort both sides by (cx, cz) so that
+        cook.exe output order does not cause false failures.
+        """
+        # TEACHING NOTE — Committed golden files must always exist.
+        # Using assert rather than pytest.skip() ensures that accidental deletion
+        # of the golden file fails loudly in CI instead of silently passing.
+        assert CELLS_MANIFEST_GOLDEN.exists(), (
+            f"Golden file not found: {CELLS_MANIFEST_GOLDEN} — "
+            "this file is committed to the repository and must not be deleted. "
+            "Restore it from version control or regenerate by running cook.exe."
+        )
+
+        golden = json.loads(CELLS_MANIFEST_GOLDEN.read_text(encoding="utf-8"))
+
+        # Check top-level version matches.
+        assert manifest.get("version") == golden.get("version"), (
+            f"cells_manifest.json version {manifest.get('version')!r} does not match "
+            f"golden version {golden.get('version')!r}.  "
+            f"Update tests/golden/cells_manifest_expected.json if a version bump is intentional."
+        )
+
+        def sort_cells(cells: list) -> list:
+            return sorted(cells, key=lambda c: (c.get("cx", 0), c.get("cz", 0)))
+
+        actual_cells = sort_cells(manifest.get("cells", []))
+        golden_cells = sort_cells(golden.get("cells", []))
+
+        assert len(actual_cells) == len(golden_cells), (
+            f"cells_manifest.json has {len(actual_cells)} cell(s); "
+            f"golden file has {len(golden_cells)}.  "
+            f"Update tests/golden/cells_manifest_expected.json if intentional."
+        )
+
+        for actual, expected in zip(actual_cells, golden_cells):
+            assert actual.get("cx") == expected.get("cx"), (
+                f"Cell cx mismatch: actual={actual.get('cx')} expected={expected.get('cx')} "
+                f"(entry: {actual}).  Update tests/golden/cells_manifest_expected.json if intentional."
+            )
+            assert actual.get("cz") == expected.get("cz"), (
+                f"Cell cz mismatch: actual={actual.get('cz')} expected={expected.get('cz')} "
+                f"(entry: {actual}).  Update tests/golden/cells_manifest_expected.json if intentional."
+            )
+            assert actual.get("guid") == expected.get("guid"), (
+                f"Cell guid mismatch: actual={actual.get('guid')!r} expected={expected.get('guid')!r} "
+                f"at ({actual.get('cx')},{actual.get('cz')}).  "
+                f"Update tests/golden/cells_manifest_expected.json if intentional."
             )
