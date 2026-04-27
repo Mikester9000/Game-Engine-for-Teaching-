@@ -1066,9 +1066,9 @@ int main(int argc, char* argv[])
             SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
 #ifdef _DEBUG
             _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
-            _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_HFILE_STDERR);
+            _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
             _CrtSetReportMode(_CRT_ERROR,  _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
-            _CrtSetReportFile(_CRT_ERROR,  _CRTDBG_HFILE_STDERR);
+            _CrtSetReportFile(_CRT_ERROR,  _CRTDBG_FILE_STDERR);
 #endif
 #endif
             // -------------------------------------------------------------------
