@@ -249,6 +249,7 @@ jobs:
       # TEACHING NOTE: ENGINE_ENABLE_JSON is always ON via vendored json.hpp so
       # this test runs the full suite without any separate vcpkg install.
       - name: Run headless save-system acceptance tests (M26 - save_test)
+        timeout-minutes: 5
         run: .\build\windows-ninja-debug-engine-only\engine_sandbox.exe --headless --scene save_test
         shell: cmd
 

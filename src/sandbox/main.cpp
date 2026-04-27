@@ -491,6 +491,7 @@
 // ---------------------------------------------------------------------------
 #ifdef _WIN32
 #include <windows.h>
+#include <crtdbg.h>   // _CrtSetReportMode — redirect CRT assert dialogs in headless CI
 #include <dbghelp.h>
 #pragma comment(lib, "dbghelp.lib")
 
@@ -1044,6 +1045,34 @@ int main(int argc, char* argv[])
         // -------------------------------------------------------------------
         if (headless)
         {
+            // -------------------------------------------------------------------
+            // TEACHING NOTE — Headless CI error-mode hardening (Win32)
+            // -------------------------------------------------------------------
+            // In MSVC Debug builds, assert() opens a blocking modal dialog when
+            // a condition fails (e.g. "Component type not registered").  On a
+            // GitHub-hosted Windows runner there is no user to dismiss the dialog,
+            // so the process hangs until the 6-hour job timeout — masking the real
+            // error.  Calling SetErrorMode + _CrtSetReportMode converts all fatal
+            // errors and CRT assertions to immediate stderr writes + process exit,
+            // making CI failures fail fast instead of hanging silently.
+            //
+            // SEM_FAILCRITICALERRORS — suppresses "hard error" message boxes
+            //   (e.g. missing DLL, hardware errors).
+            // SEM_NOGPFAULTERRORBOX  — suppresses the "Application has stopped
+            //   working" WER dialog on access violations / stack overflows.
+            // _CrtSetReportMode      — redirects MSVC CRT assert() from a pop-up
+            //   dialog to stderr + the debug output channel.
+#ifdef _WIN32
+            SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+#ifdef _DEBUG
+            _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+            _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_HFILE_STDERR);
+            _CrtSetReportMode(_CRT_ERROR,  _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+            _CrtSetReportFile(_CRT_ERROR,  _CRTDBG_HFILE_STDERR);
+#endif
+#endif
+            // -------------------------------------------------------------------
+
             if (scene == "triangle")
             {
                 // Validate: record one frame to confirm the draw call works.
@@ -4351,25 +4380,34 @@ int main(int argc, char* argv[])
                 // logs immediately recognisable in CI output.
                 {
                     engine::save::SaveSystem saver(saveDirStr);
-                    World worldA;
-                    const EntityID playerID = worldA.CreateEntity();
+                    // TEACHING NOTE — Heap-allocate World + RegisterAllComponents
+                    // Every headless acceptance scene that creates a bare World
+                    // must (a) heap-allocate it (World::EntityManager contains a
+                    // 512 KB std::array that would bloat the main() stack frame)
+                    // and (b) call RegisterAllComponents() before any AddComponent
+                    // call — the ECS asserts that component pools are initialised
+                    // before first use.  This is the same pattern used by
+                    // vehicle_test, combat_test, quest_test, and dialogue_test.
+                    auto worldA = std::make_unique<World>();
+                    RegisterAllComponents(*worldA);
+                    const EntityID playerID = worldA->CreateEntity();
 
-                    auto& tf = worldA.AddComponent<TransformComponent>(playerID);
+                    auto& tf = worldA->AddComponent<TransformComponent>(playerID);
                     tf.position = { 100.0f, 0.0f, 200.0f };
 
-                    auto& h = worldA.AddComponent<HealthComponent>(playerID);
+                    auto& h = worldA->AddComponent<HealthComponent>(playerID);
                     h.hp    = 420;
                     h.maxHp = 500;
                     h.mp    =  80;
                     h.maxMp = 100;
 
-                    auto& nm = worldA.AddComponent<NameComponent>(playerID);
+                    auto& nm = worldA->AddComponent<NameComponent>(playerID);
                     nm.name       = "Noctis";
                     nm.internalID = "player_0";
                     nm.title      = "Prince";
 
                     // Add one quest to exercise the array component path.
-                    auto& qc = worldA.AddComponent<QuestComponent>(playerID);
+                    auto& qc = worldA->AddComponent<QuestComponent>(playerID);
                     qc.quests[0].questID    = 42;
                     qc.quests[0].objective  = 1;
                     qc.quests[0].progress   = 3;
@@ -4377,7 +4415,7 @@ int main(int argc, char* argv[])
                     qc.quests[0].isComplete = false;
                     qc.activeCount          = 1;
 
-                    const bool saved = saver.Save(worldA, playerID,
+                    const bool saved = saver.Save(*worldA, playerID,
                                                    /*slot=*/0,
                                                    /*gameTimeSecs=*/123.0f,
                                                    "TestDungeon");
@@ -4389,8 +4427,9 @@ int main(int argc, char* argv[])
                     }
                     else
                     {
-                        World worldB;
-                        const bool loaded = saver.Load(worldB, /*slot=*/0);
+                        auto worldB = std::make_unique<World>();
+                        RegisterAllComponents(*worldB);
+                        const bool loaded = saver.Load(*worldB, /*slot=*/0);
                         if (!loaded)
                         {
                             std::cout << "[FAIL] save_test 1/3: slot_roundtrip — "
@@ -4401,7 +4440,7 @@ int main(int argc, char* argv[])
                         {
                             // Verify the restored entity has matching fields.
                             std::vector<EntityID> living;
-                            worldB.GetEntityManager().GetLivingEntities(living);
+                            worldB->GetEntityManager().GetLivingEntities(living);
 
                             bool hpMatch    = false;
                             bool posMatch   = false;
@@ -4409,12 +4448,12 @@ int main(int argc, char* argv[])
 
                             for (EntityID eid : living)
                             {
-                                if (!worldB.HasComponent<HealthComponent>(eid) ||
-                                    !worldB.HasComponent<TransformComponent>(eid))
+                                if (!worldB->HasComponent<HealthComponent>(eid) ||
+                                    !worldB->HasComponent<TransformComponent>(eid))
                                     continue;
 
-                                const auto& h2  = worldB.GetComponent<HealthComponent>(eid);
-                                const auto& tf2 = worldB.GetComponent<TransformComponent>(eid);
+                                const auto& h2  = worldB->GetComponent<HealthComponent>(eid);
+                                const auto& tf2 = worldB->GetComponent<TransformComponent>(eid);
 
                                 hpMatch  = (h2.hp == 420 && h2.maxHp == 500 &&
                                             h2.mp ==  80 && h2.maxMp == 100);
@@ -4426,9 +4465,9 @@ int main(int argc, char* argv[])
                                             tf2.position.y ==   0.0f &&
                                             tf2.position.z == 200.0f);
 
-                                if (worldB.HasComponent<QuestComponent>(eid))
+                                if (worldB->HasComponent<QuestComponent>(eid))
                                 {
-                                    const auto& qc2 = worldB.GetComponent<QuestComponent>(eid);
+                                    const auto& qc2 = worldB->GetComponent<QuestComponent>(eid);
                                     // TEACHING NOTE — Full quest field validation
                                     // Asserting every saved field (questID,
                                     // objective, progress, required, isComplete)
@@ -4531,10 +4570,11 @@ int main(int argc, char* argv[])
                     }
 
                     engine::save::SaveSystem saver(saveDirStr);
-                    World worldMig;
+                    auto worldMig = std::make_unique<World>();
+                    RegisterAllComponents(*worldMig);
                     if (fixtureWriteOk)
                     {
-                    const bool loadOk = saver.Load(worldMig, /*slot=*/1);
+                    const bool loadOk = saver.Load(*worldMig, /*slot=*/1);
 
                     if (!loadOk)
                     {
@@ -4547,14 +4587,14 @@ int main(int argc, char* argv[])
                     {
                         // Migration succeeded: verify the entity was restored.
                         std::vector<EntityID> migLiving;
-                        worldMig.GetEntityManager().GetLivingEntities(migLiving);
+                        worldMig->GetEntityManager().GetLivingEntities(migLiving);
 
                         bool found = false;
                         for (EntityID eid : migLiving)
                         {
-                            if (worldMig.HasComponent<HealthComponent>(eid))
+                            if (worldMig->HasComponent<HealthComponent>(eid))
                             {
-                                const auto& hm = worldMig.GetComponent<HealthComponent>(eid);
+                                const auto& hm = worldMig->GetComponent<HealthComponent>(eid);
                                 if (hm.hp == 99 && hm.maxHp == 200)
                                 {
                                     found = true;
@@ -4595,22 +4635,23 @@ int main(int argc, char* argv[])
                 //   (c) Load(kAutoSaveSlot) succeeds and HP round-trips.
                 {
                     engine::save::SaveSystem saver(saveDirStr);
-                    World worldCamp;
-                    const EntityID campPlayerID = worldCamp.CreateEntity();
+                    auto worldCamp = std::make_unique<World>();
+                    RegisterAllComponents(*worldCamp);
+                    const EntityID campPlayerID = worldCamp->CreateEntity();
 
-                    auto& hc = worldCamp.AddComponent<HealthComponent>(campPlayerID);
+                    auto& hc = worldCamp->AddComponent<HealthComponent>(campPlayerID);
                     hc.hp    = 350;
                     hc.maxHp = 500;
                     hc.mp    =  60;
                     hc.maxMp = 100;
 
-                    auto& nc = worldCamp.AddComponent<NameComponent>(campPlayerID);
+                    auto& nc = worldCamp->AddComponent<NameComponent>(campPlayerID);
                     nc.name       = "Ignis";
                     nc.internalID = "player_0";
 
                     // AutoSave() is the exact function CampSystem::Rest() calls.
                     const bool autoSaveOk =
-                        saver.AutoSave(worldCamp, campPlayerID,
+                        saver.AutoSave(*worldCamp, campPlayerID,
                                        /*gameTimeSecs=*/777.0f, "Camp Site");
 
                     if (!autoSaveOk)
@@ -4651,9 +4692,10 @@ int main(int argc, char* argv[])
                             // Asserting that the loaded world contains an entity with
                             // hp==350/maxHp==500 proves data integrity, not just that
                             // the file was written and the parser didn't crash.
-                            World worldLoaded;
+                            auto worldLoaded = std::make_unique<World>();
+                            RegisterAllComponents(*worldLoaded);
                             const bool loadOk =
-                                saver.Load(worldLoaded, engine::save::kAutoSaveSlot);
+                                saver.Load(*worldLoaded, engine::save::kAutoSaveSlot);
                             if (!loadOk)
                             {
                                 std::cout << "[FAIL] save_test 3/3: Auto-save — "
@@ -4663,16 +4705,16 @@ int main(int argc, char* argv[])
                             else
                             {
                                 std::vector<EntityID> autoLiving;
-                                worldLoaded.GetEntityManager()
+                                worldLoaded->GetEntityManager()
                                     .GetLivingEntities(autoLiving);
 
                                 bool hpRoundTrip = false;
                                 for (EntityID eid : autoLiving)
                                 {
-                                    if (worldLoaded.HasComponent<HealthComponent>(eid))
+                                    if (worldLoaded->HasComponent<HealthComponent>(eid))
                                     {
                                         const auto& ha =
-                                            worldLoaded.GetComponent<HealthComponent>(eid);
+                                            worldLoaded->GetComponent<HealthComponent>(eid);
                                         if (ha.hp == 350 && ha.maxHp == 500)
                                         {
                                             hpRoundTrip = true;

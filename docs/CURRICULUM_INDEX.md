@@ -6,7 +6,7 @@
 
 This index is **automatically generated** from every `TEACHING NOTE` block in the repository source code.  Each entry links back to the exact line where the lesson was written.
 
-**Total lessons:** 2062 across 60 subsystems.
+**Total lessons:** 2064 across 60 subsystems.
 
 ---
 
@@ -50,7 +50,7 @@ This index is **automatically generated** from every `TEACHING NOTE` block in th
 - [samples/vertical_slice_project](#samplesvertical_slice_project) (35 lessons)
 - [sandbox/game_runtime.cpp](#sandboxgame_runtime.cpp) (12 lessons)
 - [sandbox/game_runtime.hpp](#sandboxgame_runtime.hpp) (3 lessons)
-- [sandbox/main.cpp](#sandboxmain.cpp) (138 lessons)
+- [sandbox/main.cpp](#sandboxmain.cpp) (140 lessons)
 - [sandbox/test_world.cpp](#sandboxtest_world.cpp) (4 lessons)
 - [sandbox/test_world.hpp](#sandboxtest_world.hpp) (1 lesson)
 - [scripts/check_architecture.py](#scriptscheck_architecture.py) (8 lessons)
@@ -1741,7 +1741,7 @@ arch: x64
 
 ### terrain_test detects ENGINE_ENABLE_PHYSICS at runtime.
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L256) (line 256)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L257) (line 257)
 
 Subtest 3 (physics_collision via Jolt) auto-skips in the engine-only
 binary (no ENGINE_ENABLE_PHYSICS define) and prints "SKIP".
@@ -1752,7 +1752,7 @@ shell: cmd
 
 ### This build is kept separate (built last) because Jolt's
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L308) (line 308)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L309) (line 309)
 
 Debug build emits large stack frames that cause STATUS_STACK_OVERFLOW
 when the binary is used for non-physics scenes.  The engine-only binary
@@ -1767,7 +1767,7 @@ key: vcpkg-joltphysics-${{ runner.os }}-x64
 
 ### terrain_test has 3 subtests:
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L352) (line 352)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L353) (line 353)
 
 1. renderer_init         — runs in both builds
   2. heightmap_displacement — runs in both builds
@@ -1781,7 +1781,7 @@ shell: cmd
 
 ### Editor job kept separate because imgui requires vcpkg and
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L366) (line 366)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L367) (line 367)
 
 adds ~2 minutes of compile time.  Separating it avoids lengthening the
 critical path for engine PRs that do not touch editor code.
@@ -1793,7 +1793,7 @@ continue-on-error: false
 
 ### VCPKG_INSTALLED_DIR overrides the path so CMake finds
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L410) (line 410)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L411) (line 411)
 
 packages from the classic-mode install rather than manifest-mode default.
 - name: Configure CMake (D3D11 + Editor)
@@ -1806,7 +1806,7 @@ cmake --preset windows-ninja-debug-editor
 
 ### Validates demo_game.exe through the demo_main.cpp entry
 
-**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L440) (line 440)
+**Source:** [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml#L441) (line 441)
 
 point (different code path from the sandbox demo_world test above).
 Uses the windows-ninja-debug-demo preset (BUILD_DEMO_GAME=ON).
@@ -30112,12 +30112,13 @@ Requirements: dbghelp.lib (ships with the Windows SDK).
 ---------------------------------------------------------------------------
 ifdef _WIN32
 include <windows.h>
+include <crtdbg.h>   // _CrtSetReportMode — redirect CRT assert dialogs in headless CI
 include <dbghelp.h>
 pragma comment(lib, "dbghelp.lib")
 
 ### Crash dump directory
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L504) (line 504)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L505) (line 505)
 
 We honour the same ENGINE_SAVE_DIR environment variable used by the
 logger so that crash dumps land alongside log files in whichever save
@@ -30129,7 +30130,7 @@ GetEnvironmentVariableA("ENGINE_SAVE_DIR", saveBuf, sizeof(saveBuf));
 
 ### PID-suffixed dump filename
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L519) (line 519)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L520) (line 520)
 
 Using crash_<pid>.dmp instead of crash.dmp prevents a new crash from
 silently overwriting the dump from a previous crash.  The PID is always
@@ -30140,7 +30141,7 @@ sprintf_s(dmpPath, sizeof(dmpPath), kDumpFmt, crashDir, pid);
 
 ### EXCEPTION_EXECUTE_HANDLER
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L544) (line 544)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L545) (line 545)
 
 Returning this constant tells Windows to:
   1. Execute the exception handler (the code above, which wrote the .dmp).
@@ -30155,7 +30156,7 @@ endif // _WIN32
 
 ### Shader Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L557) (line 557)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L558) (line 558)
 
 ---------------------------------------------------------------------------
 The compiled shader files (.spv for Vulkan, .cso for D3D11) are placed next
@@ -30172,7 +30173,7 @@ return (dir / "shaders" / "").string();   // trailing separator
 
 ### Executable Directory Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L572) (line 572)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L573) (line 573)
 
 ---------------------------------------------------------------------------
 engine_config.json is placed next to the executable by CMake (or the user).
@@ -30189,7 +30190,7 @@ return (p.has_parent_path() ? p.parent_path() : fs::path(".")).string();
 
 ### Entry Point with argc/argv
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L587) (line 587)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L588) (line 588)
 
 ---------------------------------------------------------------------------
 We use int main(int argc, char* argv[]) so the executable can receive
@@ -30208,7 +30209,7 @@ endif
 
 ### AP-4: --version flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L606) (line 606)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L607) (line 607)
 
 -------------------------------------------------------------------
 Print the short git SHA baked in at compile time and exit.
@@ -30227,7 +30228,7 @@ return 0;
 
 ### Command-Line Parsing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L625) (line 625)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L626) (line 626)
 
 We use a simple linear scan rather than a third-party flag library
 to keep the dependency count zero and the code readable.
@@ -30239,7 +30240,7 @@ std::string rendererArg;         // "d3d11" or "vulkan"; empty = default
 
 ### --validate-project flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L647) (line 647)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L648) (line 648)
 
 -----------------------------------------------------------
 This M2 flag validates that the project's cooked asset
@@ -30258,7 +30259,7 @@ else if (std::strcmp(argv[i], "--renderer") == 0 && i + 1 < argc)
 
 ### --renderer flag
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L662) (line 662)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L663) (line 663)
 
 -----------------------------------------------------------
 Selects the graphics backend at runtime.
@@ -30271,7 +30272,7 @@ rendererArg = argv[++i];
 
 ### Timestamped Log Files
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L680) (line 680)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L681) (line 681)
 
 Each run writes its log to a unique timestamped file so logs from
 multiple sessions do not overwrite each other.  This is essential
@@ -30289,7 +30290,7 @@ namespace fs = std::filesystem;
 
 ### Append process ID to the timestamp
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L714) (line 714)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L715) (line 715)
 
 Multiple engine instances launched within the same second would
 produce identical filenames without the PID suffix, causing one
@@ -30307,7 +30308,7 @@ Logger::Instance().Init(logPath, LogLevel::DEBUG, /*echoConsole=*/true);
 
 ### Validate-Only Mode
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L732) (line 732)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L733) (line 733)
 
 This path runs cook validation without opening any renderer window.
 It exercises the AssetDB + AssetLoader pipeline introduced in M2.
@@ -30318,7 +30319,7 @@ namespace fs = std::filesystem;
 
 ### Validating every asset in the database
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L761) (line 761)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L762) (line 762)
 
 db.All() returns all GUIDs.  We iterate every GUID and call
 loader.LoadRaw(), which opens the cooked file.  An empty return
@@ -30333,7 +30334,7 @@ if (bytes.empty())
 
 ### Validate cells_manifest.json (streaming cell GUIDs)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L782) (line 782)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L783) (line 783)
 
 -------------------------------------------------------------------
 cells_manifest.json is generated by cook.exe alongside assetdb.json.
@@ -30352,7 +30353,7 @@ projectPath / "Cooked" / "Levels" / "cells_manifest.json";
 
 ### Always check that the file stream is open
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L808) (line 808)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L809) (line 809)
 
 before attempting to parse.  If the file exists but cannot
 be opened (permissions, OS lock) JSON parsing will silently
@@ -30384,7 +30385,7 @@ for (const auto& cell : cells)
 
 ### Validate cx/cz before guid so that
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L836) (line 836)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L837) (line 837)
 
 coordinate errors are reported with the cell index
 rather than a confusing GUID mismatch.
@@ -30436,7 +30437,7 @@ continue;
 
 ### AssetDB::GetCookedPath() already returns
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L884) (line 884)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L885) (line 885)
 
 an absolute path resolved from the project root at Load()
 time, so no further path-joining is needed.
@@ -30474,7 +30475,7 @@ endif  // ENGINE_ENABLE_JSON
 
 ### Default Backend: D3D11
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L925) (line 925)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L926) (line 926)
 
 If --renderer is not specified we use D3D11 because it works on all
 Windows machines from Win7 (GT610-compatible) and on CI runners
@@ -30484,7 +30485,7 @@ const auto backend = engine::rendering::ParseRendererBackend(rendererArg);
 
 ### Configuration Path Resolution
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L935) (line 935)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L936) (line 936)
 
 We resolve engine_config.json relative to the executable directory
 (same strategy as GetShaderDir) so the config is found regardless of
@@ -30510,7 +30511,7 @@ LOG_INFO("[EngineConfig] No config at: " + configPath + " — using defaults.");
 
 ### Resolution types
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L969) (line 969)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L970) (line 970)
 
 engConfig.resolution.width/height are uint32_t (same as Win32Window::Init's
 parameter types) and have been clamped to [64, 16384] by EngineConfig::Load(),
@@ -30523,7 +30524,7 @@ return 1;
 
 ### Factory Usage
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L987) (line 987)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L988) (line 988)
 
 CreateRenderer returns a std::unique_ptr<IRenderer> so ownership
 is clear: main() owns the renderer, and it is automatically
@@ -30539,7 +30540,7 @@ return 1;
 
 ### shaderDir scope
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1020) (line 1020)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1021) (line 1021)
 
 shaderDir is computed once here (outside the scene-load block) so
 that headless acceptance tests that need to create D3D11 resources
@@ -30549,33 +30550,48 @@ std::string shaderDir = GetShaderDir(argv[0]);
 
 ### Headless Exit Protocol
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1041) (line 1041)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1042) (line 1042)
 
 Acceptance tests expect exactly one "[PASS]" line on stdout
 followed by exit code 0.  Any other output (or non-zero exit) = fail.
 -------------------------------------------------------------------
 if (headless)
 {
-if (scene == "triangle")
-{
-Validate: record one frame to confirm the draw call works.
-if (!renderer->RecordHeadlessFrame())
-{
-std::cout << "[FAIL] Headless frame recording failed.\n";
-renderer->Shutdown();
-window.Shutdown();
-return 1;
-}
-std::cout << "[PASS] Pipeline created. Mesh uploaded. Draw recorded.\n";
-}
-else if (scene == "textured_quad" || scene == "skinned_mesh" ||
-scene == "pbr_mesh")
-{
------------------------------------------------------------
+-------------------------------------------------------------------
+
+### Headless CI error-mode hardening (Win32)
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1049) (line 1049)
+
+-------------------------------------------------------------------
+In MSVC Debug builds, assert() opens a blocking modal dialog when
+a condition fails (e.g. "Component type not registered").  On a
+GitHub-hosted Windows runner there is no user to dismiss the dialog,
+so the process hangs until the 6-hour job timeout — masking the real
+error.  Calling SetErrorMode + _CrtSetReportMode converts all fatal
+errors and CRT assertions to immediate stderr writes + process exit,
+making CI failures fail fast instead of hanging silently.
+
+SEM_FAILCRITICALERRORS — suppresses "hard error" message boxes
+  (e.g. missing DLL, hardware errors).
+SEM_NOGPFAULTERRORBOX  — suppresses the "Application has stopped
+  working" WER dialog on access violations / stack overflows.
+_CrtSetReportMode      — redirects MSVC CRT assert() from a pop-up
+  dialog to stderr + the debug output channel.
+ifdef _WIN32
+SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+ifdef _DEBUG
+_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_HFILE_STDERR);
+_CrtSetReportMode(_CRT_ERROR,  _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
+_CrtSetReportFile(_CRT_ERROR,  _CRTDBG_HFILE_STDERR);
+endif
+endif
+-------------------------------------------------------------------
 
 ### Headless Scene Validation (M3 / M4b / M9)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1063) (line 1063)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1092) (line 1092)
 
 -----------------------------------------------------------
 RecordHeadlessFrame() creates a 64×64 off-screen render
@@ -30604,7 +30620,7 @@ else if (scene == "dynamic_sky")
 
 ### M10 Dynamic Sky Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1088) (line 1088)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1117) (line 1117)
 
 -----------------------------------------------------------
 The dynamic_sky headless path exercises three acceptance
@@ -30628,7 +30644,7 @@ int testsFailed = 0;
 
 ### M5 Physics Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1196) (line 1196)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1225) (line 1225)
 
 -----------------------------------------------------------
 The physics_test headless path exercises three of the M5
@@ -30653,7 +30669,7 @@ acceptance criteria from FF15_REQUIREMENTS_BLUEPRINT.md §10:
 
 ### Generous tolerance for CI
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1317) (line 1317)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1346) (line 1346)
 
 On WARP (software) and with a 1/60 s step the
 character may land slightly above or below the exact
@@ -30674,7 +30690,7 @@ std::cout << "[OK] physics_test/step_ledge: "
 
 ### Build-time gate
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1401) (line 1401)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1430) (line 1430)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and this physics_test scene is not available.
@@ -30692,7 +30708,7 @@ else if (scene == "vehicle_test")
 
 ### Post-M10 Vehicle Physics headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1415) (line 1415)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1444) (line 1444)
 
 -----------------------------------------------------------
 This acceptance scene validates the VehicleSystem:
@@ -30723,7 +30739,7 @@ using math::Vec3;
 
 ### Heap-allocated World (avoids stack overflow)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1444) (line 1444)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1473) (line 1473)
 
 See the m8_gameplay note for why World must be heap-allocated.
 auto vehicleWorld = std::make_unique<World>();
@@ -30731,7 +30747,7 @@ RegisterAllComponents(*vehicleWorld);
 
 ### Why -0.5 m threshold?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1506) (line 1506)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1535) (line 1535)
 
 Without suspension the vehicle falls freely: Y ≈ -19.6 m.
 With working suspension it should settle near Y ≈ 0.4–1.2 m.
@@ -30754,7 +30770,7 @@ std::cout << "[OK] vehicle_test/suspension: "
 
 ### Build-time gate for vehicle_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1581) (line 1581)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1610) (line 1610)
 
 If joltphysics was not found by CMake, ENGINE_ENABLE_PHYSICS
 is not defined and the vehicle_test scene is not available.
@@ -30772,7 +30788,7 @@ else if (scene == "testworld")
 
 ### Headless TestWorld
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1595) (line 1595)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1624) (line 1624)
 
 -----------------------------------------------------------
 Boots all gameplay systems, runs 600 fixed-dt frames, then
@@ -30790,7 +30806,7 @@ return 1;
 
 ### M7 streaming_load acceptance test (M7.1)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1628) (line 1628)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1657) (line 1657)
 
 -----------------------------------------------------------
 Verifies that WorldStreamingManager can load adjacent
@@ -30816,7 +30832,7 @@ return 1;
 
 ### M7 streaming_evict acceptance test (M7.3)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1679) (line 1679)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1708) (line 1708)
 
 -----------------------------------------------------------
 Verifies BOTH normal eviction AND the M7.3 cancellation race:
@@ -30838,7 +30854,7 @@ Verifies BOTH normal eviction AND the M7.3 cancellation race:
 
 ### Why LoadingCellCount() is reliably 9 after step 2
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1698) (line 1698)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1727) (line 1727)
 
 ─────────────────────────────────────────────────────────────────
   Update() calls PumpMainThreadCompletions() FIRST, then RequestCells().
@@ -30861,7 +30877,7 @@ return 1;
 
 ### M7 streaming_async acceptance test (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1779) (line 1779)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1808) (line 1808)
 
 -----------------------------------------------------------
 Verifies that:
@@ -30881,7 +30897,7 @@ Method:
 
 ### Frame budget cap (M7.4)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1796) (line 1796)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1825) (line 1825)
 
 ──────────────────────────────────────────
 With maxCompletionsPerFrame=4 and 25 cells loading simultaneously,
@@ -30901,7 +30917,7 @@ return 1;
 
 ### Soft vs. hard failure for timing tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1839) (line 1839)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1868) (line 1868)
 
 ─────────────────────────────────────────────────────────
 OS schedulers can preempt the process and inflate frame
@@ -30917,7 +30933,7 @@ budgetExceeded = true;
 
 ### M8 Gameplay Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1881) (line 1881)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1910) (line 1910)
 
 -----------------------------------------------------------
 This acceptance scene validates that ALL gameplay systems
@@ -30943,7 +30959,7 @@ The three acceptance criteria match the M8.9 plan:
 
 ### Heap-allocate GameRuntime
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1903) (line 1903)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L1932) (line 1932)
 
 ──────────────────────────────────────────
 GameRuntime contains a value-type ECS World.  World's
@@ -30966,7 +30982,7 @@ return 1;
 
 ### M8.7 Streaming Integration headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2012) (line 2012)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2041) (line 2041)
 
 -----------------------------------------------------------
 This acceptance scene validates the complete M8.7 pipeline:
@@ -30993,7 +31009,7 @@ This acceptance scene validates the complete M8.7 pipeline:
 
 ### Why 200 iterations?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2036) (line 2036)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2065) (line 2065)
 
 The async loader works on a background thread.  The main
 thread drains at most kMaxPerFrame completions per
@@ -31004,14 +31020,14 @@ CI runner where the worker thread may be slow to schedule.
 
 ### Heap-allocate World (same reason as GameRuntime)
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2059) (line 2059)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2088) (line 2088)
 
 auto streamWorld = std::make_unique<World>();
 RegisterAllComponents(*streamWorld);
 
 ### Keep this acceptance-test cell size matched to
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2064) (line 2064)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2093) (line 2093)
 
 GameRuntime's streaming integration (TILE_SIZE * 40 = 2560).
 Using a smaller test-only value exercises a different
@@ -31028,7 +31044,7 @@ return 1;
 
 ### Data-driven GUID registration in tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2079) (line 2079)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2108) (line 2108)
 
 ─────────────────────────────────────────────────────────
 The cells_manifest.json is generated by cook.exe and maps
@@ -31045,7 +31061,7 @@ const std::string kManifestPath =
 
 ### Post-M10 Behaviour Tree AI headless test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2200) (line 2200)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2229) (line 2229)
 
 -----------------------------------------------------------
 This acceptance scene validates the three new engine/ai/
@@ -31080,7 +31096,7 @@ Test 4 — NAV MESH PATHFINDING:
 
 ### RUNNING state across ticks
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2258) (line 2258)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2287) (line 2287)
 
 ──────────────────────────────────────────────
 A multi-frame action returns RUNNING on tick 1 and
@@ -31090,7 +31106,7 @@ next tick.
 
 ### Testing formation geometry
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2349) (line 2349)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2378) (line 2378)
 
 ────────────────────────────────────────────
 We verify that all follower slots (there are 4 of them)
@@ -31100,7 +31116,7 @@ are wrong (off-by-one, sign error, etc.).
 
 ### Obstacle routing test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2417) (line 2417)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2446) (line 2446)
 
 ──────────────────────────────────────
 Block the direct path at column x=2 for all rows except
@@ -31108,7 +31124,7 @@ y=0 (leave a gap).  A* must route through the gap.
 
 ### Post-M10 Cinematics acceptance test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2468) (line 2468)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2497) (line 2497)
 
 -----------------------------------------------------------
 This scene validates the two new engine/cinematics/
@@ -31137,7 +31153,7 @@ All three tests are pure C++17 CPU tests.
 
 ### Building a CameraRig for testing
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2502) (line 2502)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2531) (line 2531)
 
 We author three keyframes:
   t=0.0 : eye=(0,0,0)  lookAt=(0,0,10)  fov=60
@@ -31160,7 +31176,7 @@ Vec3{ 20.0f, 0.0f, 10.0f }, 40.0f);
 
 ### Testing interpolation correctness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2553) (line 2553)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2582) (line 2582)
 
 At t=0.5, alpha = (0.5 - 0.0) / (1.0 - 0.0) = 0.5
 pos.x = Lerp(0, 10, 0.5) = 5.0
@@ -31183,7 +31199,7 @@ std::cout << "[OK] cinematic_test/rig_eval_t05: "
 
 ### Testing time advancement with carry-over
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2594) (line 2594)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2623) (line 2623)
 
 We build a sequencer with two 0.1 s shots.
 
@@ -31200,7 +31216,7 @@ CinematicSequencer seq;
 
 ### Testing callbacks with lambda closures
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2669) (line 2669)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2698) (line 2698)
 
 std::function callbacks are idiomatic modern C++.  We use
 lambda closures that capture local counters by reference to
@@ -31212,7 +31228,7 @@ CinematicSequencer seq;
 
 ### What is a "timed audio event"?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2739) (line 2739)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2768) (line 2768)
 
 In a cut-scene, a sound effect must play at a precise moment:
 e.g. a door creak at t=0.3 s or a sword clash at t=1.5 s.
@@ -31222,7 +31238,7 @@ because we check immediately after advancing m_shotTime.
 
 ### Why not test with XAudio2 here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2746) (line 2746)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2775) (line 2775)
 
 The acceptance test only needs to verify the callback fires
 at the right time.  Coupling to XAudio2 would require a
@@ -31235,7 +31251,7 @@ CinematicSequencer seq;
 
 ### MenuStack acceptance tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2839) (line 2839)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L2868) (line 2868)
 
 -----------------------------------------------------------
 These tests exercise the entire MenuStack public API without
@@ -31253,7 +31269,7 @@ between tests — the same isolation principle used in unit tests.
 
 ### D3D11 dynamic_cast guard
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3053) (line 3053)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3082) (line 3082)
 
 We dynamic_cast the IRenderer* to D3D11Renderer* to access
 the device and context pointers.  This is safe because:
@@ -31266,7 +31282,7 @@ dynamic_cast<engine::rendering::D3D11Renderer*>(renderer.get());
 
 ### Build-time gate for font_test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3134) (line 3134)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3163) (line 3163)
 
 font_test requires ENGINE_ENABLE_D3D11.  Build with the
 windows-ninja-debug-engine-only preset to enable it.
@@ -31282,7 +31298,7 @@ M16: PBR + IBL acceptance tests (4 tests).
 
 ### What the pbr_ibl tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3147) (line 3147)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3176) (line 3176)
 
 Test 1 (load):    LoadScene('pbr_ibl') completes without
                     error.  All IBL textures are generated and
@@ -31299,7 +31315,7 @@ int testsFailed = 0;
 
 ### Verifying the depth-stencil buffer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3188) (line 3188)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3217) (line 3217)
 
 was created as part of CreateSwapChainResources().
 In headless mode there is no swap chain, so the DSV is
@@ -31317,7 +31333,7 @@ std::cout << "[OK] pbr_ibl/depth: "
 
 ### We call LoadScene("") which is treated
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3219) (line 3219)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3248) (line 3248)
 
 as a no-op, but UnloadScene() is called internally before
 each LoadScene().  Instead we call Shutdown which calls
@@ -31343,7 +31359,7 @@ std::cout << "[OK] pbr_ibl/unload: "
 
 ### What the shadow_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3263) (line 3263)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3292) (line 3292)
 
 Test 1 (load):    LoadScene('shadow_test') creates the
                     512×512 shadow map texture + DSV + SRV,
@@ -31383,7 +31399,7 @@ std::cout << "[OK] shadow_test/load: "
 
 ### What the bloom_test tests validate:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3350) (line 3350)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3379) (line 3379)
 
 Test 1 (load):    LoadScene('bloom_test') creates 4× RGBA8
                     offscreen render targets (256×256 each with
@@ -31424,7 +31440,7 @@ std::cout << "[OK] bloom_test/load: "
 
 ### What the audio_3d_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3439) (line 3439)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3468) (line 3468)
 
 Test 1 (init):
     XAudio2Backend::Init() is called.  On headless CI with no
@@ -31453,7 +31469,7 @@ int testsFailed = 0;
 
 ### What the combat_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3557) (line 3557)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3586) (line 3586)
 
 All four tests are pure C++17 CPU tests — no D3D11 renderer
   or audio hardware is required.
@@ -31486,7 +31502,7 @@ int testsFailed = 0;
 
 ### We define the same combos here that
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3593) (line 3593)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3622) (line 3622)
 
 appear in combat_config.json so the test is self-
 contained and does not require a file on disk.
@@ -31503,7 +31519,7 @@ cs.AddCombo(aaaDef);
 
 ### Set a short config so tests run fast
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3655) (line 3655)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3684) (line 3684)
 
 CombatConfig cfg;
 cfg.comboWindowSeconds = 0.5f;
@@ -31511,7 +31527,7 @@ cs.SetConfig(cfg);
 
 ### Minimal ECS World for a unit test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3755) (line 3755)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3784) (line 3784)
 
 We create the smallest possible World to exercise a specific
 function (CalculateDamage).  This is the game-engine equivalent
@@ -31524,7 +31540,7 @@ RegisterAllComponents(*combatWorld);
 
 ### What the quest_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3847) (line 3847)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3876) (line 3876)
 
 All four tests are pure C++17 CPU tests — no D3D11
   renderer, Jolt physics, or XAudio2 is required.
@@ -31562,7 +31578,7 @@ int testsFailed = 0;
 
 ### Why heap-allocate World?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3885) (line 3885)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3914) (line 3914)
 
 EntityManager::m_signatures is a std::array<bitset<64>, 65536>
 which alone is 512 KB.  Stack-allocating World on Windows
@@ -31573,7 +31589,7 @@ RegisterAllComponents(*questWorld);
 
 ### Quest 1 "The Road to Dawn" is defined
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3908) (line 3908)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3937) (line 3937)
 
 in GameDatabase with no prerequisites so it should always
 be acceptable for a fresh player entity.
@@ -31585,7 +31601,7 @@ active[0]->id == 1;
 
 ### GainXP() accumulates XP in pendingXP
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3952) (line 3952)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3981) (line 3981)
 
 (banked in the field); it only moves to currentXP when
 the player rests at camp (ApplyBankedXP).  We check
@@ -31595,7 +31611,7 @@ const bool xpGranted = (lc.pendingXP + lc.currentXP) >= 100;
 
 ### A fresh player has not completed quest 1
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L3998) (line 3998)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4027) (line 4027)
 
 so CanAcceptQuest(6) should return false.
 const bool blockedWithoutPrereq =
@@ -31603,7 +31619,7 @@ const bool blockedWithoutPrereq =
 
 ### A failed quest is neither active nor
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4042) (line 4042)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4071) (line 4071)
 
 complete.  The player could potentially re-accept it
 (if the QuestSystem allows it) or it remains failed for
@@ -31626,7 +31642,7 @@ std::cout << "[OK] quest_test/quest_fail: "
 
 ### What the dialogue_test validates:
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4078) (line 4078)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4107) (line 4107)
 
 All three tests are pure C++17 CPU tests — no renderer,
   no audio, no physics.  A minimal ECS World is created
@@ -31655,7 +31671,7 @@ int testsFailed = 0;
 
 ### We only change XZ (horizontal plane);
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4151) (line 4151)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4180) (line 4180)
 
 DialogueSystem uses XZ distance, matching the 2.5D
 world layout where Y is the vertical axis.
@@ -31664,7 +31680,7 @@ dlgWorld->GetComponent<TransformComponent>(playerID).position =
 
 ### The stub DialogueSystem (M8.6) uses a
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4184) (line 4184)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4213) (line 4213)
 
 single terminal node.  AdvanceDialogue() on a terminal
 node should close the conversation (IsActive() → false).
@@ -31673,7 +31689,7 @@ const bool closedOk  = !dlgSys.IsActive();
 
 ### M26 Save-System CI Acceptance Suite
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4225) (line 4225)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4254) (line 4254)
 
 ──────────────────────────────────────────────────────────
 Three correctness properties validated here, matching the
@@ -31726,7 +31742,7 @@ int testsFailed = 0;
 
 ### Temp directory isolation with clock-based uniqueness
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4278) (line 4278)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4307) (line 4307)
 
 Appending a nanosecond timestamp to the directory name prevents two
 concurrent engine_sandbox processes (e.g. parallel CI matrix jobs
@@ -31742,7 +31758,7 @@ const std::string saveDirStr = testSaveDir.string() + "/";
 
 ### Error checking for filesystem setup
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4292) (line 4292)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4321) (line 4321)
 
 Failing to set up the temp directory (e.g. permissions,
 locked files from a previous crashed run) would cause all
@@ -31774,7 +31790,7 @@ return 1;
 
 ### Graceful skip without ENGINE_ENABLE_JSON
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4324) (line 4324)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4353) (line 4353)
 
 The full three tests require nlohmann/json for Save() and
 Load().  Rather than reporting a false [FAIL] when the
@@ -31801,7 +31817,7 @@ Test 1 — Round-trip equivalence
 
 ### Deterministic world state for round-trip
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4347) (line 4347)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4376) (line 4376)
 
 We set specific values for HP, position, and a quest entry
 so that the assertions below are unambiguous.  Using magic
@@ -31809,12 +31825,25 @@ numbers (420 HP, position=(100,0,200), questID=42) makes
 logs immediately recognisable in CI output.
 {
 engine::save::SaveSystem saver(saveDirStr);
-World worldA;
-const EntityID playerID = worldA.CreateEntity();
+
+### Heap-allocate World + RegisterAllComponents
+
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4383) (line 4383)
+
+Every headless acceptance scene that creates a bare World
+must (a) heap-allocate it (World::EntityManager contains a
+512 KB std::array that would bloat the main() stack frame)
+and (b) call RegisterAllComponents() before any AddComponent
+call — the ECS asserts that component pools are initialised
+before first use.  This is the same pattern used by
+vehicle_test, combat_test, quest_test, and dialogue_test.
+auto worldA = std::make_unique<World>();
+RegisterAllComponents(*worldA);
+const EntityID playerID = worldA->CreateEntity();
 
 ### Compare all three axes
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4421) (line 4421)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4460) (line 4460)
 
 Checking only x and z would miss a bug where
 y is corrupted by a float serialisation error
@@ -31825,7 +31854,7 @@ tf2.position.z == 200.0f);
 
 ### Full quest field validation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4432) (line 4432)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4471) (line 4471)
 
 Asserting every saved field (questID,
 objective, progress, required, isComplete)
@@ -31843,7 +31872,7 @@ break; // found the player entity
 
 ### Inline fixture for older-version saves
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4469) (line 4469)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4508) (line 4508)
 
 Rather than checking in an external fixture file, we write
 a "0.9.0"-versioned JSON payload inline using std::ofstream.
@@ -31866,7 +31895,7 @@ Raw JSON string — written to slot 1 via ofstream.
 
 ### Raw string literals (R"(...)") in C++11+
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4488) (line 4488)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4527) (line 4527)
 
 avoid the need to escape every double-quote inside the
 JSON payload.  The delimiter "JSON" is arbitrary but
@@ -31888,7 +31917,7 @@ static const char kFixtureJSON[] = R"JSON({
 
 ### Validate the fixture write before Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4509) (line 4509)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4548) (line 4548)
 
 If the ofstream fails to open (permissions, disk full),
 the file will be absent.  Load() would then return false
@@ -31915,7 +31944,7 @@ std::cout << "[FAIL] save_test 2/3: Migration — "
 
 ### Simulating CampSystem::Rest auto-save hook
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4586) (line 4586)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4626) (line 4626)
 
 In the live game, CampSystem::Rest() calls SaveSystem::AutoSave()
 after all HP/MP restoration.  The headless test invokes the
@@ -31928,12 +31957,13 @@ Three assertions:
   (c) Load(kAutoSaveSlot) succeeds and HP round-trips.
 {
 engine::save::SaveSystem saver(saveDirStr);
-World worldCamp;
-const EntityID campPlayerID = worldCamp.CreateEntity();
+auto worldCamp = std::make_unique<World>();
+RegisterAllComponents(*worldCamp);
+const EntityID campPlayerID = worldCamp->CreateEntity();
 
 ### Always check the error_code from file_size
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4628) (line 4628)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4669) (line 4669)
 
 fs::file_size(path, ec) returns uintmax_t(-1) on error and
 sets ec.  Checking only fileSize == 0 would treat an error-
@@ -31945,14 +31975,15 @@ slotExists ? fs::file_size(autoPath, ecSize)
 
 ### Explicit HP assertion after Load()
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4650) (line 4650)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4691) (line 4691)
 
 Asserting that the loaded world contains an entity with
 hp==350/maxHp==500 proves data integrity, not just that
 the file was written and the parser didn't crash.
-World worldLoaded;
+auto worldLoaded = std::make_unique<World>();
+RegisterAllComponents(*worldLoaded);
 const bool loadOk =
-saver.Load(worldLoaded, engine::save::kAutoSaveSlot);
+saver.Load(*worldLoaded, engine::save::kAutoSaveSlot);
 if (!loadOk)
 {
 std::cout << "[FAIL] save_test 3/3: Auto-save — "
@@ -31962,12 +31993,12 @@ std::cout << "[FAIL] save_test 3/3: Auto-save — "
 else
 {
 std::vector<EntityID> autoLiving;
-worldLoaded.GetEntityManager()
+worldLoaded->GetEntityManager()
 .GetLivingEntities(autoLiving);
 
 ### M25 Terrain Acceptance Tests
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4719) (line 4719)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4761) (line 4761)
 
 ──────────────────────────────────────────────────────────
 Three acceptance criteria matching the milestone definition
@@ -31998,7 +32029,7 @@ in docs/PROJECT_MILESTONES.md §M25:
 
 ### Why a 4×4 heightmap?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4747) (line 4747)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4789) (line 4789)
 
 Jolt's JPH::HeightFieldShape requires a power-of-2 sample
 count.  4 is the smallest valid value (2^2) that produces at
@@ -32007,7 +32038,7 @@ least one non-trivial quad, making it the minimum useful test.
 
 ### Why downcast here?
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4771) (line 4771)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4813) (line 4813)
 
 The headless acceptance tests need the raw ID3D11Device*
 to create auxiliary D3D11 objects (terrain VB, IB, CB,
@@ -32019,7 +32050,7 @@ bool testOk = false;
 
 ### HeightFieldShape sample count constraint
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4852) (line 4852)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4894) (line 4894)
 
 BakeTerrainCollider requires a power-of-2 sample count.
 We use 4 (2^2) — the smallest valid value for Jolt.
@@ -32028,7 +32059,7 @@ static constexpr float kWorldSize = kCellSize * (kW - 1); // 6.0 m
 
 ### Graceful skip when physics is absent
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4918) (line 4918)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4960) (line 4960)
 
 The standard Windows CI job builds without Jolt Physics (no
 vcpkg install in that job).  We skip test 3 rather than fail
@@ -32040,7 +32071,7 @@ endif // ENGINE_ENABLE_PHYSICS
 
 ### M24 Authored Content Acceptance Suite
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4941) (line 4941)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L4983) (line 4983)
 
 =========================================================
 The authored_content scene is a pure filesystem check with no
@@ -32071,7 +32102,7 @@ Acceptance criteria:
 
 ### demo_world CI Acceptance Test
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5108) (line 5108)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5150) (line 5150)
 
 ──────────────────────────────────────────────
 This test validates the Demo_Game open-world state machine
@@ -32093,7 +32124,7 @@ int testsFailed = 0;
 
 ### Fail explicitly on insufficient stations
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5128) (line 5128)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5170) (line 5170)
 
 We check both that Init() returned true AND that the station
 count is at least the expected minimum.  A successful Init()
@@ -32120,7 +32151,7 @@ std::cout << "[OK] demo_world/1: Init — "
 
 ### Extra guard frames
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5164) (line 5164)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5206) (line 5206)
 
 At 60 Hz, a 0.1 s LOADING wait is about 6 frames
 (0.1 / (1/60) ≈ 6).  We also need 2 frames for the
@@ -32148,7 +32179,7 @@ std::cout << "[OK] demo_world/3: PLAYING state; all biomes visited "
 
 ### Teleport sets nearestStationID but NOT quest
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5190) (line 5190)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5232) (line 5232)
 
 Verifies that TeleportToStation sets the biome (navigation) and
 m_nearestStationID (for subsequent E interact) but does NOT
@@ -32174,7 +32205,7 @@ std::cout << "[OK] demo_world/4: Teleport → rendering_pbr = GRASSLAND, "
 
 ### An empty station list is a test failure, not
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5214) (line 5214)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5256) (line 5256)
 
 a vacuous success.  This acceptance test verifies that station
 registration happened AND that each station's required fields
@@ -32210,7 +32241,7 @@ std::cout << "[OK] demo_world/5: All " << stationsRef.size()
 
 ### Fallback data pattern validation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5248) (line 5248)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5290) (line 5290)
 
 ──────────────────────────────────────────────────────────────────
 TryLoadStationsFromJSON() must silently ignore a missing file and
@@ -32240,7 +32271,7 @@ ow2.Shutdown();
 
 ### Testing the quest/activity layer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5276) (line 5276)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5318) (line 5318)
 
 ──────────────────────────────────────────────────────────────────
 DemoQuestManager is initialised inside OpenWorld::Init(), so 'ow'
@@ -32277,7 +32308,7 @@ c) Complete the main quest by Teleport+Interact at objective stations.
 
 ### Headless interact simulation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5309) (line 5309)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5351) (line 5351)
 
 TeleportToStation sets m_nearestStationID; InteractAtStation
 checks it and triggers quest progress.  This is how CI exercises
@@ -32296,7 +32327,7 @@ questWorld.InteractAtStation();
 
 ### Testing the lesson-data layer
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5368) (line 5368)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5410) (line 5410)
 
 ──────────────────────────────────────────────────────────────────
 If station_lessons.json was deployed (CI with content), verify:
@@ -32311,7 +32342,7 @@ ow8.Init();
 
 ### Headless combo challenge simulation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5421) (line 5421)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5463) (line 5463)
 
 ──────────────────────────────────────────────────────────────────
 Calls NotifyChallengePassed() directly (no keyboard needed) to
@@ -32326,7 +32357,7 @@ ow9.Init();
 
 ### Fixed Timestep vs Variable Timestep
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5499) (line 5499)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5541) (line 5541)
 
 For this minimal demo we use a simple variable-timestep loop:
 render as fast as the GPU allows (limited by vsync).
@@ -32336,7 +32367,7 @@ double totalTime = 0.0;
 
 ### TestWorld integration in the render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5507) (line 5507)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5549) (line 5549)
 
 -----------------------------------------------------------------------
 When --scene testworld is specified, we create a TestWorld and call
@@ -32366,7 +32397,7 @@ return 1;
 
 ### M8 GameRuntime in the windowed render loop
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5535) (line 5535)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5577) (line 5577)
 
 -----------------------------------------------------------------------
 When --scene game is specified, GameRuntime drives all gameplay
@@ -32389,7 +32420,7 @@ return 1;
 
 ### std::sin / std::cos for animation
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5588) (line 5588)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5630) (line 5630)
 
 Each channel has a different phase offset so they don't all
 peak at the same moment, producing a smooth rainbow sweep.
@@ -32402,7 +32433,7 @@ clearB = (std::sin(tF * speed + 4.189f) + 1.0f) * 0.5f;  // 4pi/3
 
 ### Shutdown Order
 
-**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5604) (line 5604)
+**Source:** [`src/sandbox/main.cpp`](src/sandbox/main.cpp#L5646) (line 5646)
 
 The renderer must be shut down BEFORE the window because the
 swap chain / surface references the HWND.  Destroying the window
